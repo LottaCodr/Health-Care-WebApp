@@ -1,8 +1,9 @@
 import * as sdk from "node-appwrite";
 
-const {
+export const {
   PROJECT_ID,
   API_KEY,
+  DATABASE_ID,
   DOCTOR_COLLECTION,
   APPOINTMENT_COLLECTION_ID,
   PATIENT_COLLECTION_ID,
@@ -18,3 +19,5 @@ export const databases = new sdk.Databases(client);
 export const storage = new sdk.Storage(client);
 export const message = new sdk.Messaging(client);
 export const users = new sdk.Users(client);
+
+
