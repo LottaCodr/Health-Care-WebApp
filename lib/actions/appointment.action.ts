@@ -1,11 +1,13 @@
+'use server'
+
 import { parseStringify } from "@/app/lib/utils";
 import {
   APPOINTMENT_COLLECTION_ID,
   DATABASE_ID,
   databases,
-  ENDPOINT,
+  
 } from "../appwrite.config";
-import { ID, Query } from "node-appwrite";
+import { ID,  } from "node-appwrite";
 
 export const createAppointment = async (
   appointment: CreateAppointmentParams
@@ -17,9 +19,22 @@ export const createAppointment = async (
       ID.unique(),
       appointment
     );
-
     return parseStringify(newAppointment);
   } catch (error) {
     console.log("An error occurred while getting a user:", error);
   }
+};
+
+export const getAppointment = async (appointment: string) => {
+ try {
+    const getAppointment = databases.getDocument(
+        DATABASE_ID!,
+        APPOINTMENT_COLLECTION_ID!,
+        appointment
+    )
+
+    return parseStringify(getAppointment);
+ } catch (error) {
+    console.log('Failed to fetch the appointment')
+ }
 };

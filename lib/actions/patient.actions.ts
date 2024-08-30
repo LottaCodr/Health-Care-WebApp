@@ -4,8 +4,7 @@ import { ID, Query } from "node-appwrite";
 import { users, storage, BUCKET_ID, databases, DATABASE_ID, PATIENT_COLLECTION_ID, ENDPOINT, PROJECT_ID } from "../appwrite.config";
 import { parseStringify } from "@/app/lib/utils";
 import {InputFile } from "node-appwrite/file";
-import { queryObjects } from "v8";
-import { create } from "domain";
+
 
 export const createUser = async (user: CreateUserParams) => {
   try {

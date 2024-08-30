@@ -8,13 +8,8 @@ import { Form } from "@/components/ui/form";
 import CustomFormField from "../CustomFormField";
 import SubmitButton from "../ui/SubmitButton";
 import { useState } from "react";
-import {
-  
-  CreateAppointmentSchema,
-  getAppointmentSchema,
-} from "@/lib/validation";
+import { getAppointmentSchema } from "@/lib/validation";
 import { useRouter } from "next/navigation";
-import { createUser } from "@/lib/actions/patient.actions";
 import { FormFieldType } from "./PatientForm";
 import { SelectItem } from "../ui/select";
 import Image from "next/image";
@@ -37,7 +32,7 @@ const AppointmentForm = ({
 
   const form = useForm<z.infer<typeof AppointmentFormValidation>>({
     resolver: zodResolver(AppointmentFormValidation),
-    defaultValues: {
+    defaultValues: { 
       primaryPhysician: "",
       schedule: new Date(),
       reason: "",
@@ -46,12 +41,22 @@ const AppointmentForm = ({
     },
   });
 
-  
-
   async function onSubmit(values: z.infer<typeof AppointmentFormValidation>) {
     setIsLoading(true);
 
-   
+    let status;
+
+    switch (type) {
+      case "schedule":
+        status = "scheduled";
+        break;
+      case "cancel":
+        status = "cancelled";
+        break;
+      default:
+        status = "pending";
+        break;
+    }
 
     try {
       if (type === "create" && patientId) {
@@ -63,16 +68,16 @@ const AppointmentForm = ({
           reason: values.reason!,
           note: values.note,
           status: status as Status,
+          cancellationReason: values.cancellationReason
         };
 
-        
         const appointment = await createAppointment(appointmentData);
 
-        if (appointment)
-            form.reset()
-        router.push('patients/${userId}/new-appointment/success?appointmentId=${appointment.$id}')
+        if (appointment) form.reset();
+        router.push(
+          `/patients/${userId}/new-appointment/success?appointmentId=${appointment.$id}`
+        );
       }
-
     } catch (error) {
       console.error(error);
     }
@@ -86,15 +91,13 @@ const AppointmentForm = ({
     case "cancel":
       buttonLabel = "Cancel Appointment";
       break;
-    case "create":
-      buttonLabel = "Create Appointment";
-      break;
+    
     case "schedule":
       buttonLabel = "Schedule Appointment";
       break;
 
     default:
-      buttonLabel = "Create Appointment";
+      buttonLabel = "Submit Appointment";
       break;
   }
   return (
