@@ -10,10 +10,15 @@ import SubmitButton from "../ui/SubmitButton";
 import { useState } from "react";
 import { PatientFormValidation } from "@/lib/validation";
 import { useRouter } from "next/navigation";
-import { createUser, registerPatient } from "@/lib/actions/patient.actions";
+import { registerPatient } from "@/lib/actions/patient.actions";
 import { FormFieldType } from "./PatientForm";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { Doctors, GenderOptions, IdentificationTypes, PatientFormDefaultValues } from "@/constants";
+import {
+  Doctors,
+  GenderOptions,
+  IdentificationTypes,
+  PatientFormDefaultValues,
+} from "@/constants";
 import Image from "next/image";
 import { SelectItem } from "../ui/select";
 import FileUploader from "../FileUploader";
@@ -25,7 +30,7 @@ const RegisterForm = ({ user }: { user: User }) => {
   const form = useForm<z.infer<typeof PatientFormValidation>>({
     resolver: zodResolver(PatientFormValidation),
     defaultValues: {
-        ...PatientFormDefaultValues,
+      ...PatientFormDefaultValues,
       name: "",
       email: "",
       phone: "",
@@ -36,29 +41,31 @@ const RegisterForm = ({ user }: { user: User }) => {
     setIsLoading(true);
 
     let formData;
-    if(values.identificationDocument && values.identificationDocument.length > 0) {
-        const blobFile = new Blob([values.identificationDocument[0]], {type: values.identificationDocument[0].type})
+    if (
+      values.identificationDocument &&
+      values.identificationDocument.length > 0
+    ) {
+      const blobFile = new Blob([values.identificationDocument[0]], {
+        type: values.identificationDocument[0].type,
+      });
 
-        formData = new FormData();
-        formData.append('blobFile', blobFile);
-        formData.append('fileName', values.identificationDocument[0].name)
-      }
+      formData = new FormData();
+      formData.append("blobFile", blobFile);
+      formData.append("fileName", values.identificationDocument[0].name);
+    }
 
     try {
-     const patientData = {
+      const patientData = {
         ...values,
         userId: user.$id,
         birthDate: new Date(values.birthDate),
-        identificationDocument: formData
-     }
+        identificationDocument: formData,
+      };
 
-    //  @ts-ignore
-     const patient = await registerPatient(patientData);
+      //  @ts-ignore
+      const patient = await registerPatient(patientData);
 
-     if(patient) router.push(`/patients/${user.$id}/new-appointment`);
-     
-
-     
+      if (patient) router.push(`/patients/${user.$id}/new-appointment`);
     } catch (error) {
       console.error(error);
     }

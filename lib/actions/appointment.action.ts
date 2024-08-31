@@ -25,15 +25,15 @@ export const createAppointment = async (
   }
 };
 
-export const getAppointment = async (appointment: string) => {
+export const getAppointment = async (appointmentId: string) => {
  try {
-    const getAppointment = databases.getDocument(
+    const fetchAppointment = await databases.getDocument(
         DATABASE_ID!,
         APPOINTMENT_COLLECTION_ID!,
-        appointment
+        appointmentId
     )
 
-    return parseStringify(getAppointment);
+    return parseStringify(fetchAppointment);
  } catch (error) {
     console.log('Failed to fetch the appointment')
  }

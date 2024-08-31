@@ -141,7 +141,7 @@ const AppointmentForm = ({
               name="schedule"
               label="Expected appointment date"
               showTimeSelected
-              dateFormat="dd/MM/yyyy - h:mm aa"
+              dateFormat="MM/dd/yyyy - h:mm aa"
             />
 
             <div className="flex flex-col gap-6 xl:flex-row">
