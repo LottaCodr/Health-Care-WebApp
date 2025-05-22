@@ -3,19 +3,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import clsx from 'clsx';
 
-// Dummy patient type
 interface Patient {
     id: string;
     fullName: string;
     age: number;
     gender: 'Male' | 'Female' | 'Other';
-    admissionDate: string; // ISO string
+    admissionDate: string;
     status: 'admitted' | 'discharged' | 'under observation';
     roomNumber: string;
     diagnosis: string;
 }
 
-// Search input component
 const SearchInput = ({
     value,
     onChange,
@@ -35,7 +33,6 @@ const SearchInput = ({
     />
 );
 
-// Table header with sorting support
 interface SortConfig {
     key: keyof Patient;
     direction: 'asc' | 'desc';
@@ -146,11 +143,29 @@ const PatientsTable = ({
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.roomNumber}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.diagnosis}</td>
+                    
                 </tr>
             ))}
         </tbody>
     );
 };
+
+// Loading skeleton row for table
+const SkeletonRow = () => (
+    <tr>
+        {Array(7)
+            .fill(0)
+            .map((_, i) => (
+                <td
+                    key={i}
+                    className="px-4 py-3"
+                    role="cell"
+                >
+                    <div className="h-4 rounded bg-gray-300 animate-pulse"></div>
+                </td>
+            ))}
+    </tr>
+);
 
 const Pagination = ({
     currentPage,
@@ -200,99 +215,86 @@ const Pagination = ({
     );
 };
 
+const Spinner = () => (
+    <div role="status" aria-live="polite" className="flex justify-center py-10">
+        <svg
+            className="animate-spin h-10 w-10 text-blue-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+        >
+            <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+            />
+            <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            />
+        </svg>
+        <span className="sr-only">Loading...</span>
+    </div>
+);
+
 const PatientsComponent = () => {
-    // Simulated patient data, replace with fetch call
     const [patients, setPatients] = useState<Patient[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [loading, setLoading] = useState(true);
     const PAGE_SIZE = 10;
 
-    // Load dummy data on mount (simulate API fetch)
     useEffect(() => {
-        const dummyData: Patient[] = [
-            {
-                id: '1',
-                fullName: 'John Doe',
-                age: 42,
-                gender: 'Male',
-                admissionDate: '2025-05-20T08:00:00Z',
-                status: 'admitted',
-                roomNumber: '101A',
-                diagnosis: 'Pneumonia',
-            },
-            {
-                id: '2',
-                fullName: 'Jane Smith',
-                age: 36,
-                gender: 'Female',
-                admissionDate: '2025-04-12T10:30:00Z',
-                status: 'discharged',
-                roomNumber: '203B',
-                diagnosis: 'Fracture',
-            },
-            {
-                id: '3',
-                fullName: 'Alice Johnson',
-                age: 29,
-                gender: 'Female',
-                admissionDate: '2025-05-15T12:45:00Z',
-                status: 'under observation',
-                roomNumber: '305C',
-                diagnosis: 'Migraine',
-            },
-            // add more dummy patients for testing
-        ];
-        setPatients(dummyData);
+        setLoading(true);
+
+        // Simulate API fetch with 2s delay
+        const timer = setTimeout(() => {
+            const dummyData: Patient[] = [
+                {
+                    id: '1',
+                    fullName: 'John Doe',
+                    age: 42,
+                    gender: 'Male',
+                    admissionDate: '2025-05-20T08:00:00Z',
+                    status: 'admitted',
+                    roomNumber: '101A',
+                    diagnosis: 'Pneumonia',
+                },
+                {
+                    id: '2',
+                    fullName: 'Jane Smith',
+                    age: 36,
+                    gender: 'Female',
+                    admissionDate: '2025-04-12T10:30:00Z',
+                    status: 'discharged',
+                    roomNumber: '203B',
+                    diagnosis: 'Fracture',
+                },
+                {
+                    id: '3',
+                    fullName: 'Alice Johnson',
+                    age: 29,
+                    gender: 'Female',
+                    admissionDate: '2025-05-15T12:45:00Z',
+                    status: 'under observation',
+                    roomNumber: '305C',
+                    diagnosis: 'Migraine',
+                },
+                // Add more dummy patients here as needed
+            ];
+            setPatients(dummyData);
+            setLoading(false);
+        }, 2000);
+
+        return () => clearTimeout(timer);
     }, []);
 
-    // Filtering by search term
-    const filteredPatients = useMemo(() => {
-        if (!searchTerm.trim()) return patients;
-        return patients.filter((p) =>
-            p.fullName.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [patients, searchTerm]);
-
-    // Sorting patients
-    const sortedPatients = useMemo(() => {
-        if (!sortConfig) return filteredPatients;
-
-        return [...filteredPatients].sort((a, b) => {
-            const aValue = a[sortConfig.key];
-            const bValue = b[sortConfig.key];
-
-            if (typeof aValue === 'string' && typeof bValue === 'string') {
-                return sortConfig.direction === 'asc'
-                    ? aValue.localeCompare(bValue)
-                    : bValue.localeCompare(aValue);
-            }
-
-            if (typeof aValue === 'number' && typeof bValue === 'number') {
-                return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-            }
-
-            // Date sorting (admissionDate)
-            if (sortConfig.key === 'admissionDate') {
-                const dateA = new Date(aValue as string);
-                const dateB = new Date(bValue as string);
-                return sortConfig.direction === 'asc'
-                    ? dateA.getTime() - dateB.getTime()
-                    : dateB.getTime() - dateA.getTime();
-            }
-
-            return 0;
-        });
-    }, [filteredPatients, sortConfig]);
-
-    // Pagination slice
-    const totalPages = Math.ceil(sortedPatients.length / PAGE_SIZE);
-    const pagedPatients = useMemo(() => {
-        const start = (currentPage - 1) * PAGE_SIZE;
-        return sortedPatients.slice(start, start + PAGE_SIZE);
-    }, [sortedPatients, currentPage]);
-
-    // Handle sorting column toggling asc/desc
     const handleSortChange = (key: keyof Patient) => {
         setSortConfig((current) => {
             if (current?.key === key) {
@@ -304,6 +306,46 @@ const PatientsComponent = () => {
             return { key, direction: 'asc' };
         });
     };
+
+    // Filtered patients based on search
+    const filteredPatients = useMemo(() => {
+        return patients.filter((p) =>
+            p.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [patients, searchTerm]);
+
+    // Sorted patients
+    const sortedPatients = useMemo(() => {
+        if (!sortConfig) return filteredPatients;
+
+        return [...filteredPatients].sort((a, b) => {
+            const { key, direction } = sortConfig;
+            let aVal = a[key];
+            let bVal = b[key];
+
+            if (typeof aVal === 'string' && typeof bVal === 'string') {
+                aVal = aVal.toLowerCase();
+                bVal = bVal.toLowerCase();
+            }
+
+            if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [filteredPatients, sortConfig]);
+
+    // Pagination
+    const totalPages = Math.ceil(sortedPatients.length / PAGE_SIZE);
+    const pagedPatients = sortedPatients.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+    );
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages || 1);
+        }
+    }, [totalPages, currentPage]);
 
     return (
         <main className="max-w-7xl mx-6 px-4 sm:px-6 lg:px-8 py-8">
@@ -321,11 +363,28 @@ const PatientsComponent = () => {
             <section className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
                 <table className="min-w-full divide-y divide-gray-200">
                     <PatientsTableHeader sortConfig={sortConfig} onSortChange={handleSortChange} />
-                    <PatientsTable patients={pagedPatients} sortConfig={sortConfig} onSortChange={handleSortChange} />
+
+                    {loading ? (
+                        <tbody>
+                            {Array(5).fill(0).map((_, i) => <SkeletonRow key={i} />)}
+                        </tbody>
+                    ) : (
+                        <PatientsTable
+                            patients={pagedPatients}
+                            sortConfig={sortConfig}
+                            onSortChange={handleSortChange}
+                        />
+                    )}
                 </table>
             </section>
 
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+            {loading ? <Spinner /> : (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                />
+            )}
         </main>
     );
 };

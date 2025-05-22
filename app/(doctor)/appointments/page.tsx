@@ -4,22 +4,17 @@ import { DataTable } from '@/components/doctor/table/DataTable'
 import { getRecentAppointmentList } from '@/lib/actions/appointment.action'
 
 import React from 'react'
+import AppointmentsComponent from '@/components/appointments'
 
 
 
 
-const Admin = async () => {
+const AppointmentsPage = async () => {
 
 
     return (
-        <div className='mx-auto flex max-w-full flex-col space-y-14'>
-
-
-            <main className='admin-main'>
-                Appointment Page
-            </main>
-        </div>
+        <AppointmentsComponent/>
     )
 }
 
-export default Admin
+export default AppointmentsPage
