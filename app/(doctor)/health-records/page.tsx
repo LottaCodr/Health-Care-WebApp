@@ -1,6 +1,6 @@
 import StatCard from '@/components/StatCard'
-import { columns } from '@/components/table/columns'
-import { DataTable } from '@/components/table/DataTable'
+import { columns } from '@/components/doctor/table/columns'
+import { DataTable } from '@/components/doctor/table/DataTable'
 import { getRecentAppointmentList } from '@/lib/actions/appointment.action'
 
 import React from 'react'

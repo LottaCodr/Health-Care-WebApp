@@ -1,55 +1,58 @@
-import clsx from 'clsx'
-import React, { ReactElement } from 'react'
+import clsx from 'clsx';
+import React, { ReactElement } from 'react';
 
 interface StatCardProps {
-  type: 'admitted' | 'staff' | 'discharged'
-  icon: ReactElement
-  label: string
-  count: number
-  comparison?: string
+  type: 'admitted' | 'staff' | 'discharged' | 'income' | 'expenses';
+  icon: ReactElement;
+  label: string;
+  count: number;
+  comparison?: string;
 }
 
 const StatCard = ({ type, icon, label, count = 0, comparison }: StatCardProps) => {
   return (
     <div
       className={clsx(
-        'stat-card rounded-lg shadow-lg p-6 flex flex-col justify-between',
+        'rounded-2xl p-6 shadow-xl transition-transform duration-300 hover:scale-[1.02] flex flex-col justify-between gap-4',
         {
           'bg-blue-700': type === 'admitted',
           'bg-green-700': type === 'staff',
           'bg-purple-700': type === 'discharged',
+          'bg-emerald-700': type === 'income',
+          'bg-rose-700': type === 'expenses',
         }
       )}
       role="region"
       aria-label={label}
     >
       {/* Top: Icon and Label */}
-      <div className="flex items-center gap-4 mb-4">
-        <div
-          className="icon-wrapper flex items-center justify-center rounded-full bg-white bg-opacity-20 p-3 text-white text-4xl"
-          aria-hidden="true"
-        >
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-full bg-white/20 text-white text-3xl">
           {icon}
         </div>
-        <p className="text-white text-lg font-semibold tracking-wide">{label}</p>
+        <div>
+          <p className="text-white text-sm font-medium uppercase tracking-wide opacity-90">
+            {label}
+          </p>
+        </div>
       </div>
 
-      {/* Middle: Count (Primary Focus) */}
+      {/* Middle: Count */}
       <h2
-        className="text-white text-5xl font-extrabold tracking-tight mb-3"
+        className="text-white text-5xl font-extrabold tracking-tight leading-snug"
         aria-live="polite"
       >
         {count.toLocaleString()}
       </h2>
 
-      {/* Bottom: Comparison Text */}
+      {/* Bottom: Comparison */}
       {comparison && (
-        <p className="text-white text-sm opacity-70 font-medium tracking-wide">
+        <p className="text-white text-sm font-light opacity-80 tracking-wide">
           {comparison}
         </p>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default StatCard
+export default StatCard;
