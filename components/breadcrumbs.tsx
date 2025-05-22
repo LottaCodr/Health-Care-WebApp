@@ -13,7 +13,7 @@ import {
 import React from "react";
 
 const breadcrumbNameMap: { [key: string]: string } = {
-    "/dashboard": "Dashbord",
+    "/dashboard": "Dashboard",
     "/company": "Bedrifter",
     "/people": "Personer",
     "/opportunities": "Opportunities",
@@ -32,7 +32,7 @@ export function Breadcrumbs() {
         <Breadcrumb>
             <BreadcrumbList>
                 <BreadcrumbItem>
-                    <BreadcrumbLink href="/">Hjem</BreadcrumbLink>
+                    <BreadcrumbLink href="/">Nile Hospital</BreadcrumbLink>
                 </BreadcrumbItem>
                 {pathSegments.map((segment, index) => {
                     const href = `/${pathSegments.slice(0, index + 1).join("/")}`;

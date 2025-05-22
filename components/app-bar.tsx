@@ -45,65 +45,56 @@ const data = {
             icon: LayoutDashboard,
         },
         {
-            title: "Banking",
-            url: "/banking",
+            title: "Patients",
+            url: "/patients",
             icon: Layers,
         },
         {
-            title: "Categories",
-            url: "/categories",
+            title: "Appointments",
+            url: "/appointments",
             icon: PieChartIcon,
         },
         {
-            title: "Investments",
-            url: "/investments",
+            title: "Transactions",
+            url: "/transactions",
             icon: Signal,
         },
         {
-            title: "Assets",
-            url: "/assets",
+            title: "Employees",
+            url: "/employees",
             icon: Building,
         },
         {
-            title: "Savings",
-            url: "/savings",
+            title: "Health Records",
+            url: "/health-records",
             icon: Leaf,
         },
         {
-            title: "Liabilities",
-            url: "/liabilities",
+            title: "Analysis",
+            url: "/analysis",
             icon: CreditCard,
         },
+
     ],
     navSecondary: [
         {
             title: "Support",
-            url: "#",
+            url: "/support",
             icon: LifeBuoy,
         },
+
         {
-            title: "Feedback",
-            url: "#",
+            title: "Settings",
+            url: "/settings",
+            icon: Send,
+        },
+        {
+            title: "Logout",
+            url: "/logout",
             icon: Send,
         },
     ],
-    projects: [
-        {
-            name: "Account 1",
-            url: "#",
-            icon: Frame,
-        },
-        {
-            name: "Account 2",
-            url: "#",
-            icon: PieChart,
-        },
-        {
-            name: "Account 3",
-            url: "#",
-            icon: Map,
-        },
-    ],
+
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -115,10 +106,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         isActive: pathname.startsWith(item.url),
     }));
 
-    const projectsWithActive = data.projects.map((item) => ({
-        ...item,
-        isActive: pathname === item.url,
-    }));
 
     return (
         <Sidebar variant="inset" {...props}>
@@ -131,8 +118,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     <Command className="size-4" />
                                 </div>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
-                                    <span className="truncate font-semibold">Badget</span>
-                                    <span className="truncate text-xs">Enterprise</span>
+                                    <span className="truncate font-semibold">Nile Mother & Child</span>
+                                    <span className="truncate text-xs">Hospital</span>
                                 </div>
                             </a>
                         </SidebarMenuButton>
@@ -141,7 +128,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarHeader>
             <SidebarContent>
                 <NavMain items={navMainWithActive} />
-                <NavProjects projects={projectsWithActive} />
                 <NavSecondary items={data.navSecondary} className="mt-auto" />
             </SidebarContent>
             <SidebarFooter>
