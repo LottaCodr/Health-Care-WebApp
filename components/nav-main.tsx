@@ -1,86 +1,40 @@
-"use client";
+import React from "react";
 
-import { ChevronRight, type LucideIcon } from "lucide-react";
-
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-    SidebarGroup,
-    SidebarGroupLabel,
-    SidebarMenu,
-    SidebarMenuAction,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarMenuSub,
-    SidebarMenuSubButton,
-    SidebarMenuSubItem,
-} from "@/components/ui/sidebar";
-
-export function NavMain({
-    items,
-}: {
-    items: {
-        title: string;
-        url: string;
-        icon: LucideIcon;
-        isActive?: boolean;
-        items?: {
-            title: string;
-            url: string;
-            isActive?: boolean;
-        }[];
-    }[];
-}) {
-    return (
-        <SidebarGroup>
-            <SidebarGroupLabel>Platform</SidebarGroupLabel>
-            <SidebarMenu>
-                {items.map((item) => (
-                    <Collapsible key={item.title} asChild defaultOpen={item.isActive}>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton
-                                asChild
-                                tooltip={item.title}
-                                isActive={item.isActive}
-                            >
-                                <a href={item.url}>
-                                    <item.icon />
-                                    <span>{item.title}</span>
-                                </a>
-                            </SidebarMenuButton>
-                            {item.items?.length ? (
-                                <>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuAction className="data-[state=open]:rotate-90">
-                                            <ChevronRight />
-                                            <span className="sr-only">Toggle</span>
-                                        </SidebarMenuAction>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            {item.items?.map((subItem) => (
-                                                <SidebarMenuSubItem key={subItem.title}>
-                                                    <SidebarMenuSubButton
-                                                        asChild
-                                                        isActive={subItem.isActive}
-                                                    >
-                                                        <a href={subItem.url}>
-                                                            <span>{subItem.title}</span>
-                                                        </a>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            ))}
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </>
-                            ) : null}
-                        </SidebarMenuItem>
-                    </Collapsible>
-                ))}
-            </SidebarMenu>
-        </SidebarGroup>
-    );
+interface NavItem {
+    title: string;
+    url: string;
+    icon: React.ElementType;
+    isActive?: boolean;
 }
+
+interface NavMainProps {
+    items: NavItem[];
+}
+
+export const NavMain = ({ items }: NavMainProps) => {
+    return (
+        <nav aria-label="Primary Navigation" className="flex flex-col gap-1 px-2">
+            {items.map(({ title, url, icon: Icon, isActive }) => (
+                <a
+                    key={url}
+                    href={url}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`
+                flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors
+                ${isActive
+                            ? "bg-blue-600 text-white font-semibold shadow-lg border-l-4 border-blue-400"
+                            : "text-gray-700 hover:bg-blue-100 hover:text-blue-700"
+                        }
+              `}
+                >
+                    <Icon
+                        className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-gray-500 group-hover:text-blue-600"
+                            }`}
+                        aria-hidden="true"
+                    />
+                    {title}
+                </a>
+            ))}
+        </nav>
+    );
+};

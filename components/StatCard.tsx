@@ -1,35 +1,53 @@
 import clsx from 'clsx'
-import Image from 'next/image'
-import React from 'react'
+import React, { ReactElement } from 'react'
 
 interface StatCardProps {
-    type: "appointments" | "pending" | "cancelled"
-    icon: string
-    label: string
-    count: number
+  type: 'admitted' | 'staff' | 'discharged'
+  icon: ReactElement
+  label: string
+  count: number
+  comparison?: string
 }
 
-const StatCard = ({type, icon, label, count = 0}: StatCardProps) => {
+const StatCard = ({ type, icon, label, count = 0, comparison }: StatCardProps) => {
   return (
-    <div className={clsx('stat-card', {
-        'bg-appointments': type === "appointments",
-        'bg-pending': type === "pending",
-        'bg-cancelled': type === "cancelled",
-    })}>
-
-        <div className='flex items-center gap-4'>
-            <Image
-            src={icon}
-            height={32}
-            width={32}
-            alt={label}
-            className='size-8 w-fit'
-            />
-
-            <h2 className='text-32-bold text-white'>{count}</h2>
+    <div
+      className={clsx(
+        'stat-card rounded-lg shadow-lg p-6 flex flex-col justify-between',
+        {
+          'bg-blue-700': type === 'admitted',
+          'bg-green-700': type === 'staff',
+          'bg-purple-700': type === 'discharged',
+        }
+      )}
+      role="region"
+      aria-label={label}
+    >
+      {/* Top: Icon and Label */}
+      <div className="flex items-center gap-4 mb-4">
+        <div
+          className="icon-wrapper flex items-center justify-center rounded-full bg-white bg-opacity-20 p-3 text-white text-4xl"
+          aria-hidden="true"
+        >
+          {icon}
         </div>
+        <p className="text-white text-lg font-semibold tracking-wide">{label}</p>
+      </div>
 
-        <p className='text-14-regular'>{label}</p>
+      {/* Middle: Count (Primary Focus) */}
+      <h2
+        className="text-white text-5xl font-extrabold tracking-tight mb-3"
+        aria-live="polite"
+      >
+        {count.toLocaleString()}
+      </h2>
+
+      {/* Bottom: Comparison Text */}
+      {comparison && (
+        <p className="text-white text-sm opacity-70 font-medium tracking-wide">
+          {comparison}
+        </p>
+      )}
     </div>
   )
 }

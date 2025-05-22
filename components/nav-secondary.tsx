@@ -1,40 +1,36 @@
-import * as React from "react"
-import { type LucideIcon } from "lucide-react"
+import React from "react";
 
-import {
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-} from "@/components/ui/sidebar"
+interface NavItem {
+    title: string;
+    url: string;
+    icon: React.ElementType;
+    isActive?: boolean;
+}
 
-export function NavSecondary({
-    items,
-    ...props
-}: {
-    items: {
-        title: string
-        url: string
-        icon: LucideIcon
-    }[]
-} & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+interface NavSecondaryProps {
+    items: NavItem[];
+    className?: string;
+}
+
+export function NavSecondary({ items, className }: NavSecondaryProps) {
     return (
-        <SidebarGroup {...props}>
-            <SidebarGroupContent>
-                <SidebarMenu>
-                    {items.map((item) => (
-                        <SidebarMenuItem key={item.title}>
-                            <SidebarMenuButton asChild size="sm">
-                                <a href={item.url}>
-                                    <item.icon />
-                                    <span>{item.title}</span>
-                                </a>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    ))}
-                </SidebarMenu>
-            </SidebarGroupContent>
-        </SidebarGroup>
-    )
+        <nav aria-label="Secondary Navigation" className={`flex flex-col gap-1 px-2 ${className}`}>
+            {items.map(({ title, url, icon: Icon, isActive }) => (
+                <a
+                    key={url}
+                    href={url}
+                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors
+            ${isActive
+                            ? "bg-sidebar-primary-hover text-sidebar-primary-foreground"
+                            : "text-sidebar-secondary-foreground hover:bg-sidebar-primary-hover hover:text-sidebar-primary-foreground"
+                        }
+          `}
+                    aria-current={isActive ? "page" : undefined}
+                >
+                    <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                    {title}
+                </a>
+            ))}
+        </nav>
+    );
 }
