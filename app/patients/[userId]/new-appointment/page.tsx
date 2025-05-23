@@ -5,11 +5,10 @@ import { getPatient } from "@/lib/actions/patient.actions";
 import Image from "next/image";
 import * as Sentry from '@sentry/nextjs'
 
-export default async function NewAppointment({params: { userId }}: SearchParamProps) 
-{
+export default async function NewAppointment({ params: { userId } }: SearchParamProps) {
 
-const patient = await getPatient(userId);
-Sentry.metrics.set("user_view_new-appointment", patient.name);
+  const patient = await getPatient(userId);
+  // Sentry.metrics.set("user_view_new-appointment", patient.name);
 
   return (
     <div className="flex h-screen max-h-screen">
@@ -25,13 +24,14 @@ Sentry.metrics.set("user_view_new-appointment", patient.name);
           />
 
           <AppointmentForm
-          type="create"
-          userId={userId}
-          patientId={patient.$id}
-          />
+            type="create"
+            userId={userId}
+            patientId={patient.$id} setOpen={function (open: boolean): void {
+              throw new Error("Function not implemented.");
+            }} />
 
           <p className="copyright py-12">
-            © 2024 CarePlus
+            © 2025 CarePlus
           </p>
         </div>
       </section>

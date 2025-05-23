@@ -8,7 +8,7 @@ import * as Sentry from '@sentry/nextjs'
 const Register = async ({ params: { userId } }: SearchParamProps) => {
   const user = await getUser(userId);
 
-  Sentry.metrics.set("user_view_register", user.name);
+  // Sentry.metrics.set("user_view_register", user.name);
 
   return (
     <div className="flex h-screen max-h-screen">
@@ -23,10 +23,10 @@ const Register = async ({ params: { userId } }: SearchParamProps) => {
           />
           <RegisterForm user={user} />
 
-          
-            <p className="copyright py-14">
-              © 2024 CarePlus
-            </p>
+
+          <p className="copyright py-14">
+            © 2024 CarePlus
+          </p>
         </div>
       </section>
 

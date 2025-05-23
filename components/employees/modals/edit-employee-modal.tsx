@@ -1,66 +1,79 @@
 "use client"
 
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export default function EditEmployeeModal({
-    employee,
-    onClose,
-    onSave,
-}: {
-    employee: any;
+interface Props {
+    employee: {
+        id: string;
+        name: string;
+        email: string;
+        position: string;
+        department: string;
+        dateOfHire: string;
+        status: "Active" | "Inactive";
+    };
     onClose: () => void;
-    onSave: (updatedEmployee: any) => void;
-}) {
-    const [form, setForm] = useState({ ...employee });
+    onSave: (employee: any) => void;
+}
+
+export default function EditEmployeeModal({ employee, onClose, onSave }: Props) {
+    const [formData, setFormData] = useState(employee);
 
     const handleChange = (field: string, value: string) => {
-        setForm((prev: typeof employee) => ({ ...prev, [field]: value }));
+        setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
     const handleSubmit = () => {
-        onSave(form);
+        onSave(formData);
     };
 
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent>
+            <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Edit Employee</DialogTitle>
                 </DialogHeader>
+
                 <div className="space-y-4">
                     <Input
                         placeholder="Full Name"
-                        value={form.name}
+                        value={formData.name}
                         onChange={(e) => handleChange("name", e.target.value)}
                     />
                     <Input
-                        placeholder="Email"
-                        value={form.email}
+                        placeholder="Email Address"
+                        value={formData.email}
                         onChange={(e) => handleChange("email", e.target.value)}
                     />
                     <Input
                         placeholder="Position"
-                        value={form.position}
+                        value={formData.position}
                         onChange={(e) => handleChange("position", e.target.value)}
                     />
                     <Input
                         placeholder="Department"
-                        value={form.department}
+                        value={formData.department}
                         onChange={(e) => handleChange("department", e.target.value)}
                     />
                     <select
-                        className="w-full border p-2 rounded"
-                        value={form.status}
+                        className="w-full border border-input rounded px-3 py-2 text-sm"
+                        value={formData.status}
                         onChange={(e) => handleChange("status", e.target.value)}
                     >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
                     </select>
-                    <Button onClick={handleSubmit}>Save</Button>
                 </div>
+
+                <DialogFooter className="mt-6">
+                    <Button variant="ghost" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSubmit}>Save Changes</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

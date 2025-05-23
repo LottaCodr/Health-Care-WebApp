@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import useDebounce from "@/lib/hooks/useDebouce";
 import EditEmployeeModal from "./modals/edit-employee-modal";
 import ViewEmployeeModal from "./modals/view-employee-modal";
 import DeleteEmployeeModal from "./modals/delete-employee-modal";
-
+import StatusBadge from "./status-badge";
 
 interface Employee {
     id: string;
@@ -35,12 +35,7 @@ const generateFakeEmployees = (count: number): Employee[] => {
 };
 
 const EmployeeRow = React.memo(
-    ({
-        employee,
-        onEdit,
-        onDelete,
-        onView,
-    }: {
+    ({ employee, onEdit, onDelete, onView }: {
         employee: Employee;
         onEdit: () => void;
         onDelete: () => void;
@@ -52,32 +47,39 @@ const EmployeeRow = React.memo(
         );
 
         return (
-            <tr className="hover:bg-gray-50">
-                <td className="py-2 px-4 border-b cursor-pointer" onClick={onView}>
-                    {employee.name}
-                </td>
-                <td className="py-2 px-4 border-b cursor-pointer" onClick={onView}>
-                    {employee.email}
-                </td>
-                <td className="py-2 px-4 border-b cursor-pointer" onClick={onView}>
-                    {employee.position}
-                </td>
-                <td className="py-2 px-4 border-b cursor-pointer" onClick={onView}>
-                    {employee.department}
-                </td>
-                <td className="py-2 px-4 border-b cursor-pointer" onClick={onView}>
-                    {formattedDate}
-                </td>
-                <td className="py-2 px-4 border-b cursor-pointer" onClick={onView}>
-                    {employee.status}
-                </td>
-                <td className="py-2 px-4 border-b space-x-2">
-                    <button onClick={onEdit} className="text-blue-600 hover:underline">
+            <tr className="hover:bg-muted transition-colors">
+                {["name", "email", "position", "department", "dateOfHire", "status"]
+                    .map((field) => (
+                        <td
+                            key={field}
+                            className="px-4 py-3 border-b text-sm text-gray-700 cursor-pointer"
+                            onClick={onView}
+                        >
+                            {field === "dateOfHire"
+                                ? formattedDate
+                                : field === "status"
+                                    ? <StatusBadge status={employee.status} /> // 👈 Replace raw status with component
+                                    : (employee as any)[field]}
+
+                        </td>
+                    ))}
+                <td className="px-4 py-3 border-b text-sm text-gray-700 space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                        onClick={onEdit}
+                    >
                         Edit
-                    </button>
-                    <button onClick={onDelete} className="text-red-600 hover:underline">
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
+                        onClick={onDelete}
+                    >
                         Delete
-                    </button>
+                    </Button>
                 </td>
             </tr>
         );
@@ -106,9 +108,7 @@ export default function EmployeesComponent() {
                 e.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
                 e.email.toLowerCase().includes(debouncedSearch.toLowerCase())
             )
-            .filter((e) =>
-                departmentFilter ? e.department === departmentFilter : true
-            )
+            .filter((e) => (departmentFilter ? e.department === departmentFilter : true))
             .filter((e) => (statusFilter ? e.status === statusFilter : true));
     }, [employees, debouncedSearch, departmentFilter, statusFilter]);
 
@@ -147,17 +147,19 @@ export default function EmployeesComponent() {
     };
 
     return (
-        <Card>
+        <Card className="rounded-2xl shadow-sm">
             <CardContent className="p-6">
-                <h2 className="text-xl font-bold mb-4">Employees</h2>
-                <div className="flex gap-4 mb-4">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-6">Employee Directory</h2>
+
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
                     <Input
-                        placeholder="Search by name or email"
+                        placeholder="Search name or email..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
+                        className="md:w-1/3"
                     />
                     <select
-                        className="border px-2 py-1 rounded"
+                        className="border px-3 py-2 rounded-md text-sm text-gray-600 focus:outline-none"
                         value={departmentFilter}
                         onChange={(e) => setDepartmentFilter(e.target.value)}
                     >
@@ -169,7 +171,7 @@ export default function EmployeesComponent() {
                         ))}
                     </select>
                     <select
-                        className="border px-2 py-1 rounded"
+                        className="border px-3 py-2 rounded-md text-sm text-gray-600 focus:outline-none"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
@@ -178,20 +180,19 @@ export default function EmployeesComponent() {
                         <option value="Inactive">Inactive</option>
                     </select>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full border">
-                        <thead>
-                            <tr className="bg-gray-100">
-                                <th className="py-2 px-4 border-b text-left">Name</th>
-                                <th className="py-2 px-4 border-b text-left">Email</th>
-                                <th className="py-2 px-4 border-b text-left">Position</th>
-                                <th className="py-2 px-4 border-b text-left">Department</th>
-                                <th className="py-2 px-4 border-b text-left">Date of Hire</th>
-                                <th className="py-2 px-4 border-b text-left">Status</th>
-                                <th className="py-2 px-4 border-b text-left">Actions</th>
+
+                <div className="overflow-x-auto rounded-lg border">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                {['Name', 'Email', 'Position', 'Department', 'Date of Hire', 'Status', 'Actions'].map((header) => (
+                                    <th key={header} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        {header}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="bg-white divide-y divide-gray-100">
                             {paginatedEmployees.map((employee) => (
                                 <EmployeeRow
                                     key={employee.id}
@@ -204,21 +205,22 @@ export default function EmployeesComponent() {
                         </tbody>
                     </table>
                 </div>
-                <div className="mt-4 flex justify-between">
+
+                <div className="mt-6 flex items-center justify-between">
                     <Button
                         onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                         disabled={currentPage === 1}
+                        variant="outline"
                     >
                         Previous
                     </Button>
-                    <span>
+                    <span className="text-sm text-gray-600">
                         Page {currentPage} of {totalPages}
                     </span>
                     <Button
-                        onClick={() =>
-                            setCurrentPage((p) => Math.min(p + 1, totalPages))
-                        }
+                        onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                         disabled={currentPage === totalPages}
+                        variant="outline"
                     >
                         Next
                     </Button>

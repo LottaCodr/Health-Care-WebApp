@@ -1,26 +1,64 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 
-export default function ViewEmployeeModal({
-    employee,
-    onClose,
-}: {
-    employee: any;
+interface Props {
+    employee: {
+        id: string;
+        name: string;
+        email: string;
+        position: string;
+        department: string;
+        dateOfHire: string;
+        status: "Active" | "Inactive";
+    };
     onClose: () => void;
-}) {
+}
+
+export default function ViewEmployeeModal({ employee, onClose }: Props) {
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent>
+            <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Employee Details</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-2 text-sm">
-                    <p><strong>Name:</strong> {employee.name}</p>
-                    <p><strong>Email:</strong> {employee.email}</p>
-                    <p><strong>Position:</strong> {employee.position}</p>
-                    <p><strong>Department:</strong> {employee.department}</p>
-                    <p><strong>Date of Hire:</strong> {new Date(employee.dateOfHire).toLocaleDateString()}</p>
-                    <p><strong>Status:</strong> {employee.status}</p>
+
+                <div className="space-y-3 text-sm text-muted-foreground">
+                    <div>
+                        <strong className="text-foreground">Name:</strong> {employee.name}
+                    </div>
+                    <div>
+                        <strong className="text-foreground">Email:</strong> {employee.email}
+                    </div>
+                    <div>
+                        <strong className="text-foreground">Position:</strong> {employee.position}
+                    </div>
+                    <div>
+                        <strong className="text-foreground">Department:</strong> {employee.department}
+                    </div>
+                    <div>
+                        <strong className="text-foreground">Date of Hire:</strong>{" "}
+                        {format(new Date(employee.dateOfHire), "MMM dd, yyyy")}
+                    </div>
+                    <div>
+                        <strong className="text-foreground">Status:</strong>{" "}
+                        <span
+                            className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${employee.status === "Active"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                                }`}
+                        >
+                            {employee.status}
+                        </span>
+                    </div>
                 </div>
+
+                <DialogFooter className="mt-6">
+                    <Button variant="ghost" onClick={onClose}>
+                        Close
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

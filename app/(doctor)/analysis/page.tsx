@@ -1,26 +1,16 @@
-import StatCard from '@/components/StatCard'
-import { columns } from '@/components/doctor/table/columns'
-import { DataTable } from '@/components/doctor/table/DataTable'
-import { getRecentAppointmentList } from '@/lib/actions/appointment.action'
 
 import React from 'react'
+import AnalyticsComponent from '@/components/analytics'
 
 
 
 
-const Analysis = async () => {
-    const appointments = await getRecentAppointmentList();
+const AnalyticsPage = async () => {
 
 
     return (
-        <div className='mx-auto flex max-w-full flex-col space-y-14'>
-
-
-            <main className='admin-main'>
-                Analysis Page
-            </main>
-        </div>
+        <AnalyticsComponent />
     )
 }
 
-export default Analysis
+export default AnalyticsPage
