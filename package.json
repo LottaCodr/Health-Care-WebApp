@@ -51,6 +51,7 @@
     "react-phone-number-input": "^3.4.3",
     "react-visibility-sensor": "^5.1.1",
     "recharts": "^2.15.3",
+    "sonner": "^2.0.3",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.23.8"

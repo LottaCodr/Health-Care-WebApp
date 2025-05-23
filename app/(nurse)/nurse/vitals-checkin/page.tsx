@@ -1,6 +1,6 @@
 
 import React from 'react'
-import AnalyticsComponent from '@/components/analytics'
+import VitalsAdCheckInComponent from '@/components/nurse/component/vitals-checkin'
 
 
 
@@ -9,7 +9,7 @@ const AnalyticsPage = async () => {
 
 
     return (
-        <AnalyticsComponent />
+        <VitalsAdCheckInComponent />
     )
 }
 
