@@ -1,6 +1,6 @@
 import React from 'react'
 import clsx from 'clsx'
-import { Skeleton } from '../ui/skeleton'
+import { Skeleton } from '../../../ui/skeleton'
 
 interface StatCardSkeletonProps {
     type: 'admitted' | 'staff' | 'discharged'

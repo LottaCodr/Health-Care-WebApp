@@ -1,7 +1,7 @@
 
 
 import React from 'react'
-import TransactionComponent from '@/components/transactions'
+import TransactionComponent from '@/components/doctor/transactions'
 
 
 

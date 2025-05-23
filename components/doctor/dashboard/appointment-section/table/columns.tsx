@@ -2,11 +2,11 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Appointment } from "@/types/appwrite.types";
-import StatusBadge from "../../StatusBadge";
+import StatusBadge from "../../../../StatusBadge";
 import { formatDateTime } from "@/app/lib/utils";
 import { Doctors } from "@/constants";
 import Image from "next/image";
-import AppointmentModal from "../../AppointmentModal";
+import AppointmentModal from "../../../../AppointmentModal";
 
 
 

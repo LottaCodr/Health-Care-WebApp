@@ -1,7 +1,7 @@
 
 
 import React from 'react'
-import SupportComponent from '@/components/support'
+import SupportComponent from '@/components/doctor/support'
 
 
 
