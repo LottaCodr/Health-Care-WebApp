@@ -34,8 +34,8 @@ const getPendingMedicationsBadge = () => 2;
 // 🧠 Define nav items with RBAC and optional badges
 const data = {
     user: {
-        name: "Codehagen",
-        email: "m@example.com",
+        name: "Chuka Lotanna ",
+        email: "lottanna47@gmail.com",
         avatar: "/avatars/shadcn.jpg",
     },
     navMain: [

@@ -14,8 +14,8 @@ const fontSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CarePlus Med App",
-  description: "This is a HealthCare Management System",
+  title: "Nile Mother & Child EMR",
+  description: "Welcome to Nile Mother & Child Hospital",
 };
 
 export default function RootLayout({
