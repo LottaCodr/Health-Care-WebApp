@@ -10,8 +10,7 @@ import { FiRepeat, FiSettings, FiLogOut } from "react-icons/fi";
 import { AiOutlineFileText } from "react-icons/ai";
 import { BiBarChartAlt2 } from "react-icons/bi";
 
-import { NavMain } from "@/components/nav-main";
-import { NavUser } from "@/components/nav-user";
+import { NavUser } from "@/components/doctor/sidebar-navigation/nav-user";
 import {
     Sidebar,
     SidebarContent,
@@ -21,7 +20,6 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { NavSecondary } from "./nav-secondary";
 
 const data = {
     user: {

@@ -55,4 +55,15 @@ declare type SearchParamProps = {
     timeZone: string;
     appointment: Appointment;
     type: string;
-  };
+};
+  
+export type PatientRecord = {
+  id: string;
+  name: string;
+  gender: "Male" | "Female" | string;
+  age: number;
+  phone: string;
+  address: string;
+  medicalNote?: string;
+  dateRegistered: string;
+};

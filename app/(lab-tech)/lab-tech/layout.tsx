@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { AppSidebar } from "@/components/app-bar";
+import { AppSidebar } from "@/components/doctor/sidebar-navigation/app-bar";
 
 interface DashboardLayoutProps {
     children?: React.ReactNode;

@@ -1,6 +1,7 @@
 
 import React from 'react'
 import DashBoardComponent from '@/components/doctor'
+import FrontDeskDashboardComponent from '@/components/front-desk/components'
 
 
 
@@ -8,7 +9,7 @@ import DashBoardComponent from '@/components/doctor'
 const DashboardPage = async () => {
 
     return (
-        <DashBoardComponent />
+        <FrontDeskDashboardComponent/>
     )
 }
 
