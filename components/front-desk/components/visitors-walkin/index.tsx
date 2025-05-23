@@ -17,18 +17,21 @@ export default function VisitorsWalkinsComponent() {
         notes: "",
     });
 
-    type Visitor = {
+
+    const [visitorLog, setVisitorLog] = useState<Visitor[]>([]);
+
+    interface Visitor {
         name: string;
         reason: string;
         phone: string;
         staffToSee: string;
         notes: string;
         time?: string;
-    };
+    }
 
-    const [visitorLog, setVisitorLog] = useState<Visitor[]>([]);
+    interface InputChangeEvent extends React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> { }
 
-    const handleInputChange = (e) => {
+    const handleInputChange = (e: InputChangeEvent) => {
         const { name, value } = e.target;
         setVisitor({ ...visitor, [name]: value });
     };
