@@ -1,6 +1,6 @@
 
+import NurseDashboardComponent from '@/components/nurse/component'
 import React from 'react'
-import DashBoardComponent from '@/components/doctor'
 
 
 
@@ -8,7 +8,7 @@ import DashBoardComponent from '@/components/doctor'
 const DashboardPage = async () => {
 
     return (
-        <DashBoardComponent />
+        <NurseDashboardComponent />
     )
 }
 

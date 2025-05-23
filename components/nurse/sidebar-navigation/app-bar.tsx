@@ -24,10 +24,12 @@ import {
 import { NurseNavUser } from "./nav-user";
 
 // 🔐 Assume this comes from auth context or zustand
-const getUserRole = () => "receptionist";
+const getUserRole = () => "nurse";
 
 // 🔢 Dummy badge functions (replace with Zustand/React Query data)
+const getAppointmentsBadge = () => 3;
 const getWaitingPatientsBadge = () => 5;
+const getPendingMedicationsBadge = () => 2;
 
 // 🧠 Define nav items with RBAC and optional badges
 const data = {
@@ -73,6 +75,7 @@ const data = {
             url: "/nurse/medication-requests",
             icon: FaUserPlus,
             roles: ["nurse"],
+            badge: getPendingMedicationsBadge,
         },
         {
             title: "Visitors & Walk-ins",
@@ -81,13 +84,11 @@ const data = {
             roles: ["receptionist", "nurse"],
         },
     ],
-
     navSecondary: [
         { title: "Support", url: "/nurse/support", icon: MdSupportAgent },
         { title: "Settings", url: "/nurse/settings", icon: FiSettings },
         { title: "Logout", url: "/nurse/logout", icon: FiLogOut },
     ],
-
 };
 
 // 🔗 Reusable nav link
