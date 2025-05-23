@@ -1,12 +1,33 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
+
+// Chart.js registration
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+    Chart as ChartJS,
+    LineElement,
+    BarElement,
+    ArcElement,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    Tooltip,
+    Legend,
+} from "chart.js";
+
+ChartJS.register(
+    LineElement,
+    BarElement,
+    ArcElement,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    Tooltip,
+    Legend
+);
+
+
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -14,18 +35,17 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Line, Bar, Pie } from "react-chartjs-2";
 import {
-    ArrowUpRight,
-    ArrowDownRight,
     Download,
     CalendarDays,
     TrendingUp,
     UserCheck,
     PieChart,
-    Globe,
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import ChartCard from "./components/chart-card";
+import LineChart from "./components/line-chart";
+import BarChart from "./components/bar-chart";
+import SummaryCard from "./components/summary-card";
 
 const summary = [
     {
@@ -103,119 +123,37 @@ export default function AnalyticsComponent() {
                 </div>
             </div>
 
-            {/* Summary Metrics */}
+            {/* Summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {summary.map(({ icon, title, value, change, trend }) => (
-                    <Card key={title} className="rounded-xl shadow-sm border border-gray-200">
-                        <CardContent className="p-5 space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
-                                {icon}
-                                {title}
-                            </div>
-                            <div className="text-2xl font-bold text-gray-900">{value}</div>
-                            <div className={`flex items-center text-sm font-medium ${trend === "up" ? "text-green-600" : "text-red-600"}`}>
-                                {trend === "up" ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                                <span className="ml-1">{change}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
+                {summary.map((props) => (
+                    <SummaryCard
+                        key={props.title}
+                        icon={props.icon}
+                        title={props.title}
+                        value={props.value}
+                        change={props.change}
+                        trend={props.trend as "up" | "down"}
+                    />
                 ))}
             </div>
 
-            <Separator />
-
             {/* Line Chart */}
-            <Card className="rounded-xl shadow-sm border border-gray-200">
-                <CardHeader>
-                    <CardTitle className="text-lg">Weekly Traffic</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Line
-                        data={{
-                            labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-                            datasets: [
-                                {
-                                    label: "Visitors",
-                                    data: [3800, 4100, 3900, 4400, 4600, 4800, 5000],
-                                    borderColor: "#3b82f6",
-                                    backgroundColor: "rgba(59, 130, 246, 0.1)",
-                                    fill: true,
-                                    tension: 0.4,
-                                },
-                            ],
-                        }}
-                        options={{
-                            responsive: true,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                y: { ticks: { color: "#4b5563" } },
-                                x: { ticks: { color: "#4b5563" } },
-                            },
-                        }}
-                    />
-                </CardContent>
-            </Card>
+            <ChartCard title="Weekly Traffic">
+                <LineChart />
+            </ChartCard>
 
             {/* Bar Chart */}
-            <Card className="rounded-xl shadow-sm border border-gray-200">
-                <CardHeader>
-                    <CardTitle className="text-lg">Monthly Conversions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Bar
-                        data={{
-                            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-                            datasets: [
-                                {
-                                    label: "Conversions",
-                                    data: [900, 1200, 1000, 1400, 1300, 1600],
-                                    backgroundColor: "#10b981",
-                                    borderRadius: 6,
-                                },
-                            ],
-                        }}
-                        options={{
-                            responsive: true,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                y: { ticks: { color: "#4b5563" } },
-                                x: { ticks: { color: "#4b5563" } },
-                            },
-                        }}
-                    />
-                </CardContent>
-            </Card>
+            <ChartCard title="Monthly Conversions">
+                <BarChart />
+            </ChartCard>
 
             {/* Pie Chart */}
-            <Card className="rounded-xl shadow-sm border border-gray-200">
-                <CardHeader>
-                    <CardTitle className="text-lg">User Demographics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Pie
-                        data={{
-                            labels: ["North America", "Europe", "Asia", "Other"],
-                            datasets: [
-                                {
-                                    label: "Users",
-                                    data: [45, 30, 15, 10],
-                                    backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#e11d48"],
-                                },
-                            ],
-                        }}
-                        options={{
-                            responsive: true,
-                            plugins: {
-                                legend: {
-                                    labels: {
-                                        color: "#4b5563",
-                                    },
-                                },
-                            },
-                        }}
-                    />
-                </CardContent>
-            </Card>
+            <ChartCard title="User Demographics">
+                <PieChart />
+            </ChartCard>
+
+
+
         </div>
     );
 }
