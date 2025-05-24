@@ -1,7 +1,7 @@
 
 
 import React from 'react'
-import EmployeesComponent from '@/components/employees'
+import PatientQueueComponent from '@/components/nurse/component/queue'
 
 
 
@@ -10,7 +10,7 @@ const Employees = async () => {
 
 
     return (
-        <EmployeesComponent />
+        <PatientQueueComponent />
     )
 }
 
