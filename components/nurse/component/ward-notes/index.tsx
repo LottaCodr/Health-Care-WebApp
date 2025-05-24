@@ -1,45 +1,42 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import NoteModal from './component/note-modal';
+
+import { Plus } from 'lucide-react';
+import { NoteFormData, WardNote } from './component/types';
 import SearchAndFilter from './component/search-filter';
 import PatientNoteCard from './component/patient-note-card';
-import { WardNote } from './component/types';
-
-
-const mockNotes: WardNote[] = [
-    {
-        id: 'n1',
-        patientName: 'John Doe',
-        date: '2025-05-22',
-        summary: 'Patient responded well to medication. Vitals stable.',
-        detailedNote: 'BP: 120/80, HR: 78. Continues antihypertensive therapy.',
-    },
-    {
-        id: 'n2',
-        patientName: 'Jane Smith',
-        date: '2025-05-21',
-        summary: 'Complains of chest discomfort. Awaiting lab results.',
-        detailedNote: 'Pain score 6/10. ECG performed, pending review.',
-    },
-];
+import NoteFormModal from './component/note-form-modal';
+import NoteModal from './component/note-modal';
 
 const RECORDS_PER_PAGE = 4;
 
 export default function WardRoundNotesComponent() {
+    const [notes, setNotes] = useState<WardNote[]>([
+        {
+            id: '1',
+            patientName: 'John Doe',
+            date: '2025-05-22',
+            summary: 'Stable. Responding to meds.',
+            detailedNote: 'Vitals normal. Continuing same medication.',
+        },
+    ]);
+
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedNote, setSelectedNote] = useState<WardNote | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
 
+    const [viewNote, setViewNote] = useState<WardNote | null>(null);
+    const [editingNote, setEditingNote] = useState<WardNote | null>(null);
+    const [formModalOpen, setFormModalOpen] = useState(false);
+
     const filteredNotes = useMemo(() => {
-        return mockNotes.filter((note) =>
-            note.patientName.toLowerCase().includes(searchQuery.toLowerCase())
+        return notes.filter((n) =>
+            n.patientName.toLowerCase().includes(searchQuery.toLowerCase())
         );
-    }, [searchQuery]);
+    }, [searchQuery, notes]);
 
     const totalPages = Math.ceil(filteredNotes.length / RECORDS_PER_PAGE);
     const paginatedNotes = useMemo(() => {
@@ -47,9 +44,29 @@ export default function WardRoundNotesComponent() {
         return filteredNotes.slice(start, start + RECORDS_PER_PAGE);
     }, [filteredNotes, currentPage]);
 
+    const handleAddOrUpdateNote = (data: NoteFormData, editingId?: string) => {
+        if (editingId) {
+            setNotes((prev) =>
+                prev.map((note) =>
+                    note.id === editingId ? { ...note, ...data } : note
+                )
+            );
+        } else {
+            setNotes((prev) => [
+                { id: Date.now().toString(), ...data },
+                ...prev,
+            ]);
+        }
+    };
+
     return (
-        <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-            <SearchAndFilter searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+        <div className="max-w-5xl mx-6 px-6 py-8 space-y-6">
+            <div className="flex justify-between items-center">
+                <SearchAndFilter searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+                <Button onClick={() => setFormModalOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" /> Add Note
+                </Button>
+            </div>
 
             <Card className="rounded-2xl shadow-sm border">
                 <CardHeader>
@@ -63,9 +80,10 @@ export default function WardRoundNotesComponent() {
                             <PatientNoteCard
                                 key={note.id}
                                 note={note}
-                                onViewDetails={() => {
-                                    setSelectedNote(note);
-                                    setIsModalOpen(true);
+                                onViewDetails={() => setViewNote(note)}
+                                onEdit={() => {
+                                    setEditingNote(note);
+                                    setFormModalOpen(true);
                                 }}
                             />
                         ))
@@ -77,29 +95,32 @@ export default function WardRoundNotesComponent() {
                 <Pagination>
                     <PaginationContent>
                         <PaginationItem>
-                            <PaginationPrevious
-                                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                            />
+                            <PaginationPrevious onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} />
                         </PaginationItem>
                         <PaginationItem>
                             <span className="text-sm px-3">Page {currentPage} of {totalPages}</span>
                         </PaginationItem>
                         <PaginationItem>
-                            <PaginationNext
-                                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                            />
+                            <PaginationNext onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} />
                         </PaginationItem>
                     </PaginationContent>
                 </Pagination>
             )}
 
             <NoteModal
-                note={selectedNote}
-                isOpen={isModalOpen}
+                note={viewNote}
+                isOpen={!!viewNote}
+                onClose={() => setViewNote(null)}
+            />
+
+            <NoteFormModal
+                isOpen={formModalOpen}
                 onClose={() => {
-                    setIsModalOpen(false);
-                    setSelectedNote(null);
+                    setFormModalOpen(false);
+                    setEditingNote(null);
                 }}
+                onSubmit={handleAddOrUpdateNote}
+                editingNote={editingNote}
             />
         </div>
     );

@@ -5,4 +5,11 @@ export interface WardNote {
     summary: string;
     detailedNote: string;
 }
+
+export interface NoteFormData {
+    patientName: string;
+    date: string;
+    summary: string;
+    detailedNote: string;
+}
   
