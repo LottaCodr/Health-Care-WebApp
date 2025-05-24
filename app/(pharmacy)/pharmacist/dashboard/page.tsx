@@ -1,15 +1,15 @@
 
 import React from 'react'
-import DashBoardComponent from '@/components/doctor'
+import PharmacyDashboard from '@/components/pharmacy'
 
 
 
 
-const DashboardPage = async () => {
+const PharmacyDashboardPage = async () => {
 
     return (
-        <DashBoardComponent />
+        <PharmacyDashboard />
     )
 }
 
-export default DashboardPage
+export default PharmacyDashboardPage

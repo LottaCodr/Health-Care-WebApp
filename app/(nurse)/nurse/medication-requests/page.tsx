@@ -1,20 +1,17 @@
-import StatCard from '@/components/doctor/dashboard/statcard/stat-card'
-import { columns } from '@/components/doctor/dashboard/appointment-section/table/columns'
-import { DataTable } from '@/components/doctor/dashboard/appointment-section/table/DataTable'
-import { getRecentAppointmentList } from '@/lib/actions/appointment.action'
+
 
 import React from 'react'
-import AppointmentsComponent from '@/components/doctor/appointments'
+import MedicationRequestComponent from '@/components/nurse/component/medication-request'
 
 
 
 
-const AppointmentsPage = async () => {
+const MedicationRequestPage = async () => {
 
 
     return (
-        <AppointmentsComponent />
+        <MedicationRequestComponent />
     )
 }
 
-export default AppointmentsPage
+export default MedicationRequestPage
