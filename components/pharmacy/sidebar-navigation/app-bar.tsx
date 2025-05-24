@@ -24,7 +24,7 @@ import {
 import { PharmacyNavUser } from "./nav-user";
 
 // 🔐 Assume this comes from auth context or zustand
-const getUserRole = () => "pharmacy";
+const getUserRole = () => "pharmacist";
 
 // 🔢 Dummy badge functions (replace with Zustand/React Query data)
 const getWaitingPatientsBadge = () => 5;
@@ -75,6 +75,13 @@ const data = {
             icon: FaUserPlus,
             roles: ["pharmacist"],
             badge: getPendingMedicationsBadge,
+        },
+        {
+            title: "Workflow",
+            url: "/pharmacist/pharmacist-workflow",
+            icon: FaUserPlus,
+            roles: ["pharmacist"],
+            // badge: getPendingMedicationsBadge,
         },
         {
             title: "Visitors & Walk-ins",
