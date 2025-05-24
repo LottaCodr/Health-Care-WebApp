@@ -1,3 +1,7 @@
+
+'use client';
+
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PatientCard from './patient-card';
 import { PatientRecord } from './data';

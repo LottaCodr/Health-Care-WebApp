@@ -1,17 +1,17 @@
 
 import React from 'react'
-import HealthRecordsComponent from '@/components/doctor/health-record'
+import WardRoundNotesComponent from '@/components/nurse/component/ward-notes'
 
 
 
 
-const HealthRecordsPage
+const WardRoundNotesPage
     = async () => {
 
 
         return (
-            <HealthRecordsComponent role="doctor" />
+            <WardRoundNotesComponent />
         )
     }
 
-export default HealthRecordsPage
+export default WardRoundNotesPage
