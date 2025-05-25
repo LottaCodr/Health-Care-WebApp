@@ -3,7 +3,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
 import {
     FiUsers,
     FiClipboard,
@@ -177,19 +177,19 @@ export default function LabTechDashboardComponent() {
                     <CardContent className="p-4 space-y-2">
                         <h2 className="text-lg font-semibold text-blue-800 mb-2">Quick Actions</h2>
                         <div className="flex flex-wrap gap-2">
-                            <Link href="/lab/new-entry" passHref>
+                            <Link href="/lab-tech/new-entry" passHref>
                                 <Button variant="outline" size="sm">New Lab Entry</Button>
                             </Link>
 
-                            <Link href="/lab/queue" passHref>
+                            <Link href="/lab-tech/queue" passHref>
                                 <Button variant="outline" size="sm">View Queue</Button>
                             </Link>
 
-                            <Link href="/lab/upload-result" passHref>
+                            <Link href="/lab-tech/upload-result" passHref>
                                 <Button variant="outline" size="sm">Upload Result</Button>
                             </Link>
 
-                            <Link href="/lab/patient-records" passHref>
+                            <Link href="/lab-tech/patient-records" passHref>
                                 <Button variant="outline" size="sm">Patient Records</Button>
                             </Link>
                         </div>

@@ -1,6 +1,6 @@
 
 import React from 'react'
-import HealthRecordsComponent from '@/components/doctor/health-record'
+import PatientRecordsComponent from '@/components/lab-tech/components/patient-record'
 
 
 
@@ -10,7 +10,7 @@ const HealthRecordsPage
 
 
         return (
-            <HealthRecordsComponent role="doctor" />
+            <PatientRecordsComponent />
         )
     }
 
