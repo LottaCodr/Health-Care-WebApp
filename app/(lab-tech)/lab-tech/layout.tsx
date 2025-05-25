@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { AppSidebar } from "@/components/doctor/sidebar-navigation/app-bar";
+import { LabTechAppSidebar } from "@/components/lab-tech/sidebar-navigation/app-bar";
 
 interface DashboardLayoutProps {
     children?: React.ReactNode;
@@ -18,7 +18,7 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
     return (
         <SidebarProvider>
-            <AppSidebar />
+            <LabTechAppSidebar />
             <SidebarInset>
                 <header className="flex h-16 shrink-0 items-center gap-2">
                     <div className="flex items-center gap-2 px-4">
