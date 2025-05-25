@@ -1,6 +1,6 @@
 
 
-import MedicationRequestsComponent from '@/components/medication-requests'
+import MedicationRequestsComponent from '@/components/pharmacy/component/medication-requests'
 import React from 'react'
 
 
