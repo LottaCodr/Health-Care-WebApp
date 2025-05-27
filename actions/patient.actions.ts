@@ -1,9 +1,10 @@
 "use server";
 
 import { ID, Query } from "node-appwrite";
-import { users, storage, BUCKET_ID, databases, DATABASE_ID, PATIENT_COLLECTION_ID, ENDPOINT, PROJECT_ID } from "../appwrite.config";
+import { users, storage, BUCKET_ID, databases, DATABASE_ID, PATIENT_COLLECTION_ID, ENDPOINT, PROJECT_ID } from "../lib/appwrite.config";
 import { parseStringify } from "@/app/lib/utils";
-import {InputFile } from "node-appwrite/file";
+import { InputFile } from "node-appwrite/file";
+import { CreateUserParams, RegisterUserParams } from "@/types";
 
 
 export const createUser = async (user: CreateUserParams) => {
@@ -36,18 +37,18 @@ export const getUser = async (userId: string) => {
     const user = await users.get(userId);
     return parseStringify(user);
 
-} catch(error) {
-  console.log("An error occurred while getting a user:", error);
-}
+  } catch (error) {
+    console.log("An error occurred while getting a user:", error);
+  }
 
 };
- 
 
-export const registerPatient = async ({ identificationDocument, ...patient } : RegisterUserParams ) => {
+
+export const registerPatient = async ({ identificationDocument, ...patient }: RegisterUserParams) => {
   try {
     let file;
 
-    if(identificationDocument){
+    if (identificationDocument) {
       const inputFile = InputFile.fromBuffer(
         identificationDocument?.get('blobFile') as Blob,
         identificationDocument?.get('fileName') as string
@@ -56,7 +57,7 @@ export const registerPatient = async ({ identificationDocument, ...patient } : R
       file = await storage.createFile(BUCKET_ID!, ID.unique(), inputFile)
     }
 
-    const newPatient =  await databases.createDocument(
+    const newPatient = await databases.createDocument(
       DATABASE_ID!,
       PATIENT_COLLECTION_ID!,
       ID.unique(),
@@ -66,7 +67,7 @@ export const registerPatient = async ({ identificationDocument, ...patient } : R
         ...patient
       }
     );
-    
+
     return parseStringify(newPatient);
   } catch (error) {
     console.log(error);
@@ -83,9 +84,9 @@ export const getPatient = async (userId: string) => {
 
     return parseStringify(patients.documents[0]);
 
-} catch(error) {
-  console.log("An error occurred while getting a user:", error);
-}
+  } catch (error) {
+    console.log("An error occurred while getting a user:", error);
+  }
 
 };
 

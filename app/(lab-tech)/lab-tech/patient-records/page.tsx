@@ -1,6 +1,6 @@
 
 import React from 'react'
-import PatientRecordsComponent from '@/components/lab-tech/components/patient-record'
+import {PatientRecordsComponent} from '@/components/lab-tech/components/patient-record'
 
 
 

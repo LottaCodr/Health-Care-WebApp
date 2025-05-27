@@ -1,7 +1,7 @@
 
 
 import React from 'react'
-import ViewQueue from '@/components/lab-tech/components/queue'
+import {ViewQueue} from '@/components/lab-tech/components/queue'
 
 
 

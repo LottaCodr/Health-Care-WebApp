@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { getRecentAppointmentList } from '@/lib/actions/appointment.action';
+import { getRecentAppointmentList } from '@/actions/appointment.action';
 import { MdEventBusy } from 'react-icons/md';
 import { AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';

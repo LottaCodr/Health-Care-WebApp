@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+
 export function UploadResult() {
     const [form, setForm] = useState({ patientId: "", result: "" });
     const [loading, setLoading] = useState(false);
 
-    const toast = useToast()
+    const toast = useToast();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -60,8 +61,4 @@ export function UploadResult() {
             </Card>
         </section>
     );
-}
-
-function setTimeout(arg0: () => void, arg1: number) {
-    throw new Error("Function not implemented.");
 }

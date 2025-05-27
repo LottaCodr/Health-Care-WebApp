@@ -4,12 +4,9 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
 
-const mockRecords = [
-    { id: "P001", name: "Jane Doe", recentTest: "Blood Test - Normal" },
-    { id: "P002", name: "John Smith", recentTest: "Urine Test - Pending" },
-];
 
-export function PatientRecords() {
+
+export function PatientRecordsComponent() {
     const mockRecords = [
         { id: "P001", name: "Alice Brown", test: "CBC", result: "Normal" },
         { id: "P002", name: "Bob White", test: "Malaria", result: "Positive" },

@@ -10,7 +10,7 @@ import SubmitButton from "../ui/SubmitButton";
 import { useState } from "react";
 import { PatientFormValidation } from "@/lib/validation";
 import { useRouter } from "next/navigation";
-import { registerPatient } from "@/lib/actions/patient.actions";
+import { registerPatient } from "@/actions/patient.actions";
 import { FormFieldType } from "./PatientForm";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import {

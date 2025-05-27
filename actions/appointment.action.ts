@@ -5,11 +5,12 @@ import {
   APPOINTMENT_COLLECTION_ID,
   DATABASE_ID,
   databases,
-  
-} from "../appwrite.config";
-import { ID, Query,  } from "node-appwrite";
+
+} from "../lib/appwrite.config";
+import { ID, Query, } from "node-appwrite";
 import { Appointment } from "@/types/appwrite.types";
 import { revalidatePath } from "next/cache";
+import { CreateAppointmentParams, UpdateAppointmentParams } from "@/types";
 
 export const createAppointment = async (
   appointment: CreateAppointmentParams
@@ -28,17 +29,17 @@ export const createAppointment = async (
 };
 
 export const getAppointment = async (appointmentId: string) => {
- try {
+  try {
     const fetchAppointment = await databases.getDocument(
-        DATABASE_ID!,
-        APPOINTMENT_COLLECTION_ID!,
-        appointmentId
+      DATABASE_ID!,
+      APPOINTMENT_COLLECTION_ID!,
+      appointmentId
     )
 
     return parseStringify(fetchAppointment);
- } catch (error) {
+  } catch (error) {
     console.log('Failed to fetch the appointment')
- }
+  }
 };
 
 export const getRecentAppointmentList = async () => {
@@ -57,29 +58,29 @@ export const getRecentAppointmentList = async () => {
 
     const counts = (appointments.documents as Appointment[]).reduce((acc, appointment) => {
 
-      if(appointment.status === "pending") {
+      if (appointment.status === 'pending' as Appointment['status']) {
         acc.pendingCount += 1;
-      } else if (appointment.status === "scheduled") {
+      } else if (appointment.status === 'scheduled' as Appointment['status']) {
         acc.scheduledCount += 1;
-      } else if (appointment.status === "cancelled") {
+      } else if (appointment.status === 'cancelled' as Appointment['status']) {
         acc.cancelledCount += 1;
       }
-     
+
       return acc;
     }, initialCounts);
- const data = {
-  totalCount: appointments.total,
-  ...counts,
-  documents: appointments.documents
- }
- return parseStringify(data)
+    const data = {
+      totalCount: appointments.total,
+      ...counts,
+      documents: appointments.documents
+    }
+    return parseStringify(data)
   } catch (error) {
     console.log('error')
-    
+
   }
 }
 
-export const updateAppointment = async ({ appointmentId, userId, appointment, type} : UpdateAppointmentParams) => {
+export const updateAppointment = async ({ appointmentId, userId, appointment, type }: UpdateAppointmentParams) => {
   try {
     const updateAppointment = await databases.updateDocument(
       DATABASE_ID!,
@@ -88,7 +89,7 @@ export const updateAppointment = async ({ appointmentId, userId, appointment, ty
       appointment
     )
 
-    if(!updateAppointment) {
+    if (!updateAppointment) {
       throw new Error('Appointment not found');
     }
 

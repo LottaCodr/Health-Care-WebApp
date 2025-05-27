@@ -1,5 +1,9 @@
 import { Models } from "node-appwrite";
 
+export type Gender = "male" | "female" | "other";
+
+export type Status = "scheduled" | "completed" | "cancelled" | "no_show";
+
 export interface Patient extends Models.Document {
   userId: string;
   name: string;
@@ -32,5 +36,5 @@ export interface Appointment extends Models.Document {
   reason: string;
   note: string;
   userId: string;
-  cancellationReason: string | null;
+  cancellationReason: string |  null;
 }

@@ -13,7 +13,7 @@ import SubmitButton from "../ui/SubmitButton";
 import { SelectItem } from "../ui/select";
 
 import { Doctors } from "@/constants";
-import { createAppointment, updateAppointment } from "@/lib/actions/appointment.action";
+import { createAppointment, updateAppointment } from "@/actions/appointment.action";
 import { getAppointmentSchema } from "@/lib/validation";
 import { Appointment } from "@/types/appwrite.types";
 import { FormFieldType } from "./PatientForm";
