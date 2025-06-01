@@ -20,6 +20,8 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useQuery } from "@tanstack/react-query";
+import { getUser } from "@/lib/hooks/use-auth";
 
 const data = {
     user: {
@@ -72,6 +74,8 @@ function NavLink({ title, url, Icon, isActive }: { title: string; url: string; I
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
+
+   
 
     // Mark active nav items based on current path
     const navMainWithActive = data.navMain.map((item) => ({
@@ -127,7 +131,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavUser user={data.user} />
+                <NavUser />
             </SidebarFooter>
         </Sidebar>
     );

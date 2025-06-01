@@ -7,7 +7,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "./context/provider";
 
-
 const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
@@ -21,25 +20,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <Providers>
-      <html lang="en">
-        <body
-          className={cn(
-            "min-h-screen  font-sans antialiased",
-            fontSans.variable
-          )}
-        >
+    <html lang="en">
+      <body
+        className={cn("min-h-screen font-sans antialiased", fontSans.variable)}
+      >
+        <Providers>
           <ThemeProvider attribute="class" defaultTheme="light">
             {children}
             <Toaster />
-
           </ThemeProvider>
-        </body>
-      </html>
-    </Providers>
+        </Providers>
+      </body>
+    </html>
   );
 }

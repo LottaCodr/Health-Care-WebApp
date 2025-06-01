@@ -1,4 +1,7 @@
 export const GenderOptions = ["Male", "Female", "Ignore"];
+import { Gender } from "@/types";
+import { StaffRole } from "@/types/appwrite.types";
+
 
 export const PatientFormDefaultValues = {
   firstName: "",
@@ -83,4 +86,13 @@ export const StatusIcon = {
   scheduled: "/assets/icons/check.svg",
   pending: "/assets/icons/pending.svg",
   cancelled: "/assets/icons/cancelled.svg",
+};
+
+
+export const ROLE_ROUTES: Record<StaffRole, string> = {
+  doctor: "/doctor/dashboard",
+  "lab-tech": "/lab-tech/dashboard",
+  nurse: "/nurse/dashboard",
+  pharmacist: "/pharmacist/dashboard",
+  "front-desk": "/front-desk/dashboard",
 };

@@ -1,27 +1,32 @@
 "use client"
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/lib/hooks/use-auth";
+import { getUser } from "@/lib/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 export default function GreetingSection() {
 
-    const { user, loading, error } = useAuth();
     const router = useRouter();
 
-    useEffect(() => {
-        if (!loading && (!user || user.role !== "doctor")) {
-            router.replace("/staff");
-        }
-    }, [loading, user]);
+    const { data: user, isPending, isError } = useQuery({
+        queryKey: ['user'],
+        queryFn: () => getUser(),
+    });
 
-    if (loading) return (
+
+    if (user && user.role !== "doctor") {
+        router.replace("/staff");
+    }
+
+
+    if (isPending) return (
         <div className="space-y-2">
             <Skeleton className="h-16 w-full rounded-md" />
         </div>
     )
-    if (error) return <p>Not authorized.</p>;
+    if (isError) return <p>Not authorized.</p>;
+
     return (
         <section>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
