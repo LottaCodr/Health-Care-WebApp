@@ -5,6 +5,7 @@ import "./globals.css";
 import { cn } from "./lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { Providers } from "./context/provider";
 
 
 const fontSans = Plus_Jakarta_Sans({
@@ -14,7 +15,7 @@ const fontSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Nile Mother & Child EMR",
+  title: "Nile Mother & Child Hospital",
   description: "Welcome to Nile Mother & Child Hospital",
 };
 
@@ -24,19 +25,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={cn(
-          "min-h-screen  font-sans antialiased",
-          fontSans.variable
-        )}
-      >
-        <ThemeProvider attribute="class" defaultTheme="light">
-          {children}
-          <Toaster />
+    <Providers>
+      <html lang="en">
+        <body
+          className={cn(
+            "min-h-screen  font-sans antialiased",
+            fontSans.variable
+          )}
+        >
+          <ThemeProvider attribute="class" defaultTheme="light">
+            {children}
+            <Toaster />
 
-        </ThemeProvider>
-      </body>
-    </html>
+          </ThemeProvider>
+        </body>
+      </html>
+    </Providers>
   );
 }

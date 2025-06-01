@@ -1,40 +1,48 @@
-"use server"
+// app/actions/login.ts
+"use server";
 
-import { account, DATABASE_ID, databases, STAFF_COLLECTION_ID } from "@/lib/appwrite.config"
+import { account, databases } from "@/lib/appwrite.config";
+import { ID, Query } from "appwrite";
 
 export interface Role {
     role: "doctor" | "lab-tech" | "admin" | "nurse" | "pharmacist";
-
 }
 
-export const loginStaff = async (email: string, password: string): Promise<{
-    role: Role, message: string, doc: any
+export const loginStaff = async (
+    email: string,
+    password: string
+): Promise<{
+    success: boolean;
+    message: string;
+    role?: Role;
 }> => {
     try {
+        const session = await account.createSession(email, password);
 
-        //authenticate user
-        await account.createEmailPasswordSession(email, password);
+        const user = await account.get();
 
+        const staffData = await databases.listDocuments(
+            "your_database_id",     // replace with your actual DB ID
+            "your_staff_collection", // replace with your collection ID
+            [Query.equal("email", user.email)]
+        );
 
+        if (staffData.documents.length === 0) {
+            throw new Error("Staff record not found.");
+        }
 
-        // get user information
-        const user = await account.get()
+        const doc = staffData.documents[0];
+        const role = doc.role as Role["role"];
 
-        //fetch user role
-
-        const userDoc = await databases.getDocument(
-            DATABASE_ID!,
-            STAFF_COLLECTION_ID!,
-            user.$id
-        )
-
-        console.log('user doc', userDoc)
-
-        return { role: userDoc.role, message: "Login successful", doc: userDoc };
-
-
+        return {
+            success: true,
+            message: "Login successful",
+            role: { role },
+        };
     } catch (error: any) {
-        return { role: { role: "admin" }, message: "Login failed", doc: {} };
-
+        return {
+            success: false,
+            message: error.message ?? "Login failed",
+        };
     }
-}
+};

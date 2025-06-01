@@ -1,25 +1,22 @@
-import * as sdk from "node-appwrite";
+import { Client, Account, Databases, Storage, Messaging } from "appwrite";
 
 export const {
-  PROJECT_ID,
-  API_KEY,
-  DATABASE_ID,
-  DOCTOR_COLLECTION,
-  STAFF_COLLECTION_ID,
-  APPOINTMENT_COLLECTION_ID,
-  PATIENT_COLLECTION_ID,
+  NEXT_PUBLIC_PROJECT_ID,
+  NEXT_PUBLIC_API_KEY,
+  NEXT_PUBLIC_DATABASE_ID,
+  NEXT_PUBLIC_DOCTOR_COLLECTION,
+  NEXT_PUBLIC_STAFF_COLLECTION_ID,
+  NEXT_PUBLIC_APPOINTMENT_COLLECTION_ID,
+  NEXT_PUBLIC_PATIENT_COLLECTION_ID,
   NEXT_PUBLIC_BUCKET_ID: BUCKET_ID,
-  NEXT_PUBLIC_ENDPOINT: ENDPOINT,
+  NEXT_PUBLIC_ENDPOINT,
 } = process.env;
 
-const client = new sdk.Client();
+console.log('endpoint', NEXT_PUBLIC_ENDPOINT!)
+const client = new Client()
+  .setEndpoint('https://cloud.appwrite.io/v1').setProject('66c70b90003295caaf5d');
 
-client.setEndpoint(ENDPOINT!).setProject(PROJECT_ID!).setKey(API_KEY!);
-
-export const account = new sdk.Account(client)
-export const databases = new sdk.Databases(client);
-export const storage = new sdk.Storage(client);
-export const message = new sdk.Messaging(client);
-export const users = new sdk.Users(client);
-
-
+export const account = new Account(client);
+export const databases = new Databases(client);
+export const storage = new Storage(client);
+export const message = new Messaging(client);

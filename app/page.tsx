@@ -8,8 +8,8 @@ interface SearchParamProps {
   searchParams: { [key: string]: string | undefined };
 }
 
-export default async function Home({ searchParams }: SearchParamProps) {
-  const isStaff = await searchParams.staff === "true";
+export default  function Home({ searchParams }: SearchParamProps) {
+  const isStaff =  searchParams.staff === "true";
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-300 dark:bg-zinc-950 dark:text-white">

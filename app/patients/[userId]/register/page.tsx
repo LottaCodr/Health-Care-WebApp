@@ -3,7 +3,7 @@ import { getUser } from "@/actions/patient.actions";
 import Image from "next/image";
 import React from "react";
 
-import * as Sentry from '@sentry/nextjs'
+import { SearchParamProps } from "@/types";
 
 const Register = async ({ params: { userId } }: SearchParamProps) => {
   const user = await getUser(userId);
@@ -25,7 +25,7 @@ const Register = async ({ params: { userId } }: SearchParamProps) => {
 
 
           <p className="copyright py-14">
-            © 2024 CarePlus
+            © 2025 Nile Mother & Child Hospital
           </p>
         </div>
       </section>

@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-
 import {
   AlertDialog,
   AlertDialogContent,
@@ -27,6 +26,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { loginStaff } from "@/actions/login";
+import { signIn } from "next-auth/react";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -37,6 +37,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const StaffLogin = () => {
   const [isOpen, setIsOpen] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const toast = useToast();
 
@@ -48,49 +49,54 @@ const StaffLogin = () => {
     },
   });
 
+
   const onSubmit = async (values: LoginFormValues) => {
-
-    const res = await loginStaff(values.email, values.password);
-
-    console.log('this is the user doc', res)
-
-    if (res.role) {
-      
-      const formattedRole =
-        String(res.role).charAt(0).toUpperCase() + String(res.role).slice(1);
-
-      toast.toast({
-        title: `Login successful`,
-        description: `Welcome, ${formattedRole}`,
-      });
-
-      const roleToPath = {
-        doctor: "/doctor/dashboard",
-        nurse: "/nurse/dashboard",
-        "lab-tech": "/lab-tech/dashboard",
-        pharmacist: "/pharmacist/dashboard",
-        admin: "/admin",
+          // const result = await loginStaff(values.email, values.password);
+  
+          const res = await signIn("credentials", {
+              email: values.email,
+              password: values.password,
+              redirect: false,
+          });
+  
+          console.log('response', res)
+  
+          if (res?.ok) {
+              // After successful sign-in, fetch the user's role from your backend or session
+              // Example: fetch role from an API endpoint
+              try {
+                  const response = await fetch("/api/user/role", { method: "GET" });
+                  const data = await response.json();
+                  const role = data.role as string | undefined;
+  
+                  toast.toast({
+                      title: "Login successful",
+                      description: role
+                          ? `Welcome, ${role.charAt(0).toUpperCase() + role.slice(1)}!`
+                          : "Welcome!",
+                      variant: "default",
+                  });
+  
+                  if (role === "doctor") {
+                      router.replace("/doctor/dashboard");
+                  } else if (role === "lab-tech") {
+                      router.replace("/lab-tech/dashboard");
+                  } else if (role === "nurse") {
+                      router.replace("/nurse/dashboard");
+                  } else if (role === "pharmacist") {
+                      router.replace("/pharmacist/dashboard");
+                  } else if (role === "admin") {
+                      router.replace("/admin");
+                  } else {
+                      alert("Unknown role.");
+                  }
+              } catch (error) {
+                  alert("Failed to fetch user role.");
+              }
+          } else {
+              alert("Login failed. Please try again.");
+          }
       };
-
-      const redirectTo = roleToPath[res.role as unknown as keyof typeof roleToPath];
-
-      if (redirectTo) {
-        router.replace(redirectTo);
-      } else {
-        toast.toast({
-          title: "Unknown role",
-          description: "Please contact the system administrator.",
-          variant: "default",
-        });
-      }
-    } else {
-      toast.toast({
-        title: "Login failed",
-        description: "Please check your credentials.",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
@@ -139,12 +145,21 @@ const StaffLogin = () => {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      {...field}
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        {...field}
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-3 text-sm text-gray-500"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                      >
+                        {showPassword ? "Hide" : "Show"}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
