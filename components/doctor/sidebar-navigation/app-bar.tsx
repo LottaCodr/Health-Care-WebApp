@@ -31,12 +31,12 @@ const data = {
     },
     navMain: [
         { title: "Dashboard", url: "/dashboard", icon: MdDashboard },
-        { title: "Patients", url: "/patients", icon: FaUserInjured },
-        { title: "Appointments", url: "/appointments", icon: MdEventNote },
-        { title: "Transactions", url: "/transactions", icon: FiRepeat },
-        { title: "Employees", url: "/employees", icon: FaUsers },
-        { title: "Health Records", url: "/health-records", icon: AiOutlineFileText },
-        { title: "Analysis", url: "/analysis", icon: BiBarChartAlt2 },
+        { title: "Patients", url: "/doctor/patients", icon: FaUserInjured },
+        { title: "Appointments", url: "/doctor/appointments", icon: MdEventNote },
+        { title: "Transactions", url: "/doctor/transactions", icon: FiRepeat },
+        { title: "Employees", url: "/doctor/employees", icon: FaUsers },
+        { title: "Health Records", url: "/doctor/health-records", icon: AiOutlineFileText },
+        { title: "Analysis", url: "/doctor/analysis", icon: BiBarChartAlt2 },
     ],
     navSecondary: [
         { title: "Support", url: "/support", icon: MdSupportAgent },
@@ -75,7 +75,7 @@ function NavLink({ title, url, Icon, isActive }: { title: string; url: string; I
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
 
-   
+
 
     // Mark active nav items based on current path
     const navMainWithActive = data.navMain.map((item) => ({
