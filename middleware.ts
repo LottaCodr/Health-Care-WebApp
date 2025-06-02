@@ -31,9 +31,10 @@ export function middleware(req: NextRequest) {
     const role = getUserRole(req);
 
     // If unauthenticated, always redirect to /staff
-    if (!role) {
+    if (!role && req.nextUrl.pathname !== "/staff") {
         return NextResponse.redirect(new URL("/staff", req.url));
     }
+      
 
     // If role is recognized, redirect to its route
     const redirectPath = ROLE_ROUTES[role as keyof typeof ROLE_ROUTES];
