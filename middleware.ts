@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { ROLE_ROUTES } from "./constants";
 
 const SECRET = process.env.NEXTAUTH_SECRET;
 
 export async function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname;
 
+    // Define protected routes
+    const protectedPaths = [
+        "/doctor",
+        "/lab-tech",
+        "/nurse",
+        "/pharmacist",
+        "/front-desk",
+    ];
 
-
-    const isProtected = Object.values(ROLE_ROUTES).some((protectedPath) =>
+    const isProtected = protectedPaths.some((protectedPath) =>
         path.startsWith(protectedPath)
     );
 
@@ -21,8 +27,15 @@ export async function middleware(req: NextRequest) {
             return NextResponse.redirect(new URL("/staff", req.url));
         }
 
+        const roleToPath: Record<string, string> = {
+            doctor: "/doctor/dashboard",
+            "lab-tech": "/lab-tech/dashboard",
+            nurse: "/nurse/dashboard",
+            pharmacist: "/pharmacist/dashboard",
+            "front-desk": "/front-desk/dashboard",
+        };
 
-        const allowedPath = ROLE_ROUTES[token.role as keyof typeof ROLE_ROUTES];
+        const allowedPath = roleToPath[token.role as string];
 
         if (!allowedPath || !path.startsWith(allowedPath)) {
             // Logged in but trying to access a route not allowed for their role
@@ -40,10 +53,10 @@ export async function middleware(req: NextRequest) {
 // Apply only to the protected paths (improves performance)
 export const config = {
     matcher: [
-        "/doctor/dashboard",
-        "/lab-tech/dashboard",
-        "/nurse/dashboard",
-        "/pharmacist/dashboard",
-        "/front-desk/dashboard",
+        "/doctor/:path*",
+        "/lab-tech/:path*",
+        "/nurse/:path*",
+        "/pharmacist/:path*",
+        "/front-desk/:path*",
     ],
 };
