@@ -1,62 +1,31 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { ROLE_ROUTES } from "./constants";
 
-const SECRET = process.env.NEXTAUTH_SECRET;
+export const config = {
+    matcher: ["/", "/staff"], // Apply middleware only to homepage and /staff
+};
 
-export async function middleware(req: NextRequest) {
-    const path = req.nextUrl.pathname;
-
-    // Define protected routes
-    const protectedPaths = [
-        "/doctor",
-        "/lab-tech",
-        "/nurse",
-        "/pharmacist",
-        "/front-desk",
-    ];
-
-    const isProtected = protectedPaths.some((protectedPath) =>
-        path.startsWith(protectedPath)
-    );
-
-    if (isProtected) {
-        const token = await getToken({ req, secret: SECRET });
-
-        if (!token) {
-            return NextResponse.redirect(new URL("/staff", req.url));
-        }
-
-        const roleToPath: Record<string, string> = {
-            doctor: "/doctor/dashboard",
-            "lab-tech": "/lab-tech/dashboard",
-            nurse: "/nurse/dashboard",
-            pharmacist: "/pharmacist/dashboard",
-            "front-desk": "/front-desk/dashboard",
-        };
-
-        const allowedPath = roleToPath[token.role as string];
-
-        if (!allowedPath || !path.startsWith(allowedPath)) {
-            // Logged in but trying to access a route not allowed for their role
-            return NextResponse.redirect(new URL("/staff", req.url));
-        }
-
-        // Authorized
-        return NextResponse.next();
-    }
-
-    // Allow all other routes
-    return NextResponse.next();
+// Extract user role from cookies
+function getUserRole(req: NextRequest): string | null {
+    return req.cookies.get("role")?.value ?? null;
 }
 
-// Apply only to the protected paths (improves performance)
-export const config = {
-    matcher: [
-        "/doctor/:path*",
-        "/lab-tech/:path*",
-        "/nurse/:path*",
-        "/pharmacist/:path*",
-        "/front-desk/:path*",
-    ],
-};
+export function middleware(req: NextRequest) {
+    const role = getUserRole(req);
+    const currentPath = req.nextUrl.pathname;
+
+    // 1. Redirect unauthenticated users to /staff
+    if (!role && currentPath !== "/staff") {
+        return NextResponse.redirect(new URL("/staff", req.url));
+    }
+
+    // 2. If role exists, redirect them to their dashboard
+    const dashboardPath = ROLE_ROUTES[role as keyof typeof ROLE_ROUTES];
+    if (role && dashboardPath && currentPath !== dashboardPath) {
+        return NextResponse.redirect(new URL(dashboardPath, req.url));
+    }
+
+    // 3. Allow access if already at the correct path
+    return NextResponse.next();
+}

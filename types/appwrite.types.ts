@@ -4,7 +4,7 @@ export type Gender = "male" | "female" | "other";
 
 export type Status = "scheduled" | "completed" | "cancelled" | "no_show";
 
-export type StaffRole = "doctor" | "nurse" | "front-desk" | "pharmacist" | "lab-tech" | "user"; 
+export type StaffRole = "doctor" | "nurse" | "front-desk" | "pharmacist" | "lab-tech" | "user";
 
 export interface Patient extends Models.Document {
   userId: string;
@@ -38,7 +38,7 @@ export interface Appointment extends Models.Document {
   reason: string;
   note: string;
   userId: string;
-  cancellationReason: string |  null;
+  cancellationReason: string | null;
 }
 
 export interface Staff extends Models.Document {
@@ -54,19 +54,4 @@ export interface Staff extends Models.Document {
 
 
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      role?: string;
-      id?: string;
-    };
-  }
 
-  interface User {
-    id?: string;
-    role?: string;
-  }
-}
