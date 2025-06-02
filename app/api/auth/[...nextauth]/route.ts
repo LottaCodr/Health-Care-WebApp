@@ -1,6 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { account, databases, DATABASE_ID, STAFF_COLLECTION_ID } from "@/lib/appwrite.config";
+import { account, databases, NEXT_PUBLIC_DATABASE_ID, NEXT_PUBLIC_STAFF_COLLECTION_ID } from "@/lib/appwrite.config";
 import { AuthError } from "@/types/errors";
 
 // Authentication service layer
@@ -23,8 +23,8 @@ const AuthService = {
     async getUserDetails(userId: string) {
         try {
             const userDoc = await databases.getDocument(
-                DATABASE_ID!,
-                STAFF_COLLECTION_ID!,
+                NEXT_PUBLIC_DATABASE_ID!,
+                NEXT_PUBLIC_STAFF_COLLECTION_ID!,
                 userId
             );
 

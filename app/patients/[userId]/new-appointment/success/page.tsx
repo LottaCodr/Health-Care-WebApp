@@ -6,8 +6,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
 
-import * as Sentry from '@sentry/nextjs'
 import { getUser } from '@/actions/patient.actions';
+
+type SearchParamProps = {
+  params: { userId: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
+};
 
 const Success = async ({ params: { userId }, searchParams }: SearchParamProps) => {
 
@@ -16,9 +20,7 @@ const Success = async ({ params: { userId }, searchParams }: SearchParamProps) =
   const doctor = Doctors.find((doc) => doc.name === appointment.primaryPhysician)
   const user = await getUser(userId);
 
-  Sentry.metrics.set("user_view_appointment-success", user.name);
 
-  console.log(doctor?.image)
 
   return (
     <div className='flex h-screen max-h-screen px-[5%]'>

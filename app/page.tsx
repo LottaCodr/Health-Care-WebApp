@@ -2,18 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 
 import PatientForm from "@/components/forms/PatientForm";
-import StaffLogin from "@/components/PasskeyModal";
 
 interface SearchParamProps {
   searchParams: { [key: string]: string | undefined };
 }
 
-export default  function Home({ searchParams }: SearchParamProps) {
-  const isStaff =  searchParams.staff === "true";
+export default function Home({ searchParams }: SearchParamProps) {
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-300 dark:bg-zinc-950 dark:text-white">
-      {isStaff && <StaffLogin />}
 
       {/* Left Section - Form */}
       <section className="flex w-full flex-col justify-center px-6 py-10 sm:px-10 lg:w-1/2 lg:px-20 xl:px-28">
@@ -35,7 +32,7 @@ export default  function Home({ searchParams }: SearchParamProps) {
           <div className="mt-16 flex items-center justify-between text-sm text-muted-foreground">
             <p>&copy; 2025 Nile Mother & Child Hospital</p>
             <Link
-              href="/?staff=true"
+              href="/staff"
               className="text-green-600 underline-offset-4 hover:underline dark:text-green-400"
             >
               Staff Login

@@ -2,31 +2,45 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ROLE_ROUTES } from "./constants";
 
-// Middleware runs on these paths
 export const config = {
     matcher: ["/", "/staff"],
 };
 
-// Mock function to get user's role from cookies/session/jwt
+// Extract user role from cookies
 function getUserRole(req: NextRequest): string | null {
-    const role = req.cookies.get("role")?.value;
-    return role ?? null;
+    return req.cookies.get("role")?.value ?? null;
 }
 
+/**
+ * Middleware to handle user role-based redirection and authentication.
+ *
+ * This function inspects the incoming request to determine the user's role.
+ * - If the user is unauthenticated (no role found), they are redirected to the `/staff` page.
+ * - If the user has a recognized role, they are redirected to the route associated with their role,
+ *   unless they are already on that route.
+ * - If the user's role is invalid or they are already at the correct route, the request proceeds as normal.
+ *
+ * @param req - The incoming Next.js request object.
+ * @returns A `NextResponse` object that either redirects the user or allows the request to continue.
+ *
+ * @remarks
+ * This middleware assumes the existence of a `getUserRole` function to extract the user's role from the request,
+ * and a `ROLE_ROUTES` mapping that associates roles with their respective routes.
+ */
 export function middleware(req: NextRequest) {
     const role = getUserRole(req);
 
+    // If unauthenticated, always redirect to /staff
     if (!role) {
-        // Not authenticated or missing role, redirect to /staff
         return NextResponse.redirect(new URL("/staff", req.url));
     }
 
+    // If role is recognized, redirect to its route
     const redirectPath = ROLE_ROUTES[role as keyof typeof ROLE_ROUTES];
-
-    if (redirectPath) {
+    if (redirectPath && req.nextUrl.pathname !== redirectPath) {
         return NextResponse.redirect(new URL(redirectPath, req.url));
     }
 
-    // If no valid role found
-    return NextResponse.redirect(new URL("/staff", req.url));
+    // If role is invalid or already at correct path, allow request to proceed
+    return NextResponse.next();
 }

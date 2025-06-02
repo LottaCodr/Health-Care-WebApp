@@ -4,8 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectItem } from "@/components/ui/select";
-import { Pagination } from "@/components/ui/pagination";
+import { Select, SelectItem, SelectContent } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 // Mock API
@@ -65,13 +64,14 @@ export default function PatientQueueComponent() {
                             onChange={(e) => setSearch(e.target.value)}
                             className="w-48"
                         />
-                        <Select
-                            value={statusFilter}
+                        <Select value={statusFilter}
                             onValueChange={setStatusFilter}
                         >
-                            <SelectItem value="All">All</SelectItem>
-                            <SelectItem value="Waiting">Waiting</SelectItem>
-                            <SelectItem value="Attended">Attended</SelectItem>
+                            <SelectContent>
+                                <SelectItem value="All">All</SelectItem>
+                                <SelectItem value="Waiting">Waiting</SelectItem>
+                                <SelectItem value="Attended">Attended</SelectItem>
+                            </SelectContent>
                         </Select>
                     </div>
                 </div>
