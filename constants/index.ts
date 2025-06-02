@@ -95,4 +95,6 @@ export const ROLE_ROUTES: Record<StaffRole, string> = {
   nurse: "/nurse/dashboard",
   pharmacist: "/pharmacist/dashboard",
   "front-desk": "/front-desk/dashboard",
+  user: "/staff",
+
 };

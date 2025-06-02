@@ -24,6 +24,9 @@ import {
     databases,
 } from "@/lib/appwrite.config";
 import { StaffRole } from "@/types/appwrite.types";
+import { ROLE_ROUTES } from "@/constants";
+import Loading from "@/app/use-loading";
+import { signIn } from "next-auth/react";
 
 const loginSchema = z.object({
     email: z.string().email("Invalid email"),
@@ -32,13 +35,6 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-const ROLE_ROUTES: Record<StaffRole, string> = {
-    doctor: "/doctor/dashboard",
-    "lab-tech": "/lab-tech/dashboard",
-    nurse: "/nurse/dashboard",
-    pharmacist: "/pharmacist/dashboard",
-    "front-desk": "/front-desk/dashboard",
-};
 
 export default function Login() {
     const router = useRouter();
@@ -63,32 +59,28 @@ export default function Login() {
     const onSubmit = async (values: LoginFormValues) => {
         setLoading(true);
         try {
-            await account.deleteSession("current");
-            await account.createEmailPasswordSession(values.email, values.password);
-            const user = await account.get();
-
-            const userDoc = await databases.getDocument(
-                '66c70cd1001163421547',
-                '683395e500365717a835',
-                user.$id
-            );
-            const role = userDoc?.role as StaffRole;
-
-            if (!role || !ROLE_ROUTES[role]) {
-                throw new Error("Invalid or missing user role");
-            }
-
-            toast.toast({
-                title: "Login successful",
-                description: `Welcome, ${role.charAt(0).toUpperCase() + role.slice(1)}!`,
+            const result = await signIn("credentials", {
+                email: values.email,
+                password: values.password,
+                redirect: false, // Prevent automatic redirect
             });
 
-            router.replace(ROLE_ROUTES[role]);
+            if (result?.error) {
+                toast.toast({
+                    title: "Login failed",
+                    description: result.error,
+                });
+            } else {
+                toast.toast({
+                    title: "Login successful",
+                    description: "Welcome back!",
+                });
+                router.replace("/"); // Redirect after login success
+            }
         } catch (error) {
             toast.toast({
-                title: "Login failed",
-                description: error instanceof Error ? error.message : "Please try again.",
-                variant: "destructive",
+                title: "Login error",
+                description: "An unexpected error occurred. Please try again.",
             });
         } finally {
             setLoading(false);
@@ -171,10 +163,17 @@ export default function Login() {
                         />
                         <Button
                             type="submit"
-                            className="w-full bg-white text-black hover:bg-white/80 transition font-semibold"
+                            className="w-full bg-white text-black hover:bg-white/80 transition font-semibold flex justify-center items-center gap-2"
                             disabled={loading || form.formState.isSubmitting}
                         >
-                            {loading ? "Logging in..." : "Login"}
+                            {loading ? (
+                                <>
+                                    <Loading className="w-4 h-4 text-black" />
+                                    Logging in...
+                                </>
+                            ) : (
+                                "Login"
+                            )}
                         </Button>
                     </form>
                 </Form>

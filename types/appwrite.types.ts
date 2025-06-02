@@ -4,7 +4,7 @@ export type Gender = "male" | "female" | "other";
 
 export type Status = "scheduled" | "completed" | "cancelled" | "no_show";
 
-export type StaffRole = "doctor" | "nurse" | "front-desk" | "pharmacist" | "lab-tech"; 
+export type StaffRole = "doctor" | "nurse" | "front-desk" | "pharmacist" | "lab-tech" | "user"; 
 
 export interface Patient extends Models.Document {
   userId: string;

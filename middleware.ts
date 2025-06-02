@@ -1,47 +1,49 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { ROLE_ROUTES } from "./constants";
 
-export const config = {
-    matcher: ["/", "/staff"],
-};
+const SECRET = process.env.NEXTAUTH_SECRET;
 
-// Extract user role from cookies
-function getUserRole(req: NextRequest): string | null {
-    return req.cookies.get("role")?.value ?? null;
-}
+export async function middleware(req: NextRequest) {
+    const path = req.nextUrl.pathname;
 
-/**
- * Middleware to handle user role-based redirection and authentication.
- *
- * This function inspects the incoming request to determine the user's role.
- * - If the user is unauthenticated (no role found), they are redirected to the `/staff` page.
- * - If the user has a recognized role, they are redirected to the route associated with their role,
- *   unless they are already on that route.
- * - If the user's role is invalid or they are already at the correct route, the request proceeds as normal.
- *
- * @param req - The incoming Next.js request object.
- * @returns A `NextResponse` object that either redirects the user or allows the request to continue.
- *
- * @remarks
- * This middleware assumes the existence of a `getUserRole` function to extract the user's role from the request,
- * and a `ROLE_ROUTES` mapping that associates roles with their respective routes.
- */
-export function middleware(req: NextRequest) {
-    const role = getUserRole(req);
 
-    // If unauthenticated, always redirect to /staff
-    if (!role && req.nextUrl.pathname !== "/staff") {
-        return NextResponse.redirect(new URL("/staff", req.url));
-    }
-      
 
-    // If role is recognized, redirect to its route
-    const redirectPath = ROLE_ROUTES[role as keyof typeof ROLE_ROUTES];
-    if (redirectPath && req.nextUrl.pathname !== redirectPath) {
-        return NextResponse.redirect(new URL(redirectPath, req.url));
+    const isProtected = Object.values(ROLE_ROUTES).some((protectedPath) =>
+        path.startsWith(protectedPath)
+    );
+
+    if (isProtected) {
+        const token = await getToken({ req, secret: SECRET });
+
+        if (!token) {
+            return NextResponse.redirect(new URL("/staff", req.url));
+        }
+
+
+        const allowedPath = ROLE_ROUTES[token.role as keyof typeof ROLE_ROUTES];
+
+        if (!allowedPath || !path.startsWith(allowedPath)) {
+            // Logged in but trying to access a route not allowed for their role
+            return NextResponse.redirect(new URL("/staff", req.url));
+        }
+
+        // Authorized
+        return NextResponse.next();
     }
 
-    // If role is invalid or already at correct path, allow request to proceed
+    // Allow all other routes
     return NextResponse.next();
 }
+
+// Apply only to the protected paths (improves performance)
+export const config = {
+    matcher: [
+        "/doctor/dashboard",
+        "/lab-tech/dashboard",
+        "/nurse/dashboard",
+        "/pharmacist/dashboard",
+        "/front-desk/dashboard",
+    ],
+};
