@@ -28,7 +28,7 @@ const data = {
         avatar: "/avatars/shadcn.jpg",
     },
     navMain: [
-        { title: "Dashboard", url: "/dashboard", icon: MdDashboard },
+        { title: "Dashboard", url: "/doctor/dashboard", icon: MdDashboard },
         { title: "Patients", url: "/doctor/patients", icon: FaUserInjured },
         { title: "Appointments", url: "/doctor/appointments", icon: MdEventNote },
         { title: "Transactions", url: "/doctor/transactions", icon: FiRepeat },
