@@ -26,7 +26,6 @@ import {
 import { StaffRole } from "@/types/appwrite.types";
 import { ROLE_ROUTES } from "@/constants";
 import Loading from "@/app/use-loading";
-import { signIn } from "next-auth/react";
 
 const loginSchema = z.object({
     email: z.string().email("Invalid email"),
@@ -59,28 +58,33 @@ export default function Login() {
     const onSubmit = async (values: LoginFormValues) => {
         setLoading(true);
         try {
-            const result = await signIn("credentials", {
-                email: values.email,
-                password: values.password,
-                redirect: false, // Prevent automatic redirect
+            await account.deleteSession("current");
+            await account.createEmailPasswordSession(values.email, values.password);
+            const user = await account.get();
+
+            const userDoc = await databases.getDocument(
+                process.env.NEXT_PUBLIC_DATABASE_ID!,
+                process.env.NEXT_PUBLIC_STAFF_COLLECTION_ID!,
+                user.$id
+            );
+
+
+            const role = userDoc?.role as StaffRole;
+
+            if (!role || !ROLE_ROUTES[role]) {
+                throw new Error("Invalid or missing user role");
+            }
+
+            toast.toast({
+                title: "Login successful",
+                description: `Welcome, ${role.charAt(0).toUpperCase() + role.slice(1)}!`,
             });
 
-            if (result?.error) {
-                toast.toast({
-                    title: "Login failed",
-                    description: result.error,
-                });
-            } else {
-                toast.toast({
-                    title: "Login successful",
-                    description: "Welcome back!",
-                });
-                router.replace("/"); // Redirect after login success
-            }
+            router.replace(ROLE_ROUTES[role]);
         } catch (error) {
             toast.toast({
-                title: "Login error",
-                description: "An unexpected error occurred. Please try again.",
+                title: "Login failed",
+                description: error instanceof Error ? error.message : "Please try again.",
             });
         } finally {
             setLoading(false);

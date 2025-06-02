@@ -14,7 +14,8 @@ export const {
 
 console.log('endpoint', NEXT_PUBLIC_ENDPOINT!)
 const client = new Client()
-  .setEndpoint('https://cloud.appwrite.io/v1').setProject('66c70b90003295caaf5d');
+  .setEndpoint('https://cloud.appwrite.io/v1').setProject(process.env.NEXT_PUBLIC_PROJECT_ID!)// Set this in .env
+;
 
 export const account = new Account(client);
 export const databases = new Databases(client);

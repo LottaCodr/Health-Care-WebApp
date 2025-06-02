@@ -2,14 +2,20 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { account, databases } from "@/lib/appwrite.config";
 
-const AuthService = {
+export const AuthService = {
     async authenticateUser(email: string, password: string) {
-        await account.deleteSession("current")
         await account.createEmailPasswordSession(email, password);
-        return await account.get();
+        const jwt = await account.createJWT();
+        const user = await account.get();
+
+        return {
+            ...user,
+            jwt: jwt.jwt,
+        };
     },
+
     async getUserDetails(userId: string) {
-        return await databases.getDocument(
+        return databases.getDocument(
             process.env.NEXT_PUBLIC_DATABASE_ID!,
             process.env.NEXT_PUBLIC_STAFF_COLLECTION_ID!,
             userId
@@ -22,22 +28,24 @@ const handler = NextAuth({
         CredentialsProvider({
             name: "Credentials",
             credentials: {
-                email: { label: "Email", type: "email" },
+                email: { label: "Email", type: "text" },
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                if (!credentials?.email || !credentials.password) {
+                const email = credentials?.email;
+                const password = credentials?.password;
+
+                if (!email || !password) {
+                    console.error("Authorization failed: Missing credentials");
                     return null;
                 }
+
                 try {
-                    const user = await AuthService.authenticateUser(
-                        credentials.email,
-                        credentials.password
-                    );
+                    const user = await AuthService.authenticateUser(email, password);
                     const userDetails = await AuthService.getUserDetails(user.$id);
 
                     if (!userDetails?.role) {
-                        throw new Error("No role found");
+                        throw new Error("Role not found for user");
                     }
 
                     return {
@@ -46,12 +54,14 @@ const handler = NextAuth({
                         email: user.email,
                         role: userDetails.role,
                     };
-                } catch {
+                } catch (error) {
+                    console.error("Authentication error:", error);
                     return null;
                 }
             },
         }),
     ],
+
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
@@ -68,12 +78,15 @@ const handler = NextAuth({
             return session;
         },
     },
+
     session: {
         strategy: "jwt",
     },
+
     pages: {
         signIn: "/staff",
     },
+
     secret: process.env.NEXTAUTH_SECRET,
 });
 
