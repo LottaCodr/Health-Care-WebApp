@@ -32,17 +32,27 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes"
-import { useQuery } from "@tanstack/react-query"
-import { getUser } from "@/lib/hooks/use-auth"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@/app/context/auth-provider"
+import { useEffect } from "react"
 
 export function NavUser() {
-    const { isMobile } = useSidebar()
     const { setTheme, theme } = useTheme()
+    const { user, isLoading } = useAuth();
 
-    const { data: user, isPending, isError } = useQuery({
-        queryKey: ['user'],
-        queryFn: () => getUser(),
-    });
+    useEffect(() => {
+        if (!isLoading && user?.role !== "doctor") {
+            // You can handle unauthorized access here if needed
+        }
+    }, [user, isLoading]);
+
+    if (isLoading) {
+        return (
+            <div className="space-y-2">
+                <Skeleton className="h-16 w-full rounded-md" />
+            </div>
+        );
+    }
 
     return (
         <SidebarMenu>
