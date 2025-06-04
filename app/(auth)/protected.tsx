@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { account } from "@/lib/appwrite.config";
 import type { MyUser } from '@/app/context/auth-provider'; // custom interface
 
-export default function ProtectedRedirect() {
+export default function ProtectedRedirect({children}: {children: ReactNode}) {
     const router = useRouter();
     const pathname = usePathname();
 
@@ -52,5 +52,6 @@ export default function ProtectedRedirect() {
         checkSession();
     }, [pathname, router]);
 
-    return null;
+    // Render children so protected content is shown if not redirected
+    return <>{children}</>;
 }
