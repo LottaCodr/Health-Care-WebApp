@@ -13,5 +13,10 @@ type ParamsProps = {
 export default async function PatientDetailsPage({ params }: ParamsProps) {
     const patient = await getPatient(params.patientId);
 
+    if (!patient) {
+        // You can customize this fallback UI as needed
+        return <div>Patient not found.</div>;
+    }
+
     return <PatientDetailsComponent patient={patient} />;
 }

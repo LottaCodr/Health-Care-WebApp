@@ -1,6 +1,5 @@
 
 import React from 'react'
-import PatientsComponent from '@/components/doctor/patients'
 
 
 

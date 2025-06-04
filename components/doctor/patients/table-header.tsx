@@ -8,7 +8,7 @@ interface Props {
 }
 
 const headers: { key: keyof Patient; label: string }[] = [
-    { key: 'fullName', label: 'Full Name' },
+    { key: 'name', label: 'Full Name' },
     { key: 'gender', label: 'Gender' },
     { key: '$updatedAt', label: 'Admission Date' },
     { key: 'currentMedication', label: 'Current Medication' },
