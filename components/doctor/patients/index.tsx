@@ -19,7 +19,7 @@ export default function PatientsComponent({ patients }: PatientProps) {
         if (!search && !sortConfig) return patients;
 
         let filtered = patients.filter((p) =>
-            p.fullName?.toLowerCase().includes(search.toLowerCase())
+            p.name?.toLowerCase().includes(search.toLowerCase())
         );
 
         if (sortConfig?.key && sortConfig?.direction) {

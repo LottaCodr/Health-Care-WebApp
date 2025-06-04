@@ -33,11 +33,11 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, sortConfig, onS
     }
 
     return (
-        <tbody className="divide-y divide-gray-200">
+        <tbody className="divide-y capitalize divide-gray-200">
             {patients.map((patient) => (
                 <tr key={patient?.userId} onClick={() => router.push(`/doctor/patients/${patient?.userId}`)} className="hover:bg-gray-50 cursor-pointer">
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 font-medium">
-                        {patient.fullName ?? ''}
+                    <td tabIndex={0} aria-label={`Patient ${patient.name}`} className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 font-medium">
+                        {patient?.name ?? ''}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.gender ?? ''}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">

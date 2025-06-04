@@ -10,7 +10,7 @@ export interface Patient {
     $databaseId: string;
     $collectionId: string;
 
-    fullName: string;
+    name: string;
     email: string;
     phone: string;
     gender: string;
