@@ -3,11 +3,9 @@ import Link from "next/link";
 
 import PatientForm from "@/components/forms/PatientForm";
 
-interface SearchParamProps {
-  searchParams: { [key: string]: string | undefined };
-}
 
-export default function Home({ searchParams }: SearchParamProps) {
+
+export default function Home() {
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-300 dark:bg-zinc-950 dark:text-white">

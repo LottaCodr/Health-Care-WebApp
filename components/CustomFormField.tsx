@@ -1,11 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import { Input } from "@/components/ui/input";
 import { Control } from "react-hook-form";
 
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -117,9 +116,9 @@ const RenderField = ({ field, props }: { field: any; props: CustomProps }) => {
         <FormControl>
           <div className="flex items-center gap-4">
             <Checkbox
-            id={props.name}
-            checked={field.value}
-            onCheckedChange={field.onChange}
+              id={props.name}
+              checked={field.value}
+              onCheckedChange={field.onChange}
             />
             <label htmlFor={props.name} className="checkbox-label">
               {props.label}

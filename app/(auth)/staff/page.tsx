@@ -64,6 +64,8 @@ export default function Login() {
 
             const role = userDoc?.role as StaffRole;
 
+            await account.updatePrefs({ role });
+
             if (!role || !ROLE_ROUTES[role]) {
                 throw new Error("Invalid or missing user role");
             }

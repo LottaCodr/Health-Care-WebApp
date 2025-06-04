@@ -2,7 +2,7 @@ import { getUser } from "@/lib/hooks/use-auth";
 import { StaffRole } from "@/types/appwrite.types";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-interface MyUser {
+export interface MyUser {
     $id: string;
     name: string;
     email: string;
@@ -21,6 +21,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<MyUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    
 
     useEffect(() => {
         getUser()

@@ -6,6 +6,7 @@ import { cn } from "./lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "./context/provider";
+import ProtectedRedirect from "./context/protected";
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -30,6 +31,7 @@ export default function RootLayout({
       >
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="light">
+            <ProtectedRedirect />
             {children}
             <Toaster />
           </ThemeProvider>
