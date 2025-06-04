@@ -103,7 +103,7 @@ export function NavUser() {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
+                        <DropdownMenuGroup className="bg-white">
                             <DropdownMenuItem>
                                 <Sparkles />
                                 Upgrade to Pro

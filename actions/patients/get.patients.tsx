@@ -1,0 +1,40 @@
+import { parseStringify } from "@/app/lib/utils";
+import { databases, NEXT_PUBLIC_DATABASE_ID, NEXT_PUBLIC_PATIENT_COLLECTION_ID } from "@/lib/appwrite.config";
+import { Patient } from "@/types/patients";
+import { Query } from "appwrite";
+
+const databaseId = NEXT_PUBLIC_DATABASE_ID!;
+const patientCollectionId = NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
+
+export async function getAllPatients() {
+    try {
+        const res = await databases.listDocuments(
+            databaseId,
+            patientCollectionId,
+        );
+
+        const patients: Patient[] = res.documents as Patient[];
+
+        console.log(res)
+        return { data: patients };
+    } catch (error) {
+        console.error("Error fetchin patients:", error)
+        return { data: [] }
+    }
+}
+
+export const getPatient = async (userId: string) => {
+    try {
+        const patients = await databases.listDocuments(
+            databaseId,
+            patientCollectionId,
+            [Query.equal('userId', userId)]
+        );
+        console.log('user detail', parseStringify(patients.documents[0]))
+        return parseStringify(patients.documents[0]);
+
+    } catch (error) {
+        console.log("An error occurred while getting a user:", error);
+        return null;
+    }
+};
