@@ -47,7 +47,7 @@ export default function Login() {
         setLoading(true);
         try {
             // Always delete the current session before logging in
-            await account.deleteSession("current").catch(() => { }); // ignore if no session
+            await account.deleteSession("current").catch(() => { });
 
             // Create new session
             await account.createEmailPasswordSession(values.email, values.password);
@@ -63,6 +63,8 @@ export default function Login() {
             );
 
             const role = userDoc?.role as StaffRole;
+
+            await account.updatePrefs({ role });
 
             if (!role || !ROLE_ROUTES[role]) {
                 throw new Error("Invalid or missing user role");

@@ -22,11 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const data = {
-    user: {
-        name: "Codehagen",
-        email: "m@example.com",
-        avatar: "/avatars/shadcn.jpg",
-    },
+
     navMain: [
         { title: "Dashboard", url: "/doctor/dashboard", icon: MdDashboard },
         { title: "Patients", url: "/doctor/patients", icon: FaUserInjured },
