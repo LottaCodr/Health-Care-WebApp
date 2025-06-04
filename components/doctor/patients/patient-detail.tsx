@@ -19,11 +19,12 @@ import {
     SelectContent,
     SelectItem,
 } from "@/components/ui/select";
+import { Patient } from "@/types/patients";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 
 type Props = {
-    patient: any; // Replace with strict Patient type if available
+    patient: Patient; // Replace with strict Patient type if available
 };
 
 export default function PatientDetailsComponent({ patient }: Props) {
@@ -94,15 +95,20 @@ export default function PatientDetailsComponent({ patient }: Props) {
                         Patient Profile
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5 text-base text-muted-foreground mt-4">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5 text-base capitalize text-muted-foreground mt-4">
                     <InfoItem label="Name" value={patient.name} />
                     <InfoItem label="Gender" value={patient.gender} />
                     <InfoItem label="Email" value={patient.email || "Not provided"} />
                     <InfoItem label="Phone" value={patient.phone || "Not provided"} />
                     <InfoItem label="Occupation" value={patient.occupation || "Not provided"} />
                     <InfoItem label="Address" value={patient.address || "Not provided"} />
-                    <InfoItem label="Last Visit" value={patient.lastVisit || "N/A"} />
+                    <InfoItem label="Allergies" value={patient.allergies || "N/A"} />
+                    <InfoItem label="Current Medication" value={patient.currentMedication || "N/A"} />
                     <InfoItem label="Insurance Provider" value={patient.insuranceProvider || "N/A"} />
+                    <InfoItem label="Insurance Provider" value={patient.emergencyContactNumber || "N/A"} />
+                    <InfoItem label="Family Medical History" value={patient.familyMedicalHistory || "N/A"} />
+                    <InfoItem label="Family Medical History" value={typeof patient.disclosureConsent === "boolean" ? (patient.disclosureConsent ? "Yes" : "No") : (patient.disclosureConsent || "N/A")} />
+                    <InfoItem label="Past MedicalHistory" value={patient.pastMedicalHistory || "N/A"} />
                     <InfoItem label="Current Status" value={status || "N/A"} />
                 </CardContent>
             </Card>

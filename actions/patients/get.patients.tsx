@@ -25,13 +25,15 @@ export async function getAllPatients() {
 
 export const getPatient = async (userId: string) => {
     try {
-        const patients = await databases.listDocuments(
+        const res = await databases.listDocuments(
             databaseId,
             patientCollectionId,
             [Query.equal('userId', userId)]
         );
-        console.log('user detail', parseStringify(patients.documents[0]))
-        return parseStringify(patients.documents[0]);
+        const patient: Patient = parseStringify(res.documents[0]) as Patient
+
+        console.log('user detail', patient)
+        return patient;
 
     } catch (error) {
         console.log("An error occurred while getting a user:", error);
