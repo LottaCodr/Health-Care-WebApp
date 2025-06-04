@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { account } from "@/lib/appwrite.config";
 import type { MyUser } from '@/app/context/auth-provider'; // custom interface
 
-export default function ProtectedRedirect({children}: {children: ReactNode}) {
+export default function ProtectedRedirect({ children }: { children: ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
 
@@ -30,13 +30,18 @@ export default function ProtectedRedirect({children}: {children: ReactNode}) {
                             router.replace("/doctor/dashboard");
                             break;
                         case "nurse":
-                            router.replace("/staff/dashboard");
+                            router.replace("/nurse/dashboard");
                             break;
                         case "pharmacist":
-                            router.replace("/admin");
+                            router.replace("/pharmacist/dashboard");
                             break;
+                        case "lab-tech":
+                            router.replace('/lab-tech/dashboard');
+                            break;
+                        case "front-desk":
+                            router.replace("/front-desk/dashboard")
                         default:
-                            router.replace("/"); // fallback
+                            router.replace("/staff");
                             break;
                     }
                 }
