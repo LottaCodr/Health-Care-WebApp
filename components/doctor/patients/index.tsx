@@ -1,10 +1,10 @@
 'use client';
 
-import { Patient, SortConfig } from '@/app/context/patients/types';
 import React, { useState, useMemo } from 'react';
 import SearchInput from './search-input';
 import PatientsTableHeader from './table-header';
 import PatientsTable from './table';
+import { Patient, SortConfig } from '@/context/patients/types';
 
 
 interface PatientProps {
@@ -70,8 +70,6 @@ export default function PatientsComponent({ patients }: PatientProps) {
                     <PatientsTableHeader sortConfig={sortConfig} onSortChange={handleSortChange} />
                     <PatientsTable
                         patients={sortedAndFilteredPatients}
-                        sortConfig={sortConfig}
-                        onSortChange={handleSortChange}
                     />
                 </table>
             </div>

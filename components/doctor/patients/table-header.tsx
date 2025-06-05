@@ -1,6 +1,7 @@
 'use client';
 
-import { SortConfig, Patient } from '@/app/context/patients/types';
+import { Patient, SortConfig } from "@/context/patients/types";
+
 
 interface Props {
     sortConfig: SortConfig | null;

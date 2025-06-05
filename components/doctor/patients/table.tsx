@@ -1,17 +1,14 @@
-'use client'; // Ensure client-only rendering since we use browser-dependent formatting
-
+'use client'; 
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { Patient, SortConfig } from '@/app/context/patients/types';
 import { useRouter } from 'next/navigation';
+import { Patient } from '@/context/patients/types';
 
 interface PatientsTableProps {
     patients: Patient[];
-    sortConfig: SortConfig | null;
-    onSortChange: (key: keyof Patient) => void;
 }
 
-const PatientsTable: React.FC<PatientsTableProps> = ({ patients, sortConfig, onSortChange }) => {
+const PatientsTable: React.FC<PatientsTableProps> = ({ patients }) => {
     const [mounted, setMounted] = useState(false);
     const router = useRouter()
 
