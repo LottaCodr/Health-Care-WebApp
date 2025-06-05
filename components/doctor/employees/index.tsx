@@ -85,6 +85,7 @@ const EmployeeRow = React.memo(
         );
     }
 );
+EmployeeRow.displayName = "EmployeeRow";
 
 export default function EmployeesComponent() {
     const [employees, setEmployees] = useState<Employee[]>(() => generateFakeEmployees(50));
