@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { databases } from "@/lib/appwrite.config";
 import {
     Card,
@@ -19,63 +19,50 @@ import {
     SelectContent,
     SelectItem,
 } from "@/components/ui/select";
-import { Patient } from "@/types/patients";
+import { Patient } from "@/app/context/patients/types";
+import { usePatientContext } from "@/app/context/patients/patient-context";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 
 type Props = {
-    patient: Patient; // Replace with strict Patient type if available
+    patient: Patient;
 };
 
 export default function PatientDetailsComponent({ patient }: Props) {
-    const [notes, setNotes] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [recipientRole, setRecipientRole] = useState("");
-    const [assignedRecipient, setAssignedRecipient] = useState<string | null>(null);
-    const [status, setStatus] = useState(patient?.status || "");
+
+    const { state, dispatch } = usePatientContext()
 
     useEffect(() => {
-        if (!recipientRole) return;
 
-        const roleMap: Record<string, string> = {
-            nurse: "Nurse Jane Doe",
-            pharmacist: "Pharmacist Tolu Adebayo",
-            labtech: "Lab Technician Mark Felix",
-        };
+        if (patient) dispatch({ type: 'SET_PATIENT', payload: patient })
 
-        setAssignedRecipient(roleMap[recipientRole.toLowerCase()] ?? null);
-    }, [recipientRole]);
+    }, [patient]);
 
     const handleSubmit = async () => {
-        if (!recipientRole || !status || !notes.trim()) {
+        if (!state.recipientRole || !state.status || !state.notes.trim()) {
             toast.error("Please complete all fields before submitting.");
             return;
         }
 
         try {
-            setLoading(true);
+            state.loading
 
             await databases.createDocument(databaseId, "doctor_notes", "unique()", {
-                patientId: patient?.$id,
-                note: notes,
+                patientId: state.patient?.$id,
+                note: state.notes,
                 createdAt: new Date().toISOString(),
-                recipientRole,
-                statusUpdate: status,
+                role: state.recipientRole,
+                statusUpdate: state.status,
             });
 
             await databases.updateDocument(databaseId, "patients", patient?.$id, {
-                status,
+                status: state.status,
             });
 
-            setNotes("");
-            setRecipientRole("");
-            setAssignedRecipient(null);
             toast.success("Note and status successfully saved.");
         } catch (err) {
             console.error(err);
             toast.error("Failed to save note.");
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -96,20 +83,20 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5 text-base capitalize text-muted-foreground mt-4">
-                    <InfoItem label="Name" value={patient.name} />
-                    <InfoItem label="Gender" value={patient.gender} />
-                    <InfoItem label="Email" value={patient.email || "Not provided"} />
-                    <InfoItem label="Phone" value={patient.phone || "Not provided"} />
-                    <InfoItem label="Occupation" value={patient.occupation || "Not provided"} />
-                    <InfoItem label="Address" value={patient.address || "Not provided"} />
-                    <InfoItem label="Allergies" value={patient.allergies || "N/A"} />
-                    <InfoItem label="Current Medication" value={patient.currentMedication || "N/A"} />
-                    <InfoItem label="Insurance Provider" value={patient.insuranceProvider || "N/A"} />
-                    <InfoItem label="Insurance Provider" value={patient.emergencyContactNumber || "N/A"} />
-                    <InfoItem label="Family Medical History" value={patient.familyMedicalHistory || "N/A"} />
-                    <InfoItem label="Family Medical History" value={typeof patient.disclosureConsent === "boolean" ? (patient.disclosureConsent ? "Yes" : "No") : (patient.disclosureConsent || "N/A")} />
-                    <InfoItem label="Past MedicalHistory" value={patient.pastMedicalHistory || "N/A"} />
-                    <InfoItem label="Current Status" value={status || "N/A"} />
+                    <InfoItem label="Name" value={state.patient?.name || "Not provided"} />
+                    <InfoItem label="Gender" value={state.patient?.gender || "Not provided"} />
+                    <InfoItem label="Email" value={state.patient?.email || "Not provided"} />
+                    <InfoItem label="Phone" value={state.patient?.phone || "Not provided"} />
+                    <InfoItem label="Occupation" value={state.patient?.occupation || "Not provided"} />
+                    <InfoItem label="Address" value={state.patient?.address || "Not provided"} />
+                    <InfoItem label="Allergies" value={state.patient?.allergies || "N/A"} />
+                    <InfoItem label="Current Medication" value={state.patient?.currentMedication || "N/A"} />
+                    <InfoItem label="Insurance Provider" value={state.patient?.insuranceProvider || "N/A"} />
+                    <InfoItem label="Insurance Provider" value={state.patient?.emergencyContactNumber || "N/A"} />
+                    <InfoItem label="Family Medical History" value={state.patient?.familyMedicalHistory || "N/A"} />
+                    <InfoItem label="Family Medical History" value={typeof state.patient?.disclosureConsent === "boolean" ? (state.patient?.disclosureConsent ? "Yes" : "No") : (state.patient?.disclosureConsent || "N/A")} />
+                    <InfoItem label="Past MedicalHistory" value={state.patient?.pastMedicalHistory || "N/A"} />
+                    <InfoItem label="Current Status" value={state.status || "N/A"} />
                 </CardContent>
             </Card>
 
@@ -122,30 +109,30 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 <CardContent className="space-y-6 mt-4">
                     <div className="space-y-2">
                         <Label htmlFor="recipientRole">Send To</Label>
-                        <Select onValueChange={setRecipientRole} value={recipientRole}>
+                        <Select onValueChange={(role) => { dispatch({ type: "SET_RECIPIENT_ROLE", payload: role }) }} value={state.recipientRole}>
                             <SelectTrigger id="recipientRole" className="w-full md:w-1/2">
                                 <SelectValue placeholder="Select recipient role" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white z-10">
                                 <SelectItem value="nurse">Nurse</SelectItem>
                                 <SelectItem value="pharmacist">Pharmacist</SelectItem>
                                 <SelectItem value="labtech">Lab Technician</SelectItem>
                             </SelectContent>
                         </Select>
-                        {assignedRecipient && (
+                        {state.recipientName && (
                             <p className="text-sm text-muted-foreground">
-                                👤 <span className="font-medium text-foreground">{assignedRecipient}</span> will receive this note.
+                                👤 <span className="font-medium text-foreground">{state.recipientName}</span> will receive this note.
                             </p>
                         )}
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="status">Patient Status</Label>
-                        <Select onValueChange={setStatus} value={status}>
+                        <Select onValueChange={(status) => { dispatch({ type: "SET_STATUS", payload: status }) }} value={state.status}>
                             <SelectTrigger id="status" className="w-full md:w-1/2">
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white z-10">
                                 <SelectItem value="admitted">Admitted</SelectItem>
                                 <SelectItem value="under observation">Under Observation</SelectItem>
                                 <SelectItem value="discharged">Discharged</SelectItem>
@@ -160,18 +147,18 @@ export default function PatientDetailsComponent({ patient }: Props) {
                         <Textarea
                             id="notes"
                             placeholder="Write your findings, diagnosis, or prescriptions..."
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
+                            value={state.notes}
+                            onChange={(note) => { dispatch({ type: "UPDATE_NOTES", payload: note.target.value }) }}
                             className="min-h-[160px] text-sm"
                         />
                     </div>
 
                     <Button
                         onClick={handleSubmit}
-                        disabled={loading || !notes.trim()}
+                        disabled={state.loading || !state.notes.trim()}
                         className="w-full md:w-auto text-white text-base px-8 py-2 rounded-xl shadow-md"
                     >
-                        {loading ? "Saving..." : "Submit Note"}
+                        {state.loading ? "Saving..." : "Submit Note"}
                     </Button>
                 </CardContent>
             </Card>
