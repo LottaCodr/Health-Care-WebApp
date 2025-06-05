@@ -3,6 +3,7 @@
 import { ReactNode, FC } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./auth-provider";
+import { PatientProvider } from "./patients/patient-context";
 
 const queryClient = new QueryClient();
 
@@ -11,7 +12,9 @@ export const Providers: FC<{ children: ReactNode }> = ({ children }) => {
         <>
             <QueryClientProvider client={queryClient}>
                 <AuthProvider>
-                    {children}
+                    <PatientProvider>
+                        {children}
+                    </PatientProvider>
                 </AuthProvider>
             </QueryClientProvider>
         </>
