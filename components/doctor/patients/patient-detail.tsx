@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Patient } from "@/app/context/patients/types";
 import { usePatientContext } from "@/app/context/patients/patient-context";
+import PatientDetailsSkeleton from "./skeleton";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 
@@ -37,6 +38,8 @@ export default function PatientDetailsComponent({ patient }: Props) {
         if (patient) dispatch({ type: 'SET_PATIENT', payload: patient })
 
     }, [patient]);
+
+
 
     const handleSubmit = async () => {
         if (!state.recipientRole || !state.status || !state.notes.trim()) {
@@ -66,12 +69,16 @@ export default function PatientDetailsComponent({ patient }: Props) {
         }
     };
 
-    if (!patient) {
+    if (!state.patient) {
         return (
             <p className="text-center pt-20 text-muted-foreground text-lg">
                 Patient not found
             </p>
         );
+    }
+
+    if (state.loading) {
+        return <PatientDetailsSkeleton />
     }
 
     return (

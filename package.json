@@ -1,5 +1,6 @@
 {
-  "name": "careplus",
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "nilevallyhospital",
   "version": "0.1.0",
   "private": true,
   "scripts": {
