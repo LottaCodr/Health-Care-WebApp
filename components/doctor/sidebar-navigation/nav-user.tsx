@@ -33,8 +33,8 @@ import {
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAuth } from "@/app/context/auth-provider"
 import { useEffect } from "react"
+import { useAuth } from "@/context/auth-provider"
 
 export function NavUser() {
     const { setTheme, theme } = useTheme()
