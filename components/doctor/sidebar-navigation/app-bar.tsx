@@ -33,9 +33,9 @@ const data = {
         { title: "Analysis", url: "/doctor/analysis", icon: BiBarChartAlt2 },
     ],
     navSecondary: [
-        { title: "Support", url: "/support", icon: MdSupportAgent },
-        { title: "Settings", url: "/settings", icon: FiSettings },
-        { title: "Logout", url: "/logout", icon: FiLogOut },
+        { title: "Support", url: "/doctor/support", icon: MdSupportAgent },
+        { title: "Settings", url: "/doctor/settings", icon: FiSettings },
+        { title: "Logout", url: "/doctor/logout", icon: FiLogOut },
     ],
 };
 

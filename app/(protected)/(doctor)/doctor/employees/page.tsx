@@ -1,7 +1,7 @@
 
 
+import EmployeesComponent from '@/components/doctor/employees'
 import React from 'react'
-import EmployeesComponent from '@/components/employees'
 
 
 

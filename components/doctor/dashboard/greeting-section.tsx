@@ -1,9 +1,9 @@
 "use client";
 
-import { useAuth } from "@/app/context/auth-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-provider";
 
 export default function GreetingSection() {
     const router = useRouter();
