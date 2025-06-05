@@ -1,6 +1,6 @@
 import { parseStringify } from "@/app/lib/utils";
 import { databases, NEXT_PUBLIC_DATABASE_ID, NEXT_PUBLIC_PATIENT_COLLECTION_ID } from "@/lib/appwrite.config";
-import { Patient } from "@/types/patients";
+import { Patient } from "@/app/context/patients/types";
 import { Query } from "appwrite";
 
 const databaseId = NEXT_PUBLIC_DATABASE_ID!;

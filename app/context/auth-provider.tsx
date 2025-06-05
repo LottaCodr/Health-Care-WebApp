@@ -1,4 +1,4 @@
-import { getUser } from "@/lib/hooks/use-auth";
+import { getUser } from "@/hooks/use-auth";
 import { StaffRole } from "@/types/appwrite.types";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
@@ -21,7 +21,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<MyUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    
+
 
     useEffect(() => {
         getUser()

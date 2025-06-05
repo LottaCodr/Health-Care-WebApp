@@ -1,6 +1,6 @@
 'use client';
 
-import { Patient, SortConfig } from '@/types/patients';
+import { Patient, SortConfig } from '@/app/context/patients/types';
 import React, { useState, useMemo } from 'react';
 import SearchInput from './search-input';
 import PatientsTableHeader from './table-header';

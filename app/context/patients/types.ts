@@ -46,3 +46,22 @@ export interface SortConfig {
     key: keyof Patient;
     direction: 'asc' | 'desc';
 }
+
+
+export interface PatientState {
+    patient: Patient | null;
+    notes: string;
+    status: string;
+    recipientRole: string;
+    recipientName: string | null;
+    loading: boolean;
+}
+
+export type PatientAction =
+    | { type: "SET_PATIENT"; payload: Patient }
+    | { type: "UPDATE_NOTES"; payload: string }
+    | { type: "SET_STATUS"; payoad: string }
+    | { type: "SET_STATUS"; payload: string }
+    | { type: "SET_RECIPIENT"; payload: string }
+    | { type: "SET_LOADING"; payload: boolean }
+    | { type: "RESET_FORM" }

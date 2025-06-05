@@ -19,7 +19,7 @@ import {
     SelectContent,
     SelectItem,
 } from "@/components/ui/select";
-import { Patient } from "@/types/patients";
+import { Patient } from "@/app/context/patients/types";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 
@@ -126,7 +126,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                             <SelectTrigger id="recipientRole" className="w-full md:w-1/2">
                                 <SelectValue placeholder="Select recipient role" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white z-10">
                                 <SelectItem value="nurse">Nurse</SelectItem>
                                 <SelectItem value="pharmacist">Pharmacist</SelectItem>
                                 <SelectItem value="labtech">Lab Technician</SelectItem>

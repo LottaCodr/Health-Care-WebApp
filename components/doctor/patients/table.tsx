@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { Patient, SortConfig } from '@/types/patients';
+import { Patient, SortConfig } from '@/app/context/patients/types';
 import { useRouter } from 'next/navigation';
 
 interface PatientsTableProps {

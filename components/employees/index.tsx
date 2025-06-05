@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { faker } from "@faker-js/faker";
-import useDebounce from "@/lib/hooks/useDebouce";
+import useDebounce from "@/hooks/useDebouce";
 import EditEmployeeModal from "./modals/edit-employee-modal";
 import ViewEmployeeModal from "./modals/view-employee-modal";
 import DeleteEmployeeModal from "./modals/delete-employee-modal";
