@@ -5,8 +5,8 @@ import "./globals.css";
 import { cn } from "./lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-import { Providers } from "./context/provider";
 import ProtectedRedirect from "./(auth)/protected";
+import { Providers } from "@/context/provider";
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -15,8 +15,8 @@ const fontSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Nile Mother & Child Hospital",
-  description: "Welcome to Nile Mother & Child Hospital",
+  title: "Nile Valley Mother & Child Hospital",
+  description: "Welcome to Nile Valley Mother & Child Hospital",
 };
 
 export default function RootLayout({
