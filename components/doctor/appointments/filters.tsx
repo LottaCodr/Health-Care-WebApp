@@ -1,5 +1,8 @@
 import { Appointment } from '@/types/appointments';
 import React from 'react';
+import { DateRange } from 'react-date-range';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
 
 
 export interface FiltersProps {
@@ -9,8 +12,11 @@ export interface FiltersProps {
     setStatusFilter: React.Dispatch<React.SetStateAction<'all' | Appointment['status']>>;
     timeFormat: '12h' | '24h';
     setTimeFormat: React.Dispatch<React.SetStateAction<'12h' | '24h'>>;
-    dateRange: 'all' | 'today' | 'thisWeek';
-    setDateRange: React.Dispatch<React.SetStateAction<'all' | 'today' | 'thisWeek'>>;
+    dateRange: 'all' | 'today' | 'thisWeek' | 'custom';
+    setDateRange: React.Dispatch<React.SetStateAction<'all' | 'today' | 'thisWeek' | 'custom'>>;
+    customRange: { startDate: Date | null; endDate: Date | null };
+    setCustomRange: React.Dispatch<React.SetStateAction<{ startDate: Date | null; endDate: Date | null }>>;
+
 }
 
 const Filters: React.FC<FiltersProps> = ({
@@ -20,7 +26,11 @@ const Filters: React.FC<FiltersProps> = ({
     setStatusFilter,
     dateRange,
     setDateRange,
+    customRange,
+    setCustomRange,
 }) => (
+
+    
     <div className="flex gap-4 flex-wrap">
         <input
             value={search}
@@ -38,6 +48,21 @@ const Filters: React.FC<FiltersProps> = ({
             <button onClick={() => setDateRange('today')} className="text-sm text-blue-500">Today</button>
             <button onClick={() => setDateRange('thisWeek')} className="text-sm text-blue-500">This Week</button>
         </div>
+        {dateRange === 'custom' && (
+            <DateRange
+                editableDateInputs={true}
+                onChange={(item) => setCustomRange({
+                    startDate: item.selection.startDate ?? null,
+                    endDate: item.selection.endDate ?? null,
+                })}
+                moveRangeOnFirstSelection={false}
+                ranges={[{
+                    startDate: customRange.startDate || new Date(),
+                    endDate: customRange.endDate || new Date(),
+                    key: 'selection',
+                }]}
+            />
+        )}
     </div>
 );
 

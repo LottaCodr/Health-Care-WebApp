@@ -4,10 +4,19 @@ import React from 'react';
 
 interface AppointmentTableProps {
     appointments: Appointment[];
+    sortBy: string;
+    setSortBy: (sortBy: string) => void;
+    sortOrder: 'asc' | 'desc';
+    setSortOrder: (order: 'asc' | 'desc') => void;
+    page: number;
+    setPage: (page: number) => void;
+    pageSize: number;
+    total: number;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
     timeFormat: '12h' | '24h';
 }
+
 
 const formatTime = (time: string, format: '12h' | '24h') => {
     if (format === '24h') {
@@ -19,7 +28,8 @@ const formatTime = (time: string, format: '12h' | '24h') => {
     return time;
 };
 
-const AppointmentTable: React.FC<AppointmentTableProps> = ({ appointments, onEdit, onDelete, timeFormat }) => (
+
+const AppointmentTable: React.FC<AppointmentTableProps> = ({ appointments, onEdit, onDelete, timeFormat, sortBy, setSortBy, sortOrder, setSortOrder, page, setPage, pageSize, total }) => (
     <div className="overflow-x-auto bg-white dark:bg-gray-800 shadow rounded-md">
         <table className="min-w-full">
             <thead className="bg-gray-100 dark:bg-gray-700">
