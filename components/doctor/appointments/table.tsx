@@ -68,7 +68,7 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
                         <th className="px-4 py-2 text-left">Time</th>
                         <th className="px-4 py-2 text-left">Status</th>
                         <th className="px-4 py-2 text-left">Actions</th>
-                    </tr>
+                    </tr> 
                 </thead>
                 <tbody>
                     {appointments.map((a) => (

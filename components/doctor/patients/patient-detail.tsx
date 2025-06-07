@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { databases } from "@/lib/appwrite.config";
+import { databases, NEXT_PUBLIC_PATIENT_COLLECTION_ID } from "@/lib/appwrite.config";
 import {
     Card,
     CardContent,
@@ -24,6 +24,7 @@ import { Patient } from "@/context/patients/types";
 import { usePatientContext } from "@/context/patients/patient-context";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
+const patientId = NEXT_PUBLIC_PATIENT_COLLECTION_ID!
 
 type Props = {
     patient: Patient;
@@ -48,6 +49,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
         }
 
         try {
+
             state.loading
 
             await databases.createDocument(databaseId, "doctor_notes", "unique()", {
@@ -58,7 +60,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 statusUpdate: state.status,
             });
 
-            await databases.updateDocument(databaseId, "patients", patient?.$id, {
+            await databases.updateDocument(databaseId, patientId, patient?.$id, {
                 status: state.status,
             });
 
