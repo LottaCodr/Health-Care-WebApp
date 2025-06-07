@@ -1,4 +1,4 @@
-import React, { useReducer, createContext, useContext, Dispatch, useEffect } from 'react';
+import React, { useReducer, createContext, useContext, useEffect } from 'react';
 import { Appointment } from '@/types/appointments';
 import { fetchAppointments } from '@/actions/appointments/get.appointment';
 
@@ -21,13 +21,13 @@ export const initialState: State = {
 
 export function reducer(state: State, action: Action): State {
     switch (action.type) {
+
         case 'SET_APPOINTMENTS':
             return { ...state, appointments: action.payload }
-
         case 'ADD_APPOINTMENT':
-            return { ...state, appointments: [action.payload] }
+            return { ...state, appointments: [...state.appointments, action.payload] }
         case 'UPDATE_APPOINTMENT':
-            return { ...state, appointments: [action.payload] }
+            return { ...state, appointments: state.appointments.map(a => a.id == action.payload.id ? action.payload : a)}
         case 'DELETE_APPOINTMENT':
             return { ...state, appointments: state.appointments.filter((a) => a.id !== action.payload) }
         case 'SET_LOADING':

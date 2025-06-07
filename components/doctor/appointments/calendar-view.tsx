@@ -34,7 +34,7 @@ const CalendarView = ({ appointments, onEdit }: CalendarViewProps) => {
                         new Date(`${a.date}T${a.time}`).getTime() === new Date(event.start).getTime()
                     );
                     if (original) onEdit(original);
-                  }}
+                }}
             />
         </div>
     );
