@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { account } from "@/lib/appwrite.config";
-import type { MyUser } from '@/app/context/auth-provider'; // custom interface
+import { MyUser } from "@/context/auth-provider";
 
 export default function ProtectedRedirect({ children }: { children: ReactNode }) {
     const router = useRouter();

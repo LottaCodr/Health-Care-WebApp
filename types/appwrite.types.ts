@@ -28,6 +28,9 @@ export interface Patient extends Models.Document {
   identificationNumber: string | undefined;
   identificationDocument: FormData | undefined;
   privacyConsent: boolean;
+  note?: string;
+  staff: Staff[]
+
 }
 
 export interface Appointment extends Models.Document {
@@ -49,6 +52,7 @@ export interface Staff extends Models.Document {
   email: string;
   full_name: string;
   created_at: Date
+  patient: Patient[]
 }
 
 

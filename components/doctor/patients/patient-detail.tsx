@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { databases, NEXT_PUBLIC_PATIENT_COLLECTION_ID } from "@/lib/appwrite.config";
+import { databases, NEXT_PUBLIC_PATIENT_COLLECTION_ID, NEXT_PUBLIC_STAFF_COLLECTION_ID } from "@/lib/appwrite.config";
 import {
     Card,
     CardContent,
@@ -25,6 +25,7 @@ import { usePatientContext } from "@/context/patients/patient-context";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientId = NEXT_PUBLIC_PATIENT_COLLECTION_ID!
+const staffId = NEXT_PUBLIC_STAFF_COLLECTION_ID!
 
 type Props = {
     patient: Patient;
@@ -52,17 +53,21 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
             state.loading
 
-            await databases.createDocument(databaseId, "doctor_notes", "unique()", {
-                patientId: state.patient?.$id,
-                note: state.notes,
-                createdAt: new Date().toISOString(),
-                role: state.recipientRole,
-                statusUpdate: state.status,
-            });
+            // await databases.createDocument(databaseId, "doctor_notes", "unique()", {
+            //     patientId: state.patient?.$id,
+            //     note: state.notes,
+            //     createdAt: new Date().toISOString(),
+            //     role: state.recipientRole,
+            //     statusUpdate: state.status,
+            // });
 
             await databases.updateDocument(databaseId, patientId, patient?.$id, {
+                notes: state.notes,
+                staff: state.recipientName,
                 status: state.status,
             });
+
+            // await databases.updateDocument(databaseId, staffId,  )
 
             toast.success("Note and status successfully saved.");
         } catch (err) {

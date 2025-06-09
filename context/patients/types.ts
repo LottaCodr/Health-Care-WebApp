@@ -41,6 +41,9 @@ export interface Patient {
 
     status: PatientStatus
     userId: string;
+    doctorId?: string;
+    notes?: string;
+    staff?: string
 }
 export interface SortConfig {
     key: keyof Patient;
@@ -50,6 +53,7 @@ export interface SortConfig {
 
 export interface PatientState {
     patient: Patient | null;
+    doctorId?: string;
     notes: string;
     status: string;
     recipientRole: string;
@@ -59,6 +63,8 @@ export interface PatientState {
 
 export type PatientAction =
     | { type: "SET_PATIENT"; payload: Patient }
+    | { type: "SET_ASSIGNED_STAFF"; payload: Patient }
+    | { type: "SET_ASSIGNED_DOCTOR"; payload: string }
     | { type: "UPDATE_NOTES"; payload: string }
     | { type: "SET_STATUS"; payload: string }
     | { type: "SET_RECIPIENT_ROLE"; payload: string }
