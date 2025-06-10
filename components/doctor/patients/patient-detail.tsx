@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { databases, NEXT_PUBLIC_DATABASE_ID, NEXT_PUBLIC_PATIENT_COLLECTION_ID } from "@/lib/appwrite.config";
+import { databases} from "@/lib/appwrite.config";
 import {
     Card,
     CardContent,
@@ -109,7 +109,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                         Patient Profile
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5 text-base capitalize text-muted-foreground mt-4">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5 text-base uppercase text-muted-foreground mt-4">
                     <InfoItem label="Name" value={state.patient?.name || "Not provided"} />
                     <InfoItem label="Gender" value={state.patient?.gender || "Not provided"} />
                     <InfoItem label="Email" value={state.patient?.email || "Not provided"} />
