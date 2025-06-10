@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { databases } from "@/lib/appwrite.config";
+import { databases, NEXT_PUBLIC_DATABASE_ID, NEXT_PUBLIC_PATIENT_COLLECTION_ID } from "@/lib/appwrite.config";
 import {
     Card,
     CardContent,
@@ -22,8 +22,12 @@ import {
 import PatientDetailsSkeleton from "./skeleton";
 import { Patient } from "@/context/patients/types";
 import { usePatientContext } from "@/context/patients/patient-context";
+import { Staff } from "@/types/appwrite.types";
+import { useQuery } from "@tanstack/react-query";
+import { getAllStaffs } from "@/actions/appointments/staff/get.staff";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
+const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!
 
 type Props = {
     patient: Patient;
@@ -33,10 +37,18 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
     const { state, dispatch } = usePatientContext()
 
+    const { data, isPending, isError } = useQuery({
+        queryKey: ['staffs'],
+        queryFn: () => getAllStaffs(),
+    })
+    const recipientRoles = ["doctor", "nurse", "pharmacist", "labtech"];
+
+
     useEffect(() => {
-
-        if (patient) dispatch({ type: 'SET_PATIENT', payload: patient })
-
+        if (patient) {
+            dispatch({ type: 'SET_PATIENT', payload: patient });
+            dispatch({ type: 'UPDATE_NOTES', payload: patient.notes || '' });
+        }
     }, [patient, dispatch]);
 
 
@@ -47,38 +59,46 @@ export default function PatientDetailsComponent({ patient }: Props) {
             return;
         }
 
+        const selectedStaff = data?.find(
+            (staff: Staff) => staff.role === state.recipientRole && staff.full_name === state.recipientName
+        );
         try {
-            state.loading
 
-            await databases.createDocument(databaseId, "doctor_notes", "unique()", {
-                patientId: state.patient?.$id,
-                note: state.notes,
-                createdAt: new Date().toISOString(),
-                role: state.recipientRole,
-                statusUpdate: state.status,
-            });
-
-            await databases.updateDocument(databaseId, "patients", patient?.$id, {
+            dispatch({ type: "SET_LOADING", payload: true });
+            await databases.updateDocument(databaseId, patientCollectionId, patient?.$id, {
+                notes: state.notes,
+                staff: [{
+                    $id: selectedStaff?.$id,
+                    role: selectedStaff?.role,
+                    full_name: selectedStaff?.full_name,
+                }],
                 status: state.status,
             });
+            console.log('The note has been updated')
 
             toast.success("Note and status successfully saved.");
         } catch (err) {
             console.error(err);
             toast.error("Failed to save note.");
+        } finally {
+            dispatch({ type: "SET_LOADING", payload: false });
+
         }
     };
 
+
+
+    if (isPending || state.loading) return <PatientDetailsSkeleton />
+
+    if (isError) {
+        return <p className="text-red-600 text-center pt-10">Failed to load staff list.</p>;
+    }
     if (!state.patient) {
         return (
             <p className="text-center pt-20 text-muted-foreground text-lg">
                 Patient not found
             </p>
         );
-    }
-
-    if (state.loading) {
-        return <PatientDetailsSkeleton />
     }
 
     return (
@@ -99,11 +119,12 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     <InfoItem label="Allergies" value={state.patient?.allergies || "N/A"} />
                     <InfoItem label="Current Medication" value={state.patient?.currentMedication || "N/A"} />
                     <InfoItem label="Insurance Provider" value={state.patient?.insuranceProvider || "N/A"} />
-                    <InfoItem label="Insurance Provider" value={state.patient?.emergencyContactNumber || "N/A"} />
+                    <InfoItem label="Emergency Contact Number" value={state.patient?.emergencyContactNumber || "N/A"} />
                     <InfoItem label="Family Medical History" value={state.patient?.familyMedicalHistory || "N/A"} />
-                    <InfoItem label="Family Medical History" value={typeof state.patient?.disclosureConsent === "boolean" ? (state.patient?.disclosureConsent ? "Yes" : "No") : (state.patient?.disclosureConsent || "N/A")} />
+                    <InfoItem label="Disclosure Consent" value={typeof state.patient?.disclosureConsent === "boolean" ? (state.patient?.disclosureConsent ? "Yes" : "No") : (state.patient?.disclosureConsent || "N/A")} />
                     <InfoItem label="Past MedicalHistory" value={state.patient?.pastMedicalHistory || "N/A"} />
                     <InfoItem label="Current Status" value={state.status || "N/A"} />
+                    <InfoItem label="note" value={patient.notes || "No note yet"} />
                 </CardContent>
             </Card>
 
@@ -116,19 +137,49 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 <CardContent className="space-y-6 mt-4">
                     <div className="space-y-2">
                         <Label htmlFor="recipientRole">Send To</Label>
-                        <Select onValueChange={(role) => { dispatch({ type: "SET_RECIPIENT_ROLE", payload: role }) }} value={state.recipientRole}>
+                        <Select
+                            onValueChange={(role) => {
+                                dispatch({ type: 'SET_RECIPIENT_ROLE', payload: role });
+                                dispatch({ type: 'SET_RECIPIENT_NAME', payload: '' });
+                            }}
+                            value={state.recipientRole}
+                        >
                             <SelectTrigger id="recipientRole" className="w-full md:w-1/2">
                                 <SelectValue placeholder="Select recipient role" />
                             </SelectTrigger>
                             <SelectContent className="bg-white z-10">
-                                <SelectItem value="nurse">Nurse</SelectItem>
-                                <SelectItem value="pharmacist">Pharmacist</SelectItem>
-                                <SelectItem value="labtech">Lab Technician</SelectItem>
+                                {recipientRoles.map((role) => (
+                                    <SelectItem key={role} value={role}>
+                                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
+                        {state.recipientRole && (
+                            <div className="space-y-2 mt-4">
+                                <Label htmlFor="recipientName">Select {state.recipientRole}</Label>
+                                <Select
+                                    onValueChange={(name) => dispatch({ type: 'SET_RECIPIENT_NAME', payload: name })}
+                                    value={state.recipientName ?? undefined}
+                                >
+                                    <SelectTrigger id="recipientName" className="w-full md:w-1/2">
+                                        <SelectValue placeholder={`Select ${state.recipientRole}`} />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white z-10">
+                                        {data
+                                            ?.filter((staff: Staff) => staff.role === state.recipientRole)
+                                            .map((staff: Staff) => (
+                                                <SelectItem key={staff.$id} value={staff.full_name}>
+                                                    {staff.full_name}
+                                                </SelectItem>
+                                            ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                         {state.recipientName && (
                             <p className="text-sm text-muted-foreground">
-                                👤 <span className="font-medium text-foreground">{state.recipientName}</span> will receive this note.
+                                👤 <span className="capitalize text-foreground inline-block rounded-full px-3 py-1 text-xs bg-green-700 font-semibold text-white">{state.recipientRole} {' '} {state.recipientName}</span> will receive this note.
                             </p>
                         )}
                     </div>
@@ -156,7 +207,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                             placeholder="Write your findings, diagnosis, or prescriptions..."
                             value={state.notes}
                             onChange={(note) => { dispatch({ type: "UPDATE_NOTES", payload: note.target.value }) }}
-                            className="min-h-[160px] text-sm"
+                            className="min-h-[160px] text-sm border-border rounded-xl"
                         />
                     </div>
 

@@ -6,8 +6,8 @@ export interface MyUser {
     $id: string;
     name: string;
     email: string;
-    role: StaffRole
-    // add more as needed
+    role: StaffRole;
+    
 }
 
 interface AuthContextType {

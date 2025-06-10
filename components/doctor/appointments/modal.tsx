@@ -51,6 +51,10 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose, on
     };
 
     const handleSubmit = () => {
+        if (!formData.patientName || !formData.doctor || !formData.date || !formData.time) {
+            alert("Please fill in all required fields.");
+            return;
+        }
         onSave(formData);
     };
 

@@ -29,6 +29,12 @@ const CalendarView = ({ appointments, onEdit }: CalendarViewProps) => {
                 startAccessor="start"
                 endAccessor="end"
                 style={{ height: 500 }}
+                onSelectEvent={(event) => {
+                    const original = appointments.find(a =>
+                        new Date(`${a.date}T${a.time}`).getTime() === new Date(event.start).getTime()
+                    );
+                    if (original) onEdit(original);
+                }}
             />
         </div>
     );

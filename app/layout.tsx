@@ -35,6 +35,8 @@ export default function RootLayout({
               {children}
             </ ProtectedRedirect>
             <Toaster />
+            <Toaster />
+
           </ThemeProvider>
         </Providers>
       </body>
