@@ -1,10 +1,10 @@
 import { parseStringify } from "@/app/lib/utils";
 import { Patient } from "@/context/patients/types";
-import { databases, NEXT_PUBLIC_DATABASE_ID, NEXT_PUBLIC_PATIENT_COLLECTION_ID } from "@/lib/appwrite.config";
+import { databases } from "@/lib/appwrite.config";
 import { Query } from "appwrite";
 
-const databaseId = NEXT_PUBLIC_DATABASE_ID!;
-const patientCollectionId = NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
+const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
+const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
 
 export async function getAllPatients() {
     try {

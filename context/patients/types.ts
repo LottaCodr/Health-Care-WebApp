@@ -1,7 +1,7 @@
 
 import { Staff } from "@/types/appwrite.types";
 
-export type PatientStatus = 'admitted' | 'discharged' | 'under observation' | '';
+export type PatientStatus = 'admitted' | 'discharged' | 'under observation' | 'no status';
 
 export interface Patient {
     $id: string;

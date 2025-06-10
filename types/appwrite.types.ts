@@ -52,7 +52,8 @@ export interface Staff extends Models.Document {
   email: string;
   full_name: string;
   created_at: Date
-  patient: Patient[]
+  patient: Patient[];
+  status?: "active" | "inactive"
 }
 
 

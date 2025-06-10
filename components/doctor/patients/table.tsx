@@ -1,4 +1,4 @@
-'use client'; 
+'use client';
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
@@ -34,16 +34,16 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients }) => {
             {patients.map((patient) => (
                 <tr key={patient?.userId} onClick={() => router.push(`/doctor/patients/${patient?.userId}`)} className="hover:bg-gray-50 cursor-pointer">
                     <td tabIndex={0} aria-label={`Patient ${patient.name}`} className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 font-medium">
-                        {patient?.name ?? ''}
+                        {patient?.name ?? 'N/A'}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.gender ?? ''}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.gender ?? 'N/A'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
                         {mounted && patient.$createdAt
                             ? new Date(patient.$createdAt).toLocaleDateString()
-                            : 'Testing'}
+                            : 'N/A'}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.currentMedication ?? ''}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.allergies ?? ''}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.currentMedication ?? 'N/A'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.allergies ?? 'N/A'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                         <span
                             className={clsx(
@@ -52,12 +52,13 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients }) => {
                                     'bg-blue-600': patient.status === 'admitted',
                                     'bg-green-700': patient.status === 'discharged',
                                     'bg-yellow-500': patient.status === 'under observation',
+                                    'bg-red-500': patient.status === 'no status',
                                 }
                             )}
                         >
                             {typeof patient.status === 'string'
                                 ? patient.status.replace(/^\w/, (c: string) => c.toUpperCase())
-                                : ' Unknown'}
+                                : ' No Status'}
                         </span>
                     </td>
                     {/* <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.diagnosis ?? ''}</td> */}
