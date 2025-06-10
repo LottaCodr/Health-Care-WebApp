@@ -29,7 +29,7 @@ export interface Patient extends Models.Document {
   identificationDocument: FormData | undefined;
   privacyConsent: boolean;
   note?: string;
-  staff: Staff[]
+  staff: (Staff | string)[];
 
 }
 

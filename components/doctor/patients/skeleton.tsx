@@ -25,7 +25,7 @@ const AnimatedSkeleton = ({ className }: { className: string }) => (
 
 export default function PatientDetailsSkeleton() {
     return (
-        <main className="max-w-5xl mx-auto px-6 py-12 space-y-12">
+        <main className="max-w-5xl mx-6 px-6 py-12 space-y-12">
             <Card className="shadow-xl rounded-3xl border border-border bg-background">
                 <CardHeader className="pb-3 border-b">
                     <CardTitle className="text-3xl font-bold text-primary">

@@ -6,7 +6,8 @@ export const initialPatientState: PatientState = {
     status: "",
     recipientName: "",
     recipientRole: "",
-    loading: false
+    loading: false,
+    staff: null
 }
 
 export function patientReducer(state: PatientState, action: PatientAction): PatientState {
@@ -17,6 +18,11 @@ export function patientReducer(state: PatientState, action: PatientAction): Pati
                 ...state,
                 patient: action.payload,
                 status: action.payload.status || ""
+            }
+        case "SET_ASSIGNED_STAFF":
+            return {
+                ...state,
+                staff: Array.isArray(action.payload) ? action.payload : null
             }
         case "UPDATE_NOTES":
             return {
@@ -29,16 +35,13 @@ export function patientReducer(state: PatientState, action: PatientAction): Pati
                 status: action.payload
             }
         case "SET_RECIPIENT_ROLE":
-            const roleMap: Record<string, string> = {
-                nurse: "Nurse Jane Doe",
-                pharmacist: "Pharm TOlu Chukwuka",
-                labtech: "Lab Tech Elon"
-            }
+            
             return {
                 ...state,
-                recipientName: roleMap[action.payload.toLowerCase()] ?? null,
                 recipientRole: action.payload
             }
+        case "SET_RECIPIENT_NAME":
+            return { ...state, recipientName: action.payload };
         case "SET_LOADING":
             return {
                 ...state,

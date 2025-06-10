@@ -1,4 +1,5 @@
-// types/patients.ts
+
+import { Staff } from "@/types/appwrite.types";
 
 export type PatientStatus = 'admitted' | 'discharged' | 'under observation' | '';
 
@@ -59,14 +60,16 @@ export interface PatientState {
     recipientRole: string;
     recipientName: string | null;
     loading: boolean;
+    staff?: (Staff | string)[] | null
 }
 
 export type PatientAction =
     | { type: "SET_PATIENT"; payload: Patient }
-    | { type: "SET_ASSIGNED_STAFF"; payload: Patient }
+    | { type: "SET_ASSIGNED_STAFF"; payload: Staff }
     | { type: "SET_ASSIGNED_DOCTOR"; payload: string }
     | { type: "UPDATE_NOTES"; payload: string }
     | { type: "SET_STATUS"; payload: string }
     | { type: "SET_RECIPIENT_ROLE"; payload: string }
     | { type: "SET_LOADING"; payload: boolean }
+    | { type: "SET_RECIPIENT_NAME"; payload: string }
     | { type: "RESET_FORM" }
