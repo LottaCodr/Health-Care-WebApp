@@ -1,4 +1,4 @@
-import { getAllStaffs } from '@/actions/appointments/staff/get.staff';
+import { getAllStaffs } from '@/actions/staff/get.staff';
 import { Staff } from '@/types/appwrite.types';
 import { useQuery } from '@tanstack/react-query';
 import React, { useReducer, createContext, useContext, useEffect } from 'react';
@@ -11,8 +11,9 @@ type State = {
 
 type Action =
     | { type: 'SET_EMPLOYEES', payload: Staff[] }
-    | { type: 'DELETE_EMPLOYEE', payload: string }
+    | { type: 'ADD_EMPLOYEE', payload: Staff }
     | { type: 'UPDATE_EMPLOYEE', payload: Staff }
+    | { type: 'DELETE_EMPLOYEE', payload: string }
     | { type: 'SET_LOADING', payload: boolean }
 
 export const initialState: State = {
@@ -28,6 +29,8 @@ export function reducer(state: State, action: Action): State {
             return { ...state, employees: state.employees.map(e => e.$id == action.payload.$id ? action.payload : e) }
         case "DELETE_EMPLOYEE":
             return { ...state, employees: state.employees.filter((e) => e.$id !== action.payload) }
+        case "ADD_EMPLOYEE":
+            return { ...state, employees: [...state.employees, action.payload] }
         case "SET_LOADING":
             return { ...state, loading: action.payload }
         default:

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { databases} from "@/lib/appwrite.config";
+import { databases } from "@/lib/appwrite.config";
 import {
     Card,
     CardContent,
@@ -24,7 +24,7 @@ import { Patient } from "@/context/patients/types";
 import { usePatientContext } from "@/context/patients/patient-context";
 import { Staff } from "@/types/appwrite.types";
 import { useQuery } from "@tanstack/react-query";
-import { getAllStaffs } from "@/actions/appointments/staff/get.staff";
+import { getAllStaffs } from "@/actions/staff/get.staff";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!

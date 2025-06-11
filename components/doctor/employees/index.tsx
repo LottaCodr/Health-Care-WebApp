@@ -10,11 +10,10 @@ import EditEmployeeModal from "./modals/edit-employee-modal";
 import ViewEmployeeModal from "./modals/view-employee-modal";
 import DeleteEmployeeModal from "./modals/delete-employee-modal";
 import StatusBadge from "./status-badge";
-import { useQuery } from "@tanstack/react-query";
-import { getAllStaffs } from "@/actions/appointments/staff/get.staff";
 import { Staff } from "@/types/appwrite.types";
 import Loading from "@/app/useloading";
 import { useEmployeesContext } from "@/context/employees/context";
+import { useStaffMutations } from "@/context/employees/mutation";
 
 const EmployeeRow = React.memo(
     ({ employee, onEdit, onDelete, onView }: {
@@ -64,6 +63,7 @@ EmployeeRow.displayName = "EmployeeRow";
 
 export default function EmployeesComponent() {
     const { state } = useEmployeesContext();
+    const { updateStaff, deleteStaff } = useStaffMutations()
     const employees = state.employees;
     const isPending = state.loading;
 
@@ -113,6 +113,8 @@ export default function EmployeesComponent() {
             <Loading /> Loading employees...
         </div>;
     }
+
+
 
 
     return (
@@ -201,7 +203,7 @@ export default function EmployeesComponent() {
                     key={selectedEmployee.id}
                     employee={selectedEmployee}
                     onClose={closeModal}
-                    onSave={closeModal}
+                    onSave={(updatedEmployee) => updateStaff({ id: updatedEmployee?.$id, updates: updatedEmployee })}
                 />
             )}
 
@@ -218,7 +220,7 @@ export default function EmployeesComponent() {
                     key={selectedEmployee.id}
                     employee={selectedEmployee}
                     onClose={closeModal}
-                    onDelete={closeModal}
+                    onDelete={() => deleteStaff(selectedEmployee.$id)}
                 />
             )}
         </Card>
