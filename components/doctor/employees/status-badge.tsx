@@ -1,10 +1,10 @@
 interface StatusBadgeProps {
-    status: "Active" | "Inactive";
+    status: "active" | "inactive" ;
 }
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
     const styles =
-        status === "Active"
+        status === "active"
             ? "bg-green-100 text-green-800"
             : "bg-red-100 text-red-800";
 
@@ -18,4 +18,3 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
 };
 
 export default StatusBadge;
-  

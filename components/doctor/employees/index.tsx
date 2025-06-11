@@ -1,55 +1,37 @@
-"use client";
+"use client"
 
 import React, { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { faker } from "@faker-js/faker";
 import useDebounce from "@/hooks/useDebouce";
 import EditEmployeeModal from "./modals/edit-employee-modal";
 import ViewEmployeeModal from "./modals/view-employee-modal";
 import DeleteEmployeeModal from "./modals/delete-employee-modal";
 import StatusBadge from "./status-badge";
-
-interface Employee {
-    id: string;
-    name: string;
-    email: string;
-    position: string;
-    department: string;
-    dateOfHire: string;
-    status: "Active" | "Inactive";
-}
-
-const generateFakeEmployees = (count: number): Employee[] => {
-    return Array.from({ length: count }, () => ({
-        id: faker.string.uuid(),
-        name: faker.person.fullName(),
-        email: faker.internet.email(),
-        position: faker.person.jobTitle(),
-        department: faker.commerce.department(),
-        dateOfHire: faker.date.past().toISOString(),
-        status: faker.helpers.arrayElement(["Active", "Inactive"]),
-    }));
-};
+import { useQuery } from "@tanstack/react-query";
+import { getAllStaffs } from "@/actions/appointments/staff/get.staff";
+import { Staff } from "@/types/appwrite.types";
 
 const EmployeeRow = React.memo(
     ({ employee, onEdit, onDelete, onView }: {
-        employee: Employee;
+        employee: Staff;
         onEdit: () => void;
         onDelete: () => void;
         onView: () => void;
     }) => {
-        const formattedDate = useMemo(
-            () => format(new Date(employee.dateOfHire), "MMM dd, yyyy"),
-            [employee.dateOfHire]
-        );
+        const formattedDate = useMemo(() => {
+            const date = new Date(employee?.$createdAt);
+            return isNaN(date.getTime()) ? "N/A" : format(date, "MMM dd, yyyy");
+        }, [employee?.$createdAt]);
 
         return (
             <tr className="hover:bg-muted transition-colors">
-                {["name", "email", "position", "department", "dateOfHire", "status"]
-                    .map((field) => (
+
+                {["name", "email", "position", "department", "dateOfHire", "status"].map((field) => (
+                    <>
+
                         <td
                             key={field}
                             className="px-4 py-3 border-b text-sm text-gray-700 cursor-pointer"
@@ -58,26 +40,16 @@ const EmployeeRow = React.memo(
                             {field === "dateOfHire"
                                 ? formattedDate
                                 : field === "status"
-                                    ? <StatusBadge status={employee.status} /> // 👈 Replace raw status with component
-                                    : (employee as any)[field]}
-
+                                    ? <StatusBadge status={employee?.status || "inactive"} />
+                                    : (employee as Staff)[field]}
                         </td>
-                    ))}
+                    </>
+                ))}
                 <td className="px-4 py-3 border-b text-sm text-gray-700 space-x-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                        onClick={onEdit}
-                    >
+                    <Button variant="outline" size="sm" className="text-blue-600 border-blue-600 hover:bg-blue-50" onClick={onEdit}>
                         Edit
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-600 hover:bg-red-50"
-                        onClick={onDelete}
-                    >
+                    <Button variant="outline" size="sm" className="text-red-600 border-red-600 hover:bg-red-50" onClick={onDelete}>
                         Delete
                     </Button>
                 </td>
@@ -88,8 +60,7 @@ const EmployeeRow = React.memo(
 EmployeeRow.displayName = "EmployeeRow";
 
 export default function EmployeesComponent() {
-    const [employees, setEmployees] = useState<Employee[]>(() => generateFakeEmployees(50));
-    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+    const [selectedEmployee, setSelectedEmployee] = useState<Staff | null>(null);
     const [modalType, setModalType] = useState<"edit" | "delete" | "view" | null>(null);
     const [search, setSearch] = useState("");
     const debouncedSearch = useDebounce(search, 300);
@@ -98,16 +69,18 @@ export default function EmployeesComponent() {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
 
-    const departments = useMemo(
-        () => [...new Set(employees.map((e) => e.department))],
-        [employees]
-    );
+    const { data: employees = [], isPending, isError } = useQuery({
+        queryKey: ['staff'],
+        queryFn: getAllStaffs,
+    });
+
+    const departments = useMemo(() => [...new Set(employees.map((e) => e.department))], [employees]);
 
     const filteredEmployees = useMemo(() => {
         return employees
-            .filter((e) =>
-                e.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                e.email.toLowerCase().includes(debouncedSearch.toLowerCase())
+            .filter((e: Staff) =>
+                e.full_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                e.email?.toLowerCase().includes(debouncedSearch.toLowerCase())
             )
             .filter((e) => (departmentFilter ? e.department === departmentFilter : true))
             .filter((e) => (statusFilter ? e.status === statusFilter : true));
@@ -123,7 +96,7 @@ export default function EmployeesComponent() {
         [filteredEmployees.length]
     );
 
-    const openModal = (employee: Employee, type: typeof modalType) => {
+    const openModal = (employee: Staff, type: typeof modalType) => {
         setSelectedEmployee(employee);
         setModalType(type);
     };
@@ -133,19 +106,18 @@ export default function EmployeesComponent() {
         setModalType(null);
     };
 
-    const handleSave = (updatedEmployee: Employee) => {
-        setEmployees((prev) =>
-            prev.map((e) => (e.id === updatedEmployee.id ? updatedEmployee : e))
-        );
+    const handleSave = (updatedEmployee: Staff) => {
+        // You'd normally send a mutation and refetch or optimistically update
         closeModal();
     };
 
     const handleDelete = () => {
-        if (selectedEmployee) {
-            setEmployees((prev) => prev.filter((e) => e.id !== selectedEmployee.id));
-            closeModal();
-        }
+        // You'd normally send a mutation and refetch or optimistically update
+        closeModal();
     };
+
+    if (isPending) return <div className="p-6 text-gray-600">Loading employees...</div>;
+    if (isError) return <div className="p-6 text-red-600">Error loading employees.</div>;
 
     return (
         <Card className="rounded-2xl shadow-sm">
@@ -196,7 +168,7 @@ export default function EmployeesComponent() {
                         <tbody className="bg-white divide-y divide-gray-100">
                             {paginatedEmployees.map((employee) => (
                                 <EmployeeRow
-                                    key={employee.id}
+                                    key={employee.$id}
                                     employee={employee}
                                     onEdit={() => openModal(employee, "edit")}
                                     onDelete={() => openModal(employee, "delete")}

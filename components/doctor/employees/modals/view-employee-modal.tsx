@@ -2,17 +2,10 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { Staff } from "@/types/appwrite.types";
 
 interface Props {
-    employee: {
-        id: string;
-        name: string;
-        email: string;
-        position: string;
-        department: string;
-        dateOfHire: string;
-        status: "Active" | "Inactive";
-    };
+    employee: Staff
     onClose: () => void;
 }
 
@@ -44,7 +37,7 @@ export default function ViewEmployeeModal({ employee, onClose }: Props) {
                     <div>
                         <strong className="text-foreground">Status:</strong>{" "}
                         <span
-                            className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${employee.status === "Active"
+                            className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${employee.status === "active"
                                 ? "bg-green-100 text-green-700"
                                 : "bg-red-100 text-red-700"
                                 }`}
