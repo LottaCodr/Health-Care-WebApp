@@ -5,7 +5,7 @@ import StatCardSkeleton from './skeleton';
 import { MdLocalHospital, MdPeople, MdExitToApp } from 'react-icons/md';
 import StatCard from './stat-card';
 import { useQuery } from '@tanstack/react-query';
-import { getAllStaffs } from '@/actions/appointments/staff/get.staff';
+import { getAllStaffs } from '@/actions/staff/get.staff';
 import { getAllPatients } from '@/actions/patients/get.patients';
 
 

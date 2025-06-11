@@ -4,17 +4,10 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Staff } from "@/types/appwrite.types";
 
 interface Props {
-    employee: {
-        id: string;
-        name: string;
-        email: string;
-        position: string;
-        department: string;
-        dateOfHire: string;
-        status: "Active" | "Inactive";
-    };
+    employee: Staff
     onClose: () => void;
     onSave: (employee: any) => void;
 }
