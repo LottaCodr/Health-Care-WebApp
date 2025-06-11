@@ -13,6 +13,7 @@ import StatusBadge from "./status-badge";
 import { useQuery } from "@tanstack/react-query";
 import { getAllStaffs } from "@/actions/appointments/staff/get.staff";
 import { Staff } from "@/types/appwrite.types";
+import Loading from "@/app/useloading";
 
 const EmployeeRow = React.memo(
     ({ employee, onEdit, onDelete, onView }: {
@@ -38,10 +39,11 @@ const EmployeeRow = React.memo(
                             onClick={onView}
                         >
                             {field === "dateOfHire"
-                                ? formattedDate
-                                : field === "status"
-                                    ? <StatusBadge status={employee?.status || "inactive"} />
-                                    : (employee as Staff)[field]}
+                                ? formattedDate :
+                                field === "name" ? employee.full_name : field === "position" ? employee.role
+                                    : field === "status"
+                                        ? <StatusBadge status={employee?.status || "active"} />
+                                        : (employee as Staff)[field]}
                         </td>
                     </>
                 ))}
@@ -116,7 +118,7 @@ export default function EmployeesComponent() {
         closeModal();
     };
 
-    if (isPending) return <div className="p-6 text-gray-600">Loading employees...</div>;
+    if (isPending) return <div className="p-6 w-full min-h-screen text-center justify-center items-center flex gap-4 text-gray-600"> <Loading /> Loading employees...</div>;
     if (isError) return <div className="p-6 text-red-600">Error loading employees.</div>;
 
     return (
