@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getAllStaffs } from "@/actions/appointments/staff/get.staff";
 import { Staff } from "@/types/appwrite.types";
 import Loading from "@/app/useloading";
+import { useEmployeesContext } from "@/context/employees/context";
 
 const EmployeeRow = React.memo(
     ({ employee, onEdit, onDelete, onView }: {
@@ -62,6 +63,10 @@ const EmployeeRow = React.memo(
 EmployeeRow.displayName = "EmployeeRow";
 
 export default function EmployeesComponent() {
+    const { state } = useEmployeesContext();
+    const employees = state.employees;
+    const isPending = state.loading;
+
     const [selectedEmployee, setSelectedEmployee] = useState<Staff | null>(null);
     const [modalType, setModalType] = useState<"edit" | "delete" | "view" | null>(null);
     const [search, setSearch] = useState("");
@@ -70,11 +75,6 @@ export default function EmployeesComponent() {
     const [statusFilter, setStatusFilter] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
-
-    const { data: employees = [], isPending, isError } = useQuery({
-        queryKey: ['staff'],
-        queryFn: getAllStaffs,
-    });
 
     const departments = useMemo(() => [...new Set(employees.map((e) => e.department))], [employees]);
 
@@ -108,18 +108,12 @@ export default function EmployeesComponent() {
         setModalType(null);
     };
 
-    const handleSave = (updatedEmployee: Staff) => {
-        // You'd normally send a mutation and refetch or optimistically update
-        closeModal();
-    };
+    if (isPending) {
+        return <div className="p-6 w-full min-h-screen text-center justify-center items-center flex gap-4 text-gray-600">
+            <Loading /> Loading employees...
+        </div>;
+    }
 
-    const handleDelete = () => {
-        // You'd normally send a mutation and refetch or optimistically update
-        closeModal();
-    };
-
-    if (isPending) return <div className="p-6 w-full min-h-screen text-center justify-center items-center flex gap-4 text-gray-600"> <Loading /> Loading employees...</div>;
-    if (isError) return <div className="p-6 text-red-600">Error loading employees.</div>;
 
     return (
         <Card className="rounded-2xl shadow-sm">
@@ -207,7 +201,7 @@ export default function EmployeesComponent() {
                     key={selectedEmployee.id}
                     employee={selectedEmployee}
                     onClose={closeModal}
-                    onSave={handleSave}
+                    onSave={closeModal}
                 />
             )}
 
@@ -224,7 +218,7 @@ export default function EmployeesComponent() {
                     key={selectedEmployee.id}
                     employee={selectedEmployee}
                     onClose={closeModal}
-                    onDelete={handleDelete}
+                    onDelete={closeModal}
                 />
             )}
         </Card>
