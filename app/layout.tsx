@@ -29,16 +29,16 @@ export default function RootLayout({
       <body
         className={cn("min-h-screen font-sans antialiased", fontSans.variable)}
       >
-        <Providers>
-          <ThemeProvider attribute="class" defaultTheme="light">
-            <ProtectedRedirect>
+        <ProtectedRedirect>
+          <Providers>
+            <ThemeProvider attribute="class" defaultTheme="light">
               {children}
-            </ ProtectedRedirect>
-            <Toaster />
-            <Toaster />
+              <Toaster />
+              <Toaster />
 
-          </ThemeProvider>
-        </Providers>
+            </ThemeProvider>
+          </Providers>
+        </ ProtectedRedirect>
       </body>
     </html>
   );

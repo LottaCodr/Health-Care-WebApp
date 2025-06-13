@@ -29,8 +29,8 @@ const data = {
         { title: "Appointments", url: "/doctor/appointments", icon: MdEventNote },
         { title: "Transactions", url: "/doctor/transactions", icon: FiRepeat },
         { title: "Employees", url: "/doctor/employees", icon: FaUsers },
-        { title: "Health Records", url: "/doctor/health-records", icon: AiOutlineFileText },
-        { title: "Analysis", url: "/doctor/analysis", icon: BiBarChartAlt2 },
+        // { title: "Health Records", url: "/doctor/health-records", icon: AiOutlineFileText },
+        // { title: "Analysis", url: "/doctor/analysis", icon: BiBarChartAlt2 },
     ],
     navSecondary: [
         { title: "Support", url: "/doctor/support", icon: MdSupportAgent },

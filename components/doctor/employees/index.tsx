@@ -76,6 +76,12 @@ export default function EmployeesComponent() {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
 
+    //remove appwrite system fields
+    function cleanStaffUpdate(data: Staff): Partial<Staff> {
+        const { full_name, email, phone_number, role, department, status } = data;
+        return { full_name, email, phone_number, role, department, status };
+    }
+
     const departments = useMemo(() => [...new Set(employees.map((e) => e.department))], [employees]);
 
     const filteredEmployees = useMemo(() => {
@@ -203,7 +209,15 @@ export default function EmployeesComponent() {
                     key={selectedEmployee.id}
                     employee={selectedEmployee}
                     onClose={closeModal}
-                    onSave={(updatedEmployee) => updateStaff({ id: updatedEmployee?.$id, updates: updatedEmployee })}
+                    onSave={async (data) => {
+                        updateStaff({
+                            id: selectedEmployee.$id,
+                            updates: {
+                                ...data,
+                                status: data.status === "Inactive" ? "inactive" : "active", 
+                            },
+                        });
+                    }}
                 />
             )}
 
