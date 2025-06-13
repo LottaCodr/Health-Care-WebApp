@@ -33,38 +33,44 @@ import {
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes"
 import { useAuth } from "@/context/auth-provider"
+import { logout } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 
 export function NavUser() {
     const { setTheme, theme } = useTheme()
     const { user } = useAuth();
-
+    const router = useRouter()
 
     return (
         <SidebarMenu>
             <SidebarMenuItem>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <SidebarMenuButton
-                            size="lg"
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                        >
-                            <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarFallback className="rounded-lg">
-                                    {user?.full_name
-                                        ? user.full_name
-                                            .split(' ')
-                                            .map((n) => n[0])
-                                            .join('')
-                                            .toUpperCase()
-                                        : 'CN'}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold">{user?.full_name}</span>
-                                <span className="truncate text-xs">{user?.email}</span>
-                            </div>
-                            <ChevronsUpDown className="ml-auto size-4" />
-                        </SidebarMenuButton>
+                        <div className="cursor-pointer w-full">
+
+                            <SidebarMenuButton
+                                size="lg"
+                                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                            >
+                                <Avatar className="h-8 w-8 rounded-lg">
+                                    <AvatarFallback className="rounded-lg">
+                                        {user?.full_name
+                                            ? user.full_name
+                                                .split(' ')
+                                                .map((n) => n[0])
+                                                .join('')
+                                                .toUpperCase()
+                                            : 'CN'}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="grid flex-1 text-left text-sm leading-tight">
+                                    <span className="truncate font-semibold">{user?.full_name}</span>
+                                    <span className="truncate text-xs">{user?.email}</span>
+                                </div>
+                                <ChevronsUpDown className="ml-auto size-4" />
+                            </SidebarMenuButton>
+                        </div>
+
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuLabel className="p-0 font-normal">
@@ -88,27 +94,7 @@ export function NavUser() {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuGroup className="bg-white">
-                            <DropdownMenuItem>
-                                <Sparkles />
-                                Upgrade to Pro
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <BadgeCheck />
-                                Account
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <CreditCard />
-                                Billing
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Bell />
-                                Notifications
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
+                        
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
                             <DropdownMenuItem onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
@@ -117,7 +103,14 @@ export function NavUser() {
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                await logout();
+                                router.replace("/staff");
+                            }}
+
+                            className="cursor-pointer gap-2"
+                        >
                             <LogOut />
                             Log out
                         </DropdownMenuItem>

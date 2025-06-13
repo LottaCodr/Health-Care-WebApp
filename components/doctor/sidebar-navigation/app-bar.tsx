@@ -35,11 +35,11 @@ const data = {
     navSecondary: [
         { title: "Support", url: "/doctor/support", icon: MdSupportAgent },
         { title: "Settings", url: "/doctor/settings", icon: FiSettings },
-        { title: "Logout", url: "/doctor/logout", icon: FiLogOut },
+        { title: "Logout", icon: FiLogOut },
     ],
 };
 
-function NavLink({ title, url, Icon, isActive }: { title: string; url: string; Icon: React.ElementType; isActive: boolean }) {
+function NavLink({ title, url, Icon, isActive }: { title: string; url?: string; Icon: React.ElementType; isActive: boolean }) {
     return (
         <a
             href={url}
@@ -119,7 +119,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {/* Secondary navigation (push to bottom) */}
                 <nav aria-label="Secondary Navigation" className="mt-auto flex flex-col gap-1 px-2 pb-4">
                     {navSecondaryWithActive.map(({ title, url, icon, isActive }) => (
-                        <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive} />
+                        <NavLink key={url} url={url} title={title} Icon={icon} isActive={isActive} />
                     ))}
                 </nav>
             </SidebarContent>
