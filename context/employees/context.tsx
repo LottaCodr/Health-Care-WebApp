@@ -26,7 +26,13 @@ export function reducer(state: State, action: Action): State {
         case "SET_EMPLOYEES":
             return { ...state, employees: action.payload }
         case "UPDATE_EMPLOYEE":
-            return { ...state, employees: state.employees.map(e => e.$id == action.payload.$id ? action.payload : e) }
+            if (!action.payload || !action.payload.$id) return state;
+            return {
+                ...state,
+                employees: state.employees.map((e) =>
+                    e.$id === action.payload.$id ? action.payload : e
+                ),
+            };
         case "DELETE_EMPLOYEE":
             return { ...state, employees: state.employees.filter((e) => e.$id !== action.payload) }
         case "ADD_EMPLOYEE":

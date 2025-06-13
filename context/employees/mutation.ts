@@ -7,7 +7,7 @@ export function useStaffMutations() {
     const { dispatch } = useEmployeesContext();
     const queryClient = useQueryClient()
 
-//Update Staff mutation
+    //Update Staff mutation
     const updateMutation = useMutation({
         mutationFn: ({ id, updates }: { id: string; updates: Partial<Staff> }) => updateStaff(id, updates),
 
@@ -50,11 +50,11 @@ export function useStaffMutations() {
             const deleted = prev?.find(e => e.$id === id)
             dispatch({ type: "DELETE_EMPLOYEE", payload: id }
             )
-            return { deleted}
+            return { deleted }
         },
         onError: (err, id, context) => {
             if (context?.deleted) {
-                dispatch({ type: "ADD_EMPLOYEE", payload: context.deleted})
+                dispatch({ type: "ADD_EMPLOYEE", payload: context.deleted })
             }
         },
         onSettled: () => {

@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { account } from "@/lib/appwrite.config";
-import { MyUser } from "@/context/auth-provider";
+import { Models } from "appwrite"; // import Appwrite's User type
 
 export default function ProtectedRedirect({ children }: { children: ReactNode }) {
     const router = useRouter();
@@ -12,20 +12,18 @@ export default function ProtectedRedirect({ children }: { children: ReactNode })
     useEffect(() => {
         const checkSession = async () => {
             try {
-                const user = await account.get();
+                const user: Models.User<Models.Preferences> = await account.get();
 
-                const myUser: MyUser = {
-                    $id: user.$id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.prefs.role,
-                };
-                const role = user?.prefs.role
-                console.log('role', role)
-                console.log('user refs', myUser)
-                // Redirect if on public page
-                if (pathname === "/" || pathname === "/staff") {
-                    switch (myUser.role) {
+                const role = user?.prefs?.role;
+                const full_name = user?.prefs?.full_name;
+
+                console.log("✅ Role:", role);
+                console.log("👤 User prefs:", user.prefs);
+
+                // Redirect based on role if on public route
+                const isPublic = ["/", "/staff"].includes(pathname);
+                if (isPublic) {
+                    switch (role) {
                         case "doctor":
                             router.replace("/doctor/dashboard");
                             break;
@@ -36,10 +34,11 @@ export default function ProtectedRedirect({ children }: { children: ReactNode })
                             router.replace("/pharmacist/dashboard");
                             break;
                         case "lab-tech":
-                            router.replace('/lab-tech/dashboard');
+                            router.replace("/lab-tech/dashboard");
                             break;
                         case "front-desk":
-                            router.replace("/front-desk/dashboard")
+                            router.replace("/front-desk/dashboard");
+                            break;
                         default:
                             router.replace("/staff");
                             break;
@@ -57,6 +56,5 @@ export default function ProtectedRedirect({ children }: { children: ReactNode })
         checkSession();
     }, [pathname, router]);
 
-    // Render children so protected content is shown if not redirected
     return <>{children}</>;
 }

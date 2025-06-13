@@ -47,7 +47,7 @@ export interface Appointment extends Models.Document {
 export interface Staff extends Models.Document {
   staff_id: string;
   role: StaffRole;
-  phone_number: number;
+  phone_number: string;
   department: string;
   email: string;
   full_name: string;

@@ -32,27 +32,12 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useEffect } from "react"
 import { useAuth } from "@/context/auth-provider"
 
 export function NavUser() {
     const { setTheme, theme } = useTheme()
-    const { user, isLoading } = useAuth();
+    const { user } = useAuth();
 
-    useEffect(() => {
-        if (!isLoading && user?.role !== "doctor") {
-            // You can handle unauthorized access here if needed
-        }
-    }, [user, isLoading]);
-
-    if (isLoading) {
-        return (
-            <div className="space-y-2">
-                <Skeleton className="h-16 w-full rounded-md" />
-            </div>
-        );
-    }
 
     return (
         <SidebarMenu>
@@ -65,8 +50,8 @@ export function NavUser() {
                         >
                             <Avatar className="h-8 w-8 rounded-lg">
                                 <AvatarFallback className="rounded-lg">
-                                    {user?.name
-                                        ? user.name
+                                    {user?.full_name
+                                        ? user.full_name
                                             .split(' ')
                                             .map((n) => n[0])
                                             .join('')
@@ -75,7 +60,7 @@ export function NavUser() {
                                 </AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold">{user?.name}</span>
+                                <span className="truncate font-semibold">{user?.full_name}</span>
                                 <span className="truncate text-xs">{user?.email}</span>
                             </div>
                             <ChevronsUpDown className="ml-auto size-4" />
@@ -87,13 +72,13 @@ export function NavUser() {
                                 <Avatar className="h-8 w-8 rounded-lg">
                                     <AvatarImage src={undefined} alt={user?.name} />
                                     <AvatarFallback className="rounded-lg">
-                                        {user?.name
-                                            ? user.name
+                                        {user?.full_name
+                                            ? user.full_name
                                                 .split(' ')
                                                 .map((n) => n[0])
                                                 .join('')
                                                 .toUpperCase()
-                                            : 'CN'}
+                                            : 'NILE'}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">

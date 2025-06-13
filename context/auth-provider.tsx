@@ -1,17 +1,12 @@
 import { getUser } from "@/hooks/use-auth";
-import { StaffRole } from "@/types/appwrite.types";
+import { account, databases } from "@/lib/appwrite.config";
+import { Staff, StaffRole } from "@/types/appwrite.types";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-export interface MyUser {
-    $id: string;
-    name: string;
-    email: string;
-    role: StaffRole;
-    
-}
+
 
 interface AuthContextType {
-    user: MyUser | null;
+    user: Staff | null;
     isAuthenticated: boolean;
     isLoading: boolean;
 }
@@ -19,26 +14,29 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<MyUser | null>(null);
+    const [user, setUser] = useState<Staff | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!
+    const staffCollectionId = process.env.NEXT_PUBLIC_STAFF_COLLECTION_ID!
 
 
     useEffect(() => {
-        getUser()
-            .then((user) => {
-                if (user) {
-                    setUser({
-                        $id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        role: user.role,
-                    });
-                } else {
-                    setUser(null);
-                }
-            })
-            .catch(() => setUser(null))
-            .finally(() => setIsLoading(false));
+        const loadUser = async () => {
+            try {
+                const session = await account.get()
+                const staff = await databases.getDocument<Staff>(
+                    databaseId,
+                    staffCollectionId,
+                    session.$id
+                )
+
+                setUser(staff)
+            } catch (error) {
+                setUser(null)
+            }
+
+        }
+        loadUser()
     }, []);
 
     return (

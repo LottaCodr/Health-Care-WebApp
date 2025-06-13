@@ -14,7 +14,8 @@ export async function updateStaff(id: string, updates: Partial<Staff>) {
 
         return update as Staff
     } catch (error) {
-        throw new Error('Could not update the staff')
+        console.error("Failed to update staff:", error);
+        // throw new Error('Could not update the staff')
     }
 
 }
