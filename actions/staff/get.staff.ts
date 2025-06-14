@@ -1,4 +1,4 @@
-import { databases, NEXT_PUBLIC_DATABASE_ID, NEXT_PUBLIC_STAFF_COLLECTION_ID } from "@/lib/appwrite.config";
+import { databases } from "@/lib/appwrite.config";
 import { Staff } from "@/types/appwrite.types";
 
 export async function getAllStaffs() {
@@ -19,9 +19,6 @@ export async function getAllStaffs() {
         const staffs: Staff[] = res.documents as Staff[]
 
         return staffs;
-
-
-
 
     } catch (error) {
         console.log('failed to get staff:', error)

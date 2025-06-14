@@ -1,7 +1,7 @@
 import { formatDateTime } from '@/app/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Doctors } from '@/constants';
-import { getAppointment } from '@/actions/appointment.action';
+import { getAppointment } from '@/actions/appointments/appointment.action';
 import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'

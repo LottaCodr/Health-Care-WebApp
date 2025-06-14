@@ -1,24 +1,22 @@
 'use server'
 
 import { parseStringify } from "@/app/lib/utils";
-import {
-  APPOINTMENT_COLLECTION_ID,
-  DATABASE_ID,
-  databases,
-
-} from "../lib/appwrite.config";
+import {  databases,} from "../../lib/appwrite.config";
 import { ID, Query, } from "node-appwrite";
 import { Appointment } from "@/types/appwrite.types";
-import { revalidatePath } from "next/cache";
-import { CreateAppointmentParams, UpdateAppointmentParams } from "@/types";
+
+
+const databaseId = process.env.DATABASE_ID!
+const appointmentCollectionId = process.env.APPOINTMENT_COLLECTION_ID!
+
 
 export const createAppointment = async (
   appointment: CreateAppointmentParams
 ) => {
   try {
     const newAppointment = await databases.createDocument(
-      DATABASE_ID!,
-      APPOINTMENT_COLLECTION_ID!,
+      databaseId,
+      appointmentCollectionId,
       ID.unique(),
       appointment
     );
@@ -28,11 +26,18 @@ export const createAppointment = async (
   }
 };
 
+export async function fetchAppointments(): Promise<Appointment[]> {
+  const res = await databases.listDocuments(databaseId, appointmentCollectionId);
+
+  const appointments: Appointment[] = res.documents as Appointment[]
+  return appointments
+}
+
 export const getAppointment = async (appointmentId: string) => {
   try {
     const fetchAppointment = await databases.getDocument(
-      DATABASE_ID!,
-      APPOINTMENT_COLLECTION_ID!,
+      databaseId,
+      appointmentCollectionId,
       appointmentId
     )
 
@@ -45,8 +50,8 @@ export const getAppointment = async (appointmentId: string) => {
 export const getRecentAppointmentList = async () => {
   try {
     const appointments = await databases.listDocuments(
-      DATABASE_ID!,
-      APPOINTMENT_COLLECTION_ID!,
+      databaseId,
+      appointmentCollectionId,
       [Query.orderDesc('$createdAt')]
     )
 
@@ -83,8 +88,8 @@ export const getRecentAppointmentList = async () => {
 export const updateAppointment = async ({ appointmentId, userId, appointment, type }: UpdateAppointmentParams) => {
   try {
     const updateAppointment = await databases.updateDocument(
-      DATABASE_ID!,
-      APPOINTMENT_COLLECTION_ID!,
+      databaseId,
+      appointmentCollectionId,
       appointmentId,
       appointment
     )
@@ -93,12 +98,19 @@ export const updateAppointment = async ({ appointmentId, userId, appointment, ty
       throw new Error('Appointment not found');
     }
 
-    // TODO SMS notification
-
-    revalidatePath('/admin')
+    // revalidatePath('/admin')
 
     parseStringify(updateAppointment);
   } catch (error) {
     console.log(error)
+  }
+}
+
+export async function deleteAppointment(id: string) {
+  try {
+    await databases.deleteDocument(databaseId, appointmentCollectionId, id);
+  } catch (err) {
+    console.error("Delete failed:", err);
+    throw new Error("Unable to delete appointment");
   }
 }

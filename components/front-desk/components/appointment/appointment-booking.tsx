@@ -14,16 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { ColumnDef } from "@tanstack/react-table";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable } from "./table/DataTable";
+import { useRealTimeAppointments } from "@/context/appointments/appointment.reducer";
 
 const appointmentSchema = z.object({
     patientName: z.string().min(1, "Patient name is required"),
@@ -41,26 +35,7 @@ type Appointment = AppointmentForm & {
     status: "Pending" | "Confirmed" | "Completed" | "Cancelled";
 };
 
-const mockAppointments: Appointment[] = [
-    {
-        id: "1",
-        patientName: "John Doe",
-        phone: "08012345678",
-        doctor: "Dr. Emeka",
-        date: "2025-05-24",
-        time: "09:30",
-        status: "Confirmed",
-    },
-    {
-        id: "2",
-        patientName: "Sarah Lee",
-        phone: "08098765432",
-        doctor: "Dr. Lisa",
-        date: "2025-05-24",
-        time: "11:00",
-        status: "Pending",
-    },
-];
+
 
 // Badge component for status with colors
 function StatusBadge({ status }: { status: Appointment["status"] }) {
@@ -175,7 +150,10 @@ export default function AppointmentBookingComponent() {
     const [appointmentToDelete, setAppointmentToDelete] = React.useState<Appointment | null>(null);
 
     // Stateful appointments list
-    const [appointments, setAppointments] = React.useState<Appointment[]>(mockAppointments);
+    const { state, dispatch } = useRealTimeAppointments()
+    const appointments = state.appointments
+    const loading = state.loading;
+
 
     // Submit new appointment
     const onSubmit = (data: AppointmentForm) => {
@@ -184,7 +162,7 @@ export default function AppointmentBookingComponent() {
             id: String(Date.now()),
             status: "Pending",
         };
-        setAppointments((prev) => [newAppointment, ...prev]);
+        dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment })
         toast({
             title: "Appointment Booked",
             description: `${data.patientName} with ${data.doctor} on ${data.date}`,
@@ -195,10 +173,12 @@ export default function AppointmentBookingComponent() {
     // Submit edit appointment
     const onSubmitEdit = (data: AppointmentForm) => {
         if (!selectedAppointment) return;
-        const updatedAppointments = appointments.map((appt) =>
-            appt.id === selectedAppointment.id ? { ...appt, ...data } : appt
-        );
-        setAppointments(updatedAppointments);
+        const updated: Appointment = {
+            ...selectedAppointment,
+            ...data,
+        };
+
+        dispatch({ type: 'UPDATE_APPOINTMENT', payload: updated })
         toast({ title: "Appointment Updated", description: `Updated ${data.patientName}` });
         closeModals();
         resetEdit();
@@ -207,11 +187,9 @@ export default function AppointmentBookingComponent() {
     // Delete confirmed appointment
     const handleDeleteConfirm = () => {
         if (!appointmentToDelete) return;
-        setAppointments((prev) => prev.filter((appt) => appt.id !== appointmentToDelete.id));
-        toast({
-            title: "Appointment Deleted",
-            description: `Appointment for ${appointmentToDelete.patientName} has been deleted.`,
-        });
+        dispatch({ type: 'DELETE_APPOINTMENT', payload: appointmentToDelete })
+        toast({ title: "Appointment Deleted", description: `Updated ${data.patientName}` });
+
         setAppointmentToDelete(null);
         setDeleteModalOpen(false);
     };
