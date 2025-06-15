@@ -1,4 +1,5 @@
 import { Models } from "node-appwrite";
+import { AppointmentStatus } from "./appointments";
 
 export type Gender = "male" | "female" | "other";
 
@@ -34,14 +35,20 @@ export interface Patient extends Models.Document {
 }
 
 export interface Appointment extends Models.Document {
-  patient: Patient;
-  schedule: Date;
-  status: Status;
-  primaryPhysician: string;
-  reason: string;
-  note: string;
-  userId: string;
-  cancellationReason: string | null;
+  id: string;
+  patientId: string;
+  doctor: string;
+  patientName: string;
+  doctorId: string;
+  doctorName: string;
+  date: string; // ISO 8601 date string (e.g. "2025-06-06")
+  time: string; // "10:30 AM" or "14:30"
+  status: AppointmentStatus;
+  createdAt: string; // ISO date
+  updatedAt?: string;
+  notes?: string;
+  durationMinutes?: number; // optional, for calendar slot
+  reason?: string;
 }
 
 export interface Staff extends Models.Document {

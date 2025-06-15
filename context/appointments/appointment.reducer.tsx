@@ -1,6 +1,7 @@
 import React, { useReducer, createContext, useContext, useEffect } from 'react';
 import { Appointment } from '@/types/appointments';
 import { fetchAppointments } from '@/actions/appointments/appointment.action';
+import { useQuery } from '@tanstack/react-query';
 
 type State = {
     appointments: Appointment[]
@@ -45,15 +46,16 @@ export const useRealTimeAppointments = () => useContext(AppointmentContext)
 export const AppointmentProvider = ({ children }: { children: React.ReactNode }) => {
     const [state, dispatch] = useReducer(reducer, initialState)
     const realTimeAppointments = useRealTimeAppointments()
+    const { data, isPending } = useQuery({
+        queryKey: ['appointments'],
+        queryFn: fetchAppointments
+    })
 
     useEffect(() => {
-        dispatch({ type: 'SET_LOADING', payload: true })
-        fetchAppointments().then((data) => {
+        if (data) {
             dispatch({ type: 'SET_APPOINTMENTS', payload: data })
-        }).finally(() => {
-            dispatch({ type: 'SET_LOADING', payload: false })
-        })
-    }, [])
+        }
+    }, [data])
 
     useEffect(() => {
         if (realTimeAppointments) {
