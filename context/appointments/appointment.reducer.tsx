@@ -1,7 +1,9 @@
+
 import React, { useReducer, createContext, useContext, useEffect } from 'react';
-import { Appointment } from '@/types/appointments';
 import { fetchAppointments } from '@/actions/appointments/appointment.action';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
+import { Appointment } from '@/types/appwrite.types';
 
 type State = {
     appointments: Appointment[]
@@ -45,23 +47,50 @@ export const useRealTimeAppointments = () => useContext(AppointmentContext)
 
 export const AppointmentProvider = ({ children }: { children: React.ReactNode }) => {
     const [state, dispatch] = useReducer(reducer, initialState)
-    const realTimeAppointments = useRealTimeAppointments()
-    const { data, isPending } = useQuery({
+
+    const { data, isPending, isError, error } = useQuery({
         queryKey: ['appointments'],
         queryFn: fetchAppointments
     })
 
     useEffect(() => {
-        if (data) {
-            dispatch({ type: 'SET_APPOINTMENTS', payload: data })
-        }
-    }, [data])
+        dispatch({ type: 'SET_LOADING', payload: isPending })
 
-    useEffect(() => {
-        if (realTimeAppointments) {
-            dispatch({ type: "SET_APPOINTMENTS", payload: realTimeAppointments.state.appointments })
+        if (isError) {
+            toast({
+                title: "Error fetching appointments",
+                description: String(error),
+                variant: "destructive",
+            });
         }
-    }, [realTimeAppointments])
+        function normalizeAppointment(a: Appointment): Appointment {
+            return {
+                id: a.$id,
+                patientId: a.userId,
+                doctor: a.primaryPhysician,
+                doctorId: a.doctorId ?? "",
+                doctorName: a.primaryPhysician,
+                patientName: a.patient?.name || "Unknown Patient",
+                date: a.date,
+                time: a.$createdAt,
+                status: a.status,
+                createdAt: a.$createdAt,
+                updatedAt: a.$updatedAt,
+                notes: a.note || "",
+                reason: a.reason || "",
+                durationMinutes: a.durationMinutes ?? undefined, // optional
+            };
+        }
+
+        if (data) {
+            dispatch({ type: 'SET_APPOINTMENTS', payload: data?.map(normalizeAppointment) })
+        }
+
+        console.log('the appointments:', normalizeAppointment)
+        console.log('the loading appointments:', isPending)
+    }, [data, isPending, isError])
+
+
 
     return (
         <AppointmentContext.Provider value={{ state, dispatch }}>

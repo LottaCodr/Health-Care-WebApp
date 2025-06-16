@@ -41,15 +41,17 @@ export interface Appointment extends Models.Document {
   patientName: string;
   doctorId: string;
   doctorName: string;
-  date: string; // ISO 8601 date string (e.g. "2025-06-06")
-  time: string; // "10:30 AM" or "14:30"
+  date: string;
+  time: string;
   status: AppointmentStatus;
-  createdAt: string; // ISO date
+  createdAt: string;
   updatedAt?: string;
   notes?: string;
-  durationMinutes?: number; // optional, for calendar slot
+  durationMinutes?: number;
   reason?: string;
 }
+export type AppointmentForm = Omit<Appointment, '$id' | '$collectionId' | '$databaseId' | '$createdAt' | '$updatedAt' | '$permissions'>;
+
 
 export interface Staff extends Models.Document {
   staff_id: string;

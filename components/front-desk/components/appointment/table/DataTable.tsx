@@ -19,6 +19,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import { useRealTimeAppointments } from "@/context/appointments/appointment.reducer"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -35,6 +36,13 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
+
+  const { state } = useRealTimeAppointments()
+  const isLoading = state.loading;
+
+  console.log("🧪 isLoading:", isLoading);
+  console.log("🧪 appointments.length:", state.appointments.length);
+
 
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
@@ -59,44 +67,35 @@ export function DataTable<TData, TValue>({
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.length ? (
+          {isLoading ? (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="text-center py-10">
+                <div className="flex flex-col items-center gap-2">
+                  <Image src="/assets/icons/spinner.svg" width={24} height={24} alt="Loading" className="animate-spin" />
+                  <span>Loading appointments...</span>
+                </div>              </TableCell>
+            </TableRow>
+          ) : table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                className="hover:bg-gray-50 transition-colors duration-150"
-              >
+              <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className="px-4 py-3 text-sm text-gray-800"
-                  >
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext()
-                    )}
+                  <TableCell key={cell.id} className="px-4 py-3 text-sm text-gray-800">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                className="text-center py-10 text-gray-500"
-              >
+              <TableCell colSpan={columns.length} className="text-center py-10 text-gray-500">
                 <div className="flex flex-col items-center gap-2">
-                  <Image
-                    src="/assets/icons/empty.svg"
-                    width={40}
-                    height={40}
-                    alt="No results"
-                  />
+                  <Image src="/assets/icons/empty.svg" width={40} height={40} alt="No results" />
                   <span>No results found.</span>
                 </div>
               </TableCell>
             </TableRow>
           )}
+
         </TableBody>
       </Table>
 

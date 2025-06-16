@@ -1,6 +1,8 @@
-"use client";
-import { Appointment } from '@/types/appointments';
+'use client';
+
 import React from 'react';
+import Loading from '@/app/useloading';
+import { Appointment } from '@/types/appwrite.types';
 
 interface AppointmentTableProps {
     appointments: Appointment[];
@@ -15,12 +17,13 @@ interface AppointmentTableProps {
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
     timeFormat: '12h' | '24h';
+    loading: boolean;
 }
 
 const formatTime = (time: string, format: '12h' | '24h') => {
     if (format === '24h') {
         const [h, modifier] = time.split(/\s+/);
-        let [hour, minute] = h.split(":");
+        let [hour, minute] = h.split(':');
         hour = String(modifier === 'PM' ? (+hour % 12 + 12) : +hour % 12);
         return `${hour.padStart(2, '0')}:${minute}`;
     }
@@ -39,19 +42,22 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
     page,
     setPage,
     pageSize,
-    total
+    total,
+    loading,
 }) => {
+    const handleSort = (key: 'date' | 'patientName') => {
+        if (sortBy === key) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(key);
+            setSortOrder('asc');
+        }
+    };
+
     const renderSortHeader = (label: string, key: 'date' | 'patientName') => (
         <th
             className="px-4 py-2 text-left cursor-pointer select-none"
-            onClick={() => {
-                if (sortBy === key) {
-                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                } else {
-                    setSortBy(key);
-                    setSortOrder('asc');
-                }
-            }}
+            onClick={() => handleSort(key)}
         >
             {label} {sortBy === key && (sortOrder === 'asc' ? '⬆️' : '⬇️')}
         </th>
@@ -68,22 +74,49 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
                         <th className="px-4 py-2 text-left">Time</th>
                         <th className="px-4 py-2 text-left">Status</th>
                         <th className="px-4 py-2 text-left">Actions</th>
-                    </tr> 
+                    </tr>
                 </thead>
                 <tbody>
-                    {appointments.map((a) => (
-                        <tr key={a.id} className="border-t dark:border-gray-600">
-                            <td className="px-4 py-2">{a.patientName}</td>
-                            <td className="px-4 py-2">{a.doctor}</td>
-                            <td className="px-4 py-2">{a.date}</td>
-                            <td className="px-4 py-2">{formatTime(a.time, timeFormat)}</td>
-                            <td className="px-4 py-2 capitalize">{a.status}</td>
-                            <td className="px-4 py-2 space-x-2">
-                                <button onClick={() => onEdit(a.id)} className="text-blue-600 hover:underline">Edit</button>
-                                <button onClick={() => onDelete(a.id)} className="text-red-600 hover:underline">Delete</button>
+                    {loading ? (
+                        <tr>
+                            <td colSpan={6} className="text-center py-12">
+                                <div className="flex flex-row justify-center items-center gap-3">
+                                    <Loading />
+                                    <p className="text-gray-500 text-sm">Loading appointments...</p>
+                                </div>
                             </td>
                         </tr>
-                    ))}
+                    ) : appointments.length === 0 ? (
+                        <tr>
+                            <td colSpan={6} className="text-center py-12">
+                                <p className="text-gray-500 text-sm">No appointments found.</p>
+                            </td>
+                        </tr>
+                    ) : (
+                        appointments.map((a) => (
+                            <tr key={a.$id} className="border-t dark:border-gray-600">
+                                <td className="px-4 py-2">{a.patientName}</td>
+                                <td className="px-4 py-2">{a.doctorName}</td>
+                                <td className="px-4 py-2">{a.date}</td>
+                                <td className="px-4 py-2">{formatTime(a.time, timeFormat)}</td>
+                                <td className="px-4 py-2 capitalize">{a.status}</td>
+                                <td className="px-4 py-2 space-x-2">
+                                    <button
+                                        onClick={() => onEdit(a.id || a.$id)}
+                                        className="text-blue-600 hover:underline"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(a.id || a.$id)}
+                                        className="text-red-600 hover:underline"
+                                    >
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))
+                    )}
                 </tbody>
             </table>
 

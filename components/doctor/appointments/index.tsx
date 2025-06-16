@@ -5,14 +5,17 @@ import Filters from './filters';
 import AppointmentTable from './table';
 import CalendarView from './calendar-view';
 import AppointmentModal from './modal';
-import { Appointment } from '@/types/appointments';
-import { toast } from 'react-hot-toast';
 import { useRealTimeAppointments } from '@/context/appointments/appointment.reducer';
+import { toast } from '@/hooks/use-toast';
+import { Appointment } from '@/types/appwrite.types';
 
-const AppointmentsComponent = ({ currentDoctor }: { currentDoctor?: string }) => {
+const PAGE_SIZE = 10;
+
+const AppointmentsComponent: React.FC = () => {
     const { state, dispatch } = useRealTimeAppointments();
     const { appointments, loading } = state;
 
+    // Local UI state
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | Appointment['status']>('all');
     const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
@@ -24,74 +27,71 @@ const AppointmentsComponent = ({ currentDoctor }: { currentDoctor?: string }) =>
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<Appointment | null>(null);
 
-    const pageSize = 10;
+    // Reset pagination on filter changes
+    useEffect(() => {
+        setPage(1);
+    }, [search, statusFilter, dateRange, customRange]);
 
-    const filtered = useMemo(() => {
-        interface FilteredAppointment extends Appointment { }
+    // Helpers
+    const filterAppointments = useMemo(() => {
+        return appointments.filter((appt) => {
+            if (!appt || !appt.patientName) return false;
 
-        interface CustomRange {
-            startDate: Date | null;
-            endDate: Date | null;
-        }
+            const matchesSearch = appt.patientName.toLowerCase().includes(search.toLowerCase());
+            const matchesStatus = statusFilter === 'all' || appt.status === statusFilter;
 
-        return appointments.filter((a: FilteredAppointment): boolean => {
-            const matchesSearch: boolean = a.patientName.toLowerCase().includes(search.toLowerCase());
-            const matchesStatus: boolean = statusFilter === 'all' || a.status === statusFilter;
-            const isDoctor: boolean = !currentDoctor || a.doctor === currentDoctor;
-            const matchesDate: boolean = (() => {
-                const date: Date = new Date(a.date);
+            const matchesDate = (() => {
+                const date = new Date(appt.date);
                 if (dateRange === 'today') {
                     return date.toDateString() === new Date().toDateString();
                 }
                 if (dateRange === 'thisWeek') {
-                    const now: Date = new Date();
-                    const start: Date = new Date(now.setDate(now.getDate() - now.getDay()));
-                    const end: Date = new Date(start);
+                    const now = new Date();
+                    const start = new Date(now.setDate(now.getDate() - now.getDay()));
+                    const end = new Date(start);
                     end.setDate(start.getDate() + 6);
                     return date >= start && date <= end;
                 }
                 if (dateRange === 'custom' && customRange.startDate && customRange.endDate) {
-                    return (
-                        date >= customRange.startDate &&
-                        date <= customRange.endDate
-                    );
+                    return date >= customRange.startDate && date <= customRange.endDate;
                 }
                 return true;
             })();
 
-            return matchesSearch && matchesStatus && isDoctor && matchesDate;
+            return matchesSearch && matchesStatus && matchesDate;
         });
-    }, [appointments, search, statusFilter, currentDoctor, dateRange, customRange]);
+    }, [appointments, search, statusFilter, dateRange, customRange]);
 
     const sortedAppointments = useMemo(() => {
-        return [...filtered].sort((a, b) => {
-            const valA = sortBy === 'date' ? new Date(a.date).getTime() : a.patientName.toLowerCase();
-            const valB = sortBy === 'date' ? new Date(b.date).getTime() : b.patientName.toLowerCase();
+        return [...filterAppointments].sort((a, b) => {
+            const aValue = sortBy === 'date' ? new Date(a.date).getTime() : a.patientName.toLowerCase();
+            const bValue = sortBy === 'date' ? new Date(b.date).getTime() : b.patientName.toLowerCase();
 
-            if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
-            if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+            if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [filtered, sortBy, sortOrder]);
+    }, [filterAppointments, sortBy, sortOrder]);
 
-    const paginated = useMemo(() => {
-        const start = (page - 1) * pageSize;
-        return sortedAppointments.slice(start, start + pageSize);
+    const paginatedAppointments = useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE;
+        return sortedAppointments.slice(start, start + PAGE_SIZE);
     }, [sortedAppointments, page]);
 
-    useEffect(() => {
-        setPage(1);
-    }, [search, statusFilter, dateRange, customRange, currentDoctor]);
-
+    // Modal Handlers
     const handleEdit = (id: string) => {
-        const appt: Appointment | null = appointments.find((a: Appointment) => a.id === id) || null;
+        const appt = appointments.find((a) => a.id === id || a.$id === id) || null;
         setEditing(appt);
         setShowModal(true);
     };
 
     const handleDelete = (id: string) => {
         dispatch({ type: 'DELETE_APPOINTMENT', payload: id });
-        toast.success('Appointment deleted');
+        toast({
+            title: 'Appointment deleted',
+            description: 'The appointment has been deleted.',
+            variant: 'destructive',
+        });
     };
 
     const handleCreate = () => {
@@ -99,15 +99,26 @@ const AppointmentsComponent = ({ currentDoctor }: { currentDoctor?: string }) =>
         setShowModal(true);
     };
 
+    console.log('paginatedAppointment:', paginatedAppointments)
+    console.log('raw appointments:', state.appointments)
+
     const handleSave = (updated: Appointment) => {
-        const exists: Appointment | undefined = appointments.find((a: Appointment) => a.id === updated.id);
+        const exists = appointments.find((a) => a.id === updated.id || a.$id === updated.id);
+
         if (exists) {
             dispatch({ type: 'UPDATE_APPOINTMENT', payload: updated });
-            toast.success('Appointment updated');
+            toast({
+                title: 'Appointment updated',
+                description: `Appointment with ${updated.patientName} updated.`,
+            });
         } else {
             dispatch({ type: 'ADD_APPOINTMENT', payload: updated });
-            toast.success('Appointment created');
+            toast({
+                title: 'Appointment created',
+                description: `Appointment with ${updated.patientName} created.`,
+            });
         }
+
         setShowModal(false);
     };
 
@@ -115,7 +126,7 @@ const AppointmentsComponent = ({ currentDoctor }: { currentDoctor?: string }) =>
         <div className="space-y-6 max-w-7xl mx-6 px-4 sm:px-6 py-8">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                    Doctor&#39;s Appointments
+                    Doctor&apos;s Appointments
                 </h2>
                 <div className="flex items-center gap-3">
                     <Filters
@@ -133,7 +144,6 @@ const AppointmentsComponent = ({ currentDoctor }: { currentDoctor?: string }) =>
                     <button
                         onClick={handleCreate}
                         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                        aria-label="Create appointment"
                     >
                         + New
                     </button>
@@ -141,7 +151,7 @@ const AppointmentsComponent = ({ currentDoctor }: { currentDoctor?: string }) =>
             </div>
 
             <AppointmentTable
-                appointments={paginated}
+                appointments={paginatedAppointments}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 timeFormat={timeFormat}
@@ -151,12 +161,15 @@ const AppointmentsComponent = ({ currentDoctor }: { currentDoctor?: string }) =>
                 setSortOrder={setSortOrder}
                 page={page}
                 setPage={setPage}
-                pageSize={pageSize}
+                pageSize={PAGE_SIZE}
                 total={sortedAppointments.length}
-                // loading={loading}
+                loading={loading}
             />
 
-            <CalendarView appointments={filtered} onEdit={(appt) => handleEdit(appt.id)} />
+            <CalendarView
+                appointments={filterAppointments}
+                onEdit={(appt) => handleEdit(appt.id || appt.$id)}
+            />
 
             {showModal && (
                 <AppointmentModal
