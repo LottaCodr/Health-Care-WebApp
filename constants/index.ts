@@ -1,4 +1,4 @@
-export const GenderOptions = ["Male", "Female", "Ignore"];
+export const GenderOptions = ["Male", "Female", "Other"];
 import { Gender } from "@/types";
 import { StaffRole } from "@/types/appwrite.types";
 
