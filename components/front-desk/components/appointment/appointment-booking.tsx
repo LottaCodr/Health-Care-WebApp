@@ -14,6 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { DataTable } from "./table/DataTable";
 import { useRealTimeAppointments } from "@/context/appointments/appointment.reducer";
 import { Appointment, AppointmentStatus } from "@/actions/appointments/types";
+import { useAppointmentMutations } from "@/actions/appointments/mutation";
+import { ViewAppointmentModal } from "./modals/view";
+import { EditAppointmentModal } from "./modals/edit";
+import { DeleteAppointmentModal } from "./modals/delete";
 
 
 
@@ -32,6 +36,7 @@ function StatusBadge({ status }: { status: Appointment["status"] }) {
     const colors: Record<AppointmentStatus, string> = {
         upcoming: "bg-yellow-100 text-yellow-800",
         rescheduled: "bg-blue-100 text-blue-800",
+        scheduled: "bg-purple-100 text-blue-800",
         completed: "bg-green-100 text-green-800",
         cancelled: "bg-red-100 text-red-800",
         "no-show": "bg-red-100 text-red-800",
@@ -46,68 +51,7 @@ function StatusBadge({ status }: { status: Appointment["status"] }) {
     );
 }
 
-function Modal({
-    isOpen,
-    onClose,
-    title,
-    children,
-}: {
-    isOpen: boolean;
-    onClose: () => void;
-    title: string;
-    children: React.ReactNode;
-}) {
 
-    React.useEffect(() => {
-        if (!isOpen) return;
-        function onKeyDown(event: KeyboardEvent) {
-            if (event.key === "Escape") onClose();
-        }
-        document.addEventListener("keydown", onKeyDown);
-
-        const focusedElem = document.activeElement as HTMLElement;
-        const modal = document.getElementById("modal-dialog");
-        modal?.focus();
-
-        return () => {
-            document.removeEventListener("keydown", onKeyDown);
-            focusedElem?.focus();
-        };
-    }, [isOpen, onClose]);
-
-    if (!isOpen) return null;
-
-    return (
-        <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modal-title"
-            tabIndex={-1}
-            id="modal-dialog"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            onClick={onClose}
-        >
-            <div
-                className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <header className="flex items-center justify-between mb-4">
-                    <h3 id="modal-title" className="text-lg font-semibold">
-                        {title}
-                    </h3>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700"
-                        aria-label="Close modal"
-                    >
-                        X
-                    </button>
-                </header>
-                <div>{children}</div>
-            </div>
-        </div>
-    );
-}
 
 export default function AppointmentBookingComponent() {
     const {
@@ -117,13 +61,14 @@ export default function AppointmentBookingComponent() {
         reset,
     } = useForm<AppointmentForm>({ resolver: zodResolver(appointmentSchema) });
 
+    const editForm = useForm<AppointmentForm>({ resolver: zodResolver(appointmentSchema) });
     const {
         register: registerEdit,
         handleSubmit: handleSubmitEdit,
         formState: { errors: errorsEdit, isSubmitting: isSubmittingEdit },
         reset: resetEdit,
         setValue: setValueEdit,
-    } = useForm<AppointmentForm>({ resolver: zodResolver(appointmentSchema) });
+    } = editForm;
 
     const { toast } = useToast();
     const { state, dispatch } = useRealTimeAppointments();
@@ -134,34 +79,36 @@ export default function AppointmentBookingComponent() {
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
     const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
 
-    const onSubmit = (data: Appointment) => {
+    const { createAppointment, updateAppointment, deleteAppointment } = useAppointmentMutations(dispatch);
+
+
+    const onSubmit = async (data: AppointmentForm) => {
         const newAppointment: Appointment = {
-            ...data,
             id: String(Date.now()),
+            patientId: data.patientName,
+            doctor: data.doctor,
+            doctorId: '',
+            doctorName: data.doctor,
+            patientName: data.patientName,
+            date: data.date,
+            time: data.time,
+            notes: data.note,
             status: "upcoming",
             createdAt: new Date().toISOString(),
-            doctorId: data.doctorId,
-            doctorName: data.doctor,
-            patientId: data.patientName,
         };
 
-        dispatch({ type: "ADD_APPOINTMENT", payload: newAppointment });
-        toast({
-            title: "Appointment Booked",
-            description: `${data.patientName} with ${data.doctor} on ${data.date}`,
-        });
+        await createAppointment.mutateAsync(newAppointment)
         reset();
     };
 
-    const onSubmitEdit = (data: AppointmentForm) => {
+    const onSubmitEdit = async (data: Partial<Appointment>) => {
         if (!selectedAppointment) return;
-        const updated: Appointment = {
+        const updated: Partial<Appointment> = {
             ...selectedAppointment,
             ...data,
         };
 
-        dispatch({ type: "UPDATE_APPOINTMENT", payload: updated });
-        toast({ title: "Appointment Updated", description: `Updated ${data.patientName}` });
+        await updateAppointment.mutateAsync(updated)
         closeModals();
         resetEdit();
     };
@@ -255,51 +202,25 @@ export default function AppointmentBookingComponent() {
                 </Card>
             </div>
 
-            {/* View Modal */}
-            <Modal isOpen={viewModalOpen} onClose={closeModals} title="Appointment Details">
-                {selectedAppointment && (
-                    <div className="space-y-2 text-sm">
-                        <p><strong>Patient:</strong> {selectedAppointment.patientName}</p>
-                        <p><strong>Phone:</strong> {selectedAppointment.doctor}</p>
-                        <p><strong>Doctor:</strong> {selectedAppointment.doctor}</p>
-                        <p><strong>Date:</strong> {selectedAppointment.date}</p>
-                        <p><strong>Time:</strong> {selectedAppointment.time}</p>
-                        <p><strong>Status:</strong> <StatusBadge status={selectedAppointment.status} /></p>
-                        {selectedAppointment.notes && <p><strong>Note:</strong> {selectedAppointment.notes}</p>}
-                    </div>
-                )}
-            </Modal>
+            <ViewAppointmentModal
+                open={viewModalOpen}
+                onClose={closeModals}
+                appointment={selectedAppointment}
+            />
 
-            {/* Edit Modal */}
-            <Modal isOpen={editModalOpen} onClose={closeModals} title="Edit Appointment">
-                <form onSubmit={handleSubmitEdit(onSubmitEdit)} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
-                        <Input {...registerEdit("patientName")} placeholder="Patient Name" />
-                        {errorsEdit.patientName && <p className="text-sm text-red-500">{errorsEdit.patientName.message}</p>}
-                        <Input {...registerEdit("phone")} placeholder="Phone" />
-                        {errorsEdit.phone && <p className="text-sm text-red-500">{errorsEdit.phone.message}</p>}
-                        <Input {...registerEdit("doctor")} placeholder="Doctor" />
-                        {errorsEdit.doctor && <p className="text-sm text-red-500">{errorsEdit.doctor.message}</p>}
-                        <Input type="date" {...registerEdit("date")} />
-                        {errorsEdit.date && <p className="text-sm text-red-500">{errorsEdit.date.message}</p>}
-                        <Input type="time" {...registerEdit("time")} />
-                        {errorsEdit.time && <p className="text-sm text-red-500">{errorsEdit.time.message}</p>}
-                        <Textarea {...registerEdit("note")} placeholder="Note" />
-                    </div>
-                    <Button type="submit" disabled={isSubmittingEdit}>
-                        {isSubmittingEdit ? "Updating..." : "Update Appointment"}
-                    </Button>
-                </form>
-            </Modal>
+            <EditAppointmentModal
+                open={editModalOpen}
+                onClose={closeModals}
+                form={editForm}
+                onSubmit={onSubmitEdit}
+                isSubmitting={isSubmittingEdit}
+            />
 
-            {/* Delete Modal */}
-            <Modal isOpen={deleteModalOpen} onClose={closeModals} title="Delete Appointment">
-                <p className="mb-4">Are you sure you want to delete this appointment?</p>
-                <div className="flex gap-2">
-                    <Button variant="destructive" onClick={handleDeleteConfirm}>Confirm Delete</Button>
-                    <Button variant="outline" onClick={closeModals}>Cancel</Button>
-                </div>
-            </Modal>
+            <DeleteAppointmentModal
+                open={deleteModalOpen}
+                onClose={closeModals}
+                onConfirm={handleDeleteConfirm}
+            />
         </section>
     );
 }

@@ -1,4 +1,5 @@
 import { Models } from "appwrite";
+import { Patient } from "../patients/types";
 
 export interface Appointment {
     id: string;
@@ -13,6 +14,7 @@ export interface Appointment {
     createdAt: string;
     updatedAt?: string;
     notes?: string;
+    patient: Patient;
     durationMinutes?: number;
     reason?: string;
 }
@@ -28,6 +30,7 @@ export const normalizeAppointment = (doc: Models.Document): Appointment => ({
     doctor: doc.doctor,
     patientName: doc.patientName,
     doctorId: doc.doctorId,
+    patient: doc.patient,
     doctorName: doc.doctorName,
     date: doc.date,
     time: doc.time,
