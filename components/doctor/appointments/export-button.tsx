@@ -1,5 +1,5 @@
 import React from 'react';
-import { Appointment } from '@/types/appointments';
+import { Appointment } from '@/actions/appointments/types';
 import { exportToCSV, exportToPDF } from '@/utils/export';
 
 interface ExportButtonsProps {

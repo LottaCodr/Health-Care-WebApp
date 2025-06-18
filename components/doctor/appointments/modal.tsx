@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Appointment, } from '@/types/appwrite.types';
-import { AppointmentStatus } from '@/types/appointments';
+import { AppointmentStatus } from '@/actions/appointments/types';
 
 interface AppointmentModalProps {
     isOpen: boolean;

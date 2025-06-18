@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { StatusBadge } from "@/components/custom/status-badge";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { PatientRecord } from "@/types";
@@ -27,8 +26,7 @@ const dummyPatients: PatientRecord[] = [
         dateRegistered: "2024-05-01",
         medicalNote: "Allergic to penicillin",
     },
-    // Add more dummy data or fetch from backend
-];
+    ];
 
 export default function PatientRecordsComponent() {
     const [selectedPatient, setSelectedPatient] = useState<PatientRecord | null>(null);

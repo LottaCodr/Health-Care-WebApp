@@ -7,7 +7,7 @@ import CalendarView from './calendar-view';
 import AppointmentModal from './modal';
 import { useRealTimeAppointments } from '@/context/appointments/appointment.reducer';
 import { toast } from '@/hooks/use-toast';
-import { Appointment } from '@/types/appwrite.types';
+import { Appointment } from '@/actions/appointments/types';
 
 const PAGE_SIZE = 10;
 

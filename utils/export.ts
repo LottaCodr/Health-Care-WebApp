@@ -1,4 +1,4 @@
-import { Appointment } from '@/types/appointments';
+import { Appointment } from '@/actions/appointments/types';
 
 export function exportToCSV(appointments: Appointment[]): void {
     // Implement CSV export logic here

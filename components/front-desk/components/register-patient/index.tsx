@@ -17,12 +17,7 @@ import Image from "next/image";
 
 import { registerPatient } from "@/actions/patient.actions";
 import { PatientFormValidation } from "@/lib/validation";
-import {
-    Doctors,
-    GenderOptions,
-    IdentificationTypes,
-    PatientFormDefaultValues,
-} from "@/constants";
+import { Doctors, GenderOptions, IdentificationTypes, PatientFormDefaultValues } from "@/constants";
 
 import { FormFieldType } from "@/components/forms/PatientForm";
 import { useMutation } from '@tanstack/react-query';
@@ -84,7 +79,7 @@ const RegisterPatientComponent = () => {
             toast({
                 title: 'Error',
                 description: 'Failed to register patient.',
-                variant: 'destructive',
+                variant: 'default',
             });
             console.error(error);
         },

@@ -1,7 +1,7 @@
-"use server";
 
+"use server"
 import { ID, Query } from "node-appwrite";
-import {  storage, BUCKET_ID, databases,  } from "../lib/appwrite.config";
+import { storage, BUCKET_ID, databases, } from "../lib/appwrite.config";
 import { parseStringify } from "@/app/lib/utils";
 import { InputFile } from "node-appwrite/file";
 import { CreateUserParams, RegisterUserParams } from "@/types";

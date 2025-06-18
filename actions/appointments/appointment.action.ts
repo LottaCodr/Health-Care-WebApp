@@ -2,7 +2,7 @@
 import { parseStringify } from "@/app/lib/utils";
 import { databases, } from "../../lib/appwrite.config";
 import { ID, Query, } from "node-appwrite";
-import { Appointment } from "@/types/appwrite.types";
+import { Appointment, normalizeAppointment } from "./types";
 
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!
@@ -11,7 +11,7 @@ const appointmentCollectionId = process.env.NEXT_PUBLIC_APPOINTMENT_COLLECTION_I
 
 
 export const createAppointment = async (
-  appointment: CreateAppointmentParams
+  appointment: Appointment
 ) => {
 
   if (!databaseId || !appointmentCollectionId) {
@@ -31,6 +31,8 @@ export const createAppointment = async (
   }
 };
 
+
+
 export async function fetchAppointments(): Promise<Appointment[]> {
 
   if (!databaseId || !appointmentCollectionId) {
@@ -38,10 +40,11 @@ export async function fetchAppointments(): Promise<Appointment[]> {
   }
 
   try {
-    const res = await databases.listDocuments(databaseId, appointmentCollectionId);
-    console.log('appointments:', res.documents as Appointment[])
+    const res = await databases.listDocuments(databaseId, appointmentCollectionId,
+      [Query.orderDesc('$createdAt')]);
+    console.log('appointments:', res.documents)
 
-    const appointments = res.documents as Appointment[]
+    const appointments = res.documents.map(normalizeAppointment)
 
     return appointments;
 
@@ -63,7 +66,7 @@ export const getAppointment = async (appointmentId: string) => {
       appointmentId
     )
 
-    return parseStringify(fetchAppointment);
+    return normalizeAppointment(fetchAppointment);
   } catch (error) {
     console.log('Failed to fetch the appointment')
   }
@@ -76,68 +79,49 @@ export const getRecentAppointmentList = async () => {
   }
 
   try {
-    const appointments = await databases.listDocuments(
+    const res = await databases.listDocuments(
       databaseId,
       appointmentCollectionId,
       [Query.orderDesc('$createdAt')]
+    );
 
-    )
+    const appointments = res.documents.map(normalizeAppointment);
 
-    const initialCounts = {
-      scheduledCount: 0,
-      pendingCount: 0,
-      cancelledCount: 0,
-    }
+    const counts = appointments.reduce(
+      (acc, a) => {
+        if (a.status === 'upcoming') acc.pendingCount++;
+        else if (a.status === 'scheduled') acc.scheduledCount++;
+        else if (a.status === 'cancelled') acc.cancelledCount++;
+        return acc;
+      },
+      { pendingCount: 0, scheduledCount: 0, cancelledCount: 0 }
+    );
 
-    const counts = (appointments.documents as Appointment[]).reduce((acc, appointment) => {
-
-      if (appointment.status === 'pending' as Appointment['status']) {
-        acc.pendingCount += 1;
-      } else if (appointment.status === 'scheduled' as Appointment['status']) {
-        acc.scheduledCount += 1;
-      } else if (appointment.status === 'cancelled' as Appointment['status']) {
-        acc.cancelledCount += 1;
-      }
-
-      return acc;
-    }, initialCounts);
-    const data = {
-      totalCount: appointments.total,
+    return {
+      totalCount: res.total,
       ...counts,
-      documents: appointments.documents
-    }
-    return parseStringify(data)
+      documents: appointments,
+    };
   } catch (error) {
-    console.log('error')
-
+    console.error('Error fetching appointment list', error);
   }
 }
 
-export const updateAppointment = async ({ appointmentId, userId, appointment, type }: UpdateAppointmentParams) => {
-
-  if (!databaseId || !appointmentCollectionId) {
-    throw new Error('Missing required environment variables: NEXT_PUBLIC_DATABASE_ID or NEXT_PUBLIC_APPOINTMENT_COLLECTION_ID');
-  }
-
+export const updateAppointment = async (appointmentId: string, updates: Partial<Appointment>) => {
   try {
-    const updateAppointment = await databases.updateDocument(
+    const updated = await databases.updateDocument(
       databaseId,
       appointmentCollectionId,
       appointmentId,
-      appointment
-    )
+      updates
+    );
 
-    if (!updateAppointment) {
-      throw new Error('Appointment not found');
-    }
-
-    // revalidatePath('/admin')
-
-    parseStringify(updateAppointment);
+    return normalizeAppointment(updated);
   } catch (error) {
-    console.log(error)
+    console.error("Update failed:", error);
+    throw error;
   }
-}
+};
 
 export async function deleteAppointment(id: string) {
   if (!databaseId || !appointmentCollectionId) {

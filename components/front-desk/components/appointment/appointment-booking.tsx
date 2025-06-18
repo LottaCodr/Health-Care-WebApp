@@ -1,15 +1,10 @@
 "use client";
 
-import * as React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -18,7 +13,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable } from "./table/DataTable";
 import { useRealTimeAppointments } from "@/context/appointments/appointment.reducer";
-import { Appointment, AppointmentStatus } from "@/types/appointments";
+import { Appointment, AppointmentStatus } from "@/actions/appointments/types";
+
 
 
 const appointmentSchema = z.object({
@@ -132,19 +128,19 @@ export default function AppointmentBookingComponent() {
     const { toast } = useToast();
     const { state, dispatch } = useRealTimeAppointments();
 
-    const [viewModalOpen, setViewModalOpen] = React.useState(false);
-    const [editModalOpen, setEditModalOpen] = React.useState(false);
-    const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
-    const [selectedAppointment, setSelectedAppointment] = React.useState<Appointment | null>(null);
-    const [appointmentToDelete, setAppointmentToDelete] = React.useState<Appointment | null>(null);
+    const [viewModalOpen, setViewModalOpen] = useState(false);
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+    const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
 
-    const onSubmit = (data: AppointmentForm) => {
+    const onSubmit = (data: Appointment) => {
         const newAppointment: Appointment = {
             ...data,
             id: String(Date.now()),
             status: "upcoming",
             createdAt: new Date().toISOString(),
-            doctorId: "doc-1",
+            doctorId: data.doctorId,
             doctorName: data.doctor,
             patientId: data.patientName,
         };
