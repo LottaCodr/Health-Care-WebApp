@@ -3,24 +3,22 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useRouter } from "next/navigation";
 
 import { Form, FormControl } from "@/components/ui/form";
 import CustomFormField from "@/components/CustomFormField";
 import SubmitButton from "@/components/ui/SubmitButton";
-import FileUploader from "@/components/FileUploader";
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SelectItem } from "@/components/ui/select";
 import Image from "next/image";
 
-import { registerPatient } from "@/actions/patient.actions";
+// import { registerPatient } from "@/actions/patient.actions";
 import { PatientFormValidation } from "@/lib/validation";
 import { Doctors, GenderOptions, IdentificationTypes, PatientFormDefaultValues } from "@/constants";
 
 import { FormFieldType } from "@/components/forms/PatientForm";
-import { useMutation } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
+import { usePatientMutations } from "@/actions/patients/mutation";
+import { usePatientContext } from "@/context/patients/patient-context";
 
 
 const SectionTitle = ({ title }: { title: string }) => (
@@ -31,7 +29,6 @@ const SectionTitle = ({ title }: { title: string }) => (
 );
 
 const RegisterPatientComponent = () => {
-    const router = useRouter();
 
     const form = useForm<z.infer<typeof PatientFormValidation>>({
         resolver: zodResolver(PatientFormValidation),
@@ -41,53 +38,23 @@ const RegisterPatientComponent = () => {
         },
     });
 
-    const { toast } = useToast();
+    const { dispatch } = usePatientContext()
+    const { registerPatient } = usePatientMutations(dispatch)
 
-    const mutation = useMutation({
-        mutationFn: async (values: z.infer<typeof PatientFormValidation>) => {
-            let formData;
 
-            if (
-                Array.isArray(values.identificationDocument) &&
-                values.identificationDocument.length > 0
-            ) {
-                const file = values.identificationDocument[0];
-                formData = new FormData();
-                formData.append('blobFile', new Blob([file], { type: file.type }));
-                formData.append('fileName', file.name);
-            }
 
-            const patientData = {
+
+    const onSubmit = async (values: z.infer<typeof PatientFormValidation>) => {
+        try {
+            await registerPatient.mutateAsync({
                 ...values,
                 birthDate: new Date(values.birthDate),
-                identificationDocument: formData,
-            };
-
-            return await registerPatient(patientData);
-        },
-        onSuccess: (data) => {
-            toast({
-                title: 'Success',
-                description: 'Patient registered successfully!',
+                identificationDocument: undefined, // add FormData logic when needed
             });
+        } catch (error) {
+            console.error("Failed to register patient:", error);
+        }
 
-            // Redirect or reset form
-            // router.push(`/patients/${data.$id}/new-appointment`);
-        },
-        onError: (error) => {
-            toast({
-                title: 'Error',
-                description: 'Failed to register patient.',
-                variant: 'default',
-            });
-            console.error(error);
-        },
-    });
-
-
-
-    const onSubmit = (values: z.infer<typeof PatientFormValidation>) => {
-        mutation.mutate(values);
     }
 
     return (
@@ -108,7 +75,7 @@ const RegisterPatientComponent = () => {
                             control={form.control}
                             name="name"
                             label="Full Name"
-                            placeholder="Lotanna Chuka"
+                            placeholder="patient name goes here"
                             iconSrc="/assets/icons/user.svg"
                             iconAlt="user"
                         />
@@ -119,7 +86,7 @@ const RegisterPatientComponent = () => {
                                 control={form.control}
                                 name="email"
                                 label="Email"
-                                placeholder="lotanna@gmail.com"
+                                placeholder="patient@email.com"
                                 iconSrc="/assets/icons/email.svg"
                                 iconAlt="email"
                             />
@@ -305,7 +272,9 @@ const RegisterPatientComponent = () => {
                             placeholder="e.g. A123456789"
                         />
 
-                        <CustomFormField
+
+                        //TODO: implement this when needed
+                        {/* <CustomFormField
                             fieldType={FormFieldType.SKELETON}
                             control={form.control}
                             name="identificationDocument"
@@ -315,7 +284,7 @@ const RegisterPatientComponent = () => {
                                     <FileUploader files={field.value} onChange={field.onChange} />
                                 </FormControl>
                             )}
-                        />
+                        /> */}
 
                         <CustomFormField
                             fieldType={FormFieldType.CHECKBOX}
@@ -338,7 +307,7 @@ const RegisterPatientComponent = () => {
                     </section>
 
                     <div className="flex justify-end">
-                        <SubmitButton isLoading={mutation.isPending}>Submit & Continue</SubmitButton>
+                        <SubmitButton isLoading={registerPatient.isPending}>Submit & Continue</SubmitButton>
                     </div>
                 </form>
             </Form>

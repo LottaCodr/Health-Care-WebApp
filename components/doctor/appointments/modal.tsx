@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Appointment, } from '@/types/appwrite.types';
-import { AppointmentStatus } from '@/actions/appointments/types';
+import { Appointment, AppointmentStatus } from '@/actions/appointments/types';
 
 interface AppointmentModalProps {
     isOpen: boolean;
@@ -13,22 +12,16 @@ interface AppointmentModalProps {
 }
 
 const defaultAppointment = (): Appointment => ({
-    $id: uuidv4(), // Required by Appwrite type
-    $collectionId: '',
-    $databaseId: '',
-    $createdAt: new Date().toISOString(),
-    $updatedAt: '',
-    $permissions: [],
 
     id: uuidv4(),
-    patientId: '',
+    patientId: uuidv4(),
     doctor: '',
     patientName: '',
-    doctorId: '',
+    doctorId: uuidv4(),
     doctorName: '',
     date: '',
     time: '',
-    status: 'upcoming',
+    status: 'pending',
     createdAt: new Date().toISOString(),
 });
 

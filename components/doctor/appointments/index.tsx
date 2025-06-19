@@ -80,7 +80,7 @@ const AppointmentsComponent: React.FC = () => {
 
     // Modal Handlers
     const handleEdit = (id: string) => {
-        const appt = appointments.find((a) => a.id === id || a.$id === id) || null;
+        const appt = appointments.find((a) => a.id === id || a.id === id) || null;
         setEditing(appt);
         setShowModal(true);
     };
@@ -103,7 +103,7 @@ const AppointmentsComponent: React.FC = () => {
     console.log('raw appointments:', state.appointments)
 
     const handleSave = (updated: Appointment) => {
-        const exists = appointments.find((a) => a.id === updated.id || a.$id === updated.id);
+        const exists = appointments.find((a) => a.id === updated.id || a.id === updated.id);
 
         if (exists) {
             dispatch({ type: 'UPDATE_APPOINTMENT', payload: updated });

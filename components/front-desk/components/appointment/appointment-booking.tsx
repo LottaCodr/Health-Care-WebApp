@@ -40,7 +40,6 @@ export default function AppointmentBookingComponent() {
     });
 
 
-    const { toast } = useToast();
     const { state, dispatch } = useRealTimeAppointments();
     const { createAppointment, updateAppointment, deleteAppointment } = useAppointmentMutations(dispatch);
 
@@ -77,6 +76,8 @@ export default function AppointmentBookingComponent() {
         await createAppointment.mutateAsync(newAppointment);
         form.reset();
     };
+
+    
 
     const onSubmitEdit = async (data: Partial<Appointment>) => {
         if (!selectedAppointment) return;

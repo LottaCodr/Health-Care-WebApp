@@ -7,11 +7,9 @@ import { usePathname } from "next/navigation";
 import { MdDashboard, MdEventNote, MdSupportAgent } from "react-icons/md";
 import { FiSettings, FiLogOut } from "react-icons/fi";
 import { FaUserPlus, FaUserClock } from "react-icons/fa";
-import { BiBarChartAlt2 } from "react-icons/bi";
-import { AiOutlineFileAdd } from "react-icons/ai";
+import { useAuth } from "@/context/auth-provider";
 import { BsPeople } from "react-icons/bs";
 
-// Sidebar components
 import {
     Sidebar,
     SidebarContent,
@@ -23,18 +21,18 @@ import {
 } from "@/components/ui/sidebar";
 import { FrontDeskNavUser } from "./nav-user";
 
-// 🔐 Assume this comes from auth context or zustand
 const getUserRole = () => "receptionist";
+const { user } = useAuth();
 
-// 🔢 Dummy badge functions (replace with Zustand/React Query data)
 const getAppointmentsBadge = () => 3;
 const getWaitingPatientsBadge = () => 5;
 
-// 🧠 Define nav items with RBAC and optional badges
+
+
 const data = {
     user: {
-        name: "Codehagen",
-        email: "m@example.com",
+        name: user?.full_name,
+        email: user?.email,
         avatar: "/avatars/shadcn.jpg",
     },
     navMain: [
@@ -64,12 +62,12 @@ const data = {
             roles: ["receptionist"],
             badge: getWaitingPatientsBadge,
         },
-        {
-            title: "Patient Records",
-            url: "/front-desk/patient-records",
-            icon: AiOutlineFileAdd,
-            roles: ["receptionist", "nurse"],
-        },
+        // {
+        //     title: "Patient Records",
+        //     url: "/front-desk/patient-records",
+        //     icon: AiOutlineFileAdd,
+        //     roles: ["receptionist", "nurse"],
+        // },
         {
             title: "Visitors & Walk-ins",
             url: "/front-desk/visitors",
@@ -92,18 +90,7 @@ const data = {
 
 // 🔗 Reusable nav link
 function NavLink({
-    title,
-    url,
-    Icon,
-    isActive,
-    badge,
-}: {
-    title: string;
-    url: string;
-    Icon: React.ElementType;
-    isActive: boolean;
-    badge?: number;
-}) {
+    title, url, Icon, isActive, badge, }: { title: string; url: string; Icon: React.ElementType; isActive: boolean; badge?: number; }) {
     return (
         <a
             href={url}

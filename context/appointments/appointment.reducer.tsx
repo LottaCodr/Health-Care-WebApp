@@ -68,11 +68,11 @@ export const AppointmentProvider = ({ children }: { children: React.ReactNode })
         function normalizeAppointment(a: Appointment): Appointment {
             return {
                 id: a.id,
-                patientId: a.patient.$id,
-                doctor: a.patient.primaryPhysician,
-                doctorId: a.patient.$id ?? "",
-                doctorName: a.patient.primaryPhysician,
-                patientName: a.patient.name || "Unknown Patient",
+                patientId: a.patient?.$id || '',
+                doctor: a.patient?.primaryPhysician || '',
+                doctorId: a.patient?.$id ?? "",
+                doctorName: a.patient?.primaryPhysician || '',
+                patientName: a.patient?.name || "Unknown Patient",
                 patient: a.patient,
                 date: a.createdAt,
                 time: a.createdAt,

@@ -13,7 +13,6 @@ const Patients = async ({ params: { userId } }: SearchParamProps) => {
 
     return (
         <RegisterPatientComponent />
-        // <PatientOnboarding />
     )
 }
 

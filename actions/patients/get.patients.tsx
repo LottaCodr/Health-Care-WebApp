@@ -6,7 +6,7 @@ import { Query } from "appwrite";
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
 
-export async function getAllPatients() {
+export async function getAllPatients(): Promise<Patient[]> {
     try {
         const res = await databases.listDocuments(
             databaseId,
@@ -15,11 +15,10 @@ export async function getAllPatients() {
 
         const patients: Patient[] = res.documents as Patient[];
 
-        console.log(res)
-        return { data: patients };
+        return patients;
     } catch (error) {
-        console.error("Error fetchin patients:", error)
-        return { data: [] }
+        console.error("Error fetching patients:", error);
+        return [];
     }
 }
 

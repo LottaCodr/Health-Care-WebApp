@@ -1,15 +1,9 @@
+import { Staff } from "@/actions/staff/types";
 
-import { Staff } from "@/types/appwrite.types";
 
-export type PatientStatus = 'admitted' | 'discharged' | 'under observation' | 'no status';
+export type PatientStatus = 'admitted' | 'discharged' | 'under-observation' | 'no-status';
 
 export interface Patient {
-    $id: string;
-    $createdAt: string;
-    $updatedAt: string;
-    $permissions: string[];
-    $databaseId: string;
-    $collectionId: string;
 
     name: string;
     email: string;
@@ -53,7 +47,7 @@ export interface SortConfig {
 
 
 export interface PatientState {
-    patient: Patient | null;
+    patient: Patient[];
     doctorId?: string;
     notes: string;
     status: string;
@@ -64,7 +58,10 @@ export interface PatientState {
 }
 
 export type PatientAction =
-    | { type: "SET_PATIENT"; payload: Patient }
+    | { type: "SET_PATIENT"; payload: Patient[] }
+    | { type: "ADD_PATIENT"; payload: Patient }
+    | { type: "UPDATE_PATIENT"; payload: Patient }
+    | { type: "DELETE_PATIENT"; payload: string }
     | { type: "SET_ASSIGNED_STAFF"; payload: Staff }
     | { type: "SET_ASSIGNED_DOCTOR"; payload: string }
     | { type: "UPDATE_NOTES"; payload: string }

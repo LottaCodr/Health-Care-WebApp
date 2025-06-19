@@ -22,7 +22,7 @@ export function ViewAppointmentModal({ open, onClose, appointment }: ViewModalPr
                 </DialogHeader>
                 <div className="space-y-2 text-sm">
                     <p><strong>Patient:</strong> {appointment.patientName}</p>
-                    <p><strong>Phone:</strong> {appointment.patient.phone}</p>
+                    <p><strong>Phone:</strong> {appointment.patient?.phone}</p>
                     <p><strong>Doctor:</strong> {appointment.doctor}</p>
                     <p><strong>Date:</strong> {formatDate(appointment.date)}</p>
                     <p><strong>Time:</strong> {formatTime(appointment.time)}</p>

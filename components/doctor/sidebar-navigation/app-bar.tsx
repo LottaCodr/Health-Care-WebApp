@@ -7,8 +7,7 @@ import { usePathname } from "next/navigation";
 import { MdDashboard, MdEventNote, MdSupportAgent } from "react-icons/md";
 import { FaUserInjured, FaUsers } from "react-icons/fa";
 import { FiRepeat, FiSettings, FiLogOut } from "react-icons/fi";
-import { AiOutlineFileText } from "react-icons/ai";
-import { BiBarChartAlt2 } from "react-icons/bi";
+
 
 import { NavUser } from "@/components/doctor/sidebar-navigation/nav-user";
 import {
