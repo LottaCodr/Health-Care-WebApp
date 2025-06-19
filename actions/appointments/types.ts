@@ -14,12 +14,12 @@ export interface Appointment {
     createdAt: string;
     updatedAt?: string;
     notes?: string;
-    patient: Patient;
+    patient?: Patient;
     durationMinutes?: number;
     reason?: string;
 }
 
-export type AppointmentStatus = 'upcoming' | 'completed' | 'cancelled' | 'rescheduled' | 'scheduled' | 'no-show';
+export type AppointmentStatus = 'pending' | 'completed' | 'cancelled' | 'rescheduled' | 'scheduled' | 'no-show';
 
 export type AppointmentForm = Omit<Appointment, '$id' | '$collectionId' | '$databaseId' | '$createdAt' | '$updatedAt' | '$permissions'>;
 

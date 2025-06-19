@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Appointment } from "@/actions/appointments/types"
 import StatusBadge from "@/components/StatusBadge"
+import { formatDate, formatTime } from "@/utils/export"
 
 interface ViewModalProps {
     open: boolean
@@ -21,11 +22,11 @@ export function ViewAppointmentModal({ open, onClose, appointment }: ViewModalPr
                 </DialogHeader>
                 <div className="space-y-2 text-sm">
                     <p><strong>Patient:</strong> {appointment.patientName}</p>
-                    <p><strong>Phone:</strong> {appointment.doctor}</p>
+                    <p><strong>Phone:</strong> {appointment.patient.phone}</p>
                     <p><strong>Doctor:</strong> {appointment.doctor}</p>
-                    <p><strong>Date:</strong> {appointment.date}</p>
-                    <p><strong>Time:</strong> {appointment.time}</p>
-                    <p><strong>Status:</strong> <StatusBadge status={appointment.status} /></p>
+                    <p><strong>Date:</strong> {formatDate(appointment.date)}</p>
+                    <p><strong>Time:</strong> {formatTime(appointment.time)}</p>
+                    <p className="flex gap-2"><strong>Status:</strong> <StatusBadge status={appointment.status} /></p>
                     {appointment.notes && <p><strong>Note:</strong> {appointment.notes}</p>}
                 </div>
             </DialogContent>
