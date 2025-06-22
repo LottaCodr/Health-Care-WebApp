@@ -1,9 +1,13 @@
+"use client"
+
 import React from 'react'
 import { useAuth } from "@/context/auth-provider";
 
 
 const HeaderComponent = () => {
     const { user } = useAuth();
+
+
 
     return (
         <header className="flex items-center justify-between">

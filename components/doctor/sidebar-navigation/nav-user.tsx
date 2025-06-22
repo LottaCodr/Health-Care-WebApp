@@ -1,15 +1,6 @@
 "use client"
 
-import {
-    BadgeCheck,
-    Bell,
-    ChevronsUpDown,
-    CreditCard,
-    LogOut,
-    Sparkles,
-    Moon,
-    Sun,
-} from "lucide-react"
+import { ChevronsUpDown, LogOut, Moon, Sun, } from "lucide-react"
 
 import {
     Avatar,
@@ -57,7 +48,7 @@ export function NavUser() {
                                         {user?.full_name
                                             ? user.full_name
                                                 .split(' ')
-                                                .map((n) => n[0])
+                                                .map((n: any) => n[0])
                                                 .join('')
                                                 .toUpperCase()
                                             : 'CN'}
@@ -81,7 +72,7 @@ export function NavUser() {
                                         {user?.full_name
                                             ? user.full_name
                                                 .split(' ')
-                                                .map((n) => n[0])
+                                                .map((n: any) => n[0])
                                                 .join('')
                                                 .toUpperCase()
                                             : 'NILE'}
@@ -94,7 +85,7 @@ export function NavUser() {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        
+
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
                             <DropdownMenuItem onClick={() => setTheme(theme === "light" ? "dark" : "light")}>

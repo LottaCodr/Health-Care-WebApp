@@ -75,23 +75,23 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
 
     return (
-        <section className="p-6">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">Patients</h2>
-                <div className="w-full max-w-md">
+        <section className="max-w-6xl mx-6 p-6 space-y-6">
+            <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <h2 className="text-2xl font-bold text-foreground">Patients Directory</h2>
+                <div className="w-full md:w-1/2">
                     <SearchInput value={search} onChange={setSearch} />
                 </div>
-            </div>
+            </header>
 
-            <div className="overflow-x-auto border border-gray-200 rounded-lg min-h-[300px]">
+            <div className="overflow-x-auto rounded-xl border border-border bg-background shadow-sm">
                 {isPending ? (
                     <div className="flex justify-center items-center h-40">
-                        <Spinner size="lg" /> {/* replace with your spinner component */}
+                        <Spinner size="lg" />
                     </div>
                 ) : filteredPatients.length === 0 ? (
-                    <div className="text-center p-6 text-gray-500">No patients found.</div>
+                    <div className="text-center p-6 text-muted-foreground">No patients found.</div>
                 ) : (
-                    <table className="min-w-full divide-y divide-gray-200">
+                    <table className="min-w-full divide-y divide-border text-sm">
                         <PatientsTableHeader
                             sortConfig={sortConfig}
                             onSortChange={handleSortChange}
@@ -102,17 +102,32 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
             </div>
 
             {filteredPatients.length > 0 && (
-                <div className="mt-4 flex justify-end gap-2">
-                    <Button onClick={handlePrev} disabled={currentPage === 1}>
-                        Previous
-                    </Button>
-                    <span className="px-4 py-2 text-sm">
-                        Page {currentPage} of {totalPages}
+                <footer className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
+                    <span className="text-muted-foreground text-sm">
+                        Showing {paginatedPatients.length} of {filteredPatients.length} patients
                     </span>
-                    <Button onClick={handleNext} disabled={currentPage === totalPages}>
-                        Next
-                    </Button>
-                </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            onClick={handlePrev}
+                            disabled={currentPage === 1}
+                            variant="outline"
+                            className="rounded-xl"
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                            onClick={handleNext}
+                            disabled={currentPage === totalPages}
+                            variant="outline"
+                            className="rounded-xl"
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </footer>
             )}
         </section>
     );

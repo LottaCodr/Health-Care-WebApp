@@ -99,8 +99,7 @@ const AppointmentsComponent: React.FC = () => {
         setShowModal(true);
     };
 
-    console.log('paginatedAppointment:', paginatedAppointments)
-    console.log('raw appointments:', state.appointments)
+
 
     const handleSave = (updated: Appointment) => {
         const exists = appointments.find((a) => a.id === updated.id || a.id === updated.id);
@@ -177,6 +176,8 @@ const AppointmentsComponent: React.FC = () => {
                     initialData={editing}
                     onClose={() => setShowModal(false)}
                     onSave={handleSave}
+                    existingAppointments={filterAppointments}
+
                 />
             )}
         </div>

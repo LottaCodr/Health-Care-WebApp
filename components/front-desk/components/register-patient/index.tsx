@@ -1,25 +1,19 @@
-'use client';
+"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
 import { Form, FormControl } from "@/components/ui/form";
 import CustomFormField from "@/components/CustomFormField";
 import SubmitButton from "@/components/ui/SubmitButton";
-
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SelectItem } from "@/components/ui/select";
 import Image from "next/image";
-
-// import { registerPatient } from "@/actions/patient.actions";
 import { PatientFormValidation } from "@/lib/validation";
 import { Doctors, GenderOptions, IdentificationTypes, PatientFormDefaultValues } from "@/constants";
-
 import { FormFieldType } from "@/components/forms/PatientForm";
 import { usePatientMutations } from "@/actions/patients/mutation";
 import { usePatientContext } from "@/context/patients/patient-context";
-
 
 const SectionTitle = ({ title }: { title: string }) => (
     <div className="mb-6">
@@ -29,33 +23,25 @@ const SectionTitle = ({ title }: { title: string }) => (
 );
 
 const RegisterPatientComponent = () => {
-
     const form = useForm<z.infer<typeof PatientFormValidation>>({
         resolver: zodResolver(PatientFormValidation),
-        defaultValues: {
-            ...PatientFormDefaultValues,
-
-        },
+        defaultValues: { ...PatientFormDefaultValues },
     });
 
-    const { dispatch } = usePatientContext()
-    const { registerPatient } = usePatientMutations(dispatch)
-
-
-
+    const { dispatch } = usePatientContext();
+    const { registerPatient } = usePatientMutations(dispatch);
 
     const onSubmit = async (values: z.infer<typeof PatientFormValidation>) => {
         try {
             await registerPatient.mutateAsync({
                 ...values,
                 birthDate: new Date(values.birthDate),
-                identificationDocument: undefined, // add FormData logic when needed
+                identificationDocument: undefined, // Add file logic if needed later
             });
         } catch (error) {
             console.error("Failed to register patient:", error);
         }
-
-    }
+    };
 
     return (
         <div className="container max-w-5xl mx-auto px-4 py-8">
@@ -66,244 +52,83 @@ const RegisterPatientComponent = () => {
                         <p className="text-gray-600 dark:text-gray-300">Please complete the form to register.</p>
                     </div>
 
-                    {/* Personal Information */}
+                    {/* Personal Info */}
                     <section className="space-y-6">
                         <SectionTitle title="Personal Information" />
-
-                        <CustomFormField
-                            fieldType={FormFieldType.INPUT}
-                            control={form.control}
-                            name="name"
-                            label="Full Name"
-                            placeholder="patient name goes here"
-                            iconSrc="/assets/icons/user.svg"
-                            iconAlt="user"
-                        />
-
+                        <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="name" label="Full Name" placeholder="patient name goes here" iconSrc="/assets/icons/user.svg" iconAlt="user" />
                         <div className="grid md:grid-cols-2 gap-6">
-                            <CustomFormField
-                                fieldType={FormFieldType.INPUT}
-                                control={form.control}
-                                name="email"
-                                label="Email"
-                                placeholder="patient@email.com"
-                                iconSrc="/assets/icons/email.svg"
-                                iconAlt="email"
-                            />
-                            <CustomFormField
-                                fieldType={FormFieldType.PHONE_INPUT}
-                                control={form.control}
-                                name="phone"
-                                label="Phone Number"
-                                placeholder="+234..."
-                                iconAlt="phone"
-                            />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="email" label="Email" placeholder="patient@email.com" iconSrc="/assets/icons/email.svg" iconAlt="email" />
+                            <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="phone" label="Phone Number" placeholder="+234..." iconAlt="phone" />
                         </div>
-
                         <div className="grid md:grid-cols-2 gap-6">
-                            <CustomFormField
-                                fieldType={FormFieldType.DATE_PICKER}
-                                control={form.control}
-                                name="birthDate"
-                                label="Date of Birth"
-                            />
-
-                            <CustomFormField
-                                fieldType={FormFieldType.SKELETON}
-                                control={form.control}
-                                name="gender"
-                                label="Gender"
-                                renderSkeleton={(field) => (
-                                    <FormControl>
-                                        <RadioGroup
-                                            className="flex gap-6 h-10 items-center"
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                        >
-                                            {GenderOptions.map((gender) => (
-                                                <div key={gender} className="flex items-center gap-2">
-                                                    <RadioGroupItem value={gender} id={gender} />
-                                                    <label htmlFor={gender} className="text-gray-700 dark:text-gray-300">{gender}</label>
-                                                </div>
-                                            ))}
-                                        </RadioGroup>
-                                    </FormControl>
-                                )}
-                            />
+                            <CustomFormField fieldType={FormFieldType.DATE_PICKER} control={form.control} name="birthDate" label="Date of Birth" />
+                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="gender" label="Gender" renderSkeleton={(field) => (
+                                <FormControl>
+                                    <RadioGroup className="flex gap-6 h-10 items-center" onValueChange={field.onChange} defaultValue={field.value}>
+                                        {GenderOptions.map((gender) => (
+                                            <div key={gender} className="flex items-center gap-2">
+                                                <RadioGroupItem value={gender} id={gender} />
+                                                <label htmlFor={gender} className="text-gray-700 dark:text-gray-300">{gender}</label>
+                                            </div>
+                                        ))}
+                                    </RadioGroup>
+                                </FormControl>
+                            )} />
                         </div>
-
                         <div className="grid md:grid-cols-2 gap-6">
-                            <CustomFormField
-                                fieldType={FormFieldType.INPUT}
-                                control={form.control}
-                                name="address"
-                                label="Address"
-                                placeholder="Efab Estate, Life Camp"
-                            />
-                            <CustomFormField
-                                fieldType={FormFieldType.INPUT}
-                                control={form.control}
-                                name="occupation"
-                                label="Occupation"
-                                placeholder="Software Engineer"
-                            />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="address" label="Address" placeholder="Efab Estate, Life Camp" />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="occupation" label="Occupation" placeholder="Software Engineer" />
                         </div>
                     </section>
 
                     {/* Emergency Contact */}
                     <section className="space-y-6">
                         <SectionTitle title="Emergency Contact" />
-
                         <div className="grid md:grid-cols-2 gap-6">
-                            <CustomFormField
-                                fieldType={FormFieldType.INPUT}
-                                control={form.control}
-                                name="emergencyContactName"
-                                label="Contact Name"
-                            />
-                            <CustomFormField
-                                fieldType={FormFieldType.PHONE_INPUT}
-                                control={form.control}
-                                name="emergencyContactNumber"
-                                label="Contact Phone"
-                            />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactName" label="Contact Name" />
+                            <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="emergencyContactNumber" label="Contact Phone" />
                         </div>
                     </section>
 
                     {/* Medical Info */}
                     <section className="space-y-6">
                         <SectionTitle title="Medical Information" />
-
-                        <CustomFormField
-                            fieldType={FormFieldType.SELECT}
-                            control={form.control}
-                            name="primaryPhysician"
-                            label="Primary Physician"
-                            placeholder="Select a physician"
-
-                        >
+                        <CustomFormField fieldType={FormFieldType.SELECT} control={form.control} name="primaryPhysician" label="Primary Physician" placeholder="Select a physician">
                             {Doctors.map((doctor) => (
                                 <SelectItem className="bg-white" key={doctor.name} value={doctor.name}>
-                                    <div className="flex bg-white w-full items-center gap-2">
-                                        <Image
-                                            src={doctor.image}
-                                            width={32}
-                                            height={32}
-                                            alt={doctor.name}
-                                            className="rounded-full border"
-                                        />
+                                    <div className="flex items-center gap-2">
+                                        <Image src={doctor.image} width={32} height={32} alt={doctor.name} className="rounded-full border" />
                                         <span>{doctor.name}</span>
                                     </div>
                                 </SelectItem>
                             ))}
                         </CustomFormField>
-
                         <div className="grid md:grid-cols-2 gap-6">
-                            <CustomFormField
-                                fieldType={FormFieldType.INPUT}
-                                control={form.control}
-                                name="insuranceProvider"
-                                label="Insurance Provider"
-                            />
-                            <CustomFormField
-                                fieldType={FormFieldType.INPUT}
-                                control={form.control}
-                                name="insurancePolicyNumber"
-                                label="Policy Number"
-                            />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="insuranceProvider" label="Insurance Provider" />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="insurancePolicyNumber" label="Policy Number" />
                         </div>
-
                         <div className="grid md:grid-cols-2 gap-6">
-                            <CustomFormField
-                                fieldType={FormFieldType.TEXTAREA}
-                                control={form.control}
-                                name="allergies"
-                                label="Allergies"
-                            />
-                            <CustomFormField
-                                fieldType={FormFieldType.TEXTAREA}
-                                control={form.control}
-                                name="currentMedication"
-                                label="Current Medications"
-                            />
+                            <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="allergies" label="Allergies" />
+                            <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="currentMedication" label="Current Medications" />
                         </div>
-
                         <div className="grid md:grid-cols-2 gap-6">
-                            <CustomFormField
-                                fieldType={FormFieldType.TEXTAREA}
-                                control={form.control}
-                                name="familyMedicationHistory"
-                                label="Family Medical History"
-                            />
-                            <CustomFormField
-                                fieldType={FormFieldType.TEXTAREA}
-                                control={form.control}
-                                name="pastMedicalHistory"
-                                label="Past Medical History"
-                            />
+                            <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="familyMedicationHistory" label="Family Medical History" />
+                            <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="pastMedicalHistory" label="Past Medical History" />
                         </div>
                     </section>
 
                     {/* ID & Consent */}
                     <section className="space-y-6">
                         <SectionTitle title="Identification & Consent" />
-
-                        <CustomFormField
-                            fieldType={FormFieldType.SELECT}
-                            control={form.control}
-                            name="identificationType"
-                            label="ID Type"
-                            placeholder="Select type"
-                        >
-                            <div className='bg-white'>
-                                {IdentificationTypes.map((type) => (
-                                    <SelectItem className="bg-white" key={type} value={type}>
-                                        {type}
-                                    </SelectItem>
-                                ))}
-                            </div>
+                        <CustomFormField fieldType={FormFieldType.SELECT} control={form.control} name="identificationType" label="ID Type" placeholder="Select type">
+                            {IdentificationTypes.map((type) => (
+                                <SelectItem className="bg-white" key={type} value={type}>{type}</SelectItem>
+                            ))}
                         </CustomFormField>
-
-                        <CustomFormField
-                            fieldType={FormFieldType.INPUT}
-                            control={form.control}
-                            name="identificationNumber"
-                            label="ID Number"
-                            placeholder="e.g. A123456789"
-                        />
-
-
-                        //TODO: implement this when needed
-                        {/* <CustomFormField
-                            fieldType={FormFieldType.SKELETON}
-                            control={form.control}
-                            name="identificationDocument"
-                            label="Upload ID Document"
-                            renderSkeleton={(field) => (
-                                <FormControl>
-                                    <FileUploader files={field.value} onChange={field.onChange} />
-                                </FormControl>
-                            )}
-                        /> */}
-
-                        <CustomFormField
-                            fieldType={FormFieldType.CHECKBOX}
-                            control={form.control}
-                            name="treatmentConsent"
-                            label="I consent to receive treatment"
-                        />
-                        <CustomFormField
-                            fieldType={FormFieldType.CHECKBOX}
-                            control={form.control}
-                            name="disclosureConsent"
-                            label="I consent to data usage for treatment"
-                        />
-                        <CustomFormField
-                            fieldType={FormFieldType.CHECKBOX}
-                            control={form.control}
-                            name="privacyConsent"
-                            label="I accept the privacy policy"
-                        />
+                        <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="identificationNumber" label="ID Number" placeholder="e.g. A123456789" />
+                        <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="treatmentConsent" label="I consent to receive treatment" />
+                        <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="disclosureConsent" label="I consent to data usage for treatment" />
+                        <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="privacyConsent" label="I accept the privacy policy" />
                     </section>
 
                     <div className="flex justify-end">

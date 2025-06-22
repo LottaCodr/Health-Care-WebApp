@@ -8,7 +8,7 @@ export default function GreetingSection() {
     return (
         <section>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Welcome back, Dr. <span className="capitalize">{user?.full_name}!</span> 👋
+                Welcome back, Dr. <span className="capitalize">{user?.full_name}</span> 👋
             </h1>
             <p className="text-muted-foreground text-sm">
                 Overview of hospital activity and appointments.

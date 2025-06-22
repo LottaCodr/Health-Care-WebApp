@@ -3,7 +3,6 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 
-// Import icons from react-icons
 import { MdDashboard, MdEventNote, MdSupportAgent } from "react-icons/md";
 import { FaUserInjured, FaUsers } from "react-icons/fa";
 import { FiRepeat, FiSettings, FiLogOut } from "react-icons/fi";
