@@ -1,9 +1,23 @@
 import { Staff } from "@/actions/staff/types";
 
 
-export type PatientStatus = 'admitted' | 'discharged' | 'under-observation' | 'no-status';
+export type PatientStatus =
+    | 'registered'
+    | 'awaiting-consultation'
+    | 'under-consultation'
+    | 'sent-to-nurse'
+    | 'sent-to-lab'
+    | 'sent-to-pharmacy'
+    | 'awaiting-payment'
+    | 'admitted'
+    | 'under-observation'
+    | 'discharged'
+    | 'no-status';
 
 export interface Patient {
+    $id?: string; // Important: Appwrite adds this as a unique identifier
+    $createdAt?: string;
+    $updatedAt?: string;
 
     name: string;
     email: string;
@@ -34,12 +48,18 @@ export interface Patient {
     identificationDocumentId: string | null;
     identificationDocumentUrl: string;
 
-    status: PatientStatus
-    userId: string;
-    doctorId?: string;
+    status: PatientStatus;
+    userId: string; // Creator (likely front desk staff)
+    doctorId?: string; // Optional: Assigned doctor
     notes?: string;
-    staff?: string
+
+    // Optional consultation fields if you want to store them here
+    symptoms?: string;
+    diagnosis?: string;
+    prescriptions?: string;
+    recommendations?: string;
 }
+
 export interface SortConfig {
     key: keyof Patient;
     direction: 'asc' | 'desc';
@@ -54,7 +74,10 @@ export interface PatientState {
     recipientRole: string;
     recipientName: string | null;
     loading: boolean;
-    staff?: (Staff | string)[] | null
+    symptoms: string;
+    diagnosis: string;
+    prescriptions: string;
+    recommendations: string;
 }
 
 export type PatientAction =
@@ -69,4 +92,8 @@ export type PatientAction =
     | { type: "SET_RECIPIENT_ROLE"; payload: string }
     | { type: "SET_LOADING"; payload: boolean }
     | { type: "SET_RECIPIENT_NAME"; payload: string }
+    | { type: "SET_SYMPTOMS", payload: string }
+    | { type: "SET_DIAGNOSIS", payload: string }
+    | { type: "SET_PRESCRIPTIONS", payload: string }
+    | { type: "SET_RECOMMENDATIONS", payload: string }
     | { type: "RESET_FORM" }

@@ -7,7 +7,7 @@ export type Gender = "male" | "female" | "other";
 
 export type Status = "scheduled" | "completed" | "cancelled" | "no_show";
 
-export interface Patient extends Models.Document {
+export interface Patient  {
     userId: string;
     name: string;
     email: string;

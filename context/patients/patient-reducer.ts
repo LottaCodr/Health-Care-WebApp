@@ -9,14 +9,17 @@ export const initialPatientState: PatientState = {
     recipientName: "",
     recipientRole: "",
     loading: false,
-    staff: null
+    staff: null,
+    symptoms: '',
+    diagnosis: "",
+    prescriptions: '',
+    recommendations: ''
 }
 
 export function patientReducer(state: PatientState, action: PatientAction): PatientState {
     switch (action.type) {
-
         case "SET_PATIENT":
-            return { ...state, patient: action.payload, }
+            return { ...state, patient: action.payload }
         case "ADD_PATIENT":
             return { ...state, patient: [...state.patient, action.payload] }
         case "UPDATE_PATIENT":
@@ -32,12 +35,35 @@ export function patientReducer(state: PatientState, action: PatientAction): Pati
         case "SET_RECIPIENT_ROLE":
             return { ...state, recipientRole: action.payload }
         case "SET_RECIPIENT_NAME":
-            return { ...state, recipientName: action.payload };
+            return { ...state, recipientName: action.payload }
         case "SET_LOADING":
             return { ...state, loading: action.payload }
+
+        // ✅ Add these missing handlers:
+        case "SET_SYMPTOMS":
+            return { ...state, symptoms: action.payload }
+        case "SET_DIAGNOSIS":
+            return { ...state, diagnosis: action.payload }
+        case "SET_PRESCRIPTIONS":
+            return { ...state, prescriptions: action.payload }
+        case "SET_RECOMMENDATIONS":
+            return { ...state, recommendations: action.payload }
+
         case "RESET_FORM":
-            return { ...state, notes: '', status: '', recipientName: '', recipientRole: " ", loading: false }
+            return {
+                ...state,
+                notes: '',
+                status: '',
+                recipientName: '',
+                recipientRole: '',
+                loading: false,
+                symptoms: '',
+                diagnosis: '',
+                prescriptions: '',
+                recommendations: ''
+            }
+
         default:
-            return state
+            return state;
     }
 }
