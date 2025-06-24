@@ -19,6 +19,7 @@ import PatientDetailsSkeleton from "./skeleton";
 import { Patient, PatientStatus } from "@/context/patients/types";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
+import { ConsultationReferred } from "@/actions/consultations/types";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
@@ -33,6 +34,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
     const { user } = useAuth();
 
     const currentDoctorId = user?.$id;
+    console.log('docId', currentDoctorId)
 
     const { isPending, isError } = useQuery({
         queryKey: ["staffs"],
@@ -128,7 +130,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 onDiagnosisChange={(val) => consultationDispatch({ type: "SET_DIAGNOSIS", payload: val })}
                 onPrescriptionsChange={(val) => consultationDispatch({ type: "SET_PRESCRIPTIONS", payload: val })}
                 onRecommendationsChange={(val) => consultationDispatch({ type: "SET_RECOMMENDATIONS", payload: val })}
-                onReferredToChange={(val) => consultationDispatch({ type: "SET_REFERRED_TO", payload: val })}
+                onReferredToChange={(val) => consultationDispatch({ type: "SET_REFERRED_TO", payload: val as ConsultationReferred })}
                 onStatusChange={(status) => patientDispatch({ type: "SET_STATUS", payload: status as PatientStatus })}
                 onSubmit={handleSubmit}
                 loading={consultationState.loading}
@@ -189,6 +191,13 @@ function ConsultationForm({
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                             <SelectContent className="bg-white z-20">
+                                <SelectItem value="registered">Registered</SelectItem>
+                                <SelectItem value="awaiting-consultation">Awaiting Consultation</SelectItem>
+                                <SelectItem value="under-consultation">Under Consultation</SelectItem>
+                                <SelectItem value="sent-to-nurse">Sent to Nurse</SelectItem>
+                                <SelectItem value="sent-to-lab">Sent to Lab</SelectItem>
+                                <SelectItem value="sent-to-pharmacy">Sent to Pharmacy</SelectItem>
+                                <SelectItem value="awaiting-payment">Awaiting Payment</SelectItem>
                                 <SelectItem value="admitted">Admitted</SelectItem>
                                 <SelectItem value="under-observation">Under Observation</SelectItem>
                                 <SelectItem value="discharged">Discharged</SelectItem>
