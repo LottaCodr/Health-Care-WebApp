@@ -22,8 +22,8 @@ export default function StatCardsSection() {
     })
 
     const numberofStaff = allStaffs?.length
-    const numberOfAdmittedPatients = allPatients?.data?.filter((p) => p.status === 'admitted')?.length || 0;
-    const numberOfDischargedPatients = allPatients?.data?.filter((p) => p.status === "discharged")?.length || 0;
+    const numberOfAdmittedPatients = allPatients?.filter((p) => p.status === 'admitted')?.length || 0;
+    const numberOfDischargedPatients = allPatients?.filter((p) => p.status === "discharged")?.length || 0;
 
     if (loadingStaff || loadingAdmittedPatients) {
         return (

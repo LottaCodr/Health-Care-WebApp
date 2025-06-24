@@ -41,7 +41,7 @@ export function DataTable<TData, TValue>({
   const isLoading = state.loading;
 
   console.log("🧪 isLoading:", isLoading);
-  console.log("🧪 appointments.length:", state.appointments.length);
+  console.log("🧪 appointments.length:", state.appointments);
 
 
   return (
@@ -71,7 +71,13 @@ export function DataTable<TData, TValue>({
             <TableRow>
               <TableCell colSpan={columns.length} className="text-center py-10">
                 <div className="flex flex-col items-center gap-2">
-                  <Image src="/assets/icons/spinner.svg" width={24} height={24} alt="Loading" className="animate-spin" />
+                  <Image
+                    src="/assets/icons/loader.svg"
+                    alt="Loading spinner"
+                    width={20}
+                    height={20}
+                    className="animate-spin"
+                  />
                   <span>Loading appointments...</span>
                 </div>              </TableCell>
             </TableRow>

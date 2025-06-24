@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Loading from '@/app/useloading';
-import { Appointment } from '@/types/appwrite.types';
+import { Appointment } from '@/actions/appointments/types';
 
 interface AppointmentTableProps {
     appointments: Appointment[];
@@ -28,6 +28,15 @@ const formatTime = (time: string, format: '12h' | '24h') => {
         return `${hour.padStart(2, '0')}:${minute}`;
     }
     return time;
+};
+
+const statusStyles: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100',
+    completed: 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100',
+    cancelled: 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100',
+    'no-show': 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+    rescheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100',
+    scheduled: 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100',
 };
 
 const AppointmentTable: React.FC<AppointmentTableProps> = ({
@@ -56,60 +65,73 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
 
     const renderSortHeader = (label: string, key: 'date' | 'patientName') => (
         <th
-            className="px-4 py-2 text-left cursor-pointer select-none"
+            scope="col"
+            className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-200 tracking-wide cursor-pointer select-none"
             onClick={() => handleSort(key)}
         >
-            {label} {sortBy === key && (sortOrder === 'asc' ? '⬆️' : '⬇️')}
+            <div className="inline-flex items-center gap-1">
+                {label}
+                {sortBy === key && (
+                    <span className="text-xs">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                )}
+            </div>
         </th>
     );
 
     return (
-        <div className="overflow-x-auto bg-white dark:bg-gray-800 shadow rounded-md">
-            <table className="min-w-full">
-                <thead className="bg-gray-100 dark:bg-gray-700">
+        <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
+            <table className="min-w-full text-sm bg-white dark:bg-gray-800">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                         {renderSortHeader('Patient', 'patientName')}
-                        <th className="px-4 py-2 text-left">Doctor</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-200">Doctor</th>
                         {renderSortHeader('Date', 'date')}
-                        <th className="px-4 py-2 text-left">Time</th>
-                        <th className="px-4 py-2 text-left">Status</th>
-                        <th className="px-4 py-2 text-left">Actions</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-200">Time</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-200">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-200">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {loading ? (
                         <tr>
                             <td colSpan={6} className="text-center py-12">
-                                <div className="flex flex-row justify-center items-center gap-3">
+                                <div className="flex justify-center items-center gap-3 text-sm text-gray-500">
                                     <Loading />
-                                    <p className="text-gray-500 text-sm">Loading appointments...</p>
+                                    Loading appointments...
                                 </div>
                             </td>
                         </tr>
                     ) : appointments.length === 0 ? (
                         <tr>
-                            <td colSpan={6} className="text-center py-12">
-                                <p className="text-gray-500 text-sm">No appointments found.</p>
+                            <td colSpan={6} className="text-center py-12 text-sm text-gray-500">
+                                No appointments found.
                             </td>
                         </tr>
                     ) : (
                         appointments.map((a) => (
-                            <tr key={a.$id} className="border-t dark:border-gray-600">
-                                <td className="px-4 py-2">{a.patientName}</td>
-                                <td className="px-4 py-2">{a.doctorName}</td>
-                                <td className="px-4 py-2">{a.date}</td>
-                                <td className="px-4 py-2">{formatTime(a.time, timeFormat)}</td>
-                                <td className="px-4 py-2 capitalize">{a.status}</td>
-                                <td className="px-4 py-2 space-x-2">
+                            <tr
+                                key={a.id}
+                                className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                <td className="px-4 py-3 text-gray-800 dark:text-gray-100">{a.patientName}</td>
+                                <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{a.doctorName}</td>
+                                <td className="px-4 py-3">{a.date}</td>
+                                <td className="px-4 py-3">{formatTime(a.time, timeFormat)}</td>
+                                <td className="px-4 py-3 capitalize">
+                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusStyles[a.status] || 'bg-gray-200 text-gray-600'}`}>
+                                        {a.status}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3 flex gap-2">
                                     <button
-                                        onClick={() => onEdit(a.id || a.$id)}
-                                        className="text-blue-600 hover:underline"
+                                        onClick={() => onEdit(a.id)}
+                                        className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                                     >
                                         Edit
                                     </button>
                                     <button
-                                        onClick={() => onDelete(a.id || a.$id)}
-                                        className="text-red-600 hover:underline"
+                                        onClick={() => onDelete(a.id)}
+                                        className="text-red-600 dark:text-red-400 hover:underline font-medium"
                                     >
                                         Delete
                                     </button>
@@ -120,26 +142,22 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
                 </tbody>
             </table>
 
-            {/* Pagination Controls */}
-            <div className="flex justify-between items-center px-4 py-3 border-t dark:border-gray-700">
+            {/* Pagination */}
+            <div className="flex items-center justify-between p-4 border-t bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
                 <button
                     onClick={() => setPage(Math.max(1, page - 1))}
                     disabled={page === 1}
-                    className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-600 text-sm disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-md text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 disabled:opacity-50"
                 >
                     Previous
                 </button>
-                <span className="text-sm">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
                     Page {page} of {Math.ceil(total / pageSize)}
                 </span>
                 <button
-                    onClick={() => {
-                        if (page * pageSize < total) {
-                            setPage(page + 1);
-                        }
-                    }}
+                    onClick={() => page * pageSize < total && setPage(page + 1)}
                     disabled={page * pageSize >= total}
-                    className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-600 text-sm disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-md text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 disabled:opacity-50"
                 >
                     Next
                 </button>

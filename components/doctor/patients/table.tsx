@@ -37,23 +37,23 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients }) => {
                         {patient?.name ?? 'N/A'}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.gender ?? 'N/A'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+                    {/* <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
                         {mounted && patient.$createdAt
                             ? new Date(patient.$createdAt).toLocaleDateString()
                             : 'N/A'}
-                    </td>
+                    </td> */}
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.currentMedication ?? 'N/A'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.allergies ?? 'N/A'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                         <span
                             className={clsx(
                                 'inline-block rounded-full px-3 py-1 text-xs font-semibold text-white',
-                                {
-                                    'bg-blue-600': patient.status === 'admitted',
-                                    'bg-green-700': patient.status === 'discharged',
-                                    'bg-yellow-500': patient.status === 'under observation',
-                                    'bg-red-500': patient.status === 'no status',
-                                }
+                                // {
+                                //     'bg-blue-600': patient.status === 'admitted',
+                                //     'bg-green-700': patient.status === 'discharged',
+                                //     'bg-yellow-500': patient.status === 'under observation',
+                                //     'bg-red-500': patient.status === 'no status',
+                                // }
                             )}
                         >
                             {typeof patient.status === 'string'

@@ -7,7 +7,7 @@ import CalendarView from './calendar-view';
 import AppointmentModal from './modal';
 import { useRealTimeAppointments } from '@/context/appointments/appointment.reducer';
 import { toast } from '@/hooks/use-toast';
-import { Appointment } from '@/types/appwrite.types';
+import { Appointment } from '@/actions/appointments/types';
 
 const PAGE_SIZE = 10;
 
@@ -80,7 +80,7 @@ const AppointmentsComponent: React.FC = () => {
 
     // Modal Handlers
     const handleEdit = (id: string) => {
-        const appt = appointments.find((a) => a.id === id || a.$id === id) || null;
+        const appt = appointments.find((a) => a.id === id || a.id === id) || null;
         setEditing(appt);
         setShowModal(true);
     };
@@ -99,11 +99,10 @@ const AppointmentsComponent: React.FC = () => {
         setShowModal(true);
     };
 
-    console.log('paginatedAppointment:', paginatedAppointments)
-    console.log('raw appointments:', state.appointments)
+
 
     const handleSave = (updated: Appointment) => {
-        const exists = appointments.find((a) => a.id === updated.id || a.$id === updated.id);
+        const exists = appointments.find((a) => a.id === updated.id || a.id === updated.id);
 
         if (exists) {
             dispatch({ type: 'UPDATE_APPOINTMENT', payload: updated });
@@ -177,6 +176,8 @@ const AppointmentsComponent: React.FC = () => {
                     initialData={editing}
                     onClose={() => setShowModal(false)}
                     onSave={handleSave}
+                    existingAppointments={filterAppointments}
+
                 />
             )}
         </div>

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEmployeesContext } from "./context";
 import { deleteStaff, updateStaff } from "@/actions/staff/update.deletestaff";
-import { Staff } from "@/types/appwrite.types";
+import { Staff } from "@/actions/staff/types";
 
 export function useStaffMutations() {
     const { dispatch } = useEmployeesContext();

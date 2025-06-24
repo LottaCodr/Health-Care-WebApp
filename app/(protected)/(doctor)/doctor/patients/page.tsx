@@ -7,11 +7,11 @@ import { getAllPatients } from '@/actions/patients/get.patients'
 const Patients = async () => {
 
     const documents = await getAllPatients()
-    
 
-return (
+
+    return (
         <PatientsComponent
-            patients={documents.data}
+            thePatients={documents}
 
         />
     )

@@ -22,7 +22,7 @@ export default function AdmittedPatientsTableSection() {
     });
 
     const admittedPatients: Patient[] =
-        allPatients?.data?.filter((p: Patient) => p.status === "admitted") || [];
+        allPatients?.filter((p: Patient) => p.status === "admitted") || [];
 
     const [page, setPage] = useState(1);
     const totalPages = Math.ceil(admittedPatients.length / ITEMS_PER_PAGE);
@@ -82,11 +82,11 @@ export default function AdmittedPatientsTableSection() {
                             </tr>
                         ) : paginatedPatients.length > 0 ? (
                             paginatedPatients.map((patient) => (
-                                <tr key={patient.$id} className="border-t">
+                                <tr key={patient.userId} className="border-t">
                                     <td className="px-4 py-2 flex items-center gap-3">
                                         <Avatar className="h-8 w-8">
                                             <AvatarImage
-                                                src={ ""}
+                                                src={""}
                                                 alt={patient.name}
                                             />
                                             <AvatarFallback>
@@ -103,7 +103,7 @@ export default function AdmittedPatientsTableSection() {
                                     <td className="px-4 py-2">{patient.allergies}</td>
                                     <td className="px-4 py-2">{patient.currentMedication}</td>
                                     <td className="px-4 py-2">
-                                        {new Date(patient.$createdAt).toLocaleDateString(undefined, {
+                                        {new Date(patient.birthDate).toLocaleDateString(undefined, {
                                             year: "numeric",
                                             month: "short",
                                             day: "numeric",

@@ -1,4 +1,4 @@
-import { Appointment } from '@/types/appointments';
+import { Appointment } from '@/actions/appointments/types';
 import React from 'react';
 import { DateRange } from 'react-date-range';
 import 'react-date-range/dist/styles.css';
@@ -30,7 +30,7 @@ const Filters: React.FC<FiltersProps> = ({
     setCustomRange,
 }) => (
 
-    
+
     <div className="flex gap-4 flex-wrap">
         <input
             value={search}

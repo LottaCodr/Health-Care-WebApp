@@ -6,6 +6,7 @@ import { AuthProvider } from "./auth-provider";
 import { PatientProvider } from "./patients/patient-context";
 import { AppointmentProvider } from "./appointments/appointment.reducer";
 import { EmployeeProvider } from "./employees/context";
+import { ConsultationProvider } from "./consultation/consultation";
 
 const queryClient = new QueryClient();
 
@@ -14,13 +15,15 @@ export const Providers: FC<{ children: ReactNode }> = ({ children }) => {
         <>
             <QueryClientProvider client={queryClient}>
                 <AuthProvider>
-                    <EmployeeProvider>
-                        <PatientProvider>
-                            <AppointmentProvider>
-                                {children}
-                            </AppointmentProvider>
-                        </PatientProvider>
-                    </EmployeeProvider>
+                    <ConsultationProvider>
+                        <EmployeeProvider>
+                            <PatientProvider>
+                                <AppointmentProvider>
+                                    {children}
+                                </AppointmentProvider>
+                            </PatientProvider>
+                        </EmployeeProvider>
+                    </ConsultationProvider>
                 </AuthProvider>
             </QueryClientProvider>
         </>

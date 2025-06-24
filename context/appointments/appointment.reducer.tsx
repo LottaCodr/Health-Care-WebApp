@@ -3,14 +3,16 @@ import React, { useReducer, createContext, useContext, useEffect } from 'react';
 import { fetchAppointments } from '@/actions/appointments/appointment.action';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { Appointment } from '@/types/appwrite.types';
+import { Appointment, AppointmentStatus } from '@/actions/appointments/types';
+
+
 
 type State = {
     appointments: Appointment[]
     loading: boolean
 }
 
-type Action =
+export type AppointmentAction =
     | { type: 'SET_APPOINTMENTS', payload: Appointment[] }
     | { type: 'ADD_APPOINTMENT', payload: Appointment }
     | { type: 'UPDATE_APPOINTMENT', payload: Appointment }
@@ -22,7 +24,7 @@ export const initialState: State = {
     loading: false
 }
 
-export function reducer(state: State, action: Action): State {
+export function reducer(state: State, action: AppointmentAction): State {
     switch (action.type) {
 
         case 'SET_APPOINTMENTS':
@@ -41,7 +43,7 @@ export function reducer(state: State, action: Action): State {
 
 }
 
-const AppointmentContext = createContext<{ state: State; dispatch: React.Dispatch<Action> }>({ state: initialState, dispatch: () => null })
+const AppointmentContext = createContext<{ state: State; dispatch: React.Dispatch<AppointmentAction> }>({ state: initialState, dispatch: () => null })
 
 export const useRealTimeAppointments = () => useContext(AppointmentContext)
 
@@ -65,18 +67,19 @@ export const AppointmentProvider = ({ children }: { children: React.ReactNode })
         }
         function normalizeAppointment(a: Appointment): Appointment {
             return {
-                id: a.$id,
-                patientId: a.userId,
-                doctor: a.primaryPhysician,
-                doctorId: a.doctorId ?? "",
-                doctorName: a.primaryPhysician,
+                id: a.id,
+                patientId: a.patient?.$id || '',
+                doctor: a.patient?.primaryPhysician || '',
+                doctorId: a.patient?.$id ?? "",
+                doctorName: a.patient?.primaryPhysician || '',
                 patientName: a.patient?.name || "Unknown Patient",
-                date: a.date,
-                time: a.$createdAt,
-                status: a.status,
-                createdAt: a.$createdAt,
-                updatedAt: a.$updatedAt,
-                notes: a.note || "",
+                patient: a.patient,
+                date: a.createdAt,
+                time: a.createdAt,
+                status: a.status as AppointmentStatus,
+                createdAt: a.createdAt,
+                updatedAt: a.updatedAt,
+                notes: a.notes || "",
                 reason: a.reason || "",
                 durationMinutes: a.durationMinutes ?? undefined, // optional
             };
