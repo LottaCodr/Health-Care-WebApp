@@ -109,6 +109,8 @@ export default function PatientDetailsComponent({ patient }: Props) {
         }
     };
 
+    
+
     if (isPending || consultationState.loading) return <PatientDetailsSkeleton />;
     if (isError) return <ErrorMessage message="Failed to load staff list." />;
     if (!patientState.patient || !patientState.patient.length) return <ErrorMessage message="Patient not found." />;
@@ -169,7 +171,23 @@ function ConsultationForm({
     onStatusChange: (status: string) => void;
     onSubmit: () => void;
     loading: boolean;
-}) {
+    }) {
+    
+    
+    const patientStatuses = [
+        { value: 'registered', label: 'Registered' },
+        { value: 'awaiting-consultation', label: 'Awaiting Consultation' },
+        { value: 'under-consultation', label: 'Under Consultation' },
+        { value: 'sent-to-nurse', label: 'Sent to Nurse' },
+        { value: 'sent-to-lab', label: 'Sent to Lab' },
+        { value: 'sent-to-pharmacy', label: 'Sent to Pharmacy' },
+        { value: 'awaiting-payment', label: 'Awaiting Payment' },
+        { value: 'admitted', label: 'Admitted' },
+        { value: 'under-observation', label: 'Under Observation' },
+        { value: 'discharged', label: 'Discharged' },
+        { value: 'no-status', label: 'No Status' },
+    ];
+    
     return (
         <section aria-labelledby="doctor-consultation">
             <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
@@ -191,17 +209,11 @@ function ConsultationForm({
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                             <SelectContent className="bg-white z-20">
-                                <SelectItem value="registered">Registered</SelectItem>
-                                <SelectItem value="awaiting-consultation">Awaiting Consultation</SelectItem>
-                                <SelectItem value="under-consultation">Under Consultation</SelectItem>
-                                <SelectItem value="sent-to-nurse">Sent to Nurse</SelectItem>
-                                <SelectItem value="sent-to-lab">Sent to Lab</SelectItem>
-                                <SelectItem value="sent-to-pharmacy">Sent to Pharmacy</SelectItem>
-                                <SelectItem value="awaiting-payment">Awaiting Payment</SelectItem>
-                                <SelectItem value="admitted">Admitted</SelectItem>
-                                <SelectItem value="under-observation">Under Observation</SelectItem>
-                                <SelectItem value="discharged">Discharged</SelectItem>
-                                <SelectItem value="no-status">No Status</SelectItem>
+                                {patientStatuses.map((status) => (
+                                    <SelectItem key={status.value} value={status.value}>
+                                        {status.label}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>

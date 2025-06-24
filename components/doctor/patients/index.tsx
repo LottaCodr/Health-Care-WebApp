@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAllPatients } from '@/actions/patients/get.patients';
 
 import SearchInput from './search-input';
@@ -11,6 +11,8 @@ import { Patient, SortConfig } from '@/context/patients/types';
 
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
+import { RefreshCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface PatientProps {
     thePatients: Patient[];
@@ -23,7 +25,9 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
 
-    const { data: patients = [], isPending } = useQuery({
+    const queryClient = useQueryClient();
+
+    const { data: patients = [], isPending, isFetching, refetch } = useQuery({
         queryKey: ['patients'],
         queryFn: getAllPatients,
         initialData: thePatients,
@@ -75,20 +79,55 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
 
     return (
-        <section className="max-w-6xl mx-6 p-6 space-y-6">
+        <section className="relative max-w-6xl mx-6 p-6 space-y-6">
+
+            {/* Animate Top Progress Bar */}
+            <AnimatePresence>
+                {isFetching && !isPending && (
+                    <motion.div
+                        initial={{ width: '0%' }}
+                        animate={{ width: '100%' }}
+                        exit={{ width: '100%', opacity: 0 }}
+                        transition={{ duration: 1, ease: 'easeInOut' }}
+                        className="h-1 bg-blue-600 fixed top-0 left-0 z-50"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Animate Full Loading Overlay */}
+            <AnimatePresence>
+                {isPending && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.3 }}
+                        className="absolute inset-0 bg-background/50 backdrop-blur-sm flex justify-center items-center z-40 rounded-xl"
+                    >
+                        <Spinner size="lg" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <h2 className="text-2xl font-bold text-foreground">Patients Directory</h2>
-                <div className="w-full md:w-1/2">
-                    <SearchInput value={search} onChange={setSearch} />
+                <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                    Patients Directory
+                    {isFetching && !isPending && <Spinner size="sm" />}
+                </h2>
+
+                <div className="flex items-center gap-2">
+                    <div className="w-full md:w-64">
+                        <SearchInput value={search} onChange={setSearch} />
+                    </div>
+                    <Button variant="outline" onClick={() => refetch()} className="rounded-xl flex items-center gap-2">
+                        <RefreshCcw size={16} className={isFetching ? 'animate-spin' : ''} />
+                        Refresh
+                    </Button>
                 </div>
             </header>
 
-            <div className="overflow-x-auto rounded-xl border border-border bg-background shadow-sm">
-                {isPending ? (
-                    <div className="flex justify-center items-center h-40">
-                        <Spinner size="lg" />
-                    </div>
-                ) : filteredPatients.length === 0 ? (
+            <div className="overflow-x-auto rounded-xl border border-border bg-background shadow-sm relative">
+                {filteredPatients.length === 0 && !isPending ? (
                     <div className="text-center p-6 text-muted-foreground">No patients found.</div>
                 ) : (
                     <table className="min-w-full divide-y divide-border text-sm">
@@ -96,7 +135,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                             sortConfig={sortConfig}
                             onSortChange={handleSortChange}
                         />
-                        <PatientsTable patients={paginatedPatients} />
+                            <PatientsTable patients={paginatedPatients} isPending={isPending} />
                     </table>
                 )}
             </div>
