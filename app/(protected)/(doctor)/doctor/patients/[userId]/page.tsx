@@ -23,7 +23,7 @@ export default function PatientDetailsPage() {
         }
     }, [userId]);
 
-    if (loading) return <div className="flex gap-4"><Loading/> Loading...</div>;
+    if (loading) return <div className="flex gap-4 justify-center items-center text-center"><Loading /> Loading patient details...</div>;
 
     if (!patient) return <div>Patient not found.</div>;
 

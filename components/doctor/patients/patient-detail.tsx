@@ -2,12 +2,12 @@
 
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import { databases } from "@/lib/appwrite.config";
 import { getAllStaffs } from "@/actions/staff/get.staff";
+import { createConsultation } from "@/actions/consultations/consultation";
 import { usePatientContext } from "@/context/patients/patient-context";
-import { Staff } from "@/actions/staff/types";
+import { useConsultationContext } from "@/context/consultation/consultation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -16,8 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 import PatientDetailsSkeleton from "./skeleton";
-import { Patient } from "@/actions/patients/types";
-import { PatientStatus } from "@/context/patients/types"; // Make sure this is the correct path
+import { Patient, PatientStatus } from "@/context/patients/types";
+import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-provider";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
@@ -27,158 +28,235 @@ interface Props {
 }
 
 export default function PatientDetailsComponent({ patient }: Props) {
-    const { state, dispatch } = usePatientContext();
+    const { state: patientState, dispatch: patientDispatch } = usePatientContext();
+    const { state: consultationState, dispatch: consultationDispatch } = useConsultationContext();
+    const { user } = useAuth();
 
-    const { data: staffList, isPending, isError } = useQuery({
+    const currentDoctorId = user?.$id;
+
+    const { isPending, isError } = useQuery({
         queryKey: ["staffs"],
         queryFn: getAllStaffs,
     });
 
     useEffect(() => {
         if (patient) {
-            dispatch({ type: "SET_PATIENT", payload: [patient] });
-            dispatch({ type: "UPDATE_NOTES", payload: patient.note || "" });
-            dispatch({ type: "SET_STATUS", payload: (patient.status as PatientStatus) || 'no-status' });
-            dispatch({ type: "SET_SYMPTOMS", payload: patient.symptoms || "" });
-            dispatch({ type: "SET_DIAGNOSIS", payload: patient.diagnosis || "" });
-            dispatch({ type: "SET_PRESCRIPTIONS", payload: patient.prescriptions || "" });
-            dispatch({ type: "SET_RECOMMENDATIONS", payload: patient.recommendations || "" });
+            patientDispatch({ type: "SET_PATIENT", payload: [patient] });
+            patientDispatch({ type: "UPDATE_NOTES", payload: patient.notes || "" });
+            patientDispatch({ type: "SET_STATUS", payload: (patient.status as PatientStatus) || "no-status" });
+
+            consultationDispatch({ type: "RESET_FORM" });
         }
-    }, [patient, dispatch]);
+    }, [patient, patientDispatch, consultationDispatch]);
 
     const handleSubmit = async () => {
-        if (
-            !state.status || state.status === 'no-status' ||
-            !state.symptoms.trim() ||
-            !state.diagnosis.trim() ||
-            !state.prescriptions.trim() ||
-            !state.recommendations.trim()
+        if (!patientState.status || patientState.status === "no-status" ||
+            !consultationState.symptoms.trim() ||
+            !consultationState.diagnosis.trim() ||
+            !consultationState.prescriptions.trim() ||
+            !consultationState.recommendations.trim() ||
+            !consultationState.referredTo
         ) {
-            toast.error("Please complete all consultation fields before submitting.");
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Please complete all consultation fields before submitting.",
+            });
             return;
         }
 
         try {
-            dispatch({ type: "SET_LOADING", payload: true });
+            consultationDispatch({ type: "SET_LOADING", payload: true });
 
-            await databases.updateDocument(databaseId, patientCollectionId, patient?.userId, {
-                notes: state.notes,
-                status: state.status,
-                symptoms: state.symptoms,
-                diagnosis: state.diagnosis,
-                prescriptions: state.prescriptions,
-                recommendations: state.recommendations,
+            await databases.updateDocument(databaseId, patientCollectionId, patient.userId, {
+                status: patientState.status,
             });
 
-            toast.success("Consultation successfully saved.");
-        } catch (err) {
-            console.error(err);
-            toast.error("Failed to save consultation.");
+            console.log('patientId', patient.$id!)
+            console.log('docId', currentDoctorId)
+
+            await createConsultation({
+                patientId: patient.$id!,
+                doctorId: currentDoctorId!,
+                symptom: consultationState.symptoms,
+                diagnosis: consultationState.diagnosis,
+                prescription: consultationState.prescriptions,
+                recommendation: consultationState.recommendations,
+                consultationDate: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                referredTo: consultationState.referredTo,
+            });
+
+            toast({
+                variant: "default",
+                title: "Success",
+                description: "Consultation successfully saved.",
+            });
+
+            consultationDispatch({ type: "RESET_FORM" });
+
+        } catch (error) {
+            console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to save consultation.",
+            });
         } finally {
-            dispatch({ type: "SET_LOADING", payload: false });
+            consultationDispatch({ type: "SET_LOADING", payload: false });
         }
     };
 
-    if (isPending || state.loading) return <PatientDetailsSkeleton />;
+    if (isPending || consultationState.loading) return <PatientDetailsSkeleton />;
+    if (isError) return <ErrorMessage message="Failed to load staff list." />;
+    if (!patientState.patient || !patientState.patient.length) return <ErrorMessage message="Patient not found." />;
 
-    if (isError) {
-        return <p className="text-red-600 text-center pt-10">Failed to load staff list.</p>;
-    }
-
-    if (!state.patient || !state.patient.length) {
-        return (
-            <p className="text-center pt-20 text-muted-foreground text-lg">Patient not found</p>
-        );
-    }
-
-    const currentPatient = state.patient[0];
+    const currentPatient = patientState.patient[0];
 
     return (
         <main className="max-w-6xl mx-6 px-4 md:px-6 py-10 space-y-12">
-            {/* Patient Profile */}
-            <section aria-labelledby="patient-profile">
-                <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
-                    <CardHeader className="pb-4 border-b">
-                        <CardTitle id="patient-profile" className="text-3xl font-bold text-blue-900">
-                            Patient Profile
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-4 text-base text-muted-foreground mt-4">
-                        {Object.entries({
-                            Name: currentPatient.name,
-                            Gender: currentPatient.gender,
-                            Email: currentPatient.email,
-                            Phone: currentPatient.phone,
-                            Occupation: currentPatient.occupation,
-                            Address: currentPatient.address,
-                            Allergies: currentPatient.allergies,
-                            "Current Medication": currentPatient.currentMedication,
-                            "Insurance Provider": currentPatient.insuranceProvider,
-                            "Emergency Contact Number": currentPatient.emergencyContactNumber,
-                            "Family Medical History": currentPatient.familyMedicalHistory,
-                            "Disclosure Consent": currentPatient.disclosureConsent ? "Yes" : "No",
-                            "Past Medical History": currentPatient.pastMedicalHistory,
-                            "Current Status": state.status,
-                            Note: currentPatient.notes || "No note yet",
-                        }).map(([label, value]) => (
-                            <InfoItem key={label} label={label} value={value} />
-                        ))}
-                    </CardContent>
-                </Card>
-            </section>
+            <PatientProfile patient={currentPatient} status={patientState.status} />
 
-            {/* Doctor Consultation */}
-            <section aria-labelledby="doctor-consultation">
-                <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
-                    <CardHeader className="pb-4 border-b">
-                        <CardTitle id="doctor-consultation" className="text-2xl font-semibold text-blue-900">
-                            Doctor's Consultation
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-8 mt-4">
-                        <FormSection label="Symptoms" value={state.symptoms} onChange={(val) => dispatch({ type: "SET_SYMPTOMS", payload: val })} />
-                        <FormSection label="Diagnosis" value={state.diagnosis} onChange={(val) => dispatch({ type: "SET_DIAGNOSIS", payload: val })} />
-                        <FormSection label="Prescriptions" value={state.prescriptions} onChange={(val) => dispatch({ type: "SET_PRESCRIPTIONS", payload: val })} />
-                        <FormSection label="Recommendations" value={state.recommendations} onChange={(val) => dispatch({ type: "SET_RECOMMENDATIONS", payload: val })} />
-
-                        <div className="space-y-2">
-                            <Label htmlFor="status" className="text-lg font-medium text-gray-700">Patient Status</Label>
-                            <Select
-                                onValueChange={(status) => dispatch({ type: "SET_STATUS", payload: status as PatientStatus })}
-                                value={state.status}
-                            >
-                                <SelectTrigger id="status">
-                                    <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white z-20">
-                                    <SelectItem value="admitted">Admitted</SelectItem>
-                                    <SelectItem value="under-observation">Under Observation</SelectItem>
-                                    <SelectItem value="discharged">Discharged</SelectItem>
-                                    <SelectItem value="no-status">No Status</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <Button
-                            onClick={handleSubmit}
-                            disabled={state.loading}
-                            className="w-full md:w-auto text-white text-base px-8 py-3 rounded-xl shadow bg-blue-700 hover:bg-blue-800 transition"
-                        >
-                            {state.loading ? "Submitting..." : "Submit Consultation"}
-                        </Button>
-                    </CardContent>
-                </Card>
-            </section>
+            <ConsultationForm
+                symptoms={consultationState.symptoms}
+                diagnosis={consultationState.diagnosis}
+                prescriptions={consultationState.prescriptions}
+                recommendations={consultationState.recommendations}
+                referredTo={consultationState.referredTo}
+                status={patientState.status}
+                onSymptomsChange={(val) => consultationDispatch({ type: "SET_SYMPTOMS", payload: val })}
+                onDiagnosisChange={(val) => consultationDispatch({ type: "SET_DIAGNOSIS", payload: val })}
+                onPrescriptionsChange={(val) => consultationDispatch({ type: "SET_PRESCRIPTIONS", payload: val })}
+                onRecommendationsChange={(val) => consultationDispatch({ type: "SET_RECOMMENDATIONS", payload: val })}
+                onReferredToChange={(val) => consultationDispatch({ type: "SET_REFERRED_TO", payload: val })}
+                onStatusChange={(status) => patientDispatch({ type: "SET_STATUS", payload: status as PatientStatus })}
+                onSubmit={handleSubmit}
+                loading={consultationState.loading}
+            />
         </main>
     );
 }
 
-function InfoItem({ label, value }: { label: string; value: string }) {
+function ConsultationForm({
+    symptoms,
+    diagnosis,
+    prescriptions,
+    recommendations,
+    referredTo,
+    status,
+    onSymptomsChange,
+    onDiagnosisChange,
+    onPrescriptionsChange,
+    onRecommendationsChange,
+    onReferredToChange,
+    onStatusChange,
+    onSubmit,
+    loading
+}: {
+    symptoms: string;
+    diagnosis: string;
+    prescriptions: string;
+    recommendations: string;
+    referredTo: string;
+    status: string;
+    onSymptomsChange: (val: string) => void;
+    onDiagnosisChange: (val: string) => void;
+    onPrescriptionsChange: (val: string) => void;
+    onRecommendationsChange: (val: string) => void;
+    onReferredToChange: (val: string) => void;
+    onStatusChange: (status: string) => void;
+    onSubmit: () => void;
+    loading: boolean;
+}) {
     return (
-        <p className="leading-relaxed text-gray-800">
-            <span className="font-semibold text-gray-900">{label}:</span>{" "}
-            <span className="ml-1 text-gray-700">{value || "Not provided"}</span>
-        </p>
+        <section aria-labelledby="doctor-consultation">
+            <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
+                <CardHeader className="pb-4 border-b">
+                    <CardTitle id="doctor-consultation" className="text-2xl font-semibold text-blue-900">
+                        Doctor's Consultation
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-8 mt-4">
+                    <FormSection label="Symptoms" value={symptoms} onChange={onSymptomsChange} />
+                    <FormSection label="Diagnosis" value={diagnosis} onChange={onDiagnosisChange} />
+                    <FormSection label="Prescriptions" value={prescriptions} onChange={onPrescriptionsChange} />
+                    <FormSection label="Recommendations" value={recommendations} onChange={onRecommendationsChange} />
+
+                    <div className="space-y-2">
+                        <Label htmlFor="status" className="text-lg font-medium text-gray-700">Patient Status</Label>
+                        <Select onValueChange={onStatusChange} value={status}>
+                            <SelectTrigger id="status">
+                                <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-20">
+                                <SelectItem value="admitted">Admitted</SelectItem>
+                                <SelectItem value="under-observation">Under Observation</SelectItem>
+                                <SelectItem value="discharged">Discharged</SelectItem>
+                                <SelectItem value="no-status">No Status</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="referredTo" className="text-lg font-medium text-gray-700">Refer To</Label>
+                        <Select onValueChange={onReferredToChange} value={referredTo}>
+                            <SelectTrigger id="referredTo">
+                                <SelectValue placeholder="Select referral" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-20">
+                                <SelectItem value="nurse">Nurse</SelectItem>
+                                <SelectItem value="labtech">Lab Technician</SelectItem>
+                                <SelectItem value="pharmacist">Pharmacist</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <Button
+                        onClick={onSubmit}
+                        disabled={loading}
+                        className="w-full md:w-auto text-white text-base px-8 py-3 rounded-xl shadow bg-blue-700 hover:bg-blue-800 transition"
+                    >
+                        {loading ? "Submitting..." : "Submit Consultation"}
+                    </Button>
+
+                </CardContent>
+            </Card>
+        </section>
+    );
+}
+
+function PatientProfile({ patient, status }: { patient: Patient; status: string }) {
+    return (
+        <section aria-labelledby="patient-profile">
+            <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
+                <CardHeader className="pb-4 border-b">
+                    <CardTitle id="patient-profile" className="text-3xl font-bold text-blue-900">
+                        Patient Profile
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-4 text-base text-muted-foreground mt-4">
+                    {Object.entries({
+                        Name: patient.name,
+                        Gender: patient.gender,
+                        Email: patient.email,
+                        Phone: patient.phone,
+                        Occupation: patient.occupation,
+                        Address: patient.address,
+                        Allergies: patient.allergies,
+                        "Current Medication": patient.currentMedication,
+                        "Insurance Provider": patient.insuranceProvider,
+                        "Emergency Contact Number": patient.emergencyContactNumber,
+                        "Family Medical History": patient.familyMedicalHistory,
+                        "Disclosure Consent": patient.disclosureConsent ? "Yes" : "No",
+                        "Past Medical History": patient.pastMedicalHistory,
+                        "Current Status": status,
+                        Note: patient?.notes || "No note yet",
+                    }).map(([label, value]) => (
+                        <InfoItem key={label} label={label} value={value} />
+                    ))}
+                </CardContent>
+            </Card>
+        </section>
     );
 }
 
@@ -203,4 +281,17 @@ function FormSection({
             />
         </div>
     );
+}
+
+function InfoItem({ label, value }: { label: string; value: string }) {
+    return (
+        <p className="leading-relaxed text-gray-800">
+            <span className="font-semibold text-gray-900">{label}:</span>{" "}
+            <span className="ml-1 text-gray-700">{value || "Not provided"}</span>
+        </p>
+    );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+    return <p className="text-center pt-20 text-red-600 text-lg">{message}</p>;
 }

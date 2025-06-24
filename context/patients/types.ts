@@ -74,10 +74,7 @@ export interface PatientState {
     recipientRole: string;
     recipientName: string | null;
     loading: boolean;
-    symptoms: string;
-    diagnosis: string;
-    prescriptions: string;
-    recommendations: string;
+
 }
 
 export type PatientAction =
@@ -91,9 +88,4 @@ export type PatientAction =
     | { type: "SET_STATUS"; payload: string }
     | { type: "SET_RECIPIENT_ROLE"; payload: string }
     | { type: "SET_LOADING"; payload: boolean }
-    | { type: "SET_RECIPIENT_NAME"; payload: string }
-    | { type: "SET_SYMPTOMS", payload: string }
-    | { type: "SET_DIAGNOSIS", payload: string }
-    | { type: "SET_PRESCRIPTIONS", payload: string }
-    | { type: "SET_RECOMMENDATIONS", payload: string }
     | { type: "RESET_FORM" }

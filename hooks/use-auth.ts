@@ -1,7 +1,7 @@
 
 
+import { StaffRole } from "@/actions/staff/types";
 import { account, databases } from "@/lib/appwrite.config";
-import { StaffRole } from "@/types/appwrite.types";
 
 
 
