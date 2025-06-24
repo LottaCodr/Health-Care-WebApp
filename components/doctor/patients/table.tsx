@@ -5,11 +5,12 @@ import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
 import { Patient, PatientStatus } from '@/context/patients/types';
 import { Spinner } from '@/components/ui/spinner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface PatientsTableProps {
     patients: Patient[];
     isPending: boolean;
+    currentPage: number;
 }
 
 const statusColorMap: Record<PatientStatus, string> = {
@@ -26,7 +27,7 @@ const statusColorMap: Record<PatientStatus, string> = {
     'no-status': 'bg-red-500',
 };
 
-const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) => {
+const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, currentPage }) => {
     const [mounted, setMounted] = useState(false);
     const router = useRouter();
 
@@ -34,7 +35,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
         setMounted(true);
     }, []);
 
-    // Show loading state instead of "No patients found" if isPending is true
+    // Loading State
     if (patients.length === 0 && isPending) {
         return (
             <tbody>
@@ -47,7 +48,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
         );
     }
 
-    // Show "No patients found" if loading is done and still no patients
+    // Empty State
     if (patients.length === 0 && !isPending) {
         return (
             <tbody>
@@ -61,44 +62,45 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
     }
 
     return (
-        <tbody className="divide-y capitalize divide-gray-200">
-            <AnimatePresence>
-                {patients.map((patient) => (
-                    <motion.tr
-                        key={patient?.userId}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
-                        onClick={() => router.push(`/doctor/patients/${patient?.userId}`)}
-                        className="hover:bg-gray-50 cursor-pointer"
+        <motion.tbody
+            key={currentPage} // <-- This forces remount and re-animation on page change
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="divide-y capitalize divide-gray-200"
+        >
+            {patients.map((patient) => (
+                <tr
+                    key={patient?.userId}
+                    onClick={() => router.push(`/doctor/patients/${patient?.userId}`)}
+                    className="hover:bg-gray-50 cursor-pointer"
+                >
+                    <td
+                        tabIndex={0}
+                        aria-label={`Patient ${patient.name}`}
+                        className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 font-medium"
                     >
-                        <td
-                            tabIndex={0}
-                            aria-label={`Patient ${patient.name}`}
-                            className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 font-medium"
+                        {patient?.name ?? 'N/A'}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.gender ?? 'N/A'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.currentMedication ?? 'N/A'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.allergies ?? 'N/A'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                        <span
+                            className={clsx(
+                                'inline-block rounded-full px-3 py-1 text-xs font-semibold text-white',
+                                statusColorMap[patient.status as PatientStatus] || 'bg-gray-500'
+                            )}
                         >
-                            {patient?.name ?? 'N/A'}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.gender ?? 'N/A'}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.currentMedication ?? 'N/A'}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.allergies ?? 'N/A'}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm">
-                            <span
-                                className={clsx(
-                                    'inline-block rounded-full px-3 py-1 text-xs font-semibold text-white',
-                                    statusColorMap[patient.status as PatientStatus] || 'bg-gray-500'
-                                )}
-                            >
-                                {typeof patient.status === 'string'
-                                    ? patient.status.replace(/-/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase())
-                                    : 'No Status'}
-                            </span>
-                        </td>
-                    </motion.tr>
-                ))}
-            </AnimatePresence>
-        </tbody>
+                            {typeof patient.status === 'string'
+                                ? patient.status.replace(/-/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase())
+                                : 'No Status'}
+                        </span>
+                    </td>
+                </tr>
+            ))}
+        </motion.tbody>
     );
 };
 

@@ -135,7 +135,8 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                             sortConfig={sortConfig}
                             onSortChange={handleSortChange}
                         />
-                            <PatientsTable patients={paginatedPatients} isPending={isPending} />
+                        <PatientsTable patients={paginatedPatients} isPending={isPending} currentPage={currentPage} />
+
                     </table>
                 )}
             </div>
