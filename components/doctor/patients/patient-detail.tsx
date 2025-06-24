@@ -34,6 +34,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
     const { user } = useAuth();
 
     const currentDoctorId = user?.$id;
+    console.log('docId', currentDoctorId)
 
     const { isPending, isError } = useQuery({
         queryKey: ["staffs"],
@@ -190,6 +191,13 @@ function ConsultationForm({
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                             <SelectContent className="bg-white z-20">
+                                <SelectItem value="registered">Registered</SelectItem>
+                                <SelectItem value="awaiting-consultation">Awaiting Consultation</SelectItem>
+                                <SelectItem value="under-consultation">Under Consultation</SelectItem>
+                                <SelectItem value="sent-to-nurse">Sent to Nurse</SelectItem>
+                                <SelectItem value="sent-to-lab">Sent to Lab</SelectItem>
+                                <SelectItem value="sent-to-pharmacy">Sent to Pharmacy</SelectItem>
+                                <SelectItem value="awaiting-payment">Awaiting Payment</SelectItem>
                                 <SelectItem value="admitted">Admitted</SelectItem>
                                 <SelectItem value="under-observation">Under Observation</SelectItem>
                                 <SelectItem value="discharged">Discharged</SelectItem>
