@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Patient, PatientStatus } from '@/context/patients/types';
 import { Spinner } from '@/components/ui/spinner';
 import { motion } from 'framer-motion';
+import { formatDate } from '@/lib/utils';
 
 interface PatientsTableProps {
     patients: Patient[];
@@ -84,6 +85,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, curr
                         {patient?.name ?? 'N/A'}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.gender ?? 'N/A'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{formatDate(patient?.$createdAt!) ?? 'N/A'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.currentMedication ?? 'N/A'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">{patient.allergies ?? 'N/A'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
