@@ -41,7 +41,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, curr
         return (
             <tbody>
                 <tr>
-                    <td colSpan={7} className="py-12 text-center flex gap-4">
+                    <td colSpan={7} className="py-12 text-center justify-center items-center flex gap-4">
                         <Spinner size="lg" /> Getting your patients...
                     </td>
                 </tr>
@@ -73,7 +73,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, curr
         >
             {patients.map((patient) => (
                 <tr
-                    key={patient?.userId}
+                    key={`${currentPage}-${patient?.userId}`} // ✅ Unique key per page
                     onClick={() => router.push(`/doctor/patients/${patient?.userId}`)}
                     className="hover:bg-gray-50 cursor-pointer"
                 >

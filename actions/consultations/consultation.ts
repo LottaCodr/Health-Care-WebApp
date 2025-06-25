@@ -10,6 +10,7 @@ const consultationCollectionId = process.env.NEXT_PUBLIC_CONSULTATION_COLLECTION
 
 export async function createConsultation(consultationData: Consultation) {
     try {
+        console.log('consultId', consultationCollectionId)
         const response = await databases.createDocument(
             databaseId,
             consultationCollectionId,

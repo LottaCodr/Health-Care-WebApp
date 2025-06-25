@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { getPatientConsultations, deleteConsultation } from "@/actions/consultations/consultation";
 import { Consultation } from "@/actions/consultations/types";
+import { Spinner } from "@/components/ui/spinner";
 
 
 
@@ -48,7 +49,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
         },
     });
 
-    if (isPending) return <p className="text-center py-10">Loading consultations...</p>;
+    if (isPending) return <p className="text-center justify-center items-center py-10"> <Spinner size="lg" /> Loading consultations...</p>;
     if (isError) return <p className="text-center py-10 text-red-500">Failed to load consultations.</p>;
     if (!data || data === 0) return <p className="text-center py-10">No consultations found.</p>;
 
