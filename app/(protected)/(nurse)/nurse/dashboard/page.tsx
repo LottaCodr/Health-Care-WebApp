@@ -8,7 +8,7 @@ import React from 'react'
 const DashboardPage = async () => {
 
     return (
-        <NurseDashboardComponent />
+        <NurseDashboardComponent nurseId={'7879877899879879798'} />
     )
 }
 

@@ -1,10 +1,11 @@
 
 export type ConsultationReferred =
-    |  'nurse'
-    |  'labtech'
-    |  'pharmacist'
+    | 'nurse'
+    | 'labtech'
+    | 'pharmacist'
 
 export interface Consultation {
+    $id?: string;
     patientId: string;
     doctorId: string;
     symptom: string;
@@ -12,6 +13,6 @@ export interface Consultation {
     prescription: string;
     recommendation: string;
     consultationDate: string;
-    createdAt: string
-    referredTo: ConsultationReferred
+    createdAt: string;
+    referredTo: string;
 }
