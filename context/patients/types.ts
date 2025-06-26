@@ -70,7 +70,7 @@ export interface PatientState {
     patient: Patient[];
     doctorId?: string;
     notes: string;
-    status: string;
+    status: PatientStatus;
     recipientRole: string;
     recipientName: string | null;
     loading: boolean;

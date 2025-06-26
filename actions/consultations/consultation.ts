@@ -1,3 +1,4 @@
+
 import { databases } from "@/lib/appwrite.config";
 import { Consultation } from "./types";
 import { ID } from "appwrite";
@@ -6,6 +7,7 @@ import { Query } from "node-appwrite";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const consultationCollectionId = process.env.NEXT_PUBLIC_CONSULTATION_COLLECTION_ID!
+console.log('consultId', consultationCollectionId)
 
 
 export async function createConsultation(consultationData: Consultation) {
@@ -22,12 +24,13 @@ export async function createConsultation(consultationData: Consultation) {
 
     } catch (error) {
         console.error("An error occurred while creating consultation:", error);
-        return null;
+        throw new Error("Failed to create consultation.");
     }
 }
 
 
-export async function getPatientConsultations(patientId: string) {
+
+export async function getPatientConsultations(patientId: string): Promise<Consultation[]> {
     try {
         const response = await databases.listDocuments(
             databaseId,
@@ -38,12 +41,28 @@ export async function getPatientConsultations(patientId: string) {
             ]
         );
 
-        return response.documents;
+        // Map documents to Consultation type
+        const consultations = response.documents.map((doc) => ({
+            $id: doc.$id,
+            patientId: doc.patientId,
+            doctorId: doc.doctorId,
+            symptom: doc.symptom,
+            diagnosis: doc.diagnosis,
+            prescription: doc.prescription,
+            recommendation: doc.recommendation,
+            consultationDate: doc.consultationDate,
+            createdAt: doc.createdAt,
+            referredTo: doc.referredTo,
+        }));
+
+        return consultations;
+
     } catch (error) {
         console.error("Error fetching consultations:", error);
         return [];
     }
 }
+
 
 export async function deleteConsultation(consultationId: string) {
     try {

@@ -26,6 +26,15 @@
     background: transparent;
   }
 
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+    }
+  
+    .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
   :root {
     --sidebar-background: hsl(0, 0%, 98%);
     --sidebar-foreground: hsl(240, 5.3%, 26.1%);

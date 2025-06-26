@@ -20,6 +20,9 @@ import { Patient, PatientStatus } from "@/context/patients/types";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
 import { ConsultationReferred } from "@/actions/consultations/types";
+import ConsultationHistoryTable from "./consultation-history";
+
+import { FaUserMd, FaNotesMedical, FaHeartbeat, FaPills, FaStethoscope } from "react-icons/fa";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
@@ -34,7 +37,6 @@ export default function PatientDetailsComponent({ patient }: Props) {
     const { user } = useAuth();
 
     const currentDoctorId = user?.$id;
-    console.log('docId', currentDoctorId)
 
     const { isPending, isError } = useQuery({
         queryKey: ["staffs"],
@@ -70,12 +72,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
         try {
             consultationDispatch({ type: "SET_LOADING", payload: true });
 
-            await databases.updateDocument(databaseId, patientCollectionId, patient.userId, {
-                status: patientState.status,
-            });
-
-            console.log('patientId', patient.$id!)
-            console.log('docId', currentDoctorId)
+            await databases.updateDocument(databaseId, patientCollectionId, patient.$id!, { status: patientState.status });
 
             await createConsultation({
                 patientId: patient.$id!,
@@ -109,8 +106,6 @@ export default function PatientDetailsComponent({ patient }: Props) {
         }
     };
 
-    
-
     if (isPending || consultationState.loading) return <PatientDetailsSkeleton />;
     if (isError) return <ErrorMessage message="Failed to load staff list." />;
     if (!patientState.patient || !patientState.patient.length) return <ErrorMessage message="Patient not found." />;
@@ -120,7 +115,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
     return (
         <main className="max-w-6xl mx-6 px-4 md:px-6 py-10 space-y-12">
             <PatientProfile patient={currentPatient} status={patientState.status} />
-
+            <ConsultationHistoryTable patientId={currentPatient.$id!} />
             <ConsultationForm
                 symptoms={consultationState.symptoms}
                 diagnosis={consultationState.diagnosis}
@@ -141,66 +136,35 @@ export default function PatientDetailsComponent({ patient }: Props) {
     );
 }
 
-function ConsultationForm({
-    symptoms,
-    diagnosis,
-    prescriptions,
-    recommendations,
-    referredTo,
-    status,
-    onSymptomsChange,
-    onDiagnosisChange,
-    onPrescriptionsChange,
-    onRecommendationsChange,
-    onReferredToChange,
-    onStatusChange,
-    onSubmit,
-    loading
-}: {
-    symptoms: string;
-    diagnosis: string;
-    prescriptions: string;
-    recommendations: string;
-    referredTo: string;
-    status: string;
-    onSymptomsChange: (val: string) => void;
-    onDiagnosisChange: (val: string) => void;
-    onPrescriptionsChange: (val: string) => void;
-    onRecommendationsChange: (val: string) => void;
-    onReferredToChange: (val: string) => void;
-    onStatusChange: (status: string) => void;
-    onSubmit: () => void;
-    loading: boolean;
-    }) {
-    
-    
+function ConsultationForm({ symptoms, diagnosis, prescriptions, recommendations, referredTo, status, onSymptomsChange, onDiagnosisChange, onPrescriptionsChange, onRecommendationsChange, onReferredToChange, onStatusChange, onSubmit, loading }: any) {
+
     const patientStatuses = [
         { value: 'registered', label: 'Registered' },
-        { value: 'awaiting-consultation', label: 'Awaiting Consultation' },
-        { value: 'under-consultation', label: 'Under Consultation' },
-        { value: 'sent-to-nurse', label: 'Sent to Nurse' },
-        { value: 'sent-to-lab', label: 'Sent to Lab' },
-        { value: 'sent-to-pharmacy', label: 'Sent to Pharmacy' },
-        { value: 'awaiting-payment', label: 'Awaiting Payment' },
+        { value: 'awaitingConsultation', label: 'Awaiting Consultation' },
+        { value: 'underConsultation', label: 'Under Consultation' },
+        { value: 'sentToNurse', label: 'Sent to Nurse' },
+        { value: 'sentToLab', label: 'Sent to Lab' },
+        { value: 'sentToPharmacy', label: 'Sent to Pharmacy' },
+        { value: 'awaitingPayment', label: 'Awaiting Payment' },
         { value: 'admitted', label: 'Admitted' },
-        { value: 'under-observation', label: 'Under Observation' },
+        { value: 'underObservation', label: 'Under Observation' },
         { value: 'discharged', label: 'Discharged' },
-        { value: 'no-status', label: 'No Status' },
+        { value: 'noStatus', label: 'No Status' },
     ];
-    
+
     return (
         <section aria-labelledby="doctor-consultation">
             <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
                 <CardHeader className="pb-4 border-b">
-                    <CardTitle id="doctor-consultation" className="text-2xl font-semibold text-blue-900">
-                        Doctor's Consultation
+                    <CardTitle id="doctor-consultation" className="text-2xl font-semibold text-blue-900 flex items-center gap-2">
+                        <FaStethoscope className="text-blue-700" /> Doctor's Consultation
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-8 mt-4">
-                    <FormSection label="Symptoms" value={symptoms} onChange={onSymptomsChange} />
-                    <FormSection label="Diagnosis" value={diagnosis} onChange={onDiagnosisChange} />
-                    <FormSection label="Prescriptions" value={prescriptions} onChange={onPrescriptionsChange} />
-                    <FormSection label="Recommendations" value={recommendations} onChange={onRecommendationsChange} />
+                    <FormSection label="Symptoms" value={symptoms} onChange={onSymptomsChange} icon={<FaHeartbeat className="text-red-600" />} />
+                    <FormSection label="Diagnosis" value={diagnosis} onChange={onDiagnosisChange} icon={<FaNotesMedical className="text-green-600" />} />
+                    <FormSection label="Prescriptions" value={prescriptions} onChange={onPrescriptionsChange} icon={<FaPills className="text-purple-600" />} />
+                    <FormSection label="Recommendations" value={recommendations} onChange={onRecommendationsChange} icon={<FaUserMd className="text-blue-600" />} />
 
                     <div className="space-y-2">
                         <Label htmlFor="status" className="text-lg font-medium text-gray-700">Patient Status</Label>
@@ -210,9 +174,7 @@ function ConsultationForm({
                             </SelectTrigger>
                             <SelectContent className="bg-white z-20">
                                 {patientStatuses.map((status) => (
-                                    <SelectItem key={status.value} value={status.value}>
-                                        {status.label}
-                                    </SelectItem>
+                                    <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -232,17 +194,29 @@ function ConsultationForm({
                         </Select>
                     </div>
 
-                    <Button
-                        onClick={onSubmit}
-                        disabled={loading}
-                        className="w-full md:w-auto text-white text-base px-8 py-3 rounded-xl shadow bg-blue-700 hover:bg-blue-800 transition"
-                    >
+                    <Button onClick={onSubmit} disabled={loading} className="w-full md:w-auto text-white text-base px-8 py-3 rounded-xl shadow bg-blue-700 hover:bg-blue-800 transition">
                         {loading ? "Submitting..." : "Submit Consultation"}
                     </Button>
-
                 </CardContent>
             </Card>
         </section>
+    );
+}
+
+function FormSection({ label, value, onChange, icon }: { label: string; value: string; onChange: (val: string) => void; icon: JSX.Element }) {
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={label.toLowerCase()} className="text-lg font-medium text-gray-700 flex items-center gap-2">
+                {icon} {label}
+            </Label>
+            <Textarea
+                id={label.toLowerCase()}
+                placeholder={`Enter ${label.toLowerCase()}...`}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="min-h-[150px] text-base border-border rounded-xl"
+            />
+        </div>
     );
 }
 
@@ -251,8 +225,8 @@ function PatientProfile({ patient, status }: { patient: Patient; status: string 
         <section aria-labelledby="patient-profile">
             <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
                 <CardHeader className="pb-4 border-b">
-                    <CardTitle id="patient-profile" className="text-3xl font-bold text-blue-900">
-                        Patient Profile
+                    <CardTitle id="patient-profile" className="text-3xl font-bold text-blue-900 flex items-center gap-2">
+                        <FaUserMd className="text-blue-700" /> Patient Profile
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-4 text-base text-muted-foreground mt-4">
@@ -278,29 +252,6 @@ function PatientProfile({ patient, status }: { patient: Patient; status: string 
                 </CardContent>
             </Card>
         </section>
-    );
-}
-
-function FormSection({
-    label,
-    value,
-    onChange,
-}: {
-    label: string;
-    value: string;
-    onChange: (val: string) => void;
-}) {
-    return (
-        <div className="space-y-2">
-            <Label htmlFor={label.toLowerCase()} className="text-lg font-medium text-gray-700">{label}</Label>
-            <Textarea
-                id={label.toLowerCase()}
-                placeholder={`Enter ${label.toLowerCase()}...`}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="min-h-[150px] text-base border-border rounded-xl"
-            />
-        </div>
     );
 }
 
