@@ -43,7 +43,7 @@ export async function getPatientConsultations(patientId: string): Promise<Consul
 
         // Map documents to Consultation type
         const consultations = response.documents.map((doc) => ({
-            $id: doc.$id,
+            $id: doc.$id, 
             patientId: doc.patientId,
             doctorId: doc.doctorId,
             symptom: doc.symptom,
@@ -71,7 +71,7 @@ export async function deleteConsultation(consultationId: string) {
             consultationCollectionId,
             consultationId
         );
-        return response; // Optionally return something if needed
+        return response;
     } catch (error) {
         console.error("Error deleting consultation:", error);
         throw new Error("Failed to delete consultation.");

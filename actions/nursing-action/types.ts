@@ -1,17 +1,20 @@
 export interface NursingAction {
-    $id: string;
+    $id?: string;
     patientId: string; // Relation to Patients
     nurseId: string;   // Relation to Users
-    patientName: string;
-    vitals: {
-        bloodPressure: string;
-        temperature: string;
-        pulseRate: string;
-        respiratoryRate: string;
-        oxygenSaturation: string;
-    };
-    treatmentGiven: string;
-    createdAt: string;
+    doctorInstructions: string;
+    prescribedMedication: string;
+
+    bloodPressure?: string;
+    temperature?: string;
+    pulseRate?: string;
+    respiratoryRate?: string;
+    oxygenSaturation?: string;
+
+    treatmentGiven?: string;
+    doctorDiagnosis: string
+    createdAt?: string;
+    taskDate: string
 }
 
 

@@ -11,17 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { getPatientConsultations, deleteConsultation } from "@/actions/consultations/consultation";
 import { Consultation } from "@/actions/consultations/types";
 
-import {
-    MdHistory,
-    MdDelete,
-    MdEventNote,
-    MdLocalHospital,
-    MdMedicalServices,
-    MdLocalPharmacy,
-    MdAssignment,
-    MdChevronLeft,
-    MdChevronRight,
-} from "react-icons/md";
+import { MdHistory, MdDelete, MdEventNote, MdLocalHospital, MdMedicalServices, MdLocalPharmacy, MdAssignment, MdChevronLeft, MdChevronRight } from "react-icons/md";
 
 interface Props {
     patientId: string;
@@ -59,6 +49,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
         },
     });
 
+    //When patient history > 1
     const scrollCarousel = (direction: "left" | "right") => {
         if (carouselRef.current) {
             const { scrollLeft, clientWidth } = carouselRef.current;
@@ -71,7 +62,8 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
         }
     };
 
-    if (isPending) return <p className="text-center justify-center items-center py-10"><Spinner size="lg" /> Loading consultations...</p>;
+    if (isPending) return <p className="text-center flex gap-4 justify-center items-center py-10"><Spinner size="lg" /> Loading consultations...</p>;
+
     if (isError) return <p className="text-center py-10 text-red-500">Failed to load consultations.</p>;
 
     if (!data || data.length === 0) return (

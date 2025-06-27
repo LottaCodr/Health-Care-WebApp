@@ -56,7 +56,9 @@ export default function NurseDashboard({ nurseId }: Props) {
             {nurseTasks.length === 0 ? (
                 <div className="text-center text-muted-foreground">No assigned tasks.</div>
             ) : (
-                <NurseTasksTable tasks={nurseTasks} />
+                <NurseTasksTable tasks={nurseTasks} refetch={function (): void {
+                    throw new Error('Function not implemented.');
+                }} />
             )}
         </section>
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { databases } from "@/lib/appwrite.config";
@@ -10,10 +10,6 @@ import { usePatientContext } from "@/context/patients/patient-context";
 import { useConsultationContext } from "@/context/consultation/consultation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 import PatientDetailsSkeleton from "./skeleton";
 import { Patient, PatientStatus } from "@/context/patients/types";
@@ -22,7 +18,10 @@ import { useAuth } from "@/context/auth-provider";
 import { ConsultationReferred } from "@/actions/consultations/types";
 import ConsultationHistoryTable from "./consultation-history";
 
-import { FaUserMd, FaNotesMedical, FaHeartbeat, FaPills, FaStethoscope } from "react-icons/fa";
+import { FaUserMd } from "react-icons/fa";
+import ConsultationForm from "./consultation-form";
+import { Staff } from "@/actions/staff/types";
+import { assignNurse } from "@/actions/nursing-action/get.nurse.task";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
@@ -38,10 +37,13 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
     const currentDoctorId = user?.$id;
 
-    const { isPending, isError } = useQuery({
+    const { data: staff, isPending, isError } = useQuery({
         queryKey: ["staffs"],
         queryFn: getAllStaffs,
     });
+
+    const [selectedStaffId, setSelectedStaffId] = useState<string | undefined>(undefined);
+
 
     useEffect(() => {
         if (patient) {
@@ -86,10 +88,19 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 referredTo: consultationState.referredTo,
             });
 
+            await assignNurse({
+                patientId: patient.$id!,
+                nurseId: selectedStaffId!,
+                doctorInstructions: consultationState.recommendations,
+                prescribedMedication: consultationState.prescriptions,
+                doctorDiagnosis: consultationState.diagnosis,
+                taskDate: new Date().toISOString()
+            });
+
             toast({
                 variant: "default",
                 title: "Success",
-                description: "Consultation successfully saved.",
+                description: "Consultation and task successfully assigned.",
             });
 
             consultationDispatch({ type: "RESET_FORM" });
@@ -130,95 +141,11 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 onReferredToChange={(val) => consultationDispatch({ type: "SET_REFERRED_TO", payload: val as ConsultationReferred })}
                 onStatusChange={(status) => patientDispatch({ type: "SET_STATUS", payload: status as PatientStatus })}
                 onSubmit={handleSubmit}
-                loading={consultationState.loading}
-            />
+                loading={consultationState.loading} selectedStaffId={selectedStaffId} availableStaff={staff.filter((s: Staff) => s.role === consultationState.referredTo)} onStaffSelect={setSelectedStaffId} />
         </main>
     );
 }
 
-function ConsultationForm({ symptoms, diagnosis, prescriptions, recommendations, referredTo, status, onSymptomsChange, onDiagnosisChange, onPrescriptionsChange, onRecommendationsChange, onReferredToChange, onStatusChange, onSubmit, loading }: any) {
-
-    const patientStatuses = [
-        { value: 'registered', label: 'Registered' },
-        { value: 'awaitingConsultation', label: 'Awaiting Consultation' },
-        { value: 'underConsultation', label: 'Under Consultation' },
-        { value: 'sentToNurse', label: 'Sent to Nurse' },
-        { value: 'sentToLab', label: 'Sent to Lab' },
-        { value: 'sentToPharmacy', label: 'Sent to Pharmacy' },
-        { value: 'awaitingPayment', label: 'Awaiting Payment' },
-        { value: 'admitted', label: 'Admitted' },
-        { value: 'underObservation', label: 'Under Observation' },
-        { value: 'discharged', label: 'Discharged' },
-        { value: 'noStatus', label: 'No Status' },
-    ];
-
-    return (
-        <section aria-labelledby="doctor-consultation">
-            <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
-                <CardHeader className="pb-4 border-b">
-                    <CardTitle id="doctor-consultation" className="text-2xl font-semibold text-blue-900 flex items-center gap-2">
-                        <FaStethoscope className="text-blue-700" /> Doctor's Consultation
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-8 mt-4">
-                    <FormSection label="Symptoms" value={symptoms} onChange={onSymptomsChange} icon={<FaHeartbeat className="text-red-600" />} />
-                    <FormSection label="Diagnosis" value={diagnosis} onChange={onDiagnosisChange} icon={<FaNotesMedical className="text-green-600" />} />
-                    <FormSection label="Prescriptions" value={prescriptions} onChange={onPrescriptionsChange} icon={<FaPills className="text-purple-600" />} />
-                    <FormSection label="Recommendations" value={recommendations} onChange={onRecommendationsChange} icon={<FaUserMd className="text-blue-600" />} />
-
-                    <div className="space-y-2">
-                        <Label htmlFor="status" className="text-lg font-medium text-gray-700">Patient Status</Label>
-                        <Select onValueChange={onStatusChange} value={status}>
-                            <SelectTrigger id="status">
-                                <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white z-20">
-                                {patientStatuses.map((status) => (
-                                    <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="referredTo" className="text-lg font-medium text-gray-700">Refer To</Label>
-                        <Select onValueChange={onReferredToChange} value={referredTo}>
-                            <SelectTrigger id="referredTo">
-                                <SelectValue placeholder="Select referral" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white z-20">
-                                <SelectItem value="nurse">Nurse</SelectItem>
-                                <SelectItem value="labtech">Lab Technician</SelectItem>
-                                <SelectItem value="pharmacist">Pharmacist</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <Button onClick={onSubmit} disabled={loading} className="w-full md:w-auto text-white text-base px-8 py-3 rounded-xl shadow bg-blue-700 hover:bg-blue-800 transition">
-                        {loading ? "Submitting..." : "Submit Consultation"}
-                    </Button>
-                </CardContent>
-            </Card>
-        </section>
-    );
-}
-
-function FormSection({ label, value, onChange, icon }: { label: string; value: string; onChange: (val: string) => void; icon: JSX.Element }) {
-    return (
-        <div className="space-y-2">
-            <Label htmlFor={label.toLowerCase()} className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                {icon} {label}
-            </Label>
-            <Textarea
-                id={label.toLowerCase()}
-                placeholder={`Enter ${label.toLowerCase()}...`}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="min-h-[150px] text-base border-border rounded-xl"
-            />
-        </div>
-    );
-}
 
 function PatientProfile({ patient, status }: { patient: Patient; status: string }) {
     return (
