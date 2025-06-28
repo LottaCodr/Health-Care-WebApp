@@ -3,18 +3,53 @@ import { databases } from '@/lib/appwrite.config';
 import { ID, Query } from 'appwrite';
 import { NursingAction } from './types';
 
-export async function getNurseTasks(nurseId: string) {
+const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
+const nursingActionCollectionId = process.env.NEXT_PUBLIC_NURSING_ACTIONS_COLLECTION_ID!
+export async function assignNurse(nurseTaskData: NursingAction) {
+    try {
+        const response = await databases.createDocument(
+            databaseId,
+            nursingActionCollectionId,
+            ID.unique(),
+            nurseTaskData
+        );
+
+        console.log('Nurse Assigment successfully created:', response);
+        return response;
+    } catch (error) {
+        console.error("An error occurred while creating nurse task:", error);
+        throw new Error("Failed to create nurse assignmentq")
+    }
+
+}
+export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
     try {
         const response = await databases.listDocuments(
-            process.env.NEXT_PUBLIC_DATABASE_ID!,
-            process.env.NEXT_PUBLIC_NURSING_ACTIONS_COLLECTION_ID!,
+            databaseId,
+            nursingActionCollectionId,
             [
                 Query.equal('nurseId', nurseId),
                 Query.orderDesc('$createdAt')
             ]
         );
 
-        return response.documents.map;
+        //Map documents to Nurse Action type
+        const nurseActions = response.documents.map((n) => ({
+            $id: n.$id,
+            patientId: n.patientId,// Relation to Patients
+            nurseId: n.nurseId,
+            patientName: n.patientName,
+            bloodPressure: n.vitals.bloodPressure,
+            temperature: n.vitals.temperature,
+            pulseRate: n.vitals.pulseRate,
+            respiratoryRate: n.vitals.respiratoryRate,
+            oxygenSaturation: n.vitals.oxygenSaturation,
+            treatmentGiven: n.treatmentGiven,
+            createdAt: n.createdAt
+        }))
+
+        return nurseActions;
+
     } catch (error) {
         console.error('Error fetching nurse tasks:', error);
         throw new Error('Could not fetch nurse tasks');

@@ -1,5 +1,5 @@
+import { Patient } from "@/context/patients/types";
 import { Models } from "node-appwrite";
-import { Patient } from "../patients/types";
 
 
 export type StaffRole = "doctor" | "nurse" | "front-desk" | "pharmacist" | "lab-tech" | "user";
