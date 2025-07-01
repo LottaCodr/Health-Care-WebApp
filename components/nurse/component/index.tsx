@@ -6,12 +6,17 @@ import { getNurseTasks } from '@/actions/nursing-action/get.nurse.task';
 import { Spinner } from '@/components/ui/spinner';
 import { NursingAction } from '@/actions/nursing-action/types';
 import NurseTasksTable from './nurse-task-table';
+import { useAuth } from '@/context/auth-provider';
 
-interface Props {
-    nurseId: string;
-}
+// interface Props {
+//     nurseId: string;
+// }
 
-export default function NurseDashboard({ nurseId }: Props) {
+export default function NurseDashboard() {
+
+    const { user } = useAuth()
+    const nurseId = user?.$id
+
     const {
         data: nurseTasks = [],
         isPending,
@@ -19,9 +24,9 @@ export default function NurseDashboard({ nurseId }: Props) {
         refetch,
     } = useQuery<NursingAction[]>({
         queryKey: ['nurseTasks', nurseId],
-        queryFn: () => getNurseTasks(nurseId),
+        queryFn: () => getNurseTasks(nurseId!),
         enabled: !!nurseId,
-        staleTime: 60 * 1000, // 1 minute cache
+        staleTime: 60 * 1000, 
         refetchOnWindowFocus: false,
     });
 
