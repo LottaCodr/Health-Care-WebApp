@@ -18,12 +18,17 @@ export default function NurseTasksTable({ tasks, refetch }: Props) {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
     return (
-        <div className="overflow-x-auto bg-white rounded-xl shadow-md border border-gray-200">
-            <table className="min-w-full text-sm">
+        <div className="bg-white rounded-xl shadow-md border border-gray-200">
+            <table className="w-full text-sm">
                 <thead>
-                    <tr className="bg-[#f8fafc] border-b border-gray-200">
+                    <tr className="bg-[#f8fafc] border-b border-gray-200 w-full">
                         <TableHeader title="Patient" />
                         <TableHeader title="Created At" />
+                        <TableHeader title="Vitals" />
+                        <TableHeader title="Treatment Given" />
+                        <TableHeader title="Doctor Instructions" />
+                        <TableHeader title="Prescribed Medication" />
+                        <TableHeader title="Doctor Diagnosis" />
                         <TableHeader title="Actions" />
                     </tr>
                 </thead>
@@ -48,9 +53,23 @@ export default function NurseTasksTable({ tasks, refetch }: Props) {
 
 function TableHeader({ title }: { title: string }) {
     return (
-        <th className="px-6 py-4 text-left font-medium text-gray-700 tracking-wide">
+        <th className="px-6 py-4 text-left font-medium text-gray-700 w-auto">
             {title}
         </th>
+    );
+}
+
+function renderVitals(vitals: any) {
+    if (!vitals) return <span className="text-gray-400">-</span>;
+    // Show as a comma-separated string of key: value
+    return (
+        <div className="flex flex-col gap-0.5">
+            {Object.entries(vitals).map(([key, value]) => (
+                <span key={key} className="text-gray-700">
+                    <span className="capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>: <span className="font-medium">{value as String || '-'}</span>
+                </span>
+            ))}
+        </div>
     );
 }
 
@@ -75,14 +94,45 @@ function TaskRow({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3, delay: index * 0.04 }}
-            className="hover:bg-[#f1f3f4] transition-colors border-b border-gray-100 last:border-0"
+            className="hover:bg-[#f1f3f4] transition-colors w-full border-b border-gray-100 last:border-0"
             style={{ boxShadow: "0 1px 0 0 #e0e3e6" }}
         >
             <td className="px-6 py-4 text-gray-900 font-medium">
                 {patientName}
             </td>
             <td className="px-6 py-4 text-gray-600">
-                {formatDate(task?.createdAt || new Date().toISOString())}
+                {formatDate(task?.taskDate || new Date().toISOString())}
+            </td>
+            <td className="px-6 py-4">
+                {renderVitals(task?.vitals || {})}
+            </td>
+            <td className="px-6 py-4">
+                {task.treatmentGiven ? (
+                    <span className="text-gray-700">{task.treatmentGiven}</span>
+                ) : (
+                    <span className="text-gray-400">-</span>
+                )}
+            </td>
+            <td className="px-6 py-4">
+                {task.doctorInstructions ? (
+                    <span className="text-gray-700">{task.doctorInstructions}</span>
+                ) : (
+                    <span className="text-gray-400">-</span>
+                )}
+            </td>
+            <td className="px-6 py-4">
+                {task.prescribedMedication ? (
+                    <span className="text-gray-700">{task.prescribedMedication}</span>
+                ) : (
+                    <span className="text-gray-400">-</span>
+                )}
+            </td>
+            <td className="px-6 py-4">
+                {task.doctorDiagnosis ? (
+                    <span className="text-gray-700">{task.doctorDiagnosis}</span>
+                ) : (
+                    <span className="text-gray-400">-</span>
+                )}
             </td>
             <td className="px-6 py-4">
                 <Dialog>
@@ -96,9 +146,6 @@ function TaskRow({
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl rounded-xl shadow-lg border border-gray-200">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                            Record Vitals & Treatment
-                        </h2>
                         <VitalsTreatmentForm
                             documentId={selectedTaskId!}
                             onSuccess={() => {
