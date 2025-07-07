@@ -50,7 +50,7 @@ export default function RecordVitalsForm({ task, onClose }: Props) {
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Record Vitals for {task.patientName}</DialogTitle>
+                    <DialogTitle>Record Vitals for {task?.patientName}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>

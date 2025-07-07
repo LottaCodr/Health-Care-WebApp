@@ -47,7 +47,7 @@ export default function NurseTaskTable({ tasks }: Props) {
                                 exit={{ opacity: 0, y: -10 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <td className="px-4 py-3">{task.patientName}</td>
+                                <td className="px-4 py-3">{task?.patientName}</td>
                                 <td className="px-4 py-3 capitalize">{task.taskDate}</td>
                                 <td className="px-4 py-3 flex gap-2">
                                     <Button
