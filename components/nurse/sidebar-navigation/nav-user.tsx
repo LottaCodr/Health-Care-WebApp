@@ -1,15 +1,6 @@
 "use client"
 
-import {
-    BadgeCheck,
-    Bell,
-    ChevronsUpDown,
-    CreditCard,
-    LogOut,
-    Sparkles,
-    Moon,
-    Sun,
-} from "lucide-react"
+import { ChevronsUpDown, LogOut, Moon, Sun, } from "lucide-react"
 
 import {
     Avatar,
@@ -32,79 +23,69 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes"
+import { useAuth } from "@/context/auth-provider"
+import { logout } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 
-export function NurseNavUser({
-    user,
-}: {
-    user: {
-        name: string
-        email: string
-        avatar: string
-    }
-}) {
-    const { isMobile } = useSidebar()
+export function NavUser() {
     const { setTheme, theme } = useTheme()
+    const { user } = useAuth();
+    const router = useRouter()
 
     return (
         <SidebarMenu>
             <SidebarMenuItem>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <SidebarMenuButton
-                            size="lg"
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                        >
-                            <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarImage src={user.avatar} alt={user.name} />
-                                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-                            </Avatar>
-                            <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold">{user.name}</span>
-                                <span className="truncate text-xs">{user.email}</span>
-                            </div>
-                            <ChevronsUpDown className="ml-auto size-4" />
-                        </SidebarMenuButton>
+                        <div className="cursor-pointer w-full">
+
+                            <SidebarMenuButton
+                                size="lg"
+                                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                            >
+                                <Avatar className="h-8 w-8 rounded-lg">
+                                    <AvatarFallback className="rounded-lg">
+                                        {user?.full_name
+                                            ? user.full_name
+                                                .split(' ')
+                                                .map((n: any) => n[0])
+                                                .join('')
+                                                .toUpperCase()
+                                            : 'CN'}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="grid flex-1 text-left text-sm leading-tight">
+                                    <span className="truncate font-semibold">{user?.full_name}</span>
+                                    <span className="truncate text-xs">{user?.email}</span>
+                                </div>
+                                <ChevronsUpDown className="ml-auto size-4" />
+                            </SidebarMenuButton>
+                        </div>
+
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                        className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                        side={isMobile ? "bottom" : "right"}
-                        align="end"
-                        sideOffset={4}
-                    >
+                    <DropdownMenuContent>
                         <DropdownMenuLabel className="p-0 font-normal">
                             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                 <Avatar className="h-8 w-8 rounded-lg">
-                                    <AvatarImage src={user.avatar} alt={user.name} />
-                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                    <AvatarImage src={undefined} alt={user?.name} />
+                                    <AvatarFallback className="rounded-lg">
+                                        {user?.full_name
+                                            ? user.full_name
+                                                .split(' ')
+                                                .map((n: any) => n[0])
+                                                .join('')
+                                                .toUpperCase()
+                                            : 'NILE'}
+                                    </AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
-                                    <span className="truncate font-semibold">{user.name}</span>
-                                    <span className="truncate text-xs">{user.email}</span>
+                                    <span className="truncate font-semibold capitalize">{user?.name}</span>
+                                    <span className="truncate text-xs capitalize">{user?.email}</span>
                                 </div>
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <Sparkles />
-                                Upgrade to Pro
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <BadgeCheck />
-                                Account
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <CreditCard />
-                                Billing
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Bell />
-                                Notifications
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
+
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
                             <DropdownMenuItem onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
@@ -113,13 +94,20 @@ export function NurseNavUser({
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                await logout();
+                                router.replace("/staff");
+                            }}
+
+                            className="cursor-pointer gap-2"
+                        >
                             <LogOut />
                             Log out
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>
-        </SidebarMenu>
+        </SidebarMenu >
     )
 }

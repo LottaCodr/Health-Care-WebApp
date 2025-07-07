@@ -8,9 +8,6 @@ import { NursingAction } from '@/actions/nursing-action/types';
 import NurseTasksTable from './nurse-task-table';
 import { useAuth } from '@/context/auth-provider';
 
-// interface Props {
-//     nurseId: string;
-// }
 
 export default function NurseDashboard() {
 
@@ -26,28 +23,28 @@ export default function NurseDashboard() {
         queryKey: ['nurseTasks', nurseId],
         queryFn: () => getNurseTasks(nurseId!),
         enabled: !!nurseId,
-        staleTime: 60 * 1000, 
+        staleTime: 60 * 1000,
         refetchOnWindowFocus: false,
     });
 
-    if (isPending) {
-        return (
-            <div className="flex justify-center items-center h-60 gap-4">
-                <Spinner size="lg" /> Loading...
-            </div>
-        );
-    }
+    // if (isPending) {
+    //     return (
+    //         <div className="flex justify-center items-center h-60 gap-4">
+    //             <Spinner size="lg" /> Loading...
+    //         </div>
+    //     );
+    // }
 
-    if (isError) {
-        return (
-            <div className="text-center text-red-500">
-                Failed to load tasks.{' '}
-                <button onClick={() => refetch()} className="underline">
-                    Retry
-                </button>
-            </div>
-        );
-    }
+    // if (isError) {
+    //     return (
+    //         <div className="text-center text-red-500">
+    //             Failed to load tasks.{' '}
+    //             <button onClick={() => refetch()} className="underline">
+    //                 Retry
+    //             </button>
+    //         </div>
+    //     );
+    // }
 
     return (
         <section className="max-w-6xl mx-auto p-6 space-y-6">
@@ -61,9 +58,7 @@ export default function NurseDashboard() {
             {nurseTasks.length === 0 ? (
                 <div className="text-center text-muted-foreground">No assigned tasks.</div>
             ) : (
-                <NurseTasksTable tasks={nurseTasks} refetch={function (): void {
-                    throw new Error('Function not implemented.');
-                }} />
+                <NurseTasksTable tasks={nurseTasks} refetch={() => refetch()} />
             )}
         </section>
     );

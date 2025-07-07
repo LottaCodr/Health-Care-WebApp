@@ -1,60 +1,55 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { account } from "@/lib/appwrite.config";
-import { Models } from "appwrite"; // import Appwrite's User type
+import { Models } from "appwrite";
+
+const PUBLIC_ROUTES = ["/", "/staff"] as const;
+
+const ROLE_DASHBOARD_MAP: Record<string, string> = {
+    doctor: "/doctor/dashboard",
+    nurse: "/nurse/dashboard",
+    pharmacist: "/pharmacist/dashboard",
+    "lab-tech": "/lab-tech/dashboard",
+    "front-desk": "/front-desk/dashboard",
+};
+
+function getDashboardRoute(role?: string): string {
+    return ROLE_DASHBOARD_MAP[role as keyof typeof ROLE_DASHBOARD_MAP] || "/staff";
+}
 
 export default function ProtectedRedirect({ children }: { children: ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
 
-    useEffect(() => {
-        const checkSession = async () => {
+    const handleRedirect = useCallback(
+        async () => {
             try {
                 const user: Models.User<Models.Preferences> = await account.get();
-
                 const role = user?.prefs?.role;
-                const full_name = user?.prefs?.full_name;
 
-                console.log("✅ Role:", role);
-                console.log("👤 User prefs:", user.prefs);
-
-                // Redirect based on role if on public route
-                const isPublic = ["/", "/staff"].includes(pathname);
-                if (isPublic) {
-                    switch (role) {
-                        case "doctor":
-                            router.replace("/doctor/dashboard");
-                            break;
-                        case "nurse":
-                            router.replace("/nurse/dashboard");
-                            break;
-                        case "pharmacist":
-                            router.replace("/pharmacist/dashboard");
-                            break;
-                        case "lab-tech":
-                            router.replace("/lab-tech/dashboard");
-                            break;
-                        case "front-desk":
-                            router.replace("/front-desk/dashboard");
-                            break;
-                        default:
-                            router.replace("/staff");
-                            break;
+                // If user is on a public route, redirect to their dashboard
+                if (PUBLIC_ROUTES.includes(pathname as (typeof PUBLIC_ROUTES)[number])) {
+                    const dashboardRoute = getDashboardRoute(role);
+                    if (pathname !== dashboardRoute) {
+                        router.replace(dashboardRoute);
                     }
                 }
             } catch (error) {
-                // Not logged in: redirect from protected routes
-                const publicRoutes = ["/", "/staff"];
-                if (!publicRoutes.includes(pathname)) {
+                // If not authenticated and on a protected route, redirect to /staff
+                if (!PUBLIC_ROUTES.includes(pathname as (typeof PUBLIC_ROUTES)[number])) {
                     router.replace("/staff");
                 }
             }
-        };
+        },
+        [pathname, router]
+    );
 
-        checkSession();
-    }, [pathname, router]);
+    useEffect(() => {
+        handleRedirect();
+        // Only run when pathname or router changes
+    }, [handleRedirect]);
 
     return <>{children}</>;
 }

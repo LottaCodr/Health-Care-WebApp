@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { NursingAction } from '@/actions/nursing-action/types';
 import VitalsTreatmentForm from './vitals-and-treatment-form';
 
+
 interface Props {
     tasks: NursingAction[];
     refetch: () => void;
