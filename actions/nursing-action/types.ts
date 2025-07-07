@@ -1,3 +1,5 @@
+import { Patient } from "@/context/patients/types";
+
 export interface NursingAction {
     $id?: string;
     patientId: string; // Relation to Patients
@@ -14,7 +16,8 @@ export interface NursingAction {
     treatmentGiven?: string;
     doctorDiagnosis: string
     createdAt?: string;
-    taskDate: string
+    taskDate: string;
+    patientDetails?: Patient
 }
 
 

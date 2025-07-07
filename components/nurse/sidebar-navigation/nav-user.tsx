@@ -27,7 +27,7 @@ import { useAuth } from "@/context/auth-provider"
 import { logout } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 
-export function NavUser() {
+export function NurseNavUser() {
     const { setTheme, theme } = useTheme()
     const { user } = useAuth();
     const router = useRouter()
