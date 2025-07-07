@@ -22,6 +22,8 @@ export async function assignNurse(nurseTaskData: NursingAction) {
     }
 
 }
+
+
 export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
     try {
         const response = await databases.listDocuments(
@@ -33,23 +35,22 @@ export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
             ]
         );
 
-        //Map documents to Nurse Action type
-        const nurseActions = response.documents.map((n) => ({
+        // Map each document to the full NursingAction type
+        const nurseActions: NursingAction[] = response.documents.map((n) => ({
             $id: n.$id,
-            patientId: n.patientId,// Relation to Patients
+            patientId: n.patientId,
             nurseId: n.nurseId,
             patientName: n.patientName,
-            bloodPressure: n.vitals.bloodPressure,
-            temperature: n.vitals.temperature,
-            pulseRate: n.vitals.pulseRate,
-            respiratoryRate: n.vitals.respiratoryRate,
-            oxygenSaturation: n.vitals.oxygenSaturation,
+            vitals: n.vitals,
             treatmentGiven: n.treatmentGiven,
+            doctorInstructions: n.doctorInstructions,
+            prescribedMedication: n.prescribedMedication,
+            doctorDiagnosis: n.doctorDiagnosis,
+            taskDate: n.taskDate,
             createdAt: n.createdAt
-        }))
+        }));
 
         return nurseActions;
-
     } catch (error) {
         console.error('Error fetching nurse tasks:', error);
         throw new Error('Could not fetch nurse tasks');
