@@ -9,7 +9,7 @@ const DashboardPage = async () => {
 
     return (
         <NurseDashboardComponent />
-    )
+    );
 }
 
 export default DashboardPage
