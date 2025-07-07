@@ -3,7 +3,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getNurseTasks } from '@/actions/nursing-action/get.nurse.task';
-import { Spinner } from '@/components/ui/spinner';
+// import { Spinner } from '@/components/ui/spinner';
 import { NursingAction } from '@/actions/nursing-action/types';
 import NurseTasksTable from './nurse-task-table';
 import { useAuth } from '@/context/auth-provider';

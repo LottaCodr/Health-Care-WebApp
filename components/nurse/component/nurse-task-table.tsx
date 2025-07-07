@@ -38,7 +38,7 @@ export default function NurseTasksTable({ tasks, refetch }: Props) {
                                 exit={{ opacity: 0, y: -10 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <td className="px-4 py-2">{task.patientName ?? 'Unknown Patient'}</td>
+                                <td className="px-4 py-2">{'Unknown Patient'}</td>
                                 <td className="px-4 py-2">{formatDate(task?.createdAt!)}</td>
                                 <td className="px-4 py-2">
                                     <Dialog>
