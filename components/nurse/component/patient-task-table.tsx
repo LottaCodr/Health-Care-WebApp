@@ -2,19 +2,20 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Task } from '@/context/nurse/types';
+// import { Task } from '@/context/nurse/types';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import ViewDoctorInstructions from './view-doctor-instructions';
 import RecordVitalsForm from './record-vitals-form';
+import { NursingAction } from '@/actions/nursing-action/types';
 
 interface Props {
-    tasks: Task[];
+    tasks: NursingAction[];
 }
 
 export default function NurseTaskTable({ tasks }: Props) {
     const router = useRouter();
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [selectedTask, setSelectedTask] = useState<NursingAction | null>(null);
     const [viewingInstructions, setViewingInstructions] = useState(false);
     const [recordingVitals, setRecordingVitals] = useState(false);
 
@@ -40,14 +41,14 @@ export default function NurseTaskTable({ tasks }: Props) {
                     <tbody className="divide-y divide-border">
                         {tasks.map((task) => (
                             <motion.tr
-                                key={task.id}
+                                key={task.$id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <td className="px-4 py-3">{task.patientName}</td>
-                                <td className="px-4 py-3 capitalize">{task.status}</td>
+                                <td className="px-4 py-3">{task?.patientName}</td>
+                                <td className="px-4 py-3 capitalize">{task.taskDate}</td>
                                 <td className="px-4 py-3 flex gap-2">
                                     <Button
                                         size="sm"

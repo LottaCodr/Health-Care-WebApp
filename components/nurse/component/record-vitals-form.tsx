@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Task } from '@/context/nurse/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { recordVitals } from '@/actions/nurse/record.vitals';
+// import { recordVitals } from '@/actions/nurse/record.vitals';
 import { toast } from 'sonner';
+import { NursingAction } from '@/actions/nursing-action/types';
 
 interface Props {
-    task: Task;
+    task: NursingAction;
     onClose: () => void;
 }
 
@@ -25,7 +25,7 @@ export default function RecordVitalsForm({ task, onClose }: Props) {
     const [treatment, setTreatment] = useState('');
 
     const { mutate, isPending } = useMutation({
-        mutationFn: recordVitals,
+        mutationFn: () => { },
         onSuccess: () => {
             toast.success('Vitals recorded successfully');
             queryClient.invalidateQueries({ queryKey: ['nurse-tasks'] });
@@ -38,19 +38,19 @@ export default function RecordVitalsForm({ task, onClose }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        mutate({
-            patientId: task.patientId,
-            nurseId: task.nurseId,
-            vitals,
-            treatmentGiven: treatment,
-        });
+        //     mutate({
+        //         patientId: task.patientId,
+        //         nurseId: task.nurseId,
+        //         vitals,
+        //         treatmentGiven: treatment,
+        //     });
     };
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Record Vitals for {task.patientName}</DialogTitle>
+                    <DialogTitle>Record Vitals for {task?.patientName}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>

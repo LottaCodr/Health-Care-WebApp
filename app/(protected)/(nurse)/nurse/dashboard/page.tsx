@@ -8,8 +8,8 @@ import React from 'react'
 const DashboardPage = async () => {
 
     return (
-        <NurseDashboardComponent nurseId={'7879877899879879798'} />
-    )
+        <NurseDashboardComponent />
+    );
 }
 
 export default DashboardPage

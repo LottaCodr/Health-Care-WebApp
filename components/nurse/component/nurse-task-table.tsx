@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { NursingAction } from '@/actions/nursing-action/types';
 import VitalsTreatmentForm from './vitals-and-treatment-form';
 
+
 interface Props {
     tasks: NursingAction[];
     refetch: () => void;
@@ -37,14 +38,14 @@ export default function NurseTasksTable({ tasks, refetch }: Props) {
                                 exit={{ opacity: 0, y: -10 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <td className="px-4 py-2">{task.patientName ?? 'Unknown Patient'}</td>
-                                <td className="px-4 py-2">{formatDate(task.createdAt)}</td>
+                                <td className="px-4 py-2">{'Unknown Patient'}</td>
+                                <td className="px-4 py-2">{formatDate(task?.createdAt!)}</td>
                                 <td className="px-4 py-2">
                                     <Dialog>
                                         <DialogTrigger asChild>
                                             <Button
                                                 variant="outline"
-                                                onClick={() => setSelectedTaskId(task.$id)}
+                                                onClick={() => setSelectedTaskId(task.$id!)}
                                             >
                                                 Record Vitals & Treatment
                                             </Button>

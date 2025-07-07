@@ -35,11 +35,11 @@ export default function VitalsTreatmentForm({ documentId, onSuccess }: VitalsTre
             );
         },
         onSuccess: () => {
-            toast.success('Nursing action updated successfully!');
+            // toast.success('Nursing action updated successfully!');
             if (onSuccess) onSuccess();
         },
         onError: () => {
-            toast.error('Failed to update nursing action. Please try again.');
+            // toast.error('Failed to update nursing action. Please try again.');
         },
     });
 
