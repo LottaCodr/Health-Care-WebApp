@@ -18,22 +18,32 @@ export default function NurseTasksTable({ tasks, refetch }: Props) {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
     return (
-        <div className="bg-white rounded-xl shadow-md border border-gray-200">
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="bg-[#f8fafc] border-b border-gray-200 w-full">
-                        <TableHeader title="Patient" />
-                        <TableHeader title="Created At" />
-                        <TableHeader title="Vitals" />
-                        <TableHeader title="Treatment Given" />
-                        <TableHeader title="Doctor Instructions" />
-                        <TableHeader title="Prescribed Medication" />
-                        <TableHeader title="Doctor Diagnosis" />
-                        <TableHeader title="Actions" />
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        {[
+                            'Patient',
+                            'Created At',
+                            'Vitals',
+                            'Treatment Given',
+                            'Doctor Instructions',
+                            'Prescribed Medication',
+                            'Doctor Diagnosis',
+                            'Actions'
+                        ].map((title) => (
+                            <th
+                                key={title}
+                                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 tracking-wide uppercase whitespace-nowrap"
+                            >
+                                {title}
+                            </th>
+                        ))}
                     </tr>
                 </thead>
+
                 <AnimatePresence>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-100">
                         {tasks.map((task, idx) => (
                             <TaskRow
                                 key={task.$id}
@@ -51,24 +61,20 @@ export default function NurseTasksTable({ tasks, refetch }: Props) {
     );
 }
 
-function TableHeader({ title }: { title: string }) {
-    return (
-        <th className="px-6 py-4 text-left font-medium text-gray-700 w-auto">
-            {title}
-        </th>
+function renderVitalsFromFields(task: NursingAction) {
+    const item = (label: string, value: string | null | undefined) => (
+        <div className="text-gray-700 text-sm">
+            <span className="font-medium text-gray-500">{label}: </span>
+            <span className="font-semibold">{value || '-'}</span>
+        </div>
     );
-}
 
-function renderVitals(vitals: any) {
-    if (!vitals) return <span className="text-gray-400">-</span>;
-    // Show as a comma-separated string of key: value
     return (
-        <div className="flex flex-col gap-0.5">
-            {Object.entries(vitals).map(([key, value]) => (
-                <span key={key} className="text-gray-700">
-                    <span className="capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>: <span className="font-medium">{value as String || '-'}</span>
-                </span>
-            ))}
+        <div className="flex flex-col gap-1">
+            {item('Blood Pressure', task?.bloodPressure)}
+            {item('Temperature', task?.temperature)}
+            {item('Pulse Rate', task?.pulseRate)}
+            {item('Respiratory Rate', task?.respiratoryRate)}
         </div>
     );
 }
@@ -86,71 +92,50 @@ function TaskRow({
     selectedTaskId: string | null;
     refetch: () => void;
 }) {
-    const patientName = task.patientDetails?.name || 'Unknown Patient';
-
     return (
         <motion.tr
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3, delay: index * 0.04 }}
-            className="hover:bg-[#f1f3f4] transition-colors w-full border-b border-gray-100 last:border-0"
-            style={{ boxShadow: "0 1px 0 0 #e0e3e6" }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, delay: index * 0.02 }}
+            className="bg-white hover:bg-gray-50 transition-all"
         >
-            <td className="px-6 py-4 text-gray-900 font-medium">
-                {patientName}
+            <td className="px-6 py-5 font-medium text-gray-900">
+                {task.patientId?.name || 'Unknown'}
             </td>
-            <td className="px-6 py-4 text-gray-600">
+            <td className="px-6 py-5 text-gray-600">
                 {formatDate(task?.taskDate || new Date().toISOString())}
             </td>
-            <td className="px-6 py-4">
-                {renderVitals(task?.vitals || {})}
+            <td className="px-6 py-5">{renderVitalsFromFields(task)}</td>
+            <td className="px-6 py-5 text-gray-700">
+                {task.treatmentGiven || <span className="text-gray-400">-</span>}
             </td>
-            <td className="px-6 py-4">
-                {task.treatmentGiven ? (
-                    <span className="text-gray-700">{task.treatmentGiven}</span>
-                ) : (
-                    <span className="text-gray-400">-</span>
-                )}
+            <td className="px-6 py-5 text-gray-700">
+                {task.doctorInstructions || <span className="text-gray-400">-</span>}
             </td>
-            <td className="px-6 py-4">
-                {task.doctorInstructions ? (
-                    <span className="text-gray-700">{task.doctorInstructions}</span>
-                ) : (
-                    <span className="text-gray-400">-</span>
-                )}
+            <td className="px-6 py-5 text-gray-700">
+                {task.prescribedMedication || <span className="text-gray-400">-</span>}
             </td>
-            <td className="px-6 py-4">
-                {task.prescribedMedication ? (
-                    <span className="text-gray-700">{task.prescribedMedication}</span>
-                ) : (
-                    <span className="text-gray-400">-</span>
-                )}
+            <td className="px-6 py-5 text-gray-700">
+                {task.doctorDiagnosis || <span className="text-gray-400">-</span>}
             </td>
-            <td className="px-6 py-4">
-                {task.doctorDiagnosis ? (
-                    <span className="text-gray-700">{task.doctorDiagnosis}</span>
-                ) : (
-                    <span className="text-gray-400">-</span>
-                )}
-            </td>
-            <td className="px-6 py-4">
+            <td className="px-6 py-5">
                 <Dialog>
                     <DialogTrigger asChild>
                         <Button
                             variant="outline"
-                            className="rounded-full border-gray-300 shadow-sm bg-white hover:bg-[#e8f0fe] text-blue-700 font-medium px-5 py-2 transition-colors"
+                            className="rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium px-4 py-2 transition-colors"
                             onClick={() => onSelectTask(task.$id!)}
                         >
-                            Record Vitals & Treatment
+                            Record Vitals
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl rounded-xl shadow-lg border border-gray-200">
+                    <DialogContent className="max-w-2xl rounded-xl p-6">
                         <VitalsTreatmentForm
                             documentId={selectedTaskId!}
                             onSuccess={() => {
                                 refetch();
-                                toast.success('Vitals and treatment successfully recorded!');
+                                toast.success('Vitals and treatment recorded successfully');
                             }}
                         />
                     </DialogContent>

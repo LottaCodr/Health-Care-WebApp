@@ -14,6 +14,7 @@ import {
     Syringe,
     CheckCircle2,
 } from 'lucide-react';
+import { updateNursingAction } from '@/actions/nursing-action/get.nurse.task';
 
 interface VitalsTreatmentFormProps {
     documentId: string;
@@ -53,21 +54,20 @@ export default function VitalsTreatmentForm({ documentId, onSuccess }: VitalsTre
 
     const { mutate, isPending } = useMutation({
         mutationFn: async () => {
-            return await databases.updateDocument(
-                process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-                process.env.NEXT_PUBLIC_NURSING_ACTIONS_COLLECTION_ID!,
+            return await updateNursingAction({
                 documentId,
-                {
-                    vitals,
-                    treatmentGiven,
-                }
-            );
+                bloodPressure: vitals.bloodPressure,
+                temperature: vitals.temperature,
+                pulseRate: vitals.pulse,
+                respiratoryRate: vitals.respiratoryRate,
+                treatmentGiven,
+            })
         },
         onSuccess: () => {
             toast({
                 title: 'Success',
                 description: 'Vitals and treatment recorded successfully.',
-                variant: 'success',
+                variant: 'default',
             });
             if (onSuccess) onSuccess();
         },
