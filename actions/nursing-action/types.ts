@@ -17,7 +17,7 @@ export interface NursingAction {
     doctorDiagnosis: string
     createdAt?: string;
     taskDate: string;
-    patientDetails?: Patient
+    patient?: Patient
 }
 
 
