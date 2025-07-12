@@ -14,13 +14,17 @@ interface Props {
     refetch: () => void;
 }
 
+import { Thermometer, Activity, HeartPulse, Wind } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import clsx from 'clsx';
+
 export default function NurseTasksTable({ tasks, refetch }: Props) {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <table className="min-w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-auto max-w-full">
+            <table className="min-w-[1000px] w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     <tr>
                         {[
                             'Patient',
@@ -62,19 +66,72 @@ export default function NurseTasksTable({ tasks, refetch }: Props) {
 }
 
 function renderVitalsFromFields(task: NursingAction) {
-    const item = (label: string, value: string | null | undefined) => (
-        <div className="text-gray-700 text-sm">
-            <span className="font-medium text-gray-500">{label}: </span>
-            <span className="font-semibold">{value || '-'}</span>
-        </div>
-    );
+    const getColor = (label: string, value: number | null | undefined) => {
+        if (value == null || isNaN(value)) return 'text-gray-400';
+
+        const abnormal = {
+            BP: value > 140 || value < 90,
+            Temp: value > 38 || value < 36,
+            Pulse: value > 100 || value < 60,
+            Resp: value > 20 || value < 12,
+        };
+
+        return abnormal[label as keyof typeof abnormal] ? 'text-red-600 font-semibold' : 'text-green-700';
+    };
+
+    const VitalsItem = ({
+        label,
+        fullLabel,
+        value,
+        Icon,
+    }: {
+        label: 'BP' | 'Temp' | 'Pulse' | 'Resp';
+        fullLabel: string;
+        value: string | null | undefined;
+        Icon: React.ElementType;
+    }) => {
+        const numericValue = value ? parseFloat(value) : null;
+        const colorClass = getColor(label, numericValue);
+
+        return (
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 text-xs cursor-default">
+                        <Icon size={14} className="text-gray-400" />
+                        <span className="text-gray-500">{label}:</span>
+                        <span className={clsx(colorClass, 'transition-colors duration-200')}>
+                            {value || '-'}
+                        </span>
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                    <div className="text-xs">
+                        <strong>{fullLabel}</strong>
+                        <br />
+                        Normal range:
+                        {label === 'BP' && ' 90–140'}
+                        {label === 'Temp' && ' 36°C–38°C'}
+                        {label === 'Pulse' && ' 60–100 bpm'}
+                        {label === 'Resp' && ' 12–20 rpm'}
+                    </div>
+                </TooltipContent>
+            </Tooltip>
+        );
+    };
 
     return (
-        <div className="flex flex-col gap-1">
-            {item('Blood Pressure', task?.bloodPressure)}
-            {item('Temperature', task?.temperature)}
-            {item('Pulse Rate', task?.pulseRate)}
-            {item('Respiratory Rate', task?.respiratoryRate)}
+        <div
+            className={clsx(
+                'flex flex-col gap-1 transition-all',
+                (!task?.bloodPressure || !task?.temperature || !task?.pulseRate || !task?.respiratoryRate)
+                    ? 'border-l-2 border-yellow-400 pl-2'
+                    : ''
+            )}
+        >
+            <VitalsItem label="BP" fullLabel="Blood Pressure" value={task?.bloodPressure} Icon={Activity} />
+            <VitalsItem label="Temp" fullLabel="Temperature" value={task?.temperature} Icon={Thermometer} />
+            <VitalsItem label="Pulse" fullLabel="Pulse Rate" value={task?.pulseRate} Icon={HeartPulse} />
+            <VitalsItem label="Resp" fullLabel="Respiratory Rate" value={task?.respiratoryRate} Icon={Wind} />
         </div>
     );
 }
@@ -101,7 +158,7 @@ function TaskRow({
             className="bg-white hover:bg-gray-50 transition-all"
         >
             <td className="px-6 py-5 font-medium text-gray-900">
-                {task.patientId?.name || 'Unknown'}
+                {task.patientId?.name! || 'Unknown'}
             </td>
             <td className="px-6 py-5 text-gray-600">
                 {formatDate(task?.taskDate || new Date().toISOString())}
