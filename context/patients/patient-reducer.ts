@@ -1,9 +1,9 @@
-import { PatientState, PatientAction } from "./types";
+import { PatientState, PatientAction, PatientStatus } from "./types";
 
 export const initialPatientState: PatientState = {
     patient: [],
     notes: "",
-    status: "",
+    status: "no-status",
     recipientName: "",
     recipientRole: "",
     loading: false,
@@ -28,7 +28,7 @@ export function patientReducer(state: PatientState, action: PatientAction): Pati
         case "UPDATE_NOTES":
             return { ...state, notes: action.payload };
         case "SET_STATUS":
-            return { ...state, status: action.payload };
+            return { ...state, status: action.payload as PatientStatus };
         case "SET_RECIPIENT_ROLE":
             return { ...state, recipientRole: action.payload };
         
@@ -38,7 +38,7 @@ export function patientReducer(state: PatientState, action: PatientAction): Pati
             return {
                 ...state,
                 notes: '',
-                status: '',
+                status: 'no-status',
                 recipientName: '',
                 recipientRole: '',
                 loading: false,

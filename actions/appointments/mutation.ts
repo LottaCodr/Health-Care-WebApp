@@ -18,7 +18,7 @@ export const useAppointmentMutations = (dispatch: Dispatch<AppointmentAction>) =
 
         onSettled() {
             queryClient.invalidateQueries({ queryKey: ['appointments'] })
-            // toast({ title: "Failed to create appointment", variant: "destructive" })
+           
 
         }
     })

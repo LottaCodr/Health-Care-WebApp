@@ -109,9 +109,6 @@ export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
 }
 
 
-
-
-
 export async function updateNursingAction({
     documentId,
     bloodPressure,

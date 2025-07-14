@@ -56,3 +56,28 @@ export const getPatient = async (userId: string): Promise<Patient | null> => {
         return null;
     }
 };
+
+export const updatePatient = async (
+    patientId: string,
+    data: Partial<Patient>
+): Promise<Patient> => {
+    try {
+        const res = await databases.updateDocument(
+            databaseId,
+            patientCollectionId,
+            patientId,
+            data
+        );
+        // Ensure the returned object matches the Patient type
+        const updatedPatient = parseStringify(res) as Patient;
+        return updatedPatient;
+    } catch (error) {
+        console.error("Error updating patient:", error);
+        // Instead of returning null, throw the error to let the caller handle it,
+        // or you can return a default Patient object if appropriate.
+        throw error;
+    }
+}
+
+
+

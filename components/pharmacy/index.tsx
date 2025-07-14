@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { BellIcon, BarChart2, FilterIcon } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import PrescriptionTable from './component/dashboard-comp/prescription-table';
+import DispensedHistoryTable from './component/dashboard-comp/dispense-history-table';
+import { useQueryPrescriptions } from '@/actions/pharmacy/hook/useQueryPrescriptions';
 
 const stats = [
     {
@@ -40,15 +42,13 @@ const activityLog = [
     { action: 'Updated ward round notes for Ward B', time: '1 hr ago' },
 ];
 
-const chartData = [
-    { name: 'Mon', dispenses: 20 },
-    { name: 'Tue', dispenses: 35 },
-    { name: 'Wed', dispenses: 28 },
-    { name: 'Thu', dispenses: 45 },
-    { name: 'Fri', dispenses: 30 },
-];
 
 export default function PharmacyDashboard() {
+    const { data: prescriptions, isLoading } = useQueryPrescriptions();
+    console.log(prescriptions);
+    const pendingPrescriptions = prescriptions?.filter((prescription) => prescription.status === 'pending');
+    const drugsDispensed = prescriptions?.filter((prescription) => prescription.status === 'dispensed');
+
     return (
         <div className="p-4 space-y-6">
             <div className="flex justify-between items-center">
@@ -72,39 +72,49 @@ export default function PharmacyDashboard() {
                             {stat.icon}
                         </CardHeader>
                         <CardContent>
-                            <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                            <a
-                                href={stat.href}
-                                className="text-sm text-blue-600 hover:underline mt-1 inline-block"
-                            >
-                                View Details
-                            </a>
+
                         </CardContent>
                     </Card>
                 ))}
             </div>
 
-            <Tabs defaultValue="chart" className="w-full">
+            <Tabs defaultValue="myPatients" className="w-full">
                 <TabsList className="mb-4">
-                    <TabsTrigger value="chart">Dispensing Trends</TabsTrigger>
-                    <TabsTrigger value="logs">Recent Activities</TabsTrigger>
+                    <TabsTrigger value="myPatients">My Patients</TabsTrigger>
+                    <TabsTrigger value="recentlyDispensed">Recently Dispensed</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="chart">
-                    <Card className="p-4">
-                        <h2 className="text-lg font-semibold text-gray-700 mb-2">Dispenses Over Time</h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="dispenses" stroke="#2563eb" strokeWidth={2} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </Card>
+
+                <TabsContent value="myPatients">
+                    <h2 className="text-lg font-semibold text-gray-700">My Patients</h2>
+                    <p className="text-sm text-gray-500">
+                        These are the patients that you are currently attending to.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="p-4">
+                            <PrescriptionTable
+                                isLoading={isLoading}
+                                data={pendingPrescriptions || []} />
+                            
+                        </Card>
+
+                    </div>
+
                 </TabsContent>
 
+                <TabsContent value="recentlyDispensed">
+                    <h2 className="text-lg font-semibold text-gray-700">Recently dispensed</h2>
+                    <p className="text-sm text-gray-500">
+                        These are the patients that you have recently dispensed.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="p-4">
+                            <DispensedHistoryTable data={drugsDispensed || []} />
+                        </Card>
+                    </div>
+
+                </TabsContent>
+                {/* 
                 <TabsContent value="logs">
                     <Card className="p-4 space-y-3">
                         <h2 className="text-lg font-semibold text-gray-700">Activity Log</h2>
@@ -117,7 +127,7 @@ export default function PharmacyDashboard() {
                             </div>
                         ))}
                     </Card>
-                </TabsContent>
+                </TabsContent> */}
             </Tabs>
         </div>
     );
