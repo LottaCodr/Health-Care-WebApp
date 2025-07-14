@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Dispatch, useState } from 'react';
 import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
@@ -18,8 +18,13 @@ import { Thermometer, Activity, HeartPulse, Wind } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import clsx from 'clsx';
 
+import { useReducer } from 'react';
+import { patientReducer, initialPatientState } from '@/context/patients/patient-reducer';
+import { PatientAction } from '@/context/patients/types';
+
 export default function NurseTasksTable({ tasks, refetch }: Props) {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+    const [state, dispatch] = useReducer(patientReducer, initialPatientState);
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-auto max-w-full">
@@ -52,6 +57,7 @@ export default function NurseTasksTable({ tasks, refetch }: Props) {
                             <TaskRow
                                 key={task.$id}
                                 task={task}
+                                dispatch={dispatch}
                                 index={idx}
                                 onSelectTask={setSelectedTaskId}
                                 selectedTaskId={selectedTaskId}
@@ -141,13 +147,16 @@ function TaskRow({
     index,
     onSelectTask,
     selectedTaskId,
-    refetch
+    refetch,
+    dispatch
 }: {
     task: NursingAction;
     index: number;
+    dispatch: Dispatch<PatientAction>;
     onSelectTask: (id: string) => void;
     selectedTaskId: string | null;
     refetch: () => void;
+
 }) {
     return (
         <motion.tr
@@ -158,7 +167,7 @@ function TaskRow({
             className="bg-white hover:bg-gray-50 transition-all"
         >
             <td className="px-6 py-5 font-medium text-gray-900">
-                {task.patientId?.name! || 'Unknown'}
+                {String(task.patientId?.name) || 'Fetching name...'}
             </td>
             <td className="px-6 py-5 text-gray-600">
                 {formatDate(task?.taskDate || new Date().toISOString())}
@@ -190,6 +199,8 @@ function TaskRow({
                     <DialogContent className="max-w-2xl rounded-xl p-6">
                         <VitalsTreatmentForm
                             documentId={selectedTaskId!}
+                            patientId={typeof task.patientId === 'object' && task.patientId !== null ? (task.patientId as any).$id : task.patientId}
+                            dispatch={dispatch}
                             onSuccess={() => {
                                 refetch();
                                 toast.success('Vitals and treatment recorded successfully');

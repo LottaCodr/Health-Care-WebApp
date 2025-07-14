@@ -72,13 +72,13 @@ export default function PharmacyDashboard() {
                             {stat.icon}
                         </CardHeader>
                         <CardContent>
-                            <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                            {/* <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                             <a
                                 href={stat.href}
                                 className="text-sm text-blue-600 hover:underline mt-1 inline-block"
                             >
                                 View Details
-                            </a>
+                            </a> */}
                         </CardContent>
                     </Card>
                 ))}
@@ -93,15 +93,7 @@ export default function PharmacyDashboard() {
                 <TabsContent value="chart">
                     <Card className="p-4">
                         <h2 className="text-lg font-semibold text-gray-700 mb-2">Dispenses Over Time</h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="dispenses" stroke="#2563eb" strokeWidth={2} />
-                            </LineChart>
-                        </ResponsiveContainer>
+
                     </Card>
                 </TabsContent>
 
