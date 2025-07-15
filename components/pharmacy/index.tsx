@@ -7,6 +7,8 @@ import { BellIcon, BarChart2, FilterIcon } from 'lucide-react';
 import PrescriptionTable from './component/dashboard-comp/prescription-table';
 import DispensedHistoryTable from './component/dashboard-comp/dispense-history-table';
 import { useQueryPrescriptions } from '@/actions/pharmacy/hook/useQueryPrescriptions';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 
 const stats = [
     {
@@ -43,7 +45,10 @@ const stats = [
     },
 ];
 
-export default function PharmacyDashboard() {
+// Create a QueryClient instance outside the component to avoid recreation on every render
+const queryClient = new QueryClient();
+
+function PharmacyDashboardContent() {
     const { data: prescriptions, isLoading } = useQueryPrescriptions();
     const pendingPrescriptions = prescriptions?.filter((prescription) => prescription.status === 'pending');
     const drugsDispensed = prescriptions?.filter((prescription) => prescription.status === 'dispensed');
@@ -110,8 +115,8 @@ export default function PharmacyDashboard() {
             {/* Tabs Section */}
             <Tabs defaultValue="myPatients" className="w-full">
                 <TabsList className="mb-8 flex gap-2 bg-white rounded-xl p-2 shadow border-2 border-red-100">
-                    <TabsTrigger 
-                        value="myPatients" 
+                    <TabsTrigger
+                        value="myPatients"
                         className="flex-1 px-6 py-3 rounded-lg data-[state=active]:bg-red-100 data-[state=active]:text-red-700 transition font-bold text-base focus:outline-none focus:ring-2 focus:ring-red-400"
                     >
                         <span className="flex items-center gap-2">
@@ -119,8 +124,8 @@ export default function PharmacyDashboard() {
                             My Patients
                         </span>
                     </TabsTrigger>
-                    <TabsTrigger 
-                        value="recentlyDispensed" 
+                    <TabsTrigger
+                        value="recentlyDispensed"
                         className="flex-1 px-6 py-3 rounded-lg data-[state=active]:bg-red-50 data-[state=active]:text-red-600 transition font-bold text-base focus:outline-none focus:ring-2 focus:ring-red-400"
                     >
                         <span className="flex items-center gap-2">
@@ -187,5 +192,11 @@ export default function PharmacyDashboard() {
                 </TabsContent>
             </Tabs>
         </div>
+    );
+}
+
+export default function PharmacyDashboard() {
+    return (
+        <PharmacyDashboardContent />
     );
 }
