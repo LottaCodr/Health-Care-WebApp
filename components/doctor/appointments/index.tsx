@@ -99,8 +99,6 @@ const AppointmentsComponent: React.FC = () => {
         setShowModal(true);
     };
 
-
-
     const handleSave = (updated: Appointment) => {
         const exists = appointments.find((a) => a.id === updated.id || a.id === updated.id);
 
@@ -121,10 +119,33 @@ const AppointmentsComponent: React.FC = () => {
         setShowModal(false);
     };
 
+    // UI/UX improvements: 
+    // - Use red as primary color
+    // - Add subtle card, shadow, and border for main container
+    // - Add sticky header for filters and actions
+    // - Add tooltip for "+ New" button
+    // - Add subtle animation for modal
+    // - Add loading spinner overlay when loading
+    // - Add empty state for no appointments
+
     return (
-        <div className="space-y-6 max-w-7xl mx-6 px-4 sm:px-6 py-8">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+        <div className="relative space-y-8 max-w-7xl mx-auto px-4 sm:px-6 py-10 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-red-200 dark:border-red-900 transition-all duration-300">
+            {/* Loading overlay */}
+            {loading && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/70 dark:bg-zinc-900/70 rounded-xl">
+                    <svg className="animate-spin h-10 w-10 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                </div>
+            )}
+
+            {/* Sticky header for filters and actions */}
+            <div className="sticky top-0 z-20 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-t-xl pt-4 pb-2 px-2 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-red-100 dark:border-red-800">
+                <h2 className="text-3xl font-extrabold text-red-700 dark:text-red-400 flex items-center gap-2">
+                    <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                     Doctor&apos;s Appointments
                 </h2>
                 <div className="flex items-center gap-3">
@@ -140,46 +161,84 @@ const AppointmentsComponent: React.FC = () => {
                         customRange={customRange}
                         setCustomRange={setCustomRange}
                     />
-                    <button
-                        onClick={handleCreate}
-                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                    >
-                        + New
-                    </button>
+                    <div className="relative group">
+                        <button
+                            onClick={handleCreate}
+                            className="bg-red-600 hover:bg-red-700 transition-colors duration-150 text-white px-5 py-2 rounded-lg font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
+                            aria-label="Create new appointment"
+                        >
+                            <span className="text-lg">+ New</span>
+                        </button>
+                        <span className="absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 group-hover:opacity-100 transition bg-red-700 text-white text-xs rounded px-2 py-1 pointer-events-none z-10 shadow-lg">
+                            Create a new appointment
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <AppointmentTable
-                appointments={paginatedAppointments}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                timeFormat={timeFormat}
-                sortBy={sortBy}
-                setSortBy={setSortBy}
-                sortOrder={sortOrder}
-                setSortOrder={setSortOrder}
-                page={page}
-                setPage={setPage}
-                pageSize={PAGE_SIZE}
-                total={sortedAppointments.length}
-                loading={loading}
-            />
-
-            <CalendarView
-                appointments={filterAppointments}
-                onEdit={(appt) => handleEdit(appt.id || appt.$id)}
-            />
-
-            {showModal && (
-                <AppointmentModal
-                    isOpen={showModal}
-                    initialData={editing}
-                    onClose={() => setShowModal(false)}
-                    onSave={handleSave}
-                    existingAppointments={filterAppointments}
-
+            {/* Table or empty state */}
+            {paginatedAppointments.length > 0 ? (
+                <AppointmentTable
+                    appointments={paginatedAppointments}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    timeFormat={timeFormat}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                    sortOrder={sortOrder}
+                    setSortOrder={setSortOrder}
+                    page={page}
+                    setPage={setPage}
+                    pageSize={PAGE_SIZE}
+                    total={sortedAppointments.length}
+                    loading={loading}
                 />
+            ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center text-zinc-500 dark:text-zinc-400">
+                    <svg className="w-16 h-16 mb-4 text-red-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div className="text-lg font-semibold mb-2">No appointments found</div>
+                    <div className="mb-4">Try adjusting your filters or create a new appointment.</div>
+                    <button
+                        onClick={handleCreate}
+                        className="bg-red-600 hover:bg-red-700 transition-colors duration-150 text-white px-5 py-2 rounded-lg font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
+                    >
+                        + New Appointment
+                    </button>
+                </div>
             )}
+
+            {/* Calendar view */}
+            <div className="rounded-xl border border-red-100 dark:border-red-800 bg-red-50/30 dark:bg-zinc-900/40 shadow-inner p-4">
+                <CalendarView
+                    appointments={filterAppointments}
+                    onEdit={(appt) => handleEdit(appt.id || appt.$id)}
+                />
+            </div>
+
+            {/* Modal with animation */}
+            {showModal && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fadeIn">
+                    <AppointmentModal
+                        isOpen={showModal}
+                        initialData={editing}
+                        onClose={() => setShowModal(false)}
+                        onSave={handleSave}
+                        existingAppointments={filterAppointments}
+                    />
+                </div>
+            )}
+
+            <style jsx global>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                .animate-fadeIn {
+                    animation: fadeIn 0.2s ease;
+                }
+            `}</style>
         </div>
     );
 };
