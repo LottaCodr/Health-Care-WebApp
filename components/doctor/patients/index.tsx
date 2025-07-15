@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getAllPatients } from '@/actions/patients/get.patients';
 
 import SearchInput from './search-input';
@@ -11,7 +11,7 @@ import { Patient, SortConfig } from '@/context/patients/types';
 
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface PatientProps {
@@ -24,8 +24,6 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     const [search, setSearch] = useState('');
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
-
-    const queryClient = useQueryClient();
 
     const { data: patients = [], isPending, isFetching, refetch } = useQuery({
         queryKey: ['patients'],
@@ -61,7 +59,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
         return filtered;
     }, [patients, search, sortConfig]);
 
-    const totalPages = Math.ceil(filteredPatients.length / ITEMS_PER_PAGE);
+    const totalPages = Math.max(1, Math.ceil(filteredPatients.length / ITEMS_PER_PAGE));
     const paginatedPatients = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
         return filteredPatients.slice(start, start + ITEMS_PER_PAGE);
@@ -77,9 +75,16 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
 
     const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
     const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+    const handleFirst = () => setCurrentPage(1);
+    const handleLast = () => setCurrentPage(totalPages);
+
+    // Improved: Reset to page 1 on search or sort change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [search, sortConfig]);
 
     return (
-        <section className="relative max-w-6xl mx-6 p-6 space-y-6">
+        <section className="relative max-w-6xl mx-auto px-2 md:px-6 py-10 space-y-8">
 
             {/* Animate Top Progress Bar */}
             <AnimatePresence>
@@ -102,7 +107,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ duration: 0.3 }}
-                        className="absolute inset-0 bg-background/50 backdrop-blur-sm flex justify-center items-center z-40 rounded-xl"
+                        className="absolute inset-0 bg-background/60 backdrop-blur-sm flex justify-center items-center z-40 rounded-xl"
                     >
                         <Spinner size="lg" />
                     </motion.div>
@@ -110,25 +115,42 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
             </AnimatePresence>
 
             <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                    Patients Directory
-                    {isFetching && !isPending && <Spinner size="sm" />}
-                </h2>
-
-                <div className="flex items-center gap-2">
-                    <div className="w-full md:w-64">
-                        <SearchInput value={search} onChange={setSearch} />
+                <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center justify-center rounded-full bg-blue-100 text-blue-700 p-2">
+                        <Users size={22} />
+                    </span>
+                    <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                        Patients Directory
+                        {isFetching && !isPending && <Spinner size="sm" />}
+                    </h2>
+                    <span className="ml-2 text-muted-foreground text-sm hidden md:inline">
+                        ({patients.length} total)
+                    </span>
+                </div>
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <div className="flex-1 min-w-0 md:w-64">
+                        <SearchInput value={search} onChange={setSearch} placeholder="Search by name..." />
                     </div>
-                    <Button variant="outline" onClick={() => refetch()} className="rounded-xl flex items-center gap-2">
-                        <RefreshCcw size={16} className={isFetching ? 'animate-spin' : ''} />
-                        Refresh
+                    <Button
+                        variant="ghost"
+                        onClick={() => refetch()}
+                        className="rounded-xl flex items-center gap-2 px-3"
+                        aria-label="Refresh patients"
+                        disabled={isFetching}
+                    >
+                        <RefreshCcw size={18} className={isFetching ? 'animate-spin' : ''} />
+                        <span className="hidden sm:inline">Refresh</span>
                     </Button>
                 </div>
             </header>
 
-            <div className="overflow-x-auto rounded-xl border border-border bg-background shadow-sm relative">
+            <div className="overflow-x-auto rounded-2xl border border-border bg-background shadow-md relative">
                 {filteredPatients.length === 0 && !isPending ? (
-                    <div className="text-center p-6 text-muted-foreground">No patients found.</div>
+                    <div className="flex flex-col items-center justify-center p-10 text-muted-foreground min-h-[200px]">
+                        <Users size={40} className="mb-2 text-blue-200" />
+                        <span className="font-medium text-lg">No patients found.</span>
+                        <span className="text-sm mt-1">Try adjusting your search or filters.</span>
+                    </div>
                 ) : (
                     <table className="min-w-full divide-y divide-border text-sm">
                         <PatientsTableHeader
@@ -136,7 +158,6 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                             onSortChange={handleSortChange}
                         />
                         <PatientsTable patients={paginatedPatients} isPending={isPending} currentPage={currentPage} />
-
                     </table>
                 )}
             </div>
@@ -144,27 +165,51 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
             {filteredPatients.length > 0 && (
                 <footer className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
                     <span className="text-muted-foreground text-sm">
-                        Showing {paginatedPatients.length} of {filteredPatients.length} patients
+                        Showing <span className="font-semibold">{paginatedPatients.length}</span> of <span className="font-semibold">{filteredPatients.length}</span> patients
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                        <Button
+                            onClick={handleFirst}
+                            disabled={currentPage === 1}
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-xl"
+                            aria-label="First page"
+                        >
+                            <ChevronsLeft size={18} />
+                        </Button>
                         <Button
                             onClick={handlePrev}
                             disabled={currentPage === 1}
-                            variant="outline"
+                            variant="ghost"
+                            size="icon"
                             className="rounded-xl"
+                            aria-label="Previous page"
                         >
-                            Previous
+                            <ChevronLeft size={18} />
                         </Button>
-                        <span className="text-sm text-muted-foreground">
-                            Page {currentPage} of {totalPages}
+                        <span className="text-sm text-muted-foreground px-2">
+                            Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
                         </span>
                         <Button
                             onClick={handleNext}
                             disabled={currentPage === totalPages}
-                            variant="outline"
+                            variant="ghost"
+                            size="icon"
                             className="rounded-xl"
+                            aria-label="Next page"
                         >
-                            Next
+                            <ChevronRight size={18} />
+                        </Button>
+                        <Button
+                            onClick={handleLast}
+                            disabled={currentPage === totalPages}
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-xl"
+                            aria-label="Last page"
+                        >
+                            <ChevronsRight size={18} />
                         </Button>
                     </div>
                 </footer>

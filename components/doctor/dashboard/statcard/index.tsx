@@ -8,26 +8,62 @@ import { useQuery } from '@tanstack/react-query';
 import { getAllStaffs } from '@/actions/staff/get.staff';
 import { getAllPatients } from '@/actions/patients/get.patients';
 
-
 export default function StatCardsSection() {
-
-    const { data: allStaffs, isPending: loadingStaff, isError: staffError } = useQuery({
+    const {
+        data: allStaffs,
+        isPending: loadingStaff,
+        isError: staffError,
+        refetch: refetchStaffs,
+    } = useQuery({
         queryKey: ['staffs'],
-        queryFn: () => getAllStaffs()
-    })
+        queryFn: () => getAllStaffs(),
+        staleTime: 1000 * 60 * 5,
+    });
 
-    const { data: allPatients, isPending: loadingAdmittedPatients, isError: staffAdmittedPatients } = useQuery({
+    const {
+        data: allPatients,
+        isPending: loadingPatients,
+        isError: patientsError,
+        refetch: refetchPatients,
+    } = useQuery({
         queryKey: ['patients'],
-        queryFn: () => getAllPatients()
-    })
+        queryFn: () => getAllPatients(),
+        staleTime: 1000 * 60 * 5,
+    });
 
-    const numberofStaff = allStaffs?.length
-    const numberOfAdmittedPatients = allPatients?.filter((p) => p.status === 'admitted')?.length || 0;
-    const numberOfDischargedPatients = allPatients?.filter((p) => p.status === "discharged")?.length || 0;
+    const numberOfStaff = allStaffs?.length ?? 0;
+    const numberOfAdmittedPatients = allPatients?.filter((p) => p.status === 'admitted')?.length ?? 0;
+    const numberOfDischargedPatients = allPatients?.filter((p) => p.status === "discharged")?.length ?? 0;
 
-    if (loadingStaff || loadingAdmittedPatients) {
+    // Improved error handling with retry
+    if (staffError || patientsError) {
         return (
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="flex flex-col items-center justify-center py-8">
+                <div className="text-red-600 font-semibold text-lg mb-2 flex items-center gap-2">
+                    <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+                    </svg>
+                    Failed to load stats. Please try again.
+                </div>
+                <button
+                    onClick={() => {
+                        refetchStaffs();
+                        refetchPatients();
+                    }}
+                    className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
+
+    if (loadingStaff || loadingPatients) {
+        return (
+            <section
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                aria-label="Loading statistics"
+            >
                 <StatCardSkeleton type="admitted" />
                 <StatCardSkeleton type="staff" />
                 <StatCardSkeleton type="discharged" />
@@ -35,31 +71,91 @@ export default function StatCardsSection() {
         );
     }
 
-    if (staffError || staffAdmittedPatients) {
-        return <div className="text-red-500">Failed to load stats. Please try again.</div>;
-    }
+    // Card color accents
+    const cardStyles = [
+        {
+            border: "border-red-500",
+            bg: "bg-white dark:bg-red-900/30",
+            ring: "focus-visible:ring-red-500",
+            iconBg: "bg-red-100 text-red-600",
+        },
+        {
+            border: "border-red-400",
+            bg: "bg-white dark:bg-red-900/20",
+            ring: "focus-visible:ring-red-400",
+            iconBg: "bg-red-50 text-red-500",
+        },
+        {
+            border: "border-red-300",
+            bg: "bg-white dark:bg-red-900/10",
+            ring: "focus-visible:ring-red-300",
+            iconBg: "bg-red-50 text-red-400",
+        },
+    ];
 
     return (
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <section
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            aria-label="Statistics overview"
+        >
             <StatCard
                 type="admitted"
-                icon={<MdLocalHospital className="text-xl text-foreground" />}
+                icon={
+                    <span className={`inline-flex items-center justify-center rounded-full p-3 shadow ${cardStyles[0].iconBg}`}>
+                        <MdLocalHospital className="text-2xl" />
+                    </span>
+                }
                 label="Admitted Patients"
-                count={Number(numberOfAdmittedPatients)}
-                comparison="↑ Compared to 2,300 last quarter"
+                count={numberOfAdmittedPatients}
+                comparison={"↑ Compared to 2,300 last quarter"}
+                className={`
+                    border-l-4 ${cardStyles[0].border} ${cardStyles[0].bg}
+                    shadow-md hover:shadow-lg transition
+                    focus:outline-none ${cardStyles[0].ring}
+                    rounded-2xl p-6
+                `}
             />
             <StatCard
                 type="staff"
-                icon={<MdPeople className="text-xl text-foreground" />}
+                icon={
+                    <span className={`inline-flex items-center justify-center rounded-full p-3 shadow ${cardStyles[1].iconBg}`}>
+                        <MdPeople className="text-2xl" />
+                    </span>
+                }
                 label="Staff on Duty"
-                count={Number(numberofStaff)}
+                count={numberOfStaff}
+                countClassName="text-3xl font-bold text-red-600"
+                comparisonClassName="text-green-600 font-medium flex items-center"
+                bgClassName="bg-red-50"
+
+                comparison={
+                    numberOfStaff > 0
+                        ? "All staff currently on shift"
+                        : "No staff on duty"
+                }
+                className={`
+                    border-l-4 ${cardStyles[1].border} ${cardStyles[1].bg}
+                    shadow-md hover:shadow-lg transition
+                    focus:outline-none ${cardStyles[1].ring}
+                    rounded-2xl p-6
+                `}
             />
             <StatCard
                 type="discharged"
-                icon={<MdExitToApp className="text-xl text-foreground" />}
+                icon={
+                    <span className={`inline-flex items-center justify-center rounded-full p-3 shadow ${cardStyles[2].iconBg}`}>
+                        <MdExitToApp className="text-2xl" />
+                    </span>
+                }
                 label="Discharged Patients"
-                count={Number(numberOfDischargedPatients)}
-                comparison="↑ Compared to 2,700 last quarter"
+                count={numberOfDischargedPatients}
+                comparison={"↑ Compared to 2,700 last quarter"}
+                className={`
+                    border-l-4 ${cardStyles[2].border} ${cardStyles[2].bg}
+                    shadow-md hover:shadow-lg transition
+                    focus:outline-none ${cardStyles[2].ring}
+                    rounded-2xl p-6
+                `}
             />
         </section>
     );

@@ -7,6 +7,7 @@ import { Patient } from '@/context/patients/types';
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const nursingActionCollectionId = process.env.NEXT_PUBLIC_NURSING_ACTIONS_COLLECTION_ID!
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!
+
 export async function assignNurse(nurseTaskData: NursingAction) {
     try {
         const response = await databases.createDocument(
