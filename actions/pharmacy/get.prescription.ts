@@ -6,13 +6,13 @@ const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const pharmacyRecordsCollectionId = process.env.NEXT_PUBLIC_PHARMACY_RECORD_COLLECTION_ID!;
 
 export type PharmacyRecord = {
-    pharmacistId: string;
+    pharmacyId: string;
     patientId: string;
     doctorInstructions: string;
     doctorPrescription: string;
     status: "pending" | "dispensed" | "cancelled" | string;
     dispensedBy?: string;
-    date?: string;
+    createdAt?: string;
     [key: string]: any; // for any additional fields
 };
 
