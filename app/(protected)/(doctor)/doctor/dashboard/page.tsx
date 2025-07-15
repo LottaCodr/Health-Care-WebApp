@@ -1,10 +1,12 @@
 
+"use client";
+
 import React from "react";
 import DashBoardComponent from "@/components/doctor";
 import { Separator } from "@/components/ui/separator";
 import { MdDashboard } from "react-icons/md";
 
-const DashboardPage = async () => {
+const DashboardPage = () => {
     // Optionally, you could add a greeting based on time of day
     function getGreeting() {
         const hour = new Date().getHours();

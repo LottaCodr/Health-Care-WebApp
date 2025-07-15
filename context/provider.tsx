@@ -22,10 +22,10 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   const queryClient = useStableQueryClient();
 
-  // Compose providers in a flat, readable way
+  // Move AuthProvider to the outermost position to ensure all hooks relying on it are within its context
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
         <ConsultationProvider>
           <EmployeeProvider>
             <PatientProvider>
@@ -35,7 +35,7 @@ export function Providers({ children }: ProvidersProps) {
             </PatientProvider>
           </EmployeeProvider>
         </ConsultationProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </AuthProvider>
   );
 }
