@@ -32,8 +32,8 @@ export default function DashboardLayout({
                             />
                         </div>
                     </header>
-                    <main className="flex flex-1 flex-col gap-6 p-6 sm:p-8 bg-transparent">
-                        <div className="rounded-2xl bg-white/90 shadow-lg border border-red-100 p-4 sm:p-8 min-h-[calc(100vh-6rem)]">
+                    <main className="flex flex-1 flex-col gap-6 p-4 sm:p-8 bg-transparent items-center">
+                        <div className="w-full max-w-6xl rounded-2xl bg-white/90 shadow-lg border border-red-100 p-4 sm:p-8 min-h-[calc(100vh-6rem)]">
                             {children}
                         </div>
                     </main>
