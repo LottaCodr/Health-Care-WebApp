@@ -22,9 +22,11 @@ import {
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes"
-import { useAuth } from "@/context/auth-provider"
+// Remove useAuth import
+// import { useAuth } from "@/context/auth-provider"
 import { logout } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 function getInitials(name?: string) {
     if (!name) return "NU";
@@ -35,10 +37,33 @@ function getInitials(name?: string) {
         .toUpperCase();
 }
 
+// Fallback user info for when AuthProvider is not present
+const fallbackUser = {
+    full_name: "Nurse User",
+    email: "nurse@email.com",
+};
+
 export function NurseNavUser() {
     const { setTheme, theme } = useTheme()
-    const { user } = useAuth();
+    // Remove useAuth usage and use fallback user
+    // const { user } = useAuth();
+    const [user, setUser] = useState<typeof fallbackUser>(fallbackUser);
     const router = useRouter()
+
+    // Optionally, try to get user info from localStorage/sessionStorage if available
+    useEffect(() => {
+        try {
+            const storedUser = typeof window !== "undefined" ? window.localStorage.getItem("nurseUser") : null;
+            if (storedUser) {
+                const parsed = JSON.parse(storedUser);
+                if (parsed && parsed.full_name && parsed.email) {
+                    setUser(parsed);
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+    }, []);
 
     return (
         <SidebarMenu>
@@ -57,8 +82,8 @@ export function NurseNavUser() {
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight ml-2">
-                                    <span className="truncate font-semibold text-red-800">{user?.full_name || "Nurse User"}</span>
-                                    <span className="truncate text-xs text-red-500">{user?.email || "nurse@email.com"}</span>
+                                    <span className="truncate font-semibold text-red-800">{user?.full_name}</span>
+                                    <span className="truncate text-xs text-red-500">{user?.email}</span>
                                 </div>
                                 <ChevronsUpDown className="ml-auto size-4 text-red-400" />
                             </SidebarMenuButton>
@@ -74,8 +99,8 @@ export function NurseNavUser() {
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
-                                    <span className="truncate font-semibold capitalize text-red-800">{user?.full_name || "Nurse User"}</span>
-                                    <span className="truncate text-xs text-red-500">{user?.email || "nurse@email.com"}</span>
+                                    <span className="truncate font-semibold capitalize text-red-800">{user?.full_name}</span>
+                                    <span className="truncate text-xs text-red-500">{user?.email}</span>
                                 </div>
                             </div>
                         </DropdownMenuLabel>
