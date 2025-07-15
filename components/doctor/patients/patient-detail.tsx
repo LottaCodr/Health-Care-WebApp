@@ -199,13 +199,14 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     taskDate: new Date().toISOString()
                 });
             } else if (role === "pharmacist") {
+                console.log("assigning pharmacist", selectedStaffId);
                 await assignPharmacist({
                     patientId: patient.$id!,
-                    pharmacistId: selectedStaffId!,
+                    pharmacyId: selectedStaffId!,
                     doctorInstructions: consultationState.recommendations,
                     doctorPrescription: consultationState.prescriptions,
                     status: "pending",
-                    date: new Date().toISOString()
+                    createdAt: new Date().toISOString()
                 });
             } else {
                 setFormError("The selected staff is not a nurse or pharmacist.");

@@ -23,7 +23,7 @@ export default function DispenseModal({ prescription }: { prescription: any }) {
         setTimeout(() => {
             setLoading(false);
             setSuccess(true);
-            console.log('Dispensed', prescription.id, notes);
+            console.log('Dispensed', prescription?.id, notes);
         }, 1200);
     };
 
@@ -35,6 +35,13 @@ export default function DispenseModal({ prescription }: { prescription: any }) {
         }
     };
 
+    // Defensive: fallback to empty array if medications is undefined or not an array
+    const medications: string[] = Array.isArray(prescription?.medications)
+        ? prescription.medications
+        : typeof prescription?.medications === 'string'
+            ? prescription.medications.split(',').map((m: string) => m.trim()).filter(Boolean)
+            : [];
+
     return (
         <Dialog onOpenChange={handleDialogOpenChange}>
             <DialogTrigger asChild>
@@ -42,7 +49,7 @@ export default function DispenseModal({ prescription }: { prescription: any }) {
                     variant="outline"
                     size="sm"
                     className="text-red-700 border-red-200 hover:bg-red-50 transition-colors duration-150 font-semibold flex items-center gap-2 shadow-sm"
-                    disabled={prescription.status !== 'pending'}
+                    disabled={prescription?.status !== 'pending'}
                     aria-label="Open Dispense Modal"
                 >
                     <ClipboardList className="w-4 h-4" />
@@ -60,40 +67,44 @@ export default function DispenseModal({ prescription }: { prescription: any }) {
                     <div className="mb-5 flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2">
                             <UserIcon className="w-5 h-5 text-red-500" />
-                            <span className="font-semibold text-gray-900">{prescription.patientName}</span>
+                            <span className="font-semibold text-gray-900">{prescription?.patientName || 'Unknown Patient'}</span>
                         </div>
                         <span className="mx-2 text-gray-300 hidden sm:inline">|</span>
                         <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4 text-red-400" />
                             <span className="text-sm text-gray-600">
-                                Prescribed by <span className="font-medium">{prescription.doctorName}</span>
+                                Prescribed by <span className="font-medium">{prescription?.doctorName || 'Unknown Doctor'}</span>
                             </span>
                         </div>
                     </div>
                     <div className="mb-5">
                         <div className="font-semibold text-gray-700 mb-2">Medications:</div>
                         <ul className="list-none pl-0 space-y-2">
-                            {prescription.medications.map((med: string, i: number) => (
-                                <li
-                                    key={i}
-                                    className="flex items-center gap-2 bg-red-50 rounded px-3 py-1 text-gray-900 text-sm"
-                                >
-                                    <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
-                                    {med}
-                                </li>
-                            ))}
+                            {medications.length > 0 ? (
+                                medications.map((med: string, i: number) => (
+                                    <li
+                                        key={i}
+                                        className="flex items-center gap-2 bg-red-50 rounded px-3 py-1 text-gray-900 text-sm"
+                                    >
+                                        <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
+                                        {med}
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="text-gray-400 italic px-3 py-1">No medications listed.</li>
+                            )}
                         </ul>
                     </div>
                     <div className="mb-5">
                         <label
                             className="block text-sm font-semibold text-gray-700 mb-2"
-                            htmlFor={`notes-${prescription.id}`}
+                            htmlFor={`notes-${prescription?.id ?? 'unknown'}`}
                         >
                             Dispensing Notes{' '}
                             <span className="text-gray-400 font-normal">(optional)</span>
                         </label>
                         <Textarea
-                            id={`notes-${prescription.id}`}
+                            id={`notes-${prescription?.id ?? 'unknown'}`}
                             className="w-full border-red-200 focus:border-red-400 focus:ring-red-200 transition"
                             rows={3}
                             placeholder="Add any relevant notes for this dispense..."

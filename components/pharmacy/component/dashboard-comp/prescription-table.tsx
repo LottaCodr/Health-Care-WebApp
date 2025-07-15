@@ -17,6 +17,18 @@ function StatusBadge({ status }: { status: string }) {
     );
 }
 
+function formatDate(dateString?: string) {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
 export default function PrescriptionTable({ data, isLoading }: { data: PharmacyRecord[]; isLoading: boolean }) {
     return (
         <div className="bg-white border border-red-200 rounded-2xl w-full overflow-x-auto shadow-lg">
@@ -26,6 +38,8 @@ export default function PrescriptionTable({ data, isLoading }: { data: PharmacyR
                         <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Patient</th>
                         <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Doctor</th>
                         <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Medications</th>
+                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Instructions</th>
+                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Created</th>
                         <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Status</th>
                         <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Actions</th>
                     </tr>
@@ -33,7 +47,7 @@ export default function PrescriptionTable({ data, isLoading }: { data: PharmacyR
                 <tbody>
                     {isLoading ? (
                         <tr>
-                            <td colSpan={5} className="p-12 text-center text-red-500">
+                            <td colSpan={7} className="p-12 text-center text-red-500">
                                 <div className="flex flex-col items-center gap-3">
                                     <span className="inline-block w-8 h-8 border-4 border-red-200 border-t-red-500 rounded-full animate-spin"></span>
                                     <span className="font-medium text-red-600">Loading prescriptions...</span>
@@ -42,7 +56,7 @@ export default function PrescriptionTable({ data, isLoading }: { data: PharmacyR
                         </tr>
                     ) : data.length === 0 ? (
                         <tr>
-                            <td colSpan={5} className="p-12 text-center text-red-300">
+                            <td colSpan={7} className="p-12 text-center text-red-300">
                                 <div className="flex flex-col items-center gap-3">
                                     <svg width="40" height="40" fill="none" className="mx-auto mb-2 text-red-200" viewBox="0 0 24 24">
                                         <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm-1-7v-4h2v4h-2zm0 2h2v2h-2v-2z" fill="currentColor" />
@@ -51,11 +65,12 @@ export default function PrescriptionTable({ data, isLoading }: { data: PharmacyR
                                 </div>
                             </td>
                         </tr>
-                    ) : data.map((prescription, idx) => (
+                    ) : data.map((prescription) => (
                         <tr
                             key={prescription.id}
-                            className={`border-t ${idx % 2 === 0 ? 'bg-white' : 'bg-red-50/40'} hover:bg-red-50/80 transition`}
+                            className={`border-t group hover:bg-red-50/40 transition-colors`}
                         >
+                            {/* Patient */}
                             <td className="px-6 py-4 font-semibold text-gray-900 whitespace-nowrap">
                                 <div className="flex items-center gap-3">
                                     <span className="inline-block w-9 h-9 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase shadow-sm border border-red-200">
@@ -64,6 +79,7 @@ export default function PrescriptionTable({ data, isLoading }: { data: PharmacyR
                                     <span className="text-base">{prescription.patientName}</span>
                                 </div>
                             </td>
+                            {/* Doctor */}
                             <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
                                 <div className="flex items-center gap-3">
                                     <span className="inline-block w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center font-semibold uppercase text-xs border border-red-200">
@@ -72,16 +88,63 @@ export default function PrescriptionTable({ data, isLoading }: { data: PharmacyR
                                     <span className="text-base">{prescription.doctorName}</span>
                                 </div>
                             </td>
-                            <td className="px-6 py-4 text-gray-700">
-                                <ul className="list-disc pl-5 space-y-1">
-                                    {prescription.doctorPrescription.split(',').map((med: string, idx: number) => (
-                                        <li key={idx} className="text-xs text-gray-800 bg-red-50/60 rounded px-2 py-1 inline-block">{med.trim()}</li>
-                                    ))}
-                                </ul>
+                            {/* Medications */}
+                            <td className="px-6 py-4 text-gray-700 max-w-xs">
+                                <div className="flex flex-col gap-1">
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        {prescription.doctorPrescription
+                                            ? prescription.doctorPrescription.split(',').map((med: string, medIdx: number) => (
+                                                <li
+                                                    key={`${prescription.id}-med-${medIdx}`}
+                                                    className="text-xs text-gray-800 bg-red-50/60 rounded px-2 py-1 inline-block"
+                                                    title={med.trim()}
+                                                >
+                                                    {med.trim()}
+                                                </li>
+                                            ))
+                                            : <li className="text-xs text-gray-400 italic">No medications</li>
+                                        }
+                                    </ul>
+                                    {/* Show full prescription in tooltip on hover if long */}
+                                    {prescription.doctorPrescription && prescription.doctorPrescription.length > 40 && (
+                                        <span className="text-xs text-gray-400 truncate" title={prescription.doctorPrescription}>
+                                            {prescription.doctorPrescription}
+                                        </span>
+                                    )}
+                                </div>
                             </td>
+                            {/* Doctor Instructions */}
+                            <td className="px-6 py-4 text-gray-700 max-w-xs">
+                                <div className="relative group">
+                                    <span
+                                        className={`block text-xs ${prescription.doctorInstructions ? "text-gray-800" : "text-gray-400 italic"}`}
+                                        title={prescription.doctorInstructions || "No instructions"}
+                                    >
+                                        {prescription.doctorInstructions
+                                            ? prescription.doctorInstructions.length > 50
+                                                ? prescription.doctorInstructions.slice(0, 50) + "..."
+                                                : prescription.doctorInstructions
+                                            : "No instructions"}
+                                    </span>
+                                    {/* Tooltip for full instructions */}
+                                    {prescription.doctorInstructions && prescription.doctorInstructions.length > 50 && (
+                                        <span className="absolute z-10 left-0 mt-1 w-64 p-2 bg-white border border-red-200 rounded shadow-lg text-xs text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+                                            {prescription.doctorInstructions}
+                                        </span>
+                                    )}
+                                </div>
+                            </td>
+                            {/* Created At */}
+                            <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
+                                <span className="text-xs" title={prescription.createdAt || ""}>
+                                    {formatDate(prescription.createdAt)}
+                                </span>
+                            </td>
+                            {/* Status */}
                             <td className="px-6 py-4">
                                 <StatusBadge status={prescription.status} />
                             </td>
+                            {/* Actions */}
                             <td className="px-6 py-4">
                                 <DispenseModal prescription={prescription} />
                             </td>
