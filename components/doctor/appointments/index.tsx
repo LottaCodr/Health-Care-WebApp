@@ -213,7 +213,7 @@ const AppointmentsComponent: React.FC = () => {
             <div className="rounded-xl border border-red-100 dark:border-red-800 bg-red-50/30 dark:bg-zinc-900/40 shadow-inner p-4">
                 <CalendarView
                     appointments={filterAppointments}
-                    onEdit={(appt) => handleEdit(appt.id || appt.$id)}
+                    onEdit={(appt) => handleEdit(appt.id || appt.id)}
                 />
             </div>
 
