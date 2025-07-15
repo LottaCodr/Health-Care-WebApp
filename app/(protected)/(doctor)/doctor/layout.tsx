@@ -32,10 +32,10 @@ export default function DashboardLayout({
                             </span>
                             <Separator orientation="vertical" className="mx-4 h-8 bg-red-200" />
                             <Breadcrumbs
-                                className="flex-1 text-red-700 font-semibold text-base"
-                                itemClassName="hover:text-red-900"
-                                separatorClassName="text-red-400"
-                                activeClassName="text-red-900"
+                                // Removed className prop as it is not accepted by BreadcrumbsProps
+                                // itemClassName="hover:text-red-900"
+                                // separatorClassName="text-red-400"
+                                // activeClassName="text-red-900"
                             />
                             <div className="ml-auto flex items-center gap-2">
                                 {/* Placeholder for user avatar or quick actions */}
