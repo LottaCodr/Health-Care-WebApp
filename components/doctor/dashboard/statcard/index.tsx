@@ -108,12 +108,7 @@ export default function StatCardsSection() {
                 label="Admitted Patients"
                 count={numberOfAdmittedPatients}
                 comparison={"↑ Compared to 2,300 last quarter"}
-                className={`
-                    border-l-4 ${cardStyles[0].border} ${cardStyles[0].bg}
-                    shadow-md hover:shadow-lg transition
-                    focus:outline-none ${cardStyles[0].ring}
-                    rounded-2xl p-6
-                `}
+            // Removed className prop as it is not accepted by StatCardProps
             />
             <StatCard
                 type="staff"
@@ -124,21 +119,13 @@ export default function StatCardsSection() {
                 }
                 label="Staff on Duty"
                 count={numberOfStaff}
-                countClassName="text-3xl font-bold text-red-600"
-                comparisonClassName="text-green-600 font-medium flex items-center"
-                bgClassName="bg-red-50"
-
+                // Removed countClassName and comparisonClassName as they are not accepted by StatCardProps
                 comparison={
                     numberOfStaff > 0
                         ? "All staff currently on shift"
                         : "No staff on duty"
                 }
-                className={`
-                    border-l-4 ${cardStyles[1].border} ${cardStyles[1].bg}
-                    shadow-md hover:shadow-lg transition
-                    focus:outline-none ${cardStyles[1].ring}
-                    rounded-2xl p-6
-                `}
+            // Removed className prop as it is not accepted by StatCardProps
             />
             <StatCard
                 type="discharged"
@@ -150,12 +137,7 @@ export default function StatCardsSection() {
                 label="Discharged Patients"
                 count={numberOfDischargedPatients}
                 comparison={"↑ Compared to 2,700 last quarter"}
-                className={`
-                    border-l-4 ${cardStyles[2].border} ${cardStyles[2].bg}
-                    shadow-md hover:shadow-lg transition
-                    focus:outline-none ${cardStyles[2].ring}
-                    rounded-2xl p-6
-                `}
+            // Removed className prop as it is not accepted by StatCardProps
             />
         </section>
     );

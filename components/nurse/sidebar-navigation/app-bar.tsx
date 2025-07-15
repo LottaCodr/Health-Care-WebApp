@@ -203,7 +203,7 @@ export function NurseAppSidebar({ ...props }: React.ComponentProps<typeof Sideba
 
             <SidebarFooter>
                 <div className="px-3 py-2">
-                    <NurseNavUser user={data.user} />
+                    <NurseNavUser />
                 </div>
             </SidebarFooter>
         </Sidebar>

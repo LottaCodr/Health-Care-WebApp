@@ -28,7 +28,13 @@ import { useRouter } from "next/navigation"
 
 export function NavUser() {
     const { setTheme, theme } = useTheme()
-    const { user } = useAuth();
+    let user;
+    try {
+        // Defensive: If useAuth throws, catch and fallback to undefined user
+        ({ user } = useAuth() ?? {});
+    } catch (e) {
+        user = undefined;
+    }
     const router = useRouter()
 
     // Helper for initials
