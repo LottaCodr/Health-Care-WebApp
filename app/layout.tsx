@@ -3,18 +3,6 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 import { cn } from "./lib/utils";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/toaster";
-import ProtectedRedirect from "./(auth)/protected";
-import { Providers } from "@/context/provider";
-import { Suspense } from "react";
-
-const fontSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Nile Valley Mother & Child Hospital",
@@ -25,6 +13,13 @@ export const metadata: Metadata = {
   ],
   themeColor: "#991b1b",
 };
+
+const fontSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 function AppBackground() {
   // Subtle animated background for improved UX
@@ -58,25 +53,8 @@ export default function RootLayout({
         )}
       >
         <AppBackground />
-        <ProtectedRedirect>
-          <Providers>
-            <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-              <Suspense
-                fallback={
-                  <div className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-950">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-red-600 border-opacity-30"></div>
-                  </div>
-                }
-              >
-                <main className="relative z-10 min-h-screen flex flex-col">
-                  {children}
-                </main>
-              </Suspense>
-              <Toaster />
-            </ThemeProvider>
-          </Providers>
-        </ProtectedRedirect>
-        <style jsx global>{`
+        {children}
+        <style>{`
           @keyframes bg-move {
             0% {
               background-position: 60% 20%, 20% 80%;
