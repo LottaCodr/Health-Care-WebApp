@@ -33,9 +33,9 @@ export default function DashboardLayout({
                         </div>
                         <Separator orientation="vertical" className="mx-4 h-6 bg-red-200" />
                         <Breadcrumbs
-                            className="flex-1"
-                            itemClassName="text-red-700 hover:text-red-900"
-                            separatorClassName="text-red-400"
+                            // className="flex-1"
+                            // itemClassName="text-red-700 hover:text-red-900"
+                            // separatorClassName="text-red-400"
                         />
                         {/* Placeholder for user avatar or quick actions */}
                         <div className="ml-auto flex items-center gap-2">
