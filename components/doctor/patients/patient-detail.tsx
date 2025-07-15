@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { databases } from "@/lib/appwrite.config";
@@ -19,7 +19,7 @@ import { ConsultationReferred } from "@/actions/consultations/types";
 import ConsultationHistoryTable from "./consultation-history";
 
 import { FaUserMd } from "react-icons/fa";
-import { MdEmail, MdPhone, MdLocationOn, MdWork, MdMedicalServices, MdHistory, MdAssignment, MdWarning, MdCheckCircle, MdNote, MdRefresh, MdArrowBack } from "react-icons/md";
+import { MdEmail, MdPhone, MdLocationOn, MdWork, MdMedicalServices, MdHistory, MdAssignment, MdWarning, MdCheckCircle, MdNote, MdArrowBack } from "react-icons/md";
 import { BsGenderAmbiguous } from "react-icons/bs";
 import ConsultationForm from "./consultation-form";
 import { Staff } from "@/actions/staff/types";
@@ -40,7 +40,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
     const currentDoctorId = user?.$id;
 
-    const { data: staff, isPending, isError, refetch } = useQuery({
+    const { data: staff = [], isPending, isError, refetch } = useQuery({
         queryKey: ["staffs"],
         queryFn: getAllStaffs,
     });
@@ -49,22 +49,22 @@ export default function PatientDetailsComponent({ patient }: Props) {
     const [formError, setFormError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [showCopied, setShowCopied] = useState(false);
-    const [showBack, setShowBack] = useState(false);
 
     // For focusing the first invalid field
     const formRef = useRef<HTMLDivElement>(null);
 
+    // Initialize patient and consultation state only when patient changes
     useEffect(() => {
         if (patient) {
             patientDispatch({ type: "SET_PATIENT", payload: [patient] });
             patientDispatch({ type: "UPDATE_NOTES", payload: patient.notes || "" });
             patientDispatch({ type: "SET_STATUS", payload: (patient.status as PatientStatus) || "no-status" });
-
             consultationDispatch({ type: "RESET_FORM" });
         }
-    }, [patient, patientDispatch, consultationDispatch]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [patient]);
 
-    // UX: Clear error/success messages after a timeout
+    // Clear error/success messages after a timeout
     useEffect(() => {
         if (formError) {
             const t = setTimeout(() => setFormError(null), 5000);
@@ -78,8 +78,8 @@ export default function PatientDetailsComponent({ patient }: Props) {
         }
     }, [successMessage]);
 
-    // UX: Copy patient ID to clipboard
-    const handleCopyId = async (id: string) => {
+    // Copy patient ID to clipboard
+    const handleCopyId = useCallback(async (id: string) => {
         try {
             await navigator.clipboard.writeText(id);
             setShowCopied(true);
@@ -91,37 +91,65 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 description: "Could not copy patient ID.",
             });
         }
-    };
+    }, []);
 
-    // UX: Scroll to first error field
-    const scrollToFirstError = () => {
+    // Scroll to first error field
+    const scrollToFirstError = useCallback(() => {
         if (formRef.current) {
             const firstInvalid = formRef.current.querySelector("[aria-invalid='true']");
             if (firstInvalid) {
                 (firstInvalid as HTMLElement).focus();
             }
         }
-    };
+    }, []);
 
-    const handleSubmit = async () => {
+    // Validate form fields and return missing fields
+    const getMissingFields = useCallback((): string[] => {
+        const missing: string[] = [];
+        if (!patientState.status || patientState.status === "no-status") missing.push("Status");
+        if (!consultationState.symptoms.trim()) missing.push("Symptoms");
+        if (!consultationState.diagnosis.trim()) missing.push("Diagnosis");
+        if (!consultationState.prescriptions.trim()) missing.push("Prescriptions");
+        if (!consultationState.recommendations.trim()) missing.push("Recommendations");
+        if (!consultationState.referredTo) missing.push("Referred To");
+        if (!selectedStaffId) missing.push("Staff Assignment");
+        return missing;
+    }, [
+        patientState.status,
+        consultationState.symptoms,
+        consultationState.diagnosis,
+        consultationState.prescriptions,
+        consultationState.recommendations,
+        consultationState.referredTo,
+        selectedStaffId,
+    ]);
+
+    // Memoize available staff for the selected referral type
+    const availableStaff = useMemo(
+        () =>
+            staff.filter(
+                (s: Staff) =>
+                    s.role &&
+                    consultationState.referredTo &&
+                    s.role.toLowerCase() === consultationState.referredTo
+            ),
+        [staff, consultationState.referredTo]
+    );
+
+    // Main submit handler
+    const handleSubmit = useCallback(async () => {
         setFormError(null);
         setSuccessMessage(null);
 
-        // UX: Validate and highlight missing fields
-        const missingFields: string[] = [];
-        if (!patientState.status || patientState.status === "no-status") missingFields.push("Status");
-        if (!consultationState.symptoms.trim()) missingFields.push("Symptoms");
-        if (!consultationState.diagnosis.trim()) missingFields.push("Diagnosis");
-        if (!consultationState.prescriptions.trim()) missingFields.push("Prescriptions");
-        if (!consultationState.recommendations.trim()) missingFields.push("Recommendations");
-        if (!consultationState.referredTo) missingFields.push("Referred To");
+        const missingFields = getMissingFields();
 
         if (missingFields.length > 0) {
-            setFormError(`Please complete: ${missingFields.join(", ")}.`);
+            const msg = `Please complete: ${missingFields.join(", ")}.`;
+            setFormError(msg);
             toast({
                 variant: "destructive",
                 title: "Missing Fields",
-                description: `Please complete: ${missingFields.join(", ")}.`,
+                description: msg,
             });
             scrollToFirstError();
             return;
@@ -130,7 +158,10 @@ export default function PatientDetailsComponent({ patient }: Props) {
         try {
             consultationDispatch({ type: "SET_LOADING", payload: true });
 
-            await databases.updateDocument(databaseId, patientCollectionId, patient.$id!, { status: patientState.status });
+            // Update patient status only if changed
+            if (patientState.status !== patient.status) {
+                await databases.updateDocument(databaseId, patientCollectionId, patient.$id!, { status: patientState.status });
+            }
 
             await createConsultation({
                 patientId: patient.$id!,
@@ -143,7 +174,8 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 createdAt: new Date().toISOString(),
                 referredTo: consultationState.referredTo,
             });
-            const selectedStaff = staff?.find((s) => s.$id === selectedStaffId);
+
+            const selectedStaff = staff.find((s) => s.$id === selectedStaffId);
 
             if (!selectedStaff) {
                 setFormError("Selected staff not found.");
@@ -155,7 +187,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 return;
             }
 
-            const role = selectedStaff.role.toLowerCase();
+            const role = selectedStaff.role?.toLowerCase();
 
             if (role === "nurse") {
                 await assignNurse({
@@ -206,23 +238,39 @@ export default function PatientDetailsComponent({ patient }: Props) {
         } finally {
             consultationDispatch({ type: "SET_LOADING", payload: false });
         }
-    };
+    }, [
+        consultationDispatch,
+        consultationState.diagnosis,
+        consultationState.prescriptions,
+        consultationState.recommendations,
+        consultationState.referredTo,
+        consultationState.symptoms,
+        currentDoctorId,
+        getMissingFields,
+        patient.$id,
+        patient.status,
+        patientState.status,
+        scrollToFirstError,
+        selectedStaffId,
+        staff
+    ]);
 
-    // UX: Allow refresh and back navigation
-    const handleRefresh = () => {
+    // Refresh staff list
+    const handleRefresh = useCallback(() => {
         refetch();
         toast({
             variant: "default",
             title: "Refreshed",
             description: "Staff list refreshed.",
         });
-    };
+    }, [refetch]);
 
-    const handleBack = () => {
+    // Back navigation
+    const handleBack = useCallback(() => {
         if (window.history.length > 1) {
             window.history.back();
         }
-    };
+    }, []);
 
     if (isPending || consultationState.loading) return <PatientDetailsSkeleton />;
     if (isError) return (
@@ -255,22 +303,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 </div>
                 <div className="w-full md:w-1/2">
                     <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background h-full flex flex-col">
-                        <CardHeader className="pb-2 border-b flex items-center justify-between">
-                            <CardTitle className="text-2xl font-semibold text-blue-900 flex items-center gap-2">
-                                <MdHistory className="text-blue-700" /> Consultation History
-                            </CardTitle>
-                            <button
-                                aria-label="Refresh Consultation History"
-                                className="ml-auto text-blue-700 hover:text-blue-900 transition"
-                                onClick={handleRefresh}
-                                title="Refresh"
-                            >
-                                <MdRefresh className="text-2xl" />
-                            </button>
-                        </CardHeader>
-                        <CardContent className="flex-1 p-0">
-                            <ConsultationHistoryTable patientId={currentPatient.$id!} />
-                        </CardContent>
+                        <ConsultationHistoryTable patientId={currentPatient.$id!} />
                     </Card>
                 </div>
             </div>
@@ -318,7 +351,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                             onSubmit={handleSubmit}
                             loading={consultationState.loading}
                             selectedStaffId={selectedStaffId}
-                            availableStaff={staff.filter((s: Staff) => s.role.toLowerCase() === consultationState.referredTo)}
+                            availableStaff={availableStaff}
                             onStaffSelect={setSelectedStaffId}
                         />
                     </CardContent>
