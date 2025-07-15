@@ -167,7 +167,7 @@ function TaskRow({
             className="bg-white hover:bg-gray-50 transition-all"
         >
             <td className="px-6 py-5 font-medium text-gray-900">
-                {String(task.patientId?.name) || 'Fetching name...'}
+                {String(task.patient?.name) || 'Fetching name...'}
             </td>
             <td className="px-6 py-5 text-gray-600">
                 {formatDate(task?.taskDate || new Date().toISOString())}

@@ -28,10 +28,10 @@ export default function NurseDashboard() {
 
     if (isPending) {
         return (
-            <div className="flex flex-col items-center justify-center h-60 gap-4">
+            <div className="flex flex-col items-center justify-center h-60 gap-4 animate-fade-in">
                 <Spinner size="lg" />
-                <span className="text-gray-500 text-lg font-medium flex items-center gap-2">
-                    <ClipboardList className="w-6 h-6 text-blue-500 animate-pulse" />
+                <span className="text-red-500 text-lg font-semibold flex items-center gap-2">
+                    <ClipboardList className="w-6 h-6 text-red-500 animate-pulse" />
                     Loading your tasks...
                 </span>
             </div>
@@ -40,14 +40,14 @@ export default function NurseDashboard() {
 
     if (isError) {
         return (
-            <div className="flex flex-col items-center justify-center h-60 gap-3">
-                <AlertTriangle className="w-8 h-8 text-red-500 mb-1" />
-                <span className="text-center text-red-600 font-semibold text-lg">
+            <div className="flex flex-col items-center justify-center h-60 gap-3 animate-fade-in">
+                <AlertTriangle className="w-10 h-10 text-red-600 mb-1 animate-shake" />
+                <span className="text-center text-red-700 font-bold text-lg">
                     Failed to load tasks.
                 </span>
                 <button
                     onClick={() => refetch()}
-                    className="inline-flex items-center gap-2 rounded-lg bg-red-50 hover:bg-red-100 transition-colors px-4 py-2 text-red-700 font-medium shadow focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
+                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors px-5 py-2 text-white font-semibold shadow focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
                     aria-label="Retry loading tasks"
                 >
                     <RefreshCw className="w-5 h-5" />
@@ -58,22 +58,24 @@ export default function NurseDashboard() {
     }
 
     return (
-        <section className="max-w-auto mx-6 px-6 py-8 space-y-8 bg-white rounded-2xl shadow-lg border border-gray-100">
-            <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-6">
-                <div className="flex items-center gap-3">
-                    <ClipboardList className="w-8 h-8 text-blue-600" aria-hidden="true" />
+        <section className="max-w-5xl mx-auto px-4 sm:px-8 py-10 space-y-8 bg-white rounded-3xl shadow-2xl border border-red-100 animate-fade-in">
+            <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 border-b border-red-100 pb-7">
+                <div className="flex items-center gap-4">
+                    <div className="bg-red-100 rounded-xl p-2 flex items-center justify-center">
+                        <ClipboardList className="w-9 h-9 text-red-600" aria-hidden="true" />
+                    </div>
                     <div>
-                        <h2 className="text-3xl font-semibold text-gray-900 tracking-tight">
+                        <h2 className="text-3xl font-bold text-red-700 tracking-tight drop-shadow">
                             My Task List
                         </h2>
-                        <p className="text-gray-500 mt-1 text-base">
+                        <p className="text-red-400 mt-1 text-base font-medium">
                             Overview of my assigned patient care tasks
                         </p>
                     </div>
                 </div>
                 <button
                     onClick={() => refetch()}
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors px-5 py-2 text-white font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors px-6 py-2.5 text-white font-semibold shadow focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
                     aria-label="Refresh task list"
                 >
                     <RefreshCw className="w-5 h-5" />
@@ -84,12 +86,12 @@ export default function NurseDashboard() {
             <main>
                 {nurseTasks.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24">
-                        <ClipboardList className="w-16 h-16 text-gray-200 mb-4" />
-                        <span className="text-lg text-gray-400 font-medium">No assigned tasks</span>
-                        <span className="text-sm text-gray-300 mt-1">I’m all caught up for now.</span>
+                        <ClipboardList className="w-20 h-20 text-red-100 mb-4" />
+                        <span className="text-xl text-red-400 font-semibold">No assigned tasks</span>
+                        <span className="text-base text-red-200 mt-1">You’re all caught up for now.</span>
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-gray-100 shadow-sm bg-white">
+                    <div className="rounded-2xl border border-red-100 shadow bg-white overflow-x-auto">
                         <NurseTasksTable tasks={nurseTasks} refetch={refetch} />
                     </div>
                 )}

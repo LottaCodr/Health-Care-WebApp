@@ -110,26 +110,30 @@ function NavLink({
             href={url}
             aria-current={isActive ? "page" : undefined}
             className={`
-                group flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors
+                group flex items-center justify-between rounded-lg px-3 py-2 text-[15px] font-medium transition-colors
                 ${isActive
-                    ? "bg-blue-600 text-white font-semibold shadow-md border-l-4 border-blue-400"
-                    : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                    ? "bg-red-600 text-white font-semibold shadow-lg border-l-4 border-red-400"
+                    : "text-gray-700 hover:bg-red-50 hover:text-red-700"
                 }
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1
+                relative
             `}
+            tabIndex={0}
         >
             <div className="flex items-center gap-3">
                 <Icon
-                    className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-gray-500 group-hover:text-blue-600"}`}
+                    className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-gray-400 group-hover:text-red-600"}`}
                     aria-hidden="true"
                 />
-                {title}
+                <span className="truncate">{title}</span>
             </div>
-
             {typeof badge === "number" && badge > 0 && (
-                <span className="ml-2 inline-block rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                <span className="ml-2 inline-block rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white shadow">
                     {badge}
                 </span>
+            )}
+            {isActive && (
+                <span className="absolute right-0 top-0 h-full w-1 rounded-l bg-red-700 animate-pulse" aria-hidden="true" />
             )}
         </a>
     );
@@ -153,22 +157,27 @@ export function NurseAppSidebar({ ...props }: React.ComponentProps<typeof Sideba
     }));
 
     return (
-        <Sidebar variant="inset" {...props} aria-label="Hospital Dashboard Sidebar">
+        <Sidebar
+            variant="inset"
+            className="bg-gradient-to-b from-red-50 via-white to-white border-r border-red-100 shadow-xl"
+            {...props}
+            aria-label="Hospital Dashboard Sidebar"
+        >
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
                             <a
                                 href="/dashboard"
-                                className="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+                                className="flex items-center gap-3 rounded-xl p-2 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500 transition"
                                 aria-label="Hospital Logo and Title"
                             >
-                                <div className="flex aspect-square w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-                                    <MdDashboard className="w-5 h-5" aria-hidden="true" />
+                                <div className="flex aspect-square w-10 items-center justify-center rounded-lg bg-red-600 text-white shadow-md">
+                                    <MdDashboard className="w-6 h-6" aria-hidden="true" />
                                 </div>
                                 <div className="flex flex-col leading-tight">
-                                    <span className="truncate font-semibold text-base text-blue-900">Nile Mother & Child</span>
-                                    <span className="truncate text-xs text-blue-700/80">Hospital</span>
+                                    <span className="truncate font-bold text-base text-red-900 tracking-tight">Nile Mother & Child</span>
+                                    <span className="truncate text-xs text-red-700/80 font-medium">Hospital</span>
                                 </div>
                             </a>
                         </SidebarMenuButton>
@@ -177,11 +186,13 @@ export function NurseAppSidebar({ ...props }: React.ComponentProps<typeof Sideba
             </SidebarHeader>
 
             <SidebarContent className="flex flex-col">
-                <nav aria-label="Primary Navigation" className="flex flex-col gap-1 px-2">
+                <nav aria-label="Primary Navigation" className="flex flex-col gap-1 px-2 mt-2">
                     {navMainFiltered.map(({ title, url, icon, isActive, badge }) => (
                         <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive} badge={badge} />
                     ))}
                 </nav>
+
+                <div className="my-4 border-t border-red-100" aria-hidden="true" />
 
                 <nav aria-label="Secondary Navigation" className="mt-auto flex flex-col gap-1 px-2 pb-4">
                     {navSecondaryWithActive.map(({ title, url, icon, isActive }) => (
@@ -191,7 +202,9 @@ export function NurseAppSidebar({ ...props }: React.ComponentProps<typeof Sideba
             </SidebarContent>
 
             <SidebarFooter>
-                <NurseNavUser user={data.user} />
+                <div className="px-3 py-2">
+                    <NurseNavUser user={data.user} />
+                </div>
             </SidebarFooter>
         </Sidebar>
     );

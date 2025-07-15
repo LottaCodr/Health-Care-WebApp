@@ -45,6 +45,16 @@ export function PharmacyNavUser({
     const { isMobile } = useSidebar()
     const { setTheme, theme } = useTheme()
 
+    // Helper for user initials
+    const getInitials = (name: string) => {
+        return name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2)
+    }
+
     return (
         <SidebarMenu>
             <SidebarMenuItem>
@@ -52,70 +62,88 @@ export function PharmacyNavUser({
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                            className="data-[state=open]:bg-red-100 data-[state=open]:text-red-700 hover:bg-red-50 transition-colors duration-150 px-3 py-2 rounded-xl flex items-center gap-3"
+                            aria-label="Open user menu"
                         >
-                            <Avatar className="h-8 w-8 rounded-lg">
+                            <Avatar className="h-9 w-9 rounded-lg border-2 border-red-500 shadow-sm">
                                 <AvatarImage src={user.avatar} alt={user.name} />
-                                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                <AvatarFallback className="rounded-lg bg-red-500 text-white font-bold">
+                                    {getInitials(user.name)}
+                                </AvatarFallback>
                             </Avatar>
-                            <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold">{user.name}</span>
-                                <span className="truncate text-xs">{user.email}</span>
+                            <div className="flex-1 min-w-0 text-left">
+                                <span className="block truncate font-semibold text-base text-red-700">{user.name}</span>
+                                <span className="block truncate text-xs text-gray-500">{user.email}</span>
                             </div>
-                            <ChevronsUpDown className="ml-auto size-4" />
+                            <ChevronsUpDown className="ml-2 size-4 text-red-400" />
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                        className="w-[--radix-dropdown-menu-trigger-width] min-w-60 rounded-xl shadow-lg border border-red-100 bg-white"
                         side={isMobile ? "bottom" : "right"}
                         align="end"
-                        sideOffset={4}
+                        sideOffset={6}
                     >
                         <DropdownMenuLabel className="p-0 font-normal">
-                            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                                <Avatar className="h-8 w-8 rounded-lg">
+                            <div className="flex items-center gap-3 px-3 py-3 bg-red-50 rounded-t-xl">
+                                <Avatar className="h-10 w-10 rounded-lg border-2 border-red-500 shadow">
                                     <AvatarImage src={user.avatar} alt={user.name} />
-                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                    <AvatarFallback className="rounded-lg bg-red-500 text-white font-bold">
+                                        {getInitials(user.name)}
+                                    </AvatarFallback>
                                 </Avatar>
-                                <div className="grid flex-1 text-left text-sm leading-tight">
-                                    <span className="truncate font-semibold">{user.name}</span>
-                                    <span className="truncate text-xs">{user.email}</span>
+                                <div className="flex-1 min-w-0">
+                                    <span className="block truncate font-semibold text-base text-red-700">{user.name}</span>
+                                    <span className="block truncate text-xs text-gray-500">{user.email}</span>
                                 </div>
                             </div>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="bg-red-100" />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <Sparkles />
-                                Upgrade to Pro
+                            <DropdownMenuItem className="gap-2 font-medium text-red-600 hover:bg-red-100 transition-colors rounded-md px-3 py-2 cursor-pointer">
+                                <Sparkles className="text-red-500" />
+                                <span>Upgrade to <span className="font-bold text-red-700">Pro</span></span>
+                                <span className="ml-auto bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-semibold">New</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="bg-red-100" />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <BadgeCheck />
-                                Account
+                            <DropdownMenuItem className="gap-2 hover:bg-red-50 transition-colors rounded-md px-3 py-2 cursor-pointer">
+                                <BadgeCheck className="text-red-500" />
+                                <span>Account</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <CreditCard />
-                                Billing
+                            <DropdownMenuItem className="gap-2 hover:bg-red-50 transition-colors rounded-md px-3 py-2 cursor-pointer">
+                                <CreditCard className="text-red-500" />
+                                <span>Billing</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Bell />
-                                Notifications
+                            <DropdownMenuItem className="gap-2 hover:bg-red-50 transition-colors rounded-md px-3 py-2 cursor-pointer">
+                                <Bell className="text-red-500" />
+                                <span>Notifications</span>
+                                <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">3</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="bg-red-100" />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
-                                {theme === "light" ? <Moon className="mr-2" /> : <Sun className="mr-2" />}
-                                {theme === "light" ? "Dark mode" : "Light mode"}
+                            <DropdownMenuItem
+                                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                                className="gap-2 hover:bg-red-50 transition-colors rounded-md px-3 py-2 cursor-pointer"
+                            >
+                                {theme === "light" ? (
+                                    <Moon className="text-red-500 mr-2" />
+                                ) : (
+                                    <Sun className="text-red-500 mr-2" />
+                                )}
+                                <span>
+                                    {theme === "light" ? "Dark mode" : "Light mode"}
+                                </span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <LogOut />
-                            Log out
+                        <DropdownMenuSeparator className="bg-red-100" />
+                        <DropdownMenuItem
+                            className="gap-2 text-red-700 font-semibold hover:bg-red-100 transition-colors rounded-md px-3 py-2 cursor-pointer"
+                        >
+                            <LogOut className="text-red-500" />
+                            <span>Log out</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
