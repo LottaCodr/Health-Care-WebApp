@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { account } from "@/lib/appwrite.config";
 import { Models } from "appwrite";
@@ -16,7 +16,8 @@ const ROLE_DASHBOARD_MAP: Record<string, string> = {
 };
 
 function getDashboardRoute(role?: string): string {
-  return ROLE_DASHBOARD_MAP[role as keyof typeof ROLE_DASHBOARD_MAP] || "/staff";
+  if (!role) return "/staff";
+  return ROLE_DASHBOARD_MAP[role] || "/staff";
 }
 
 function isPublicRoute(path: string): boolean {
@@ -26,9 +27,10 @@ function isPublicRoute(path: string): boolean {
 export default function ProtectedRedirect({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
+    let cancelled = false;
 
     async function checkAuthAndRedirect() {
       try {
@@ -38,26 +40,27 @@ export default function ProtectedRedirect({ children }: { children: ReactNode })
         // If on a public route, redirect authenticated user to their dashboard
         if (isPublicRoute(pathname)) {
           const dashboardRoute = getDashboardRoute(role);
-          if (pathname !== dashboardRoute) {
+          if (pathname !== dashboardRoute && !hasRedirected.current) {
+            hasRedirected.current = true;
             router.replace(dashboardRoute);
           }
         }
       } catch {
         // If not authenticated and on a protected route, redirect to /staff
-        if (!isPublicRoute(pathname)) {
+        if (!isPublicRoute(pathname) && !hasRedirected.current) {
+          hasRedirected.current = true;
           router.replace("/staff");
         }
       }
     }
 
-    // Only run on mount and when pathname changes
     checkAuthAndRedirect();
 
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, router]);
+  }, [pathname]);
 
   return <>{children}</>;
 }
