@@ -25,6 +25,7 @@ import ConsultationForm from "./consultation-form";
 import { Staff } from "@/actions/staff/types";
 import { assignNurse } from "@/actions/nursing-action/get.nurse.task";
 import { assignPharmacist } from "@/actions/pharmacy/get.prescription";
+import { assignLabTech } from "@/actions/lab-tech/get.labtech.task";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
@@ -207,6 +208,15 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     doctorPrescription: consultationState.prescriptions,
                     status: "pending",
                     createdAt: new Date().toISOString()
+                });
+            } else if (role === "lab-tech") {
+                await assignLabTech({
+                    patientId: patient.$id!,
+                    labTechId: selectedStaffId!,
+                    doctorInstructions: consultationState.recommendations,
+                    taskDate: new Date().toISOString(),
+                    createdAt: new Date().toISOString()
+                    
                 });
             } else {
                 setFormError("The selected staff is not a nurse or pharmacist.");
