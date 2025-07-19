@@ -214,9 +214,14 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     patientId: patient.$id!,
                     labTechId: selectedStaffId!,
                     doctorInstructions: consultationState.recommendations,
-                    taskDate: new Date().toISOString(),
+                    doctorMedications: consultationState.prescriptions,
+                    doctorDiagnosis: consultationState.diagnosis,
+                    doctorRecommendations: consultationState.recommendations,
+                    feedback: "",
+                    testResults: "",
+                    status: "awaitingPayment",
                     createdAt: new Date().toISOString()
-                    
+
                 });
             } else {
                 setFormError("The selected staff is not a nurse or pharmacist.");

@@ -1,6 +1,6 @@
 import { databases } from "@/lib/appwrite.config";
 import { ID, Query } from "appwrite";
-import { LabTech } from "./types";
+import { LabTechFeedback } from "./types";
 import { Patient } from "@/context/patients/types";
 
 
@@ -9,7 +9,7 @@ const labTechCollectionId = process.env.NEXT_PUBLIC_LAB_TECH_COLLECTION_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
 
 
-export async function assignLabTech(labTechTaskData: LabTech) {
+export async function assignLabTech(labTechTaskData: LabTechFeedback) {
     try {
         const response = await databases.createDocument(
             databaseId,
@@ -26,7 +26,7 @@ export async function assignLabTech(labTechTaskData: LabTech) {
     }
 }
 
-export async function getLabTechTasks(labTechId: string): Promise<LabTech[]> {
+export async function getLabTechTasks(labTechId: string): Promise<LabTechFeedback[]> {
     try {
         const response = await databases.listDocuments(
             databaseId,
@@ -83,18 +83,19 @@ export async function getLabTechTasks(labTechId: string): Promise<LabTech[]> {
             })
         );
 
-        const labTechTasks: LabTech[] = labTechTasksRaw.map((n) => ({
+        const labTechTasks: LabTechFeedback[] = labTechTasksRaw.map((n) => ({
             $id: n.$id,
             patientId: n.patientId,
             patient: patientMap[n.patientId],
+            labTechId: n.labTechId,
+            doctorInstructions: n.doctorInstructions,
+            doctorMedications: n.doctorMedications,
+            doctorDiagnosis: n.doctorDiagnosis,
+            doctorRecommendations: n.doctorRecommendations,
+            feedback: n.feedback,
+            testResults: n.testResults,
+            taskDate: n.taskDate,
             createdAt: n.$createdAt,
-            name: n.name,
-            email: n.email,
-            phone: n.phone,
-            address: n.address,
-            city: n.city,
-            state: n.state,
-            zip: n.zip,
         }));
 
         return labTechTasks;
