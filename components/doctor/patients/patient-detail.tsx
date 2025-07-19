@@ -25,6 +25,7 @@ import ConsultationForm from "./consultation-form";
 import { Staff } from "@/actions/staff/types";
 import { assignNurse } from "@/actions/nursing-action/get.nurse.task";
 import { assignPharmacist } from "@/actions/pharmacy/get.prescription";
+import { assignLabTech } from "@/actions/lab-tech/get.labtech.task";
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
@@ -207,6 +208,20 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     doctorPrescription: consultationState.prescriptions,
                     status: "pending",
                     createdAt: new Date().toISOString()
+                });
+            } else if (role === "lab-tech") {
+                await assignLabTech({
+                    patientId: patient.$id!,
+                    labTechId: selectedStaffId!,
+                    doctorInstructions: consultationState.recommendations,
+                    doctorMedications: consultationState.prescriptions,
+                    doctorDiagnosis: consultationState.diagnosis,
+                    doctorRecommendations: consultationState.recommendations,
+                    feedback: "",
+                    testResults: "",
+                    status: "awaitingPayment",
+                    createdAt: new Date().toISOString()
+
                 });
             } else {
                 setFormError("The selected staff is not a nurse or pharmacist.");
@@ -533,7 +548,7 @@ function ErrorMessage({
     onAction?: () => void;
 }) {
     return (
-        <div className="flex flex-col items-center justify-center pt-20">
+        <div className="flex flex-col bg-white items-center justify-center pt-20">
             <MdWarning className="text-4xl text-red-500 mb-2" />
             <p className="text-center text-red-600 text-lg font-medium">{message}</p>
             {actionLabel && onAction && (
