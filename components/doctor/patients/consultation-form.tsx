@@ -152,7 +152,7 @@ export default function ConsultationForm({
                                     </SelectTrigger>
                                     <SelectContent className="bg-white z-30 shadow-lg rounded-xl">
                                         <SelectItem value="nurse">Nurse</SelectItem>
-                                        <SelectItem value="labtech">Lab Technician</SelectItem>
+                                        <SelectItem value="lab-tech">Lab Technician</SelectItem>
                                         <SelectItem value="pharmacist">Pharmacist</SelectItem>
                                     </SelectContent>
                                 </Select>

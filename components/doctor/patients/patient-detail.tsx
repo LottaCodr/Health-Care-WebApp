@@ -548,7 +548,7 @@ function ErrorMessage({
     onAction?: () => void;
 }) {
     return (
-        <div className="flex flex-col items-center justify-center pt-20">
+        <div className="flex flex-col bg-white items-center justify-center pt-20">
             <MdWarning className="text-4xl text-red-500 mb-2" />
             <p className="text-center text-red-600 text-lg font-medium">{message}</p>
             {actionLabel && onAction && (
