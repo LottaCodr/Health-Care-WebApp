@@ -6,15 +6,14 @@ import { Patient } from "@/context/patients/types";
 export interface LabTechFeedback {
     $id?: string;
     patientId: string;
-    patient?: Patient;
+    patient?: Patient
     doctorInstructions: string;
-    doctorMedications: string; 
+    doctorMedications: string;
     doctorDiagnosis: string;
     doctorRecommendations: string;
     labTechId: string;
-    feedback: string; // Lab tech's feedback or report
     testResults?: string; // Optional: details/results of the test(s)
-    createdAt: string;
+    // createdAt: string;
     updatedAt?: string;
     status?: string; // e.g., "pending", "completed", etc.
 }
