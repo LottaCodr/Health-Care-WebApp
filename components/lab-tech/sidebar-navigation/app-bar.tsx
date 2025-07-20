@@ -23,13 +23,11 @@ import {
 } from "@/components/ui/sidebar";
 import { LabTechNavUser } from "./nav-user";
 
-// 🔐 Assume this comes from auth context or zustand
+// Assume this comes from auth context or zustand
 const getUserRole = () => "lab-tech";
 
-// 🔢 Dummy badge functions (replace with Zustand/React Query data)
-const getWaitingPatientsBadge = () => 5;
 
-// 🧠 Define nav items with RBAC and optional badges
+// Define nav items with RBAC and optional badges
 const data = {
     
     navMain: [

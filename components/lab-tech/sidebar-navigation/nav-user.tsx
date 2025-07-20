@@ -72,10 +72,7 @@ export function LabTechNavUser() {
             .slice(0, 2);
     };
 
-    // const handleLogout = useCallback(async () => {
-    //     await logout();
-    //     router.replace("/login");
-    // }, [router]);
+   
 
     return (
         <SidebarMenu>
@@ -131,7 +128,7 @@ export function LabTechNavUser() {
                                 </Avatar>
                                 <div className="flex-1 min-w-0 text-left">
                                     <span className="truncate font-semibold capitalize text-gray-900 dark:text-white text-base">
-                                        {user?.full_name || user?.name || "Doctor"}
+                                        {user?.full_name || user?.name || "Labtech"}
                                     </span>
                                     <span className="truncate text-xs text-gray-500 dark:text-gray-300 block">
                                         {user?.email || "user@email.com"}

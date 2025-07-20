@@ -116,7 +116,7 @@ export default function LabTechDashboardComponent() {
         reset: resetMutation,
     } = useMutation({
         mutationFn: async ({ labTestId, result }: { labTestId: string, result: string }) => {
-            // You may want to update more fields as needed
+            // Fix: Actually send the result to the backend
             return updateLabTechAction({
                 documentId: labTestId,
                 bloodPressure: "",
@@ -124,8 +124,7 @@ export default function LabTechDashboardComponent() {
                 pulseRate: "",
                 respiratoryRate: "",
                 treatmentGiven: "",
-                // Add testResults field if needed
-                // testResults: result,
+                testResults: result, // Fix: send the result
             });
         },
         onSuccess: () => {
@@ -240,7 +239,7 @@ export default function LabTechDashboardComponent() {
             ];
         }
         const urgent = labTasks.filter(
-            (t) =>
+            (t: any) =>
                 t.status === "pending" &&
                 typeof t.doctorInstructions === "string" &&
                 t.doctorInstructions.toLowerCase().includes("urgent")
@@ -272,7 +271,7 @@ export default function LabTechDashboardComponent() {
     const pendingTests = useMemo(() => {
         if (!Array.isArray(labTasks)) return [];
         // Only show tests assigned to this lab tech and not completed
-        return labTasks.filter((t) => {
+        return labTasks.filter((t: any) => {
             // If user?.id is not available, fallback to showing all
             if (!user?.id) return t.status !== "completed";
             return t.labTechId === user.id && t.status !== "completed";
@@ -404,69 +403,6 @@ export default function LabTechDashboardComponent() {
                 ))}
             </div>
 
-            {/* Notifications */}
-            <Card className="border-l-4 border-red-500 bg-red-50/60 shadow-none">
-                <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base font-semibold text-red-700">
-                        <FiBell className="text-red-500" /> Notifications
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                    {notifications.map((note, idx) => (
-                        <div
-                            key={idx}
-                            className={clsx(
-                                "flex items-center gap-2 text-sm py-1 px-2 rounded transition-all",
-                                note.type === "urgent" && "bg-red-100 text-red-700 font-semibold",
-                                note.type === "info" && "bg-orange-50 text-orange-700",
-                                !note.type && "bg-green-50 text-green-700"
-                            )}
-                        >
-                            {note.type === "urgent" ? (
-                                <FiAlertCircle className="text-red-500" />
-                            ) : note.type === "info" ? (
-                                <FiBell className="text-orange-500" />
-                            ) : (
-                                <FiCheckCircle className="text-green-500" />
-                            )}
-                            <span>{note.message}</span>
-                            {note.time && (
-                                <span className="ml-auto text-xs text-gray-400">{note.time}</span>
-                            )}
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            {/* Chart */}
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-red-50 to-white">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2 text-red-700">
-                        <FiBarChart className="text-red-500" /> Tests Completed This Week
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="h-56">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
-                                <XAxis dataKey="name" tick={{ fill: "#b91c1c", fontWeight: 600 }} />
-                                <YAxis allowDecimals={false} tick={{ fill: "#b91c1c", fontWeight: 600 }} />
-                                <Tooltip
-                                    contentStyle={{
-                                        background: "#fff1f2",
-                                        border: "1px solid #f87171",
-                                        color: "#b91c1c",
-                                        fontWeight: 600,
-                                    }}
-                                    cursor={{ fill: "#fee2e2" }}
-                                />
-                                <Bar dataKey="tests" fill="#ef4444" radius={[8, 8, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </CardContent>
-            </Card>
-
             {/* Pending Lab Tests */}
             <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-red-50">
                 <CardHeader>
@@ -503,20 +439,19 @@ export default function LabTechDashboardComponent() {
                                 patientAddress = test.patient.address || "";
                                 patientAllergies = test.patient.allergies || "";
                             } else if (
-                                typeof test.patientId === "object" &&
-                                test.patientId &&
-                                test.patientId.name
+                                test.patient && typeof test.patient === "object"
                             ) {
-                                patientName = test.patientId.name;
-                                patientGender = test.patientId.gender || "";
-                                patientAge = test.patientId.birthDate
-                                    ? `${Math.max(0, Math.floor((new Date().getTime() - new Date(test.patientId.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))}`
+                                // fallback for object patient without name
+                                patientName = test.patient.name || "Unknown";
+                                patientGender = test.patient.gender || "";
+                                patientAge = test.patient.birthDate
+                                    ? `${Math.max(0, Math.floor((new Date().getTime() - new Date(test.patient.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))}`
                                     : "";
-                                patientIdDisplay = test.patientId.$id || "";
-                                patientEmail = test.patientId.email || "";
-                                patientPhone = test.patientId.phone || "";
-                                patientAddress = test.patientId.address || "";
-                                patientAllergies = test.patientId.allergies || "";
+                                patientIdDisplay = test.patient.$id || "";
+                                patientEmail = test.patient.email || "";
+                                patientPhone = test.patient.phone || "";
+                                patientAddress = test.patient.address || "";
+                                patientAllergies = test.patient.allergies || "";
                             } else if (
                                 typeof test.patientId === "string"
                             ) {
@@ -526,36 +461,21 @@ export default function LabTechDashboardComponent() {
                                 patientName = "Unknown";
                             }
 
-                            // Defensive: doctorName may be an object or string
-                            let doctorName = "";
-                            if (test.doctorName && typeof test.doctorName === "string") {
-                                doctorName = test.doctorName;
-                            } else if (
-                                test.doctor &&
-                                typeof test.doctor === "object" &&
-                                test.doctor.name
-                            ) {
-                                doctorName = test.doctor.name;
-                            } else {
-                                doctorName = "Doctor";
-                            }
-
                             // Defensive: doctorInstructions may be an object or string
                             let doctorInstructions = "";
                             if (typeof test.doctorInstructions === "string") {
                                 doctorInstructions = test.doctorInstructions;
                             } else if (
                                 test.doctorInstructions &&
-                                typeof test.doctorInstructions === "object" &&
-                                test.doctorInstructions.name
+                                typeof test.doctorInstructions === "object"
                             ) {
-                                doctorInstructions = test.doctorInstructions.name;
+                                doctorInstructions = JSON.stringify(test.doctorInstructions);
                             } else {
                                 doctorInstructions = "N/A";
                             }
 
                             // Defensive: createdAt
-                            const requestedAt = formatDate(test.createdAt);
+                            const requestedAt = formatDate(test.updatedAt);
 
                             // Defensive: status
                             let statusIcon = <FiClock className="text-orange-400" />;
@@ -569,7 +489,7 @@ export default function LabTechDashboardComponent() {
                                 statusColor = "text-yellow-600";
                             }
 
-                            const isExpanded = expandedTestIds.includes(test.$id);
+                            const isExpanded = expandedTestIds.includes(test?.$id);
 
                             return (
                                 <div
@@ -601,15 +521,11 @@ export default function LabTechDashboardComponent() {
                                                 )}
                                                 {patientIdDisplay && (
                                                     <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100">
-                                                        ID: {patientIdDisplay.slice(-6)}
+                                                        ID: {typeof patientIdDisplay === "string" ? patientIdDisplay.slice(-6) : ""}
                                                     </span>
                                                 )}
                                             </div>
                                             <div className="flex flex-wrap gap-2 items-center mb-1">
-                                                <span className="text-sm text-gray-600">
-                                                    <FiUserCheck className="inline mr-1 text-green-400" />
-                                                    Requested By: <span className="font-medium">{doctorName}</span>
-                                                </span>
                                                 <span className="text-sm text-gray-600">
                                                     <FiFileText className="inline mr-1 text-blue-400" />
                                                     Test: <span className="font-medium">{doctorInstructions}</span>
@@ -624,8 +540,9 @@ export default function LabTechDashboardComponent() {
                                             </div>
                                             <button
                                                 className="flex items-center gap-1 text-xs text-red-500 hover:underline mt-1"
-                                                onClick={() => toggleExpandTest(test.$id)}
+                                                onClick={() => toggleExpandTest(test?.$id)}
                                                 aria-expanded={isExpanded}
+                                                type="button"
                                             >
                                                 {isExpanded ? <FiChevronUp /> : <FiChevronDown />}
                                                 {isExpanded ? "Hide Details" : "Show Details"}
@@ -683,10 +600,11 @@ export default function LabTechDashboardComponent() {
                                                                     setResultError("Result cannot be empty.");
                                                                     return;
                                                                 }
-                                                                submitResult({ labTestId: test.$id, result });
+                                                                submitResult({ labTestId: test?.$id, result });
                                                             }}
                                                             disabled={isSubmitting}
                                                             className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+                                                            type="button"
                                                         >
                                                             {isSubmitting ? "Submitting..." : "Submit Result"}
                                                         </Button>
@@ -700,6 +618,7 @@ export default function LabTechDashboardComponent() {
                                                             }}
                                                             disabled={isSubmitting}
                                                             className="border-red-400 text-red-600 hover:bg-red-50"
+                                                            type="button"
                                                         >
                                                             Cancel
                                                         </Button>
@@ -708,13 +627,14 @@ export default function LabTechDashboardComponent() {
                                             ) : (
                                                 <Button
                                                     onClick={() => {
-                                                        setSelectedTestId(test.$id);
+                                                        setSelectedTestId(test?.$id);
                                                         setResult("");
                                                         setResultError(null);
                                                         resetMutation();
                                                     }}
                                                     className="mt-2 bg-red-100 text-red-700 hover:bg-red-200 font-semibold"
                                                     variant="secondary"
+                                                    type="button"
                                                 >
                                                     Upload Result
                                                 </Button>
