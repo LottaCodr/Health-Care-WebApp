@@ -1,35 +1,37 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import Link from "next/link";
+import React, { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     FiUsers,
     FiClipboard,
     FiThermometer,
-    FiClock
+    FiClock,
+    FiBell,
+    FiCheckCircle,
+    FiAlertCircle,
+    FiBarChart,
+    FiUser,
+    FiUserCheck,
+    FiUserX,
+    FiChevronDown,
+    FiChevronUp,
+    FiFileText,
+    FiMail,
+    FiPhone,
+    FiMapPin,
+    FiInfo,
+    FiRefreshCw,
 } from "react-icons/fi";
-import {
-    MdAssignment,
-    MdPeople,
-    MdScience,
-    MdWarning
-} from "react-icons/md";
-import { BsBarChart } from "react-icons/bs";
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useRole } from "@/hooks/use-role";
-import { useQuery } from "@tanstack/react-query";
-import { getLabRequest, getLabTechTasks } from "@/actions/lab-tech/get.labtech.task";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getLabRequest, getLabTechTasks, updateLabTechAction } from "@/actions/lab-tech/get.labtech.task";
 import { getUser } from "@/hooks/use-auth";
-// import { useUserProfile } from "@/hooks/use-user-profile";
+import clsx from "clsx";
 
 function getGreeting(name?: string) {
     const hour = new Date().getHours();
@@ -37,12 +39,37 @@ function getGreeting(name?: string) {
     if (hour < 12) greet = "Good morning";
     else if (hour < 18) greet = "Good afternoon";
     else greet = "Good evening";
-    return name ? `${greet}, ${name}` : greet;
+    return name ? `${greet}, ${name.split(" ")[0]}` : greet;
+}
+
+function formatDate(dateString?: string) {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+function getInitials(name?: string) {
+    if (!name) return "";
+    const parts = name.split(" ");
+    if (parts.length === 1) return parts[0][0];
+    return parts[0][0] + parts[1][0];
 }
 
 export default function LabTechDashboardComponent() {
     const role = useRole();
-    // const { userProfile, isLoading: profileLoading } = useUserProfile();
+    const queryClient = useQueryClient();
+
+    // State for result submission
+    const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
+    const [result, setResult] = useState("");
+    const [resultError, setResultError] = useState<string | null>(null);
+    const [expandedTestIds, setExpandedTestIds] = useState<string[]>([]);
 
     const { data: user } = useQuery({
         queryKey: ['user'],
@@ -80,34 +107,72 @@ export default function LabTechDashboardComponent() {
         enabled: !!user?.id
     });
 
-    // Personalized stats
+    // Mutation for submitting test result
+    const {
+        mutate: submitResult,
+        isPending: isSubmitting,
+        isSuccess: submitSuccess,
+        isError: submitError,
+        reset: resetMutation,
+    } = useMutation({
+        mutationFn: async ({ labTestId, result }: { labTestId: string, result: string }) => {
+            // You may want to update more fields as needed
+            return updateLabTechAction({
+                documentId: labTestId,
+                bloodPressure: "",
+                temperature: "",
+                pulseRate: "",
+                respiratoryRate: "",
+                treatmentGiven: "",
+                // Add testResults field if needed
+                // testResults: result,
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['lab-tasks', user?.id] });
+            setResult("");
+            setSelectedTestId(null);
+            setResultError(null);
+        },
+        onError: () => {
+            setResultError("Failed to submit result. Please try again.");
+        }
+    });
+
+    // Stats
     const summaryStats = useMemo(() => {
         if (requestsError || tasksError) {
             return [
                 {
                     title: "Checked-In Patients",
                     count: "-",
-                    icon: <FiUsers className="text-blue-600 w-5 h-5" />
+                    icon: <FiUsers className="text-red-600 w-6 h-6" />
                 },
                 {
                     title: "Pending Lab Results",
                     count: "-",
-                    icon: <FiClipboard className="text-yellow-600 w-5 h-5" />
+                    icon: <FiClipboard className="text-red-400 w-6 h-6" />
                 },
                 {
                     title: "Tests Completed",
                     count: "-",
-                    icon: <FiThermometer className="text-green-600 w-5 h-5" />
+                    icon: <FiThermometer className="text-red-300 w-6 h-6" />
                 },
                 {
                     title: "Queue Length",
                     count: "-",
-                    icon: <FiClock className="text-red-600 w-5 h-5" />
+                    icon: <FiClock className="text-red-800 w-6 h-6" />
                 }
             ];
         }
         const checkedIn = Array.isArray(labRequests)
-            ? new Set(labRequests.map((t: any) => t.patientId)).size
+            ? new Set(
+                labRequests.map((t: any) =>
+                    typeof t.patientId === "object" && t.patientId && t.patientId.$id
+                        ? t.patientId.$id
+                        : t.patientId
+                )
+            ).size
             : 0;
         const pending = Array.isArray(labTasks)
             ? labTasks.filter((t: any) => t.status === "awaitingPayment" || t.status === "pending").length
@@ -120,22 +185,22 @@ export default function LabTechDashboardComponent() {
             {
                 title: "Checked-In Patients",
                 count: checkedIn,
-                icon: <FiUsers className="text-blue-600 w-5 h-5" />
+                icon: <FiUsers className="text-red-600 w-6 h-6" />
             },
             {
                 title: "Pending Lab Results",
                 count: pending,
-                icon: <FiClipboard className="text-yellow-600 w-5 h-5" />
+                icon: <FiClipboard className="text-red-400 w-6 h-6" />
             },
             {
                 title: "Tests Completed",
                 count: completed,
-                icon: <FiThermometer className="text-green-600 w-5 h-5" />
+                icon: <FiThermometer className="text-red-300 w-6 h-6" />
             },
             {
                 title: "Queue Length",
                 count: queue,
-                icon: <FiClock className="text-red-600 w-5 h-5" />
+                icon: <FiClock className="text-red-800 w-6 h-6" />
             }
         ];
     }, [labRequests, labTasks, requestsError, tasksError]);
@@ -164,7 +229,7 @@ export default function LabTechDashboardComponent() {
         return days.map(day => ({ name: day, tests: counts[day] || 0 }));
     }, [labTasks]);
 
-    // Personalized notifications
+    // Notifications
     const notifications = useMemo(() => {
         if (!Array.isArray(labTasks) || labTasks.length === 0) {
             return [
@@ -175,22 +240,24 @@ export default function LabTechDashboardComponent() {
             ];
         }
         const urgent = labTasks.filter(
-            (t: any) =>
+            (t) =>
                 t.status === "pending" &&
                 typeof t.doctorInstructions === "string" &&
                 t.doctorInstructions.toLowerCase().includes("urgent")
         );
-        const notes: { message: string; time: string }[] = [];
+        const notes: { message: string; time: string; type?: "urgent" | "info" }[] = [];
         if (urgent.length > 0) {
             notes.push({
                 message: `You have ${urgent.length} urgent test request${urgent.length > 1 ? "s" : ""}`,
-                time: "Just now"
+                time: "Just now",
+                type: "urgent"
             });
         }
         // Example: low stock notification (static for now)
         notes.push({
             message: "Stock of reagent X is low",
-            time: "30 mins ago"
+            time: "30 mins ago",
+            type: "info"
         });
         if (notes.length === 0) {
             notes.push({
@@ -200,6 +267,26 @@ export default function LabTechDashboardComponent() {
         }
         return notes;
     }, [labTasks]);
+
+    // Filter pending tests for the main list
+    const pendingTests = useMemo(() => {
+        if (!Array.isArray(labTasks)) return [];
+        // Only show tests assigned to this lab tech and not completed
+        return labTasks.filter((t) => {
+            // If user?.id is not available, fallback to showing all
+            if (!user?.id) return t.status !== "completed";
+            return t.labTechId === user.id && t.status !== "completed";
+        });
+    }, [labTasks, user?.id]);
+
+    // Helper for expanding/collapsing test details
+    const toggleExpandTest = (testId: string) => {
+        setExpandedTestIds((prev) =>
+            prev.includes(testId)
+                ? prev.filter((id) => id !== testId)
+                : [...prev, testId]
+        );
+    };
 
     if (role !== "lab-tech") {
         return (
@@ -211,8 +298,9 @@ export default function LabTechDashboardComponent() {
 
     if (requestsPending || tasksPending) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <span className="text-blue-700 font-medium animate-pulse">Loading your dashboard...</span>
+            <div className="flex flex-col items-center justify-center h-64 gap-2">
+                <FiRefreshCw className="animate-spin text-3xl text-red-400" />
+                <span className="text-red-600 font-medium animate-pulse">Loading your dashboard...</span>
             </div>
         );
     }
@@ -226,166 +314,419 @@ export default function LabTechDashboardComponent() {
     }
 
     return (
-        <section className="w-full px-4 md:px-8 py-6 space-y-6">
-            <header className="mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-blue-900">
-                    {getGreeting(user?.name)}
-                </h1>
-                <p className="text-gray-600">
-                    {user?.name
-                        ? `Welcome back, ${user.name}. Here’s your personalized lab dashboard.`
-                        : "Here's a snapshot of your activities today."}
-                </p>
+        <section className="w-full px-2 md:px-8 py-6 space-y-10 bg-gradient-to-br from-red-50 via-white to-white min-h-screen">
+            {/* Header */}
+            <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center text-2xl font-bold text-red-600 shadow">
+                        {getInitials(user?.name)}
+                    </div>
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-extrabold text-red-700 tracking-tight drop-shadow-sm flex items-center gap-2">
+                            {getGreeting(user?.name)}
+                        </h1>
+                        <p className="text-gray-700 mt-1 text-base">
+                            {user?.name
+                                ? `Welcome back, ${user.name.split(" ")[0]}. Here’s your personalized lab dashboard.`
+                                : "Here's a snapshot of your activities today."}
+                        </p>
+                        <div className="flex gap-3 mt-2 text-xs text-gray-500">
+                            {user?.email && (
+                                <span className="flex items-center gap-1">
+                                    <FiMail className="text-red-400" /> {user.email}
+                                </span>
+                            )}
+                            {user?.name && (
+                                <span
+                                    className="flex items-center gap-1 px-2 py-1 rounded bg-red-100 text-red-700 font-medium shadow-sm cursor-pointer transition hover:bg-red-200"
+                                    title={user.name}
+                                    tabIndex={0}
+                                    aria-label={`User name: ${user.name}`}
+                                >
+                                    <FiUser className="text-red-400" />
+                                    <span className="truncate max-w-[120px]">{user.name}</span>
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-red-500 text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        onClick={() => {
+                            queryClient.invalidateQueries({ queryKey: ['lab-tasks', user?.id] });
+                        }}
+                    >
+                        <FiRefreshCw className="animate-spin-slow" /> Refresh
+                    </Button>
+                </div>
             </header>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {summaryStats.map((stat, idx) => (
-                    <Card key={idx} className="shadow-sm border border-gray-200">
-                        <CardContent className="flex items-center justify-between p-4">
-                            <div>
-                                <p className="text-sm text-gray-500">{stat.title}</p>
-                                <p className="text-xl font-semibold text-gray-800">
-                                    {stat.count}
-                                </p>
+                    <Card
+                        key={stat.title}
+                        className={clsx(
+                            "shadow-xl border-0 bg-gradient-to-br relative group overflow-hidden",
+                            idx === 0 && "from-red-100 to-white",
+                            idx === 1 && "from-red-200 to-white",
+                            idx === 2 && "from-red-50 to-white",
+                            idx === 3 && "from-red-300 to-white",
+                            "hover:scale-[1.05] transition-transform duration-200 cursor-pointer focus-within:ring-2 focus-within:ring-red-400"
+                        )}
+                        tabIndex={0}
+                        aria-label={`${stat.title}: ${stat.count}`}
+                        role="region"
+                    >
+                        {/* Decorative gradient accent */}
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-400/60 via-red-200/40 to-transparent" />
+                        <CardContent className="flex flex-col items-center py-7 px-2 relative">
+                            <div className="mb-3 flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-lg group-hover:bg-red-50 transition-colors border-2 border-red-100">
+                                {stat.icon}
                             </div>
-                            <div className="bg-blue-50 rounded-full p-2">{stat.icon}</div>
+                            <div className="text-4xl font-black text-red-700 mt-1 group-hover:text-red-900 transition-colors drop-shadow">
+                                {stat.count}
+                            </div>
+                            <div className="text-sm text-gray-700 font-semibold mt-2 text-center tracking-wide">
+                                {stat.title}
+                            </div>
+                            {/* Animated underline on hover */}
+                            <span className="block h-0.5 w-8 bg-red-200 rounded-full mt-3 opacity-0 group-hover:opacity-100 transition-all duration-200" />
+                            {/* Tooltip for accessibility and extra info */}
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-white border border-red-100 rounded px-2 py-1 text-xs text-red-700 shadow z-10 whitespace-nowrap">
+                                {stat.title}
+                            </div>
                         </CardContent>
                     </Card>
                 ))}
             </div>
 
-            {/* Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                    <CardContent className="flex items-center gap-4 p-4">
-                        <MdAssignment className="text-blue-600 w-8 h-8" />
-                        <div>
-                            <p className="text-gray-600">Pending Lab Tests</p>
-                            <p className="text-xl font-bold">
-                                {summaryStats[1]?.count}
-                            </p>
+            {/* Notifications */}
+            <Card className="border-l-4 border-red-500 bg-red-50/60 shadow-none">
+                <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold text-red-700">
+                        <FiBell className="text-red-500" /> Notifications
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                    {notifications.map((note, idx) => (
+                        <div
+                            key={idx}
+                            className={clsx(
+                                "flex items-center gap-2 text-sm py-1 px-2 rounded transition-all",
+                                note.type === "urgent" && "bg-red-100 text-red-700 font-semibold",
+                                note.type === "info" && "bg-orange-50 text-orange-700",
+                                !note.type && "bg-green-50 text-green-700"
+                            )}
+                        >
+                            {note.type === "urgent" ? (
+                                <FiAlertCircle className="text-red-500" />
+                            ) : note.type === "info" ? (
+                                <FiBell className="text-orange-500" />
+                            ) : (
+                                <FiCheckCircle className="text-green-500" />
+                            )}
+                            <span>{note.message}</span>
+                            {note.time && (
+                                <span className="ml-auto text-xs text-gray-400">{note.time}</span>
+                            )}
                         </div>
-                    </CardContent>
-                </Card>
+                    ))}
+                </CardContent>
+            </Card>
 
-                <Card>
-                    <CardContent className="flex items-center gap-4 p-4">
-                        <MdPeople className="text-green-600 w-8 h-8" />
-                        <div>
-                            <p className="text-gray-600">Patients in Queue</p>
-                            <p className="text-xl font-bold">
-                                {summaryStats[3]?.count}
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="flex items-center gap-4 p-4">
-                        <MdScience className="text-purple-600 w-8 h-8" />
-                        <div>
-                            <p className="text-gray-600">Tests Completed Today</p>
-                            <p className="text-xl font-bold">
-                                {
-                                    chartData.length > 0
-                                        ? chartData[new Date().getDay()]?.tests
-                                        : "-"
-                                }
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Charts + Notifications */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2">
-                    <CardContent className="p-4">
-                        <h2 className="text-lg font-semibold text-blue-800 mb-2">
-                            Your Weekly Test Volume
-                        </h2>
-                        <ResponsiveContainer width="100%" height={250}>
+            {/* Chart */}
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-red-50 to-white">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2 text-red-700">
+                        <FiBarChart className="text-red-500" /> Tests Completed This Week
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="h-56">
+                        <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData}>
-                                <XAxis dataKey="name" stroke="#8884d8" />
-                                <YAxis allowDecimals={false} />
-                                <Tooltip />
-                                <Bar dataKey="tests" fill="#4F46E5" barSize={30} />
+                                <XAxis dataKey="name" tick={{ fill: "#b91c1c", fontWeight: 600 }} />
+                                <YAxis allowDecimals={false} tick={{ fill: "#b91c1c", fontWeight: 600 }} />
+                                <Tooltip
+                                    contentStyle={{
+                                        background: "#fff1f2",
+                                        border: "1px solid #f87171",
+                                        color: "#b91c1c",
+                                        fontWeight: 600,
+                                    }}
+                                    cursor={{ fill: "#fee2e2" }}
+                                />
+                                <Bar dataKey="tests" fill="#ef4444" radius={[8, 8, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+                    </div>
+                </CardContent>
+            </Card>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <h2 className="text-lg font-semibold text-blue-800 mb-2">
-                            Notifications
-                        </h2>
-                        <ul className="space-y-2">
-                            {notifications.map((note, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                                    <MdWarning className="text-yellow-500 mt-1 w-5 h-5" />
-                                    <div>
-                                        <p>{note.message}</p>
-                                        {note.time && (
-                                            <span className="text-xs text-gray-400">{note.time}</span>
-                                        )}
+            {/* Pending Lab Tests */}
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-red-50">
+                <CardHeader>
+                    <CardTitle className="text-2xl font-bold flex items-center gap-2 text-red-700">
+                        <FiClipboard className="text-red-500" /> Pending Lab Tests
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {pendingTests.length === 0 ? (
+                        <div className="text-gray-500 text-center py-8">
+                            <FiCheckCircle className="mx-auto text-4xl text-green-500 mb-2" />
+                            No pending tests assigned to you.
+                        </div>
+                    ) : (
+                        pendingTests.map((test: any) => {
+                            // Defensive: handle patient field being an object or id
+                            let patientName = "";
+                            let patientGender = "";
+                            let patientAge = "";
+                            let patientIdDisplay = "";
+                            let patientEmail = "";
+                            let patientPhone = "";
+                            let patientAddress = "";
+                            let patientAllergies = "";
+                            if (test.patient && typeof test.patient === "object" && test.patient.name) {
+                                patientName = test.patient.name;
+                                patientGender = test.patient.gender || "";
+                                patientAge = test.patient.birthDate
+                                    ? `${Math.max(0, Math.floor((new Date().getTime() - new Date(test.patient.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))}`
+                                    : "";
+                                patientIdDisplay = test.patient.$id || "";
+                                patientEmail = test.patient.email || "";
+                                patientPhone = test.patient.phone || "";
+                                patientAddress = test.patient.address || "";
+                                patientAllergies = test.patient.allergies || "";
+                            } else if (
+                                typeof test.patientId === "object" &&
+                                test.patientId &&
+                                test.patientId.name
+                            ) {
+                                patientName = test.patientId.name;
+                                patientGender = test.patientId.gender || "";
+                                patientAge = test.patientId.birthDate
+                                    ? `${Math.max(0, Math.floor((new Date().getTime() - new Date(test.patientId.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))}`
+                                    : "";
+                                patientIdDisplay = test.patientId.$id || "";
+                                patientEmail = test.patientId.email || "";
+                                patientPhone = test.patientId.phone || "";
+                                patientAddress = test.patientId.address || "";
+                                patientAllergies = test.patientId.allergies || "";
+                            } else if (
+                                typeof test.patientId === "string"
+                            ) {
+                                patientName = test.patientId;
+                                patientIdDisplay = test.patientId;
+                            } else {
+                                patientName = "Unknown";
+                            }
+
+                            // Defensive: doctorName may be an object or string
+                            let doctorName = "";
+                            if (test.doctorName && typeof test.doctorName === "string") {
+                                doctorName = test.doctorName;
+                            } else if (
+                                test.doctor &&
+                                typeof test.doctor === "object" &&
+                                test.doctor.name
+                            ) {
+                                doctorName = test.doctor.name;
+                            } else {
+                                doctorName = "Doctor";
+                            }
+
+                            // Defensive: doctorInstructions may be an object or string
+                            let doctorInstructions = "";
+                            if (typeof test.doctorInstructions === "string") {
+                                doctorInstructions = test.doctorInstructions;
+                            } else if (
+                                test.doctorInstructions &&
+                                typeof test.doctorInstructions === "object" &&
+                                test.doctorInstructions.name
+                            ) {
+                                doctorInstructions = test.doctorInstructions.name;
+                            } else {
+                                doctorInstructions = "N/A";
+                            }
+
+                            // Defensive: createdAt
+                            const requestedAt = formatDate(test.createdAt);
+
+                            // Defensive: status
+                            let statusIcon = <FiClock className="text-orange-400" />;
+                            let statusText = test.status;
+                            let statusColor = "text-orange-600";
+                            if (test.status === "completed") {
+                                statusIcon = <FiCheckCircle className="text-green-500" />;
+                                statusColor = "text-green-600";
+                            } else if (test.status === "awaitingPayment") {
+                                statusIcon = <FiUserX className="text-yellow-500" />;
+                                statusColor = "text-yellow-600";
+                            }
+
+                            const isExpanded = expandedTestIds.includes(test.$id);
+
+                            return (
+                                <div
+                                    key={test.$id}
+                                    className={clsx(
+                                        "border p-5 rounded-2xl shadow-md bg-white space-y-2 transition-all",
+                                        selectedTestId === test.$id
+                                            ? "ring-2 ring-red-400 border-red-200 bg-red-50/40"
+                                            : "border-gray-100",
+                                        "hover:shadow-lg"
+                                    )}
+                                >
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="rounded-full bg-red-100 p-1">
+                                                    <FiUser className="text-red-400" />
+                                                </span>
+                                                <span className="font-semibold text-red-700 text-lg">{patientName}</span>
+                                                {patientGender && (
+                                                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                                                        {patientGender}
+                                                    </span>
+                                                )}
+                                                {patientAge && (
+                                                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                                                        {patientAge} yrs
+                                                    </span>
+                                                )}
+                                                {patientIdDisplay && (
+                                                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100">
+                                                        ID: {patientIdDisplay.slice(-6)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 items-center mb-1">
+                                                <span className="text-sm text-gray-600">
+                                                    <FiUserCheck className="inline mr-1 text-green-400" />
+                                                    Requested By: <span className="font-medium">{doctorName}</span>
+                                                </span>
+                                                <span className="text-sm text-gray-600">
+                                                    <FiFileText className="inline mr-1 text-blue-400" />
+                                                    Test: <span className="font-medium">{doctorInstructions}</span>
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                                                {statusIcon}
+                                                <span className={clsx(statusColor, "font-semibold")}>{statusText}</span>
+                                                {requestedAt && (
+                                                    <span className="ml-2">Requested: {requestedAt}</span>
+                                                )}
+                                            </div>
+                                            <button
+                                                className="flex items-center gap-1 text-xs text-red-500 hover:underline mt-1"
+                                                onClick={() => toggleExpandTest(test.$id)}
+                                                aria-expanded={isExpanded}
+                                            >
+                                                {isExpanded ? <FiChevronUp /> : <FiChevronDown />}
+                                                {isExpanded ? "Hide Details" : "Show Details"}
+                                            </button>
+                                            {isExpanded && (
+                                                <div className="mt-2 bg-red-50/60 rounded-lg p-3 text-xs text-gray-700 space-y-2 border border-red-100">
+                                                    <div className="flex flex-wrap gap-4">
+                                                        {patientEmail && (
+                                                            <span className="flex items-center gap-1">
+                                                                <FiMail className="text-red-400" /> {patientEmail}
+                                                            </span>
+                                                        )}
+                                                        {patientPhone && (
+                                                            <span className="flex items-center gap-1">
+                                                                <FiPhone className="text-red-400" /> {patientPhone}
+                                                            </span>
+                                                        )}
+                                                        {patientAddress && (
+                                                            <span className="flex items-center gap-1">
+                                                                <FiMapPin className="text-red-400" /> {patientAddress}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-semibold">Allergies:</span>{" "}
+                                                        {patientAllergies || "None"}
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-semibold">Notes:</span>{" "}
+                                                        {test.notes || "No additional notes."}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col gap-2 min-w-[200px]">
+                                            {selectedTestId === test.$id ? (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="test-result" className="font-medium text-red-700">Test Result</Label>
+                                                    <Textarea
+                                                        id="test-result"
+                                                        placeholder="Enter test result here..."
+                                                        value={result}
+                                                        onChange={(e) => setResult(e.target.value)}
+                                                        className="resize-none border-red-300 focus:border-red-500 focus:ring-red-500"
+                                                        rows={3}
+                                                        autoFocus
+                                                    />
+                                                    {resultError && (
+                                                        <div className="text-xs text-red-600">{resultError}</div>
+                                                    )}
+                                                    <div className="flex gap-3">
+                                                        <Button
+                                                            onClick={() => {
+                                                                if (!result.trim()) {
+                                                                    setResultError("Result cannot be empty.");
+                                                                    return;
+                                                                }
+                                                                submitResult({ labTestId: test.$id, result });
+                                                            }}
+                                                            disabled={isSubmitting}
+                                                            className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+                                                        >
+                                                            {isSubmitting ? "Submitting..." : "Submit Result"}
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setSelectedTestId(null);
+                                                                setResult("");
+                                                                setResultError(null);
+                                                                resetMutation();
+                                                            }}
+                                                            disabled={isSubmitting}
+                                                            className="border-red-400 text-red-600 hover:bg-red-50"
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    onClick={() => {
+                                                        setSelectedTestId(test.$id);
+                                                        setResult("");
+                                                        setResultError(null);
+                                                        resetMutation();
+                                                    }}
+                                                    className="mt-2 bg-red-100 text-red-700 hover:bg-red-200 font-semibold"
+                                                    variant="secondary"
+                                                >
+                                                    Upload Result
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Quick Actions + Placeholder */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="shadow-sm border border-gray-200">
-                    <CardContent className="p-4 space-y-2">
-                        <h2 className="text-lg font-semibold text-blue-800 mb-2">Quick Actions</h2>
-                        <div className="flex flex-wrap gap-2">
-                            <Link href="/lab-tech/new-entry" passHref legacyBehavior>
-                                <Button variant="outline" size="sm" >New Lab Entry</Button>
-                            </Link>
-
-                            <Link href="/lab-tech/queue" passHref legacyBehavior>
-                                <Button variant="outline" size="sm" >View Queue</Button>
-                            </Link>
-
-                            <Link href="/lab-tech/upload-result" passHref legacyBehavior>
-                                <Button variant="outline" size="sm" >Upload Result</Button>
-                            </Link>
-
-                            <Link href="/lab-tech/patient-records" passHref legacyBehavior>
-                                <Button variant="outline" size="sm" >Patient Records</Button>
-                            </Link>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="shadow-sm border border-gray-200">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <BsBarChart className="w-6 h-6 text-blue-500" />
-                            <h2 className="text-lg font-semibold text-blue-800">
-                                Lab Activity Insights (Coming Soon)
-                            </h2>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-2">
-                            Analytics on your turnaround time, most frequent tests, and more.
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <div className="pt-4 flex flex-col md:flex-row gap-2 md:gap-4">
-                <Button asChild variant="default">
-                    <Link href="/lab-tech/workflow">Go to Lab Workflow</Link>
-                </Button>
-                <Button asChild variant="secondary">
-                    <Link href="/lab-tech/my-tasks">My Lab Tasks</Link>
-                </Button>
-            </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </CardContent>
+            </Card>
         </section>
     );
 }
