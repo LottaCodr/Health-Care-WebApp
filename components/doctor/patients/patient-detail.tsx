@@ -217,10 +217,10 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     doctorMedications: consultationState.prescriptions,
                     doctorDiagnosis: consultationState.diagnosis,
                     doctorRecommendations: consultationState.recommendations,
-                    feedback: "",
                     testResults: "",
-                    status: "awaitingPayment",
-                    createdAt: new Date().toISOString()
+                    // status: "awaitingPayment",
+                    // updatedAt: new Date().toISOString(),
+
 
                 });
             } else {

@@ -1,5 +1,5 @@
 import { databases } from "@/lib/appwrite.config";
-import { Staff } from "@/types/appwrite.types";
+import { Staff } from "./types";
 
 export async function getAllStaffs() {
     const databasesId = process.env.NEXT_PUBLIC_DATABASE_ID

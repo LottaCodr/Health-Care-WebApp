@@ -5,7 +5,7 @@ import { Patient } from "@/context/patients/types";
 
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
-const labTechCollectionId = process.env.NEXT_PUBLIC_LAB_TECH_COLLECTION_ID!;
+const labRequestsCollectionId = process.env.NEXT_PUBLIC_LAB_REQUESTS_COLLECTION_ID!;
 const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
 
 
@@ -13,7 +13,7 @@ export async function assignLabTech(labTechTaskData: LabTechFeedback) {
     try {
         const response = await databases.createDocument(
             databaseId,
-            labTechCollectionId,
+            labRequestsCollectionId,
             ID.unique(),
             labTechTaskData
         );
@@ -22,6 +22,7 @@ export async function assignLabTech(labTechTaskData: LabTechFeedback) {
         return response;
     } catch (error) {
         console.error("An error occurred while creating lab tech assignment:", error);
+        console.error("LabRequest Collection Id:", labRequestsCollectionId)
         throw new Error("Failed to create lab tech assignment")
     }
 }
@@ -30,7 +31,7 @@ export async function getLabTechTasks(labTechId: string): Promise<LabTechFeedbac
     try {
         const response = await databases.listDocuments(
             databaseId,
-            labTechCollectionId,
+            labRequestsCollectionId,
             [Query.equal('labTechId', labTechId), Query.orderDesc('$createdAt')]
         );
 
@@ -92,7 +93,6 @@ export async function getLabTechTasks(labTechId: string): Promise<LabTechFeedbac
             doctorMedications: n.doctorMedications,
             doctorDiagnosis: n.doctorDiagnosis,
             doctorRecommendations: n.doctorRecommendations,
-            feedback: n.feedback,
             testResults: n.testResults,
             taskDate: n.taskDate,
             createdAt: n.$createdAt,
@@ -109,7 +109,7 @@ export async function getLabRequest(labTechId: string): Promise<LabTechFeedback[
     try {
         const response = await databases.listDocuments(
             databaseId,
-            labTechCollectionId,
+            labRequestsCollectionId,
             [Query.equal('labTechId', labTechId), Query.orderDesc('$createdAt')]
         );
 
@@ -171,7 +171,6 @@ export async function getLabRequest(labTechId: string): Promise<LabTechFeedback[
             doctorMedications: n.doctorMedications,
             doctorDiagnosis: n.doctorDiagnosis,
             doctorRecommendations: n.doctorRecommendations,
-            feedback: n.feedback,
             testResults: n.testResults,
             taskDate: n.taskDate,
             createdAt: n.$createdAt,
@@ -202,7 +201,7 @@ export async function updateLabTechAction({
     try {
         const response = await databases.updateDocument(
             databaseId,
-            labTechCollectionId,
+            labRequestsCollectionId,
             documentId,
             {
                 bloodPressure,
