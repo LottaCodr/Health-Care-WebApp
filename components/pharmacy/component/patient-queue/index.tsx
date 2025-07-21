@@ -95,13 +95,14 @@ export default function PatientQueueComponent() {
                                             View History
                                         </Button>
                                     </DialogTrigger>
-                                    <DialogContent>
-                                        <h3 className="text-lg font-semibold mb-2">Patient Summary</h3>
-                                        <p className="mb-2 text-sm text-gray-700">{selectedPatient?.history}</p>
+                                    <DialogContent className="bg-white dark:bg-gray-900 border border-red-200 dark:border-gray-700 rounded-xl p-6 sm:p-8 max-w-md w-full">
+                                        <h3 className="text-lg font-semibold mb-2 text-red-800 dark:text-red-200">Patient Summary</h3>
+                                        <p className="mb-2 text-sm text-gray-700 dark:text-gray-200">{selectedPatient?.history}</p>
                                         <Button
                                             onClick={() => {
                                                 handleAttend(p.id);
                                             }}
+                                            className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded transition w-full"
                                         >
                                             Mark as Attended
                                         </Button>

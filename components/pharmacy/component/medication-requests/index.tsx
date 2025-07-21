@@ -148,11 +148,11 @@ export default function MedicationRequestsComponent() {
                                         <DialogTrigger asChild>
                                             <Button size="sm" variant="outline">View Notes</Button>
                                         </DialogTrigger>
-                                        <DialogContent>
+                                        <DialogContent className="bg-white dark:bg-gray-900 border border-red-200 dark:border-gray-700 rounded-xl p-6 sm:p-8 max-w-md w-full">
                                             <DialogHeader>
-                                                <DialogTitle>Notes for {req.patientName}</DialogTitle>
+                                                <DialogTitle className="text-red-800 dark:text-red-200 text-lg font-bold">Notes for {req.patientName}</DialogTitle>
                                             </DialogHeader>
-                                            <p className="text-sm mt-2">{req.notes}</p>
+                                            <p className="text-sm mt-2 text-gray-700 dark:text-gray-200">{req.notes}</p>
                                         </DialogContent>
                                     </Dialog>
                                     {req.status === "pending" && (

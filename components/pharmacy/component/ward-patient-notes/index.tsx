@@ -118,26 +118,29 @@ export function WardRoundsNotesComponent() {
                         <DialogTrigger asChild>
                             <Button>Add Note</Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="bg-white dark:bg-gray-900 border border-red-200 dark:border-gray-700 rounded-xl p-6 sm:p-8 max-w-lg w-full">
                             <DialogHeader>
-                                <DialogTitle>Add Ward Note</DialogTitle>
+                                <DialogTitle className="text-red-800 dark:text-red-200 text-lg font-bold">Add Ward Note</DialogTitle>
                             </DialogHeader>
                             <Input
                                 placeholder="Patient Name"
                                 value={newNote.patientName}
                                 onChange={(e) => setNewNote({ ...newNote, patientName: e.target.value })}
+                                className="mb-3 bg-white dark:bg-gray-800 border border-red-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                             />
                             <Textarea
                                 placeholder="Medication Review"
                                 value={newNote.medicationReview}
                                 onChange={(e) => setNewNote({ ...newNote, medicationReview: e.target.value })}
+                                className="mb-3 bg-white dark:bg-gray-800 border border-red-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                             />
                             <Textarea
                                 placeholder="Pharmacist Note"
                                 value={newNote.pharmacistNote}
                                 onChange={(e) => setNewNote({ ...newNote, pharmacistNote: e.target.value })}
+                                className="mb-4 bg-white dark:bg-gray-800 border border-red-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                             />
-                            <Button onClick={handleAddNote}>Save Note</Button>
+                            <Button onClick={handleAddNote} className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded transition w-full">Save Note</Button>
                         </DialogContent>
                     </Dialog>
                 </div>

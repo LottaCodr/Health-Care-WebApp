@@ -115,18 +115,18 @@ export function PatientRecordsComponent() {
                                         <DialogTrigger asChild>
                                             <Button size="sm">View Summary</Button>
                                         </DialogTrigger>
-                                        <DialogContent>
+                                        <DialogContent className="bg-white dark:bg-gray-900 border border-red-200 dark:border-gray-700 rounded-xl p-6 sm:p-8 max-w-md w-full">
                                             <DialogHeader>
-                                                <DialogTitle>{record.name}&#39;s Prescription Summary</DialogTitle>
+                                                <DialogTitle className="text-red-800 dark:text-red-200 text-lg font-bold">{record.name}&rsquo;s Prescription Summary</DialogTitle>
                                             </DialogHeader>
                                             <ul className="mt-2 space-y-1">
                                                 {record.prescriptions.map((med, idx) => (
-                                                    <li key={idx} className="text-sm">{med}</li>
+                                                    <li key={idx} className="text-sm text-gray-900 dark:text-gray-100">{med}</li>
                                                 ))}
                                             </ul>
                                             <div className="mt-4">
-                                                <Input placeholder="Add prescription..." className="mb-2" />
-                                                <Button>Add</Button>
+                                                <Input placeholder="Add prescription..." className="mb-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-gray-700 text-gray-900 dark:text-gray-100" />
+                                                <Button className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded transition w-full">Add</Button>
                                             </div>
                                         </DialogContent>
                                     </Dialog>
