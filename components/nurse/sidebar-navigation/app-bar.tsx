@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 // Icons
 import { MdDashboard, MdEventNote, MdSupportAgent } from "react-icons/md";
-import { FiSettings, FiLogOut } from "react-icons/fi";
+import { FiSettings } from "react-icons/fi";
 import { FaUserPlus, FaUserClock } from "react-icons/fa";
 import { BiBarChartAlt2 } from "react-icons/bi";
 import { AiOutlineFileAdd } from "react-icons/ai";
@@ -27,71 +27,32 @@ import { NurseNavUser } from "./nav-user";
 const getUserRole = () => "nurse";
 
 // 🔢 Dummy badge functions (replace with Zustand/React Query data)
-const getAppointmentsBadge = () => 3;
 const getWaitingPatientsBadge = () => 5;
-const getPendingMedicationsBadge = () => 2;
 
 // 🧠 Define nav items with RBAC and optional badges
 const data = {
-    user: {
-        name: "Chuka Lotanna ",
-        email: "lottanna47@gmail.com",
-        avatar: "/avatars/shadcn.jpg",
-    },
     navMain: [
         {
             title: "Dashboard",
             url: "/nurse/dashboard",
             icon: MdDashboard,
-            roles: ["nurse", "receptionist", "admin"],
-        },
-        {
-            title: "Vitals & Check-in",
-            url: "/nurse/vitals-checkin",
-            icon: BiBarChartAlt2,
             roles: ["nurse"],
         },
         {
             title: "Patient Queue",
             url: "/nurse/queue",
             icon: FaUserClock,
-            roles: ["nurse", "receptionist"],
-            badge: getWaitingPatientsBadge,
-        },
-        {
-            title: "Patient Records",
-            url: "/nurse/patient-records",
-            icon: AiOutlineFileAdd,
-            roles: ["nurse", "receptionist"],
-        },
-        {
-            title: "Ward Round Notes",
-            url: "/nurse/ward-rounds",
-            icon: MdEventNote,
             roles: ["nurse"],
-        },
-        {
-            title: "Medication Requests",
-            url: "/nurse/medication-requests",
-            icon: FaUserPlus,
-            roles: ["nurse"],
-            badge: getPendingMedicationsBadge,
-        },
-        {
-            title: "Visitors & Walk-ins",
-            url: "/nurse/visitors",
-            icon: BsPeople,
-            roles: ["receptionist", "nurse"],
+            // badge: getWaitingPatientsBadge,
         },
     ],
     navSecondary: [
         { title: "Support", url: "/nurse/support", icon: MdSupportAgent },
         { title: "Settings", url: "/nurse/settings", icon: FiSettings },
-        { title: "Logout", url: "/nurse/logout", icon: FiLogOut },
     ],
 };
 
-// 🔗 Reusable nav link
+// 🔗 Reusable nav link with improved accessibility and visual feedback
 function NavLink({
     title,
     url,
@@ -110,25 +71,29 @@ function NavLink({
             href={url}
             aria-current={isActive ? "page" : undefined}
             className={`
-                group flex items-center justify-between rounded-lg px-3 py-2 text-[15px] font-medium transition-colors
+                group flex items-center justify-between rounded-lg px-3 py-2 text-[15px] font-medium transition
                 ${isActive
                     ? "bg-red-600 text-white font-semibold shadow-lg border-l-4 border-red-400"
-                    : "text-gray-700 hover:bg-red-50 hover:text-red-700"
+                    : "text-gray-700 hover:bg-red-100 hover:text-red-700"
                 }
                 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1
                 relative
+                duration-150
             `}
             tabIndex={0}
         >
             <div className="flex items-center gap-3">
                 <Icon
-                    className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-gray-400 group-hover:text-red-600"}`}
+                    className={`w-5 h-5 flex-shrink-0 transition-colors duration-150 ${isActive ? "text-white" : "text-gray-400 group-hover:text-red-600"}`}
                     aria-hidden="true"
                 />
                 <span className="truncate">{title}</span>
             </div>
             {typeof badge === "number" && badge > 0 && (
-                <span className="ml-2 inline-block rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white shadow">
+                <span
+                    className="ml-2 inline-block rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white shadow animate-bounce"
+                    aria-label={`${badge} new`}
+                >
                     {badge}
                 </span>
             )}
@@ -148,7 +113,7 @@ export function NurseAppSidebar({ ...props }: React.ComponentProps<typeof Sideba
         .map((item) => ({
             ...item,
             isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
-            badge: item.badge?.(),
+            // badge: item.badge?.(),
         }));
 
     const navSecondaryWithActive = data.navSecondary.map((item) => ({
@@ -159,7 +124,7 @@ export function NurseAppSidebar({ ...props }: React.ComponentProps<typeof Sideba
     return (
         <Sidebar
             variant="inset"
-            className="bg-gradient-to-b from-red-50 via-white to-white border-r border-red-100 shadow-xl"
+            className="bg-gradient-to-b from-red-50 via-white to-white border-r border-red-100 shadow-xl min-h-screen"
             {...props}
             aria-label="Hospital Dashboard Sidebar"
         >
@@ -187,9 +152,13 @@ export function NurseAppSidebar({ ...props }: React.ComponentProps<typeof Sideba
 
             <SidebarContent className="flex flex-col">
                 <nav aria-label="Primary Navigation" className="flex flex-col gap-1 px-2 mt-2">
-                    {navMainFiltered.map(({ title, url, icon, isActive, badge }) => (
-                        <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive} badge={badge} />
-                    ))}
+                    {navMainFiltered.length === 0 ? (
+                        <span className="text-gray-400 text-sm px-3 py-2">No navigation items</span>
+                    ) : (
+                        navMainFiltered.map(({ title, url, icon, isActive }) => (
+                            <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive} />
+                        ))
+                    )}
                 </nav>
 
                 <div className="my-4 border-t border-red-100" aria-hidden="true" />

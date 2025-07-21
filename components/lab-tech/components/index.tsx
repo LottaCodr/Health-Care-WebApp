@@ -93,7 +93,7 @@ export default function LabTechDashboardComponent() {
         queryKey: ['user'],
         queryFn: getUser,
         staleTime: 1000 * 60 * 5,
-        gcTime: 1000 * 60 * 5,
+        cacheTime: 1000 * 60 * 10, // cache for 10 minutes
         retry: 3,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
@@ -110,7 +110,10 @@ export default function LabTechDashboardComponent() {
     } = useQuery({
         queryKey: ['lab-requests', user?.id],
         queryFn: () => user?.id ? getLabRequest(user.id) : Promise.resolve([]),
-        enabled: !!user?.id
+        enabled: !!user?.id,
+        staleTime: 1000 * 60 * 2,
+        cacheTime: 1000 * 60 * 10,
+        select: (data) => Array.isArray(data) ? data : [],
     });
 
     // Fetch lab tasks for the current user
@@ -122,7 +125,9 @@ export default function LabTechDashboardComponent() {
         queryKey: ['lab-tasks', user?.id],
         queryFn: () => user?.id ? getLabTechTasks(user.id) : Promise.resolve([]),
         enabled: !!user?.id,
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 2,
+        cacheTime: 1000 * 60 * 10,
+        select: (data) => Array.isArray(data) ? data : [],
     });
 
     // Remove noisy console logs in production, but keep for dev
@@ -148,23 +153,17 @@ export default function LabTechDashboardComponent() {
         isPending: isSubmitting,
         reset: resetMutation,
     } = useMutation({
-        mutationFn: async ({
-            labTestId,
-            result,
-            files,
-        }: { labTestId: string, result: string, files?: File[] }) => {
+        mutationFn: async ({ labTestId, result, files }: { labTestId: string, result: string, files?: File[] }) => {
             // Simulate file upload: In a real app, you would upload files to a storage service and get URLs
             // For now, just send the result and a list of file names as a placeholder
             // @ts-ignore
             return updateLabTechAction({
                 documentId: labTestId,
                 testResults: result,
-                // For demo: send file names as a string
                 attachedFiles: files && files.length > 0 ? files.map(f => f.name) : undefined,
             });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['lab-tasks', user?.id] });
             setResult("");
             setSelectedTestId(null);
             setResultError(null);
@@ -175,7 +174,11 @@ export default function LabTechDashboardComponent() {
         },
         onError: () => {
             setResultError("Failed to submit result. Please try again.");
-        }
+        },
+        onSettled: () => {
+            // Always invalidate lab-tasks for this user after mutation
+            queryClient.invalidateQueries({ queryKey: ['lab-tasks', user?.id] });
+        },
     });
 
     // Memoized stats for dashboard
@@ -408,23 +411,23 @@ export default function LabTechDashboardComponent() {
 
     // Only one header at the top-level, and no stray <section> or duplicate <header>
     return (
-        <div className="w-full px-2 md:px-8 py-8 space-y-12 bg-gradient-to-br from-red-50 via-white to-white min-h-screen">
+        <div className="w-full px-2 sm:px-4 md:px-8 py-6 md:py-8 space-y-8 md:space-y-12 bg-gradient-to-br from-red-50 via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 min-h-screen">
             {/* Header */}
-            <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center text-2xl font-bold text-red-600 shadow">
+            <header className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
+                <div className="flex items-center gap-3 md:gap-4">
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-red-100 dark:bg-gray-800 flex items-center justify-center text-xl md:text-2xl font-bold text-red-600 dark:text-red-300 shadow">
                         {getInitials(user?.name)}
                     </div>
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-extrabold text-red-700 tracking-tight drop-shadow-sm flex items-center gap-2">
+                        <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-red-700 dark:text-red-200 tracking-tight drop-shadow-sm flex items-center gap-2">
                             {getGreeting(user?.name)}
                         </h1>
-                        <p className="text-gray-700 mt-1 text-base">
+                        <p className="text-gray-700 dark:text-gray-300 mt-1 text-sm md:text-base">
                             {user?.name
                                 ? `Welcome back, ${user.name.split(" ")[0]}. Here’s your personalized lab dashboard.`
                                 : "Here's a snapshot of your activities today."}
                         </p>
-                        <div className="flex gap-3 mt-2 text-xs text-gray-500">
+                        <div className="flex flex-wrap gap-2 md:gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
                             {user?.email && (
                                 <span className="flex items-center gap-1">
                                     <FiMail className="text-red-400" /> {user.email}
@@ -432,7 +435,7 @@ export default function LabTechDashboardComponent() {
                             )}
                             {user?.name && (
                                 <span
-                                    className="flex items-center gap-1 px-2 py-1 rounded bg-red-100 text-red-700 font-medium shadow-sm cursor-pointer transition hover:bg-red-200"
+                                    className="flex items-center gap-1 px-2 py-1 rounded bg-red-100 dark:bg-gray-800 text-red-700 dark:text-red-200 font-medium shadow-sm cursor-pointer transition hover:bg-red-200 dark:hover:bg-gray-700"
                                     title={user.name}
                                     tabIndex={0}
                                     aria-label={`User name: ${user.name}`}
@@ -444,11 +447,11 @@ export default function LabTechDashboardComponent() {
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-4 md:mt-0">
                     <Button
                         variant="outline"
                         size="sm"
-                        className="border-red-500 text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        className="border-red-500 text-red-600 dark:border-red-400 dark:text-red-300 hover:bg-red-50 dark:hover:bg-gray-800 flex items-center gap-2"
                         onClick={() => {
                             queryClient.invalidateQueries({ queryKey: ['lab-tasks', user?.id] });
                         }}
@@ -461,45 +464,45 @@ export default function LabTechDashboardComponent() {
 
             {/* Success Toast */}
             {showSuccess && (
-                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-green-600 dark:bg-green-700 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
                     <FiCheckCircle className="text-xl" />
                     Result submitted successfully!
                 </div>
             )}
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                 {summaryStats.map((stat, idx) => (
                     <Card
                         key={stat.title}
                         className={clsx(
-                            "shadow-xl border-0 bg-gradient-to-br relative group overflow-hidden",
-                            idx === 0 && "from-red-100 to-white",
-                            idx === 1 && "from-red-200 to-white",
-                            idx === 2 && "from-red-50 to-white",
-                            idx === 3 && "from-red-300 to-white",
-                            "hover:scale-[1.05] transition-transform duration-200 cursor-pointer focus-within:ring-2 focus-within:ring-red-400"
+                            "shadow-xl border-0 bg-gradient-to-br relative group overflow-hidden dark:bg-gray-900",
+                            idx === 0 && "from-red-100 to-white dark:from-gray-800 dark:to-gray-900",
+                            idx === 1 && "from-red-200 to-white dark:from-gray-900 dark:to-gray-800",
+                            idx === 2 && "from-red-50 to-white dark:from-gray-900 dark:to-gray-900",
+                            idx === 3 && "from-red-300 to-white dark:from-gray-900 dark:to-gray-800",
+                            "hover:scale-[1.03] md:hover:scale-[1.05] transition-transform duration-200 cursor-pointer focus-within:ring-2 focus-within:ring-red-400"
                         )}
                         tabIndex={0}
                         aria-label={`${stat.title}: ${stat.count}`}
                         role="region"
                     >
                         {/* Decorative gradient accent */}
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-400/60 via-red-200/40 to-transparent" />
-                        <CardContent className="flex flex-col items-center py-7 px-2 relative">
-                            <div className="mb-3 flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-lg group-hover:bg-red-50 transition-colors border-2 border-red-100">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-400/60 via-red-200/40 to-transparent dark:from-gray-700/60 dark:via-gray-800/40 dark:to-transparent" />
+                        <CardContent className="flex flex-col items-center py-5 md:py-7 px-1 md:px-2 relative">
+                            <div className="mb-2 md:mb-3 flex items-center justify-center w-10 h-10 md:w-14 md:h-14 rounded-full bg-white dark:bg-gray-800 shadow-lg group-hover:bg-red-50 dark:group-hover:bg-gray-700 transition-colors border-2 border-red-100 dark:border-gray-700">
                                 {stat.icon}
                             </div>
-                            <div className="text-4xl font-black text-red-700 mt-1 group-hover:text-red-900 transition-colors drop-shadow">
+                            <div className="text-2xl md:text-4xl font-black text-red-700 dark:text-red-200 mt-1 group-hover:text-red-900 dark:group-hover:text-red-100 transition-colors drop-shadow">
                                 {stat.count}
                             </div>
-                            <div className="text-sm text-gray-700 font-semibold mt-2 text-center tracking-wide">
+                            <div className="text-xs md:text-sm text-gray-700 dark:text-gray-300 font-semibold mt-2 text-center tracking-wide">
                                 {stat.title}
                             </div>
                             {/* Animated underline on hover */}
-                            <span className="block h-0.5 w-8 bg-red-200 rounded-full mt-3 opacity-0 group-hover:opacity-100 transition-all duration-200" />
+                            <span className="block h-0.5 w-6 md:w-8 bg-red-200 dark:bg-gray-700 rounded-full mt-3 opacity-0 group-hover:opacity-100 transition-all duration-200" />
                             {/* Tooltip for accessibility and extra info */}
-                            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-white border border-red-100 rounded px-2 py-1 text-xs text-red-700 shadow z-10 whitespace-nowrap">
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-white dark:bg-gray-900 border border-red-100 dark:border-gray-700 rounded px-2 py-1 text-xs text-red-700 dark:text-red-200 shadow z-10 whitespace-nowrap">
                                 {stat.title}
                             </div>
                         </CardContent>
@@ -508,23 +511,23 @@ export default function LabTechDashboardComponent() {
             </div>
 
             {/* Pending Lab Tests */}
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-red-50">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-red-50 dark:from-gray-900 dark:to-gray-800 dark:border-gray-800 mt-4 md:mt-8">
                 <CardHeader>
-                    <CardTitle className="text-2xl font-bold flex items-center gap-2 text-red-700">
+                    <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2 text-red-700 dark:text-red-200">
                         <FiClipboard className="text-red-500" /> Pending Lab Tests
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {pendingTests.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 bg-gradient-to-br from-green-50 to-white rounded-lg shadow-inner border border-green-100 animate-fade-in">
-                            <span className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 shadow mb-3">
-                                <FiCheckCircle className="text-5xl text-green-500 animate-bounce" />
+                        <div className="flex flex-col items-center justify-center py-8 md:py-12 bg-gradient-to-br from-green-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg shadow-inner border border-green-100 dark:border-green-900 animate-fade-in">
+                            <span className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-green-100 dark:bg-green-900 shadow mb-3">
+                                <FiCheckCircle className="text-3xl md:text-5xl text-green-500 animate-bounce" />
                             </span>
-                            <h3 className="text-xl font-semibold text-green-700 mb-1">All Caught Up!</h3>
-                            <p className="text-gray-600 text-base mb-2">
+                            <h3 className="text-lg md:text-xl font-semibold text-green-700 dark:text-green-300 mb-1">All Caught Up!</h3>
+                            <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base mb-2">
                                 You have no pending lab tests assigned to you at the moment.
                             </p>
-                            <span className="text-sm text-gray-400">
+                            <span className="text-xs md:text-sm text-gray-400 dark:text-gray-500">
                                 Please check back later or refresh for updates.
                             </span>
                         </div>
@@ -541,7 +544,7 @@ export default function LabTechDashboardComponent() {
                             if (patientObj.birthDate) {
                                 const age = Math.floor(
                                     (Date.now() - new Date(patientObj.birthDate).getTime()) /
-                                        (365.25 * 24 * 60 * 60 * 1000)
+                                    (365.25 * 24 * 60 * 60 * 1000)
                                 );
                                 patientAge = age > 0 ? `${age}` : "";
                             }
@@ -616,10 +619,10 @@ export default function LabTechDashboardComponent() {
                                 <div
                                     key={test.$id}
                                     className={clsx(
-                                        "border p-5 rounded-2xl shadow-md bg-white space-y-2 transition-all",
+                                        "border p-5 rounded-2xl shadow-md bg-white dark:bg-gray-800 space-y-2 transition-all",
                                         selectedTestId === test.$id
-                                            ? "ring-2 ring-red-400 border-red-200 bg-red-50/40"
-                                            : "border-gray-100",
+                                            ? "ring-2 ring-red-400 border-red-200 bg-red-50/40 dark:bg-red-900/40"
+                                            : "border-gray-100 dark:border-gray-700",
                                         "hover:shadow-lg"
                                     )}
                                 >
@@ -634,17 +637,17 @@ export default function LabTechDashboardComponent() {
                                                 </span>
                                                 <div className="flex flex-wrap gap-1 ml-0 sm:ml-2">
                                                     {patientGender && (
-                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 font-medium" title="Gender">
+                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 font-medium" title="Gender">
                                                             {patientGender}
                                                         </span>
                                                     )}
                                                     {patientAge && (
-                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 font-medium" title="Age">
+                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 font-medium" title="Age">
                                                             {patientAge} yrs
                                                         </span>
                                                     )}
                                                     {patientIdDisplay && (
-                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100 flex items-center" title="Patient ID">
+                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-600 flex items-center" title="Patient ID">
                                                             <span className="font-semibold">ID:</span>{" "}
                                                             <span className="ml-1 tracking-widest font-mono">
                                                                 {typeof patientIdDisplay === "string"
@@ -685,13 +688,13 @@ export default function LabTechDashboardComponent() {
                                                 </div>
                                             </div>
                                             <div className="flex flex-wrap gap-2 items-center mb-1">
-                                                <span className="text-sm text-gray-700 flex items-center">
+                                                <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
                                                     <FiFileText className="inline mr-1 text-blue-400" />
                                                     <span className="font-semibold">Test:</span>
-                                                    <span className="ml-1 font-medium text-gray-900 truncate max-w-xs" title={doctorInstructions}>{doctorInstructions}</span>
+                                                    <span className="ml-1 font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs" title={doctorInstructions}>{doctorInstructions}</span>
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-1">
                                                 <span className="flex items-center">
                                                     {statusIcon}
                                                     <span
@@ -755,13 +758,13 @@ export default function LabTechDashboardComponent() {
                                             </button>
                                             {isExpanded && (
                                                 <div
-                                                    className="mt-3 bg-white/90 rounded-xl p-4 text-sm text-gray-800 space-y-5 border border-red-200 shadow-lg animate-fade-in"
+                                                    className="mt-3 bg-white/90 dark:bg-gray-700 rounded-xl p-4 text-sm text-gray-800 dark:text-gray-200 space-y-5 border border-red-200 dark:border-red-700 shadow-lg animate-fade-in"
                                                     aria-label="Patient and Doctor Details"
                                                 >
                                                     {/* Contact Info */}
                                                     <div className="flex flex-wrap gap-3 items-center">
                                                         {patientEmail && (
-                                                            <span className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-md">
+                                                            <span className="flex items-center gap-1 bg-red-50 dark:bg-red-900 px-2 py-1 rounded-md">
                                                                 <FiMail className="text-red-400" />
                                                                 <span className="truncate max-w-[140px]">{patientEmail}</span>
                                                                 <button
@@ -791,7 +794,7 @@ export default function LabTechDashboardComponent() {
                                                             </span>
                                                         )}
                                                         {patientPhone && (
-                                                            <span className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-md">
+                                                            <span className="flex items-center gap-1 bg-red-50 dark:bg-red-900 px-2 py-1 rounded-md">
                                                                 <FiPhone className="text-red-400" />
                                                                 <span className="truncate max-w-[120px]">{patientPhone}</span>
                                                                 <button
@@ -821,7 +824,7 @@ export default function LabTechDashboardComponent() {
                                                             </span>
                                                         )}
                                                         {patientAddress && (
-                                                            <span className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-md">
+                                                            <span className="flex items-center gap-1 bg-red-50 dark:bg-red-900 px-2 py-1 rounded-md">
                                                                 <FiMapPin className="text-red-400" />
                                                                 <span className="truncate max-w-[180px]">{patientAddress}</span>
                                                             </span>
@@ -1000,7 +1003,7 @@ export default function LabTechDashboardComponent() {
                                                             setResult(e.target.value)
                                                         }
                                                         className={clsx(
-                                                            "resize-none border-red-300 focus:border-red-500 focus:ring-red-500",
+                                                            "resize-none border-red-300 dark:border-red-600 focus:border-red-500 dark:focus:border-red-400 focus:ring-red-500 dark:focus:ring-red-400",
                                                             isSubmitting && "opacity-70"
                                                         )}
                                                         rows={3}
@@ -1059,7 +1062,7 @@ export default function LabTechDashboardComponent() {
                                                                 resetMutation();
                                                             }}
                                                             disabled={isSubmitting}
-                                                            className="border-red-400 text-red-600 hover:bg-red-50"
+                                                            className="border-red-400 text-red-600 hover:bg-red-50 dark:border-red-500 dark:text-red-300 dark:hover:bg-red-900"
                                                             type="button"
                                                             aria-label="Cancel result entry"
                                                         >
@@ -1085,7 +1088,7 @@ export default function LabTechDashboardComponent() {
                                             )}
                                             {/* Show current test result if any */}
                                             {test.testResults && (
-                                                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs flex items-center gap-2">
+                                                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded text-green-700 dark:text-green-300 text-xs flex items-center gap-2">
                                                     <span className="font-semibold">Current Result:</span>
                                                     <span className="truncate max-w-[120px]" title={test.testResults}>{test.testResults}</span>
                                                     <button

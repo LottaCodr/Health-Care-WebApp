@@ -12,7 +12,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-lg max-w-md w-full p-6 relative">
                 <h3 className="text-lg font-semibold mb-4">{title}</h3>
                 <button
                     onClick={onClose}

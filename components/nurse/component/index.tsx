@@ -22,7 +22,7 @@ export default function NurseDashboard() {
     const nurseName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || "Nurse";
 
     const {
-        data: nurseTasks = [],
+        data: nurseTasks,
         isPending,
         isError,
         refetch,
@@ -30,9 +30,11 @@ export default function NurseDashboard() {
         queryKey: ['nurseTasks', nurseId],
         queryFn: () => getNurseTasks(nurseId!),
         enabled: !!nurseId,
-        staleTime: 60 * 1000,
+        staleTime: 1000 * 60 * 2,
+        cacheTime: 1000 * 60 * 10,
         refetchOnWindowFocus: false,
     });
+    const safeNurseTasks = Array.isArray(nurseTasks) ? nurseTasks : [];
 
     if (isPending) {
         return (
@@ -96,7 +98,7 @@ export default function NurseDashboard() {
             </header>
 
             <main className="relative z-10 w-full px-4 sm:px-8">
-                {nurseTasks.length === 0 ? (
+                {safeNurseTasks.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 w-full">
                         <Smile className="w-20 h-20 text-red-100 mb-4 animate-bounce" />
                         <span className="text-2xl text-red-400 font-bold">No assigned tasks</span>
@@ -104,7 +106,7 @@ export default function NurseDashboard() {
                     </div>
                 ) : (
                     <div className="rounded-2xl border border-red-100 shadow bg-white overflow-x-auto w-full">
-                        <NurseTasksTable tasks={nurseTasks} refetch={refetch} />
+                        <NurseTasksTable tasks={safeNurseTasks} refetch={refetch} />
                     </div>
                 )}
             </main>

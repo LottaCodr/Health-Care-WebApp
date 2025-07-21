@@ -1,7 +1,7 @@
 import { getAllStaffs } from '@/actions/staff/get.staff';
 import { Staff } from '@/types/appwrite.types';
 import { useQuery } from '@tanstack/react-query';
-import React, { useReducer, createContext, useContext, useEffect } from 'react';
+import React, { useReducer, createContext, useContext, useEffect, useMemo } from 'react';
 
 
 type State = {
@@ -47,14 +47,21 @@ export function reducer(state: State, action: Action): State {
 
 const EmployeeContext = createContext<{ state: State; dispatch: React.Dispatch<Action> }>({ state: initialState, dispatch: () => null })
 
-export const useEmployeesContext = () => useContext(EmployeeContext)
+export const useEmployeesContext = () => {
+    const context = useContext(EmployeeContext);
+    if (!context) throw new Error("useEmployeesContext must be used within EmployeeProvider");
+    return context;
+}
 
 export const EmployeeProvider = ({ children }: { children: React.ReactNode }) => {
     const [state, dispatch] = useReducer(reducer, initialState)
-    const { data, isPending } = useQuery({
+    const { data = [], isPending, isError } = useQuery({
         queryKey: ['employees'],
-        queryFn: getAllStaffs
-    })
+        queryFn: getAllStaffs,
+        staleTime: 1000 * 60 * 2,
+        cacheTime: 1000 * 60 * 10,
+        select: (data) => Array.isArray(data) ? data : [],
+    });
     useEffect(() => {
         dispatch({ type: 'SET_LOADING', payload: isPending })
 
@@ -66,8 +73,9 @@ export const EmployeeProvider = ({ children }: { children: React.ReactNode }) =>
         }
     }, [data]);
 
+    const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
     return (
-        <EmployeeContext.Provider value={{ state, dispatch }}>
+        <EmployeeContext.Provider value={value}>
             {children}
         </EmployeeContext.Provider>
     )

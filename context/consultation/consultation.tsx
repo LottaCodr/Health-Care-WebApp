@@ -1,7 +1,7 @@
 "use client";
 
 import { ConsultationReferred } from "@/actions/consultations/types";
-import { createContext, useContext, useReducer } from "react";
+import { createContext, useContext, useReducer, useMemo } from "react";
 
 interface ConsultationState {
     symptoms: string;
@@ -58,9 +58,9 @@ const ConsultationContext = createContext<{
 
 export function ConsultationProvider({ children }: { children: React.ReactNode }) {
     const [state, dispatch] = useReducer(reducer, initialState);
-
+    const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
     return (
-        <ConsultationContext.Provider value={{ state, dispatch }}>
+        <ConsultationContext.Provider value={value}>
             {children}
         </ConsultationContext.Provider>
     );
