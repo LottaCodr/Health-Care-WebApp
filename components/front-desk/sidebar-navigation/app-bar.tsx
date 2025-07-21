@@ -85,12 +85,12 @@ function NavLink({ title, url, Icon, isActive, badge }: NavLinkProps) {
             href={url}
             aria-current={isActive ? "page" : undefined}
             className={`group flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors
-        ${isActive ? "bg-blue-600 text-white font-semibold shadow-md" : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"}
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1`}
+        ${isActive ? "bg-red-600 text-white font-semibold shadow-md" : "text-gray-700 hover:bg-red-50 hover:text-red-700"}
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1`}
         >
             <div className="flex items-center gap-3">
                 <Icon
-                    className={`w-5 h-5 transition-colors ${isActive ? "text-white" : "text-gray-500 group-hover:text-blue-600"}`}
+                    className={`w-5 h-5 transition-colors ${isActive ? "text-white" : "text-gray-500 group-hover:text-red-600"}`}
                     aria-hidden="true"
                 />
                 {title}
@@ -136,15 +136,15 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                         <SidebarMenuButton size="lg" asChild>
                             <a
                                 href="/dashboard"
-                                className="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                                className="flex items-center gap-3 rounded-lg p-2 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
                                 aria-label="Nile Hospital Homepage"
                             >
-                                <div className="flex w-8 h-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+                                <div className="flex w-8 h-8 items-center justify-center rounded-lg bg-red-600 text-white">
                                     <MdDashboard className="w-5 h-5" />
                                 </div>
                                 <div className="leading-tight">
-                                    <span className="block font-semibold text-sm text-blue-900">Nile Mother & Child</span>
-                                    <span className="block text-xs text-blue-700/80">Hospital</span>
+                                    <span className="block font-semibold text-sm text-red-900">Nile Mother & Child</span>
+                                    <span className="block text-xs text-red-700/80">Hospital</span>
                                 </div>
                             </a>
                         </SidebarMenuButton>

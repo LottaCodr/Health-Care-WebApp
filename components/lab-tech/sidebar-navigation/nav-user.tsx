@@ -31,15 +31,8 @@ import {
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
-import { useCallback } from "react"
 import { useAuth } from "@/context/auth-provider"
-
-function getInitials(name?: string) {
-    if (!name) return "";
-    const parts = name.split(" ");
-    if (parts.length === 1) return parts[0][0];
-    return parts[0][0] + parts[1][0];
-}
+import { useState } from "react"
 
 // Dummy logout function, replace with your real logout logic
 async function logout() {
@@ -53,6 +46,7 @@ export function LabTechNavUser() {
     const { isMobile } = useSidebar()
     const { setTheme, theme } = useTheme()
     const router = useRouter();
+    const [loggingOut, setLoggingOut] = useState(false);
 
     let user;
     try {
@@ -72,14 +66,30 @@ export function LabTechNavUser() {
             .slice(0, 2);
     };
 
-   
+    // Helper for fallback name/email
+    const displayName = user?.full_name || user?.name || "Lab Technician";
+    const displayEmail = user?.email || "user@email.com";
+
+    // Helper for theme label
+    const themeLabel = theme === "light" ? "Switch to dark mode" : "Switch to light mode";
+    const themeIcon = theme === "light"
+        ? <Moon className="mr-2 text-red-500" />
+        : <Sun className="mr-2 text-red-400" />;
+    const themeText = theme === "light" ? "Dark mode" : "Light mode";
+
+    // Accessibility: focus ring and aria
+    // Improved: show email and name in menu, add user icon, show feedback on logout, better mobile touch targets
 
     return (
         <SidebarMenu>
             <SidebarMenuItem>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <div className="cursor-pointer w-full">
+                        <button
+                            className="w-full focus:outline-none"
+                            aria-label="Open user menu"
+                            tabIndex={0}
+                        >
                             <SidebarMenuButton
                                 size="lg"
                                 className={`
@@ -94,44 +104,43 @@ export function LabTechNavUser() {
                                     focus-visible:ring-red-500
                                     focus-visible:ring-offset-1
                                 `}
-                                aria-label="Open user menu"
                             >
                                 <Avatar className="h-9 w-9 rounded-lg ring-2 ring-red-400">
-                                    <AvatarImage src={undefined} alt={user?.name} />
+                                    <AvatarImage src={undefined} alt={displayName} />
                                     <AvatarFallback className="rounded-lg bg-red-200 text-red-700 font-bold">
-                                        {getInitials(user?.full_name || user?.name)}
+                                        {getInitials(displayName)}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0 ml-3 text-left">
                                     <span className="truncate font-semibold text-gray-900 dark:text-white text-base">
-                                        {user?.full_name || user?.name || "Doctor"}
+                                        {displayName}
                                     </span>
                                     <span className="truncate text-xs text-gray-500 dark:text-gray-300 block">
-                                        {user?.email || "user@email.com"}
+                                        {displayEmail}
                                     </span>
                                 </div>
                                 <ChevronsUpDown className="ml-auto size-4 text-red-500" />
                             </SidebarMenuButton>
-                        </div>
+                        </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-64 rounded-xl shadow-xl border border-red-100 dark:border-red-900/40 bg-white dark:bg-muted/90 p-0"
+                        className="w-72 rounded-xl shadow-xl border border-red-100 dark:border-red-900/40 bg-white dark:bg-muted/90 p-0"
                         align="end"
                     >
                         <DropdownMenuLabel className="p-0 font-normal">
                             <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 rounded-t-xl">
                                 <Avatar className="h-10 w-10 rounded-lg ring-2 ring-red-400">
-                                    <AvatarImage src={undefined} alt={user?.name} />
+                                    <AvatarImage src={undefined} alt={displayName} />
                                     <AvatarFallback className="rounded-lg bg-red-200 text-red-700 font-bold">
-                                        {getInitials(user?.full_name || user?.name)}
+                                        {getInitials(displayName)}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0 text-left">
                                     <span className="truncate font-semibold capitalize text-gray-900 dark:text-white text-base">
-                                        {user?.full_name || user?.name || "Labtech"}
+                                        {displayName}
                                     </span>
                                     <span className="truncate text-xs text-gray-500 dark:text-gray-300 block">
-                                        {user?.email || "user@email.com"}
+                                        {displayEmail}
                                     </span>
                                 </div>
                             </div>
@@ -149,21 +158,19 @@ export function LabTechNavUser() {
                                     focus:bg-red-100 dark:focus:bg-red-900/30
                                     focus:text-red-700
                                 `}
-                                aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+                                aria-label={themeLabel}
                             >
-                                {theme === "light" ? (
-                                    <Moon className="mr-2 text-red-500" />
-                                ) : (
-                                    <Sun className="mr-2 text-red-400" />
-                                )}
+                                {themeIcon}
                                 <span>
-                                    {theme === "light" ? "Dark mode" : "Light mode"}
+                                    {themeText}
                                 </span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator className="bg-red-100 dark:bg-red-900/40" />
+
                         <DropdownMenuItem
                             onClick={async () => {
+                                setLoggingOut(true);
                                 await logout();
                                 router.replace("/staff");
                             }}
@@ -175,11 +182,13 @@ export function LabTechNavUser() {
                                 transition
                                 focus:bg-red-100 dark:focus:bg-red-900/30
                                 focus:text-red-800
+                                disabled:opacity-60
                             `}
                             aria-label="Log out"
+                            disabled={loggingOut}
                         >
                             <LogOut className="text-red-500" />
-                            Log out
+                            {loggingOut ? "Logging out..." : "Log out"}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
