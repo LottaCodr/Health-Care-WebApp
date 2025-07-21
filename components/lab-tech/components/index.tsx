@@ -411,23 +411,23 @@ export default function LabTechDashboardComponent() {
 
     // Only one header at the top-level, and no stray <section> or duplicate <header>
     return (
-        <div className="w-full px-2 md:px-8 py-8 space-y-12 bg-gradient-to-br from-red-50 via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 min-h-screen">
+        <div className="w-full px-2 sm:px-4 md:px-8 py-6 md:py-8 space-y-8 md:space-y-12 bg-gradient-to-br from-red-50 via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 min-h-screen">
             {/* Header */}
-            <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-gray-800 flex items-center justify-center text-2xl font-bold text-red-600 dark:text-red-300 shadow">
+            <header className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
+                <div className="flex items-center gap-3 md:gap-4">
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-red-100 dark:bg-gray-800 flex items-center justify-center text-xl md:text-2xl font-bold text-red-600 dark:text-red-300 shadow">
                         {getInitials(user?.name)}
                     </div>
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-extrabold text-red-700 dark:text-red-200 tracking-tight drop-shadow-sm flex items-center gap-2">
+                        <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-red-700 dark:text-red-200 tracking-tight drop-shadow-sm flex items-center gap-2">
                             {getGreeting(user?.name)}
                         </h1>
-                        <p className="text-gray-700 dark:text-gray-300 mt-1 text-base">
+                        <p className="text-gray-700 dark:text-gray-300 mt-1 text-sm md:text-base">
                             {user?.name
                                 ? `Welcome back, ${user.name.split(" ")[0]}. Here’s your personalized lab dashboard.`
                                 : "Here's a snapshot of your activities today."}
                         </p>
-                        <div className="flex gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-wrap gap-2 md:gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
                             {user?.email && (
                                 <span className="flex items-center gap-1">
                                     <FiMail className="text-red-400" /> {user.email}
@@ -447,7 +447,7 @@ export default function LabTechDashboardComponent() {
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-4 md:mt-0">
                     <Button
                         variant="outline"
                         size="sm"
@@ -471,7 +471,7 @@ export default function LabTechDashboardComponent() {
             )}
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                 {summaryStats.map((stat, idx) => (
                     <Card
                         key={stat.title}
@@ -481,7 +481,7 @@ export default function LabTechDashboardComponent() {
                             idx === 1 && "from-red-200 to-white dark:from-gray-900 dark:to-gray-800",
                             idx === 2 && "from-red-50 to-white dark:from-gray-900 dark:to-gray-900",
                             idx === 3 && "from-red-300 to-white dark:from-gray-900 dark:to-gray-800",
-                            "hover:scale-[1.05] transition-transform duration-200 cursor-pointer focus-within:ring-2 focus-within:ring-red-400"
+                            "hover:scale-[1.03] md:hover:scale-[1.05] transition-transform duration-200 cursor-pointer focus-within:ring-2 focus-within:ring-red-400"
                         )}
                         tabIndex={0}
                         aria-label={`${stat.title}: ${stat.count}`}
@@ -489,18 +489,18 @@ export default function LabTechDashboardComponent() {
                     >
                         {/* Decorative gradient accent */}
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-400/60 via-red-200/40 to-transparent dark:from-gray-700/60 dark:via-gray-800/40 dark:to-transparent" />
-                        <CardContent className="flex flex-col items-center py-7 px-2 relative">
-                            <div className="mb-3 flex items-center justify-center w-14 h-14 rounded-full bg-white dark:bg-gray-800 shadow-lg group-hover:bg-red-50 dark:group-hover:bg-gray-700 transition-colors border-2 border-red-100 dark:border-gray-700">
+                        <CardContent className="flex flex-col items-center py-5 md:py-7 px-1 md:px-2 relative">
+                            <div className="mb-2 md:mb-3 flex items-center justify-center w-10 h-10 md:w-14 md:h-14 rounded-full bg-white dark:bg-gray-800 shadow-lg group-hover:bg-red-50 dark:group-hover:bg-gray-700 transition-colors border-2 border-red-100 dark:border-gray-700">
                                 {stat.icon}
                             </div>
-                            <div className="text-4xl font-black text-red-700 dark:text-red-200 mt-1 group-hover:text-red-900 dark:group-hover:text-red-100 transition-colors drop-shadow">
+                            <div className="text-2xl md:text-4xl font-black text-red-700 dark:text-red-200 mt-1 group-hover:text-red-900 dark:group-hover:text-red-100 transition-colors drop-shadow">
                                 {stat.count}
                             </div>
-                            <div className="text-sm text-gray-700 dark:text-gray-300 font-semibold mt-2 text-center tracking-wide">
+                            <div className="text-xs md:text-sm text-gray-700 dark:text-gray-300 font-semibold mt-2 text-center tracking-wide">
                                 {stat.title}
                             </div>
                             {/* Animated underline on hover */}
-                            <span className="block h-0.5 w-8 bg-red-200 dark:bg-gray-700 rounded-full mt-3 opacity-0 group-hover:opacity-100 transition-all duration-200" />
+                            <span className="block h-0.5 w-6 md:w-8 bg-red-200 dark:bg-gray-700 rounded-full mt-3 opacity-0 group-hover:opacity-100 transition-all duration-200" />
                             {/* Tooltip for accessibility and extra info */}
                             <div className="absolute left-1/2 -translate-x-1/2 bottom-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-white dark:bg-gray-900 border border-red-100 dark:border-gray-700 rounded px-2 py-1 text-xs text-red-700 dark:text-red-200 shadow z-10 whitespace-nowrap">
                                 {stat.title}
@@ -511,23 +511,23 @@ export default function LabTechDashboardComponent() {
             </div>
 
             {/* Pending Lab Tests */}
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-red-50 dark:from-gray-900 dark:to-gray-800 dark:border-gray-800">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-red-50 dark:from-gray-900 dark:to-gray-800 dark:border-gray-800 mt-4 md:mt-8">
                 <CardHeader>
-                    <CardTitle className="text-2xl font-bold flex items-center gap-2 text-red-700 dark:text-red-200">
+                    <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2 text-red-700 dark:text-red-200">
                         <FiClipboard className="text-red-500" /> Pending Lab Tests
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {pendingTests.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 bg-gradient-to-br from-green-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg shadow-inner border border-green-100 dark:border-green-900 animate-fade-in">
-                            <span className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 shadow mb-3">
-                                <FiCheckCircle className="text-5xl text-green-500 animate-bounce" />
+                        <div className="flex flex-col items-center justify-center py-8 md:py-12 bg-gradient-to-br from-green-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-lg shadow-inner border border-green-100 dark:border-green-900 animate-fade-in">
+                            <span className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-green-100 dark:bg-green-900 shadow mb-3">
+                                <FiCheckCircle className="text-3xl md:text-5xl text-green-500 animate-bounce" />
                             </span>
-                            <h3 className="text-xl font-semibold text-green-700 dark:text-green-300 mb-1">All Caught Up!</h3>
-                            <p className="text-gray-600 dark:text-gray-300 text-base mb-2">
+                            <h3 className="text-lg md:text-xl font-semibold text-green-700 dark:text-green-300 mb-1">All Caught Up!</h3>
+                            <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base mb-2">
                                 You have no pending lab tests assigned to you at the moment.
                             </p>
-                            <span className="text-sm text-gray-400 dark:text-gray-500">
+                            <span className="text-xs md:text-sm text-gray-400 dark:text-gray-500">
                                 Please check back later or refresh for updates.
                             </span>
                         </div>

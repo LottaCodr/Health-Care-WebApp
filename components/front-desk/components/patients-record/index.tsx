@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { PatientRecord } from "@/types";
 import { Modal } from "./modal";
@@ -121,7 +121,7 @@ export default function PatientRecordsComponent() {
     });
 
     // Reset form when opening edit modal
-    React.useEffect(() => {
+    useEffect(() => {
         if (editModalOpen && selectedPatient) {
             reset(selectedPatient);
         }
