@@ -181,7 +181,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
         <>
             <a
                 href={`#${skipLinkId}`}
-                className="sr-only focus:not-sr-only absolute top-2 left-2 z-50 bg-white text-red-700 font-bold px-4 py-2 rounded shadow transition"
+                className="sr-only focus:not-sr-only absolute top-2 left-2 z-50 bg-white dark:bg-gray-900 text-red-700 dark:text-red-200 font-bold px-4 py-2 rounded shadow transition"
                 tabIndex={0}
             >
                 Skip to main content
@@ -192,7 +192,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 variant="inset"
                 {...props}
                 aria-label="Sidebar for Front Desk Staff"
-                className="bg-gradient-to-b from-white via-red-50 to-red-100 border-r border-red-200 shadow-2xl min-h-screen"
+                className="bg-gradient-to-b from-white via-red-50 to-red-100 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 border-r border-red-200 dark:border-gray-800 shadow-2xl min-h-screen"
             >
                 <SidebarHeader>
                     <SidebarMenu>
@@ -201,10 +201,10 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                                 <button
                                     type="button"
                                     onClick={() => handleNavigate("/front-desk/dashboard")}
-                                    className="flex items-center gap-3 rounded-2xl p-3 bg-gradient-to-r from-red-600 to-red-400 shadow-lg hover:from-red-700 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all w-full"
+                                    className="flex items-center gap-3 rounded-2xl p-3 bg-gradient-to-r from-red-600 to-red-400 dark:from-red-900 dark:to-red-700 shadow-lg hover:from-red-700 hover:to-red-500 dark:hover:from-red-800 dark:hover:to-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all w-full"
                                     aria-label="Nile Hospital Homepage"
                                 >
-                                    <div className="flex w-12 h-12 items-center justify-center rounded-2xl bg-white/30 text-white shadow-lg">
+                                    <div className="flex w-12 h-12 items-center justify-center rounded-2xl bg-white/30 dark:bg-gray-800 text-white shadow-lg">
                                         <MdDashboard className="w-7 h-7" />
                                     </div>
                                     <div className="leading-tight text-left">
@@ -219,7 +219,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
 
                 <SidebarContent className="flex flex-col">
                     <nav aria-label="Primary Navigation" className="flex flex-col gap-2 px-3 pt-8">
-                        <span className="text-xs font-semibold text-red-500 uppercase tracking-widest px-2 pb-1 select-none">
+                        <span className="text-xs font-semibold text-red-500 dark:text-red-300 uppercase tracking-widest px-2 pb-1 select-none">
                             Main
                         </span>
                         {navMain.map(({ title, url, icon, isActive, badge }) => (
@@ -235,10 +235,10 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                         ))}
                     </nav>
 
-                    <div className="my-6 border-t border-red-200" />
+                    <div className="my-6 border-t border-red-200 dark:border-gray-800" />
 
                     <nav aria-label="Secondary Navigation" className="flex flex-col gap-2 px-3 pb-8">
-                        <span className="text-xs font-semibold text-red-400 uppercase tracking-widest px-2 pb-1 select-none">
+                        <span className="text-xs font-semibold text-red-400 dark:text-red-500 uppercase tracking-widest px-2 pb-1 select-none">
                             More
                         </span>
                         {navSecondary.map(({ title, url, icon, isActive }) => (
@@ -255,12 +255,12 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 </SidebarContent>
 
                 <SidebarFooter>
-                    <div className="px-4 py-4 border-t border-red-100 bg-gradient-to-t from-red-50/80 to-transparent">
+                    <div className="px-4 py-4 border-t border-red-100 dark:border-gray-800 bg-gradient-to-t from-red-50/80 dark:from-gray-900/80 to-transparent">
                         <FrontDeskNavUser user={data.user} />
-                        <div className="mt-2 text-xs text-gray-400 text-center">
+                        <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 text-center">
                             <span>
-                                <kbd className="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono text-gray-700">Alt</kbd>
-                                +<kbd className="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono text-gray-700">S</kbd> to focus sidebar
+                                <kbd className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs font-mono text-gray-700 dark:text-gray-200">Alt</kbd>
+                                +<kbd className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs font-mono text-gray-700 dark:text-gray-200">S</kbd> to focus sidebar
                             </span>
                         </div>
                     </div>

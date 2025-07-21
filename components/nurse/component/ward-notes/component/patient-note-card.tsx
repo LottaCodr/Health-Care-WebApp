@@ -10,7 +10,7 @@ interface Props {
 
 export default function PatientNoteCard({ note, onViewDetails, onEdit }: Props) {
     return (
-        <div className="border rounded-xl p-4 bg-white shadow-sm flex justify-between items-start">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 border rounded-xl p-4 shadow-sm flex justify-between items-start">
             <div>
                 <h4 className="font-semibold text-lg">{note.patientName}</h4>
                 <p className="text-sm text-muted-foreground">{note.date}</p>

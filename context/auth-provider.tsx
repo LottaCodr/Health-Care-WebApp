@@ -4,7 +4,7 @@ import { Staff } from "@/actions/staff/types";
 import { account, databases } from "@/lib/appwrite.config";
 import { authService, SessionData } from "@/lib/auth-service";
 import { logSecurityEvent } from "@/lib/auth-utils";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 
 interface AuthContextType {
     user: Staff | null;
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const sessionData = JSON.parse(storedSession);
                     if (authService.validateSession(sessionData.sessionId)) {
                         setSession(sessionData);
-                        
+
                         // Get user details
                         const userDoc = await databases.getDocument<Staff>(
                             databaseId,
@@ -44,10 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             sessionData.userId
                         );
                         setUser(userDoc);
-                        
-                        logSecurityEvent('SESSION_RESTORED', { 
+
+                        logSecurityEvent('SESSION_RESTORED', {
                             sessionId: sessionData.sessionId,
-                            userId: sessionData.userId 
+                            userId: sessionData.userId
                         });
                     } else {
                         // Clear invalid session
@@ -62,18 +62,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         staffCollectionId,
                         appwriteSession.$id
                     );
-                    
+
                     if (userDoc) {
                         setUser(userDoc);
-                        
+
                         // Create new session
                         const newSession = authService.createSecureSession(appwriteSession.$id, userDoc.role);
                         setSession(newSession);
                         localStorage.setItem('auth_session', JSON.stringify(newSession));
-                        
-                        logSecurityEvent('SESSION_CREATED_FROM_APPWRITE', { 
+
+                        logSecurityEvent('SESSION_CREATED_FROM_APPWRITE', {
                             sessionId: newSession.sessionId,
-                            userId: appwriteSession.$id 
+                            userId: appwriteSession.$id
                         });
                     }
                 }
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 sessionStorage.removeItem('auth_session');
                 setUser(null);
                 setSession(null);
-                
+
                 logSecurityEvent('SESSION_LOAD_ERROR', { error: error.message });
             } finally {
                 setIsLoading(false);
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const login = async (email: string, password: string) => {
         try {
             const result = await authService.login(email, password);
-            
+
             if (result.success && result.user && result.sessionId) {
                 setUser(result.user);
                 setSession({
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     expiresAt: Date.now() + (8 * 60 * 60 * 1000), // 8 hours
                     createdAt: Date.now(),
                 });
-                
+
                 // Store session
                 localStorage.setItem('auth_session', JSON.stringify({
                     sessionId: result.sessionId,
@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     createdAt: Date.now(),
                 }));
             }
-            
+
             return result;
         } catch (error: any) {
             logSecurityEvent('LOGIN_ERROR', { error: error.message });
@@ -149,15 +149,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             await authService.logout(session?.sessionId);
-            
+
             // Clear local state
             setUser(null);
             setSession(null);
-            
+
             // Clear stored session data
             localStorage.removeItem('auth_session');
             sessionStorage.removeItem('auth_session');
-            
+
             logSecurityEvent('LOGOUT_COMPLETED', { sessionId: session?.sessionId });
         } catch (error) {
             console.error("Logout failed", error);
@@ -176,16 +176,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const value = useMemo(() => ({
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        session,
+        login,
+        logout,
+        refreshSession,
+    }), [user, isLoading, session, login, logout, refreshSession]);
+
     return (
-        <AuthContext.Provider value={{ 
-            user, 
-            isAuthenticated: !!user && !!session, 
-            isLoading, 
-            session,
-            login,
-            logout,
-            refreshSession
-        }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

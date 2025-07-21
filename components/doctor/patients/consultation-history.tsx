@@ -24,6 +24,8 @@ import {
     MdInfoOutline,
 } from "react-icons/md";
 
+import { FaRegCheckCircle } from "react-icons/fa";
+
 interface Props {
     patientId: string;
 }
@@ -78,19 +80,19 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
 
     if (isPending)
         return (
-            <div className="flex flex-col items-center justify-center py-16">
+            <div className="flex flex-col items-center justify-center py-24">
                 <Spinner size="lg" />
-                <span className="mt-4 text-lg text-red-700 font-semibold animate-pulse">Loading consultations...</span>
+                <span className="mt-6 text-lg text-red-700 font-semibold animate-pulse">Loading consultations...</span>
             </div>
         );
 
     if (isError)
         return (
-            <div className="flex flex-col items-center justify-center py-16">
-                <MdHistory size={80} className="text-red-400 mb-4 animate-bounce" />
+            <div className="flex flex-col items-center justify-center py-24">
+                <MdHistory size={90} className="text-red-400 mb-4 animate-bounce" />
                 <span className="text-center text-red-600 text-lg font-semibold">Failed to load consultations.</span>
                 <Button
-                    className="mt-6 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg shadow"
+                    className="mt-6 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow"
                     onClick={() => queryClient.invalidateQueries({ queryKey: ["consultations", patientId] })}
                 >
                     Retry
@@ -100,7 +102,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
 
     if (!data || data.length === 0)
         return (
-            <section className="flex flex-col items-center justify-center py-16 text-center space-y-6">
+            <section className="flex flex-col items-center justify-center py-24 text-center space-y-7">
                 <div className="text-red-600 mb-4">
                     <MdHistory size={160} className="opacity-70" />
                 </div>
@@ -113,7 +115,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                         const formSection = document.getElementById("doctor-consultation");
                         if (formSection) formSection.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className="text-white bg-red-600 hover:bg-red-700 px-6 py-3 rounded-xl shadow text-lg transition"
+                    className="text-white bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 px-7 py-3 rounded-2xl shadow-lg text-lg transition font-semibold"
                 >
                     Add First Consultation
                 </Button>
@@ -141,7 +143,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                             className="border-red-200 hover:bg-red-100 dark:hover:bg-muted/30"
                             aria-label="Scroll left"
                         >
-                            <MdChevronLeft size={24} className="text-red-600" />
+                            <MdChevronLeft size={28} className="text-red-600" />
                         </Button>
                         <Button
                             variant="outline"
@@ -150,7 +152,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                             className="border-red-200 hover:bg-red-100 dark:hover:bg-muted/30"
                             aria-label="Scroll right"
                         >
-                            <MdChevronRight size={24} className="text-red-600" />
+                            <MdChevronRight size={28} className="text-red-600" />
                         </Button>
                     </div>
                 </CardHeader>
@@ -158,7 +160,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                 <CardContent>
                     <div
                         ref={carouselRef}
-                        className="flex overflow-x-auto space-x-6 py-6 scrollbar-hide snap-x snap-mandatory scroll-smooth"
+                        className="flex overflow-x-auto space-x-6 py-8 scrollbar-hide snap-x snap-mandatory scroll-smooth"
                         tabIndex={0}
                         aria-label="Consultation history carousel"
                     >
@@ -170,13 +172,16 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                                 aria-label={`Consultation on ${new Date(consultation.consultationDate).toLocaleDateString()}`}
                             >
                                 <div className="flex items-center space-x-3 mb-2">
-                                    <MdEventNote size={24} className="text-red-600" />
+                                    <MdEventNote size={26} className="text-red-600" />
                                     <span className="text-red-800 font-semibold text-lg tracking-wide">
                                         {new Date(consultation.consultationDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
                                     </span>
                                     <span className="ml-2 text-xs text-gray-500 dark:text-gray-300">
                                         {new Date(consultation.consultationDate).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                                     </span>
+                                    {consultation.isCompleted && (
+                                        <FaRegCheckCircle className="text-green-500 ml-2" title="Consultation completed" />
+                                    )}
                                 </div>
                                 <div className="divide-y divide-red-100 dark:divide-muted/30 space-y-3">
                                     <DetailItem icon={<MdMedicalServices className="text-red-700" />} label="Diagnosis" value={consultation.diagnosis} />
@@ -189,7 +194,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                                     <Button
                                         variant="destructive"
                                         size="sm"
-                                        className={`w-full bg-red-600 hover:bg-red-700 text-white font-semibold shadow transition flex items-center justify-center ${deletingId === consultation.$id ? "opacity-60 pointer-events-none" : ""}`}
+                                        className={`w-full bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white font-semibold shadow transition flex items-center justify-center ${deletingId === consultation.$id ? "opacity-60 pointer-events-none" : ""}`}
                                         onClick={() => {
                                             if (window.confirm("Are you sure you want to delete this consultation? This action cannot be undone.")) {
                                                 deleteConsultationMutation(consultation.$id!);
@@ -200,7 +205,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                                     >
                                         {deletingId === consultation.$id ? (
                                             <>
-                                                <Spinner size="sm" /> Deleting...
+                                                <Spinner size="sm" /> <span className="ml-2">Deleting...</span>
                                             </>
                                         ) : (
                                             <>
@@ -210,8 +215,8 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                                     </Button>
                                     <TooltipInfo consultation={consultation} />
                                 </div>
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded shadow">#{idx + 1}</span>
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                                    <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded shadow font-semibold tracking-wide">#{idx + 1}</span>
                                 </div>
                             </div>
                         ))}
@@ -241,6 +246,9 @@ import { useState as useReactState } from "react";
 function TooltipInfo({ consultation }: { consultation: Consultation }) {
     const [show, setShow] = useReactState(false);
 
+    // For accessibility: close popover on Escape
+    // (optional: could use useEffect, but keeping it simple for now)
+
     return (
         <div className="relative">
             <button
@@ -253,40 +261,39 @@ function TooltipInfo({ consultation }: { consultation: Consultation }) {
                 onBlur={() => setShow(false)}
                 tabIndex={0}
             >
-                <MdInfoOutline size={20} />
+                <MdInfoOutline size={22} />
             </button>
             {show && (
-                <div className="absolute z-40 top-10 right-0 w-64 bg-white dark:bg-muted/90 border border-red-200 rounded-xl shadow-lg p-4 text-sm text-gray-800 dark:text-gray-100 animate-fade-in">
-                    <div className="mb-2 font-semibold text-red-700 flex items-center gap-1">
+                <div
+                    className="absolute z-50 top-10 right-0 w-72 bg-white dark:bg-muted/90 border border-red-200 rounded-xl shadow-2xl p-5 text-sm text-gray-800 dark:text-gray-100 animate-fade-in"
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div className="mb-3 font-semibold text-red-700 flex items-center gap-2">
                         <MdEventNote className="mr-1" /> Consultation Details
                     </div>
-                    <div className="space-y-1">
-                        <div>
-                            <span className="font-medium">Date:</span>{" "}
-                            {new Date(consultation.consultationDate).toLocaleString()}
-                        </div>
-                        <div>
-                            <span className="font-medium">Diagnosis:</span>{" "}
-                            {consultation.diagnosis?.trim() || <span className="italic text-gray-400">Not provided</span>}
-                        </div>
-                        <div>
-                            <span className="font-medium">Symptoms:</span>{" "}
-                            {consultation.symptom?.trim() || <span className="italic text-gray-400">Not provided</span>}
-                        </div>
-                        <div>
-                            <span className="font-medium">Prescription:</span>{" "}
-                            {consultation.prescription?.trim() || <span className="italic text-gray-400">Not provided</span>}
-                        </div>
-                        <div>
-                            <span className="font-medium">Recommendation:</span>{" "}
-                            {consultation.recommendation?.trim() || <span className="italic text-gray-400">Not provided</span>}
-                        </div>
-                        <div>
-                            <span className="font-medium">Referred To:</span>{" "}
-                            {consultation.referredTo?.trim() || <span className="italic text-gray-400">Not provided</span>}
-                        </div>
+                    <div className="space-y-2">
+                        <TooltipDetail label="Date" value={new Date(consultation.consultationDate).toLocaleString()} />
+                        <TooltipDetail label="Diagnosis" value={consultation.diagnosis} />
+                        <TooltipDetail label="Symptoms" value={consultation.symptom} />
+                        <TooltipDetail label="Prescription" value={consultation.prescription} />
+                        <TooltipDetail label="Recommendation" value={consultation.recommendation} />
+                        <TooltipDetail label="Referred To" value={consultation.referredTo} />
                     </div>
                 </div>
+            )}
+        </div>
+    );
+}
+
+function TooltipDetail({ label, value }: { label: string; value?: string }) {
+    return (
+        <div>
+            <span className="font-medium">{label}:</span>{" "}
+            {value?.trim() ? (
+                <span className="text-gray-800 dark:text-gray-100">{value}</span>
+            ) : (
+                <span className="italic text-gray-400">Not provided</span>
             )}
         </div>
     );

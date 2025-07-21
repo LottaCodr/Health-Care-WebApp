@@ -1,5 +1,5 @@
 
-import React, { useReducer, createContext, useContext, useEffect } from 'react';
+import React, { useReducer, createContext, useContext, useEffect, useMemo } from 'react';
 import { fetchAppointments } from '@/actions/appointments/appointment.action';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
@@ -45,7 +45,11 @@ export function reducer(state: State, action: AppointmentAction): State {
 
 const AppointmentContext = createContext<{ state: State; dispatch: React.Dispatch<AppointmentAction> }>({ state: initialState, dispatch: () => null })
 
-export const useRealTimeAppointments = () => useContext(AppointmentContext)
+export const useRealTimeAppointments = () => {
+    const context = useContext(AppointmentContext);
+    if (!context) throw new Error("useRealTimeAppointments must be used within AppointmentProvider");
+    return context;
+}
 
 export const AppointmentProvider = ({ children }: { children: React.ReactNode }) => {
     const [state, dispatch] = useReducer(reducer, initialState)
@@ -93,10 +97,10 @@ export const AppointmentProvider = ({ children }: { children: React.ReactNode })
         console.log('the loading appointments:', isPending)
     }, [data, isPending, isError])
 
-
+    const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
 
     return (
-        <AppointmentContext.Provider value={{ state, dispatch }}>
+        <AppointmentContext.Provider value={value}>
             {children}
         </AppointmentContext.Provider>
     )

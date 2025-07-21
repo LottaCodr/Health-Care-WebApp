@@ -80,7 +80,7 @@ const AppointmentTable: React.FC<AppointmentTableProps> = ({
 
     return (
         <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
-            <table className="min-w-full text-sm bg-white dark:bg-gray-800">
+            <table className="min-w-full text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                         {renderSortHeader('Patient', 'patientName')}

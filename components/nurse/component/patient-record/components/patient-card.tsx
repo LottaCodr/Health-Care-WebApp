@@ -7,7 +7,7 @@ import { PatientRecord } from './data';
 
 export default function PatientCard({ record, onViewDetails }: { record: PatientRecord, onViewDetails: (r: PatientRecord) => void }) {
     return (
-        <div className="flex items-center justify-between border p-4 rounded-xl bg-white shadow-sm">
+        <div className="flex items-center justify-between border p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 shadow-sm">
             <div className="space-y-1">
                 <h4 className="font-medium text-lg">{record.name}</h4>
                 <p className="text-sm text-muted-foreground">{record.gender}, Age {record.age}</p>
