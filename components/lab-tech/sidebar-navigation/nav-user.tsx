@@ -1,14 +1,12 @@
 "use client"
 
 import {
-    BadgeCheck,
-    Bell,
     ChevronsUpDown,
-    CreditCard,
     LogOut,
-    Sparkles,
     Moon,
     Sun,
+    User,
+    Mail,
 } from "lucide-react"
 
 import {
@@ -32,90 +30,165 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar"
 import { useTheme } from "next-themes"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/context/auth-provider"
+import { useState } from "react"
 
-export function LabTechNavUser({
-    user,
-}: {
-    user: {
-        name: string
-        email: string
-        avatar: string
+// Dummy logout function, replace with your real logout logic
+async function logout() {
+    if (typeof window !== "undefined") {
+        localStorage.clear();
+        sessionStorage.clear();
     }
-}) {
+}
+
+export function LabTechNavUser() {
     const { isMobile } = useSidebar()
     const { setTheme, theme } = useTheme()
+    const router = useRouter();
+    const [loggingOut, setLoggingOut] = useState(false);
+
+    let user;
+    try {
+        ({ user } = useAuth() ?? {})
+    } catch (e) {
+        user = undefined;
+    }
+
+    // Helper for initials
+    const getInitials = (name?: string) => {
+        if (!name) return "LT";
+        return name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
+    // Helper for fallback name/email
+    const displayName = user?.full_name || user?.name || "Lab Technician";
+    const displayEmail = user?.email || "user@email.com";
+
+    // Helper for theme label
+    const themeLabel = theme === "light" ? "Switch to dark mode" : "Switch to light mode";
+    const themeIcon = theme === "light"
+        ? <Moon className="mr-2 text-red-500" />
+        : <Sun className="mr-2 text-red-400" />;
+    const themeText = theme === "light" ? "Dark mode" : "Light mode";
+
+    // Accessibility: focus ring and aria
+    // Improved: show email and name in menu, add user icon, show feedback on logout, better mobile touch targets
 
     return (
         <SidebarMenu>
             <SidebarMenuItem>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <SidebarMenuButton
-                            size="lg"
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                        <button
+                            className="w-full focus:outline-none"
+                            aria-label="Open user menu"
+                            tabIndex={0}
                         >
-                            <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarImage src={user.avatar} alt={user.name} />
-                                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-                            </Avatar>
-                            <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold">{user.name}</span>
-                                <span className="truncate text-xs">{user.email}</span>
-                            </div>
-                            <ChevronsUpDown className="ml-auto size-4" />
-                        </SidebarMenuButton>
+                            <SidebarMenuButton
+                                size="lg"
+                                className={`
+                                    data-[state=open]:bg-red-100
+                                    data-[state=open]:text-red-700
+                                    hover:bg-red-50
+                                    transition
+                                    px-3 py-2
+                                    rounded-xl
+                                    focus:outline-none
+                                    focus-visible:ring-2
+                                    focus-visible:ring-red-500
+                                    focus-visible:ring-offset-1
+                                `}
+                            >
+                                <Avatar className="h-9 w-9 rounded-lg ring-2 ring-red-400">
+                                    <AvatarImage src={undefined} alt={displayName} />
+                                    <AvatarFallback className="rounded-lg bg-red-200 text-red-700 font-bold">
+                                        {getInitials(displayName)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0 ml-3 text-left">
+                                    <span className="truncate font-semibold text-gray-900 dark:text-white text-base">
+                                        {displayName}
+                                    </span>
+                                    <span className="truncate text-xs text-gray-500 dark:text-gray-300 block">
+                                        {displayEmail}
+                                    </span>
+                                </div>
+                                <ChevronsUpDown className="ml-auto size-4 text-red-500" />
+                            </SidebarMenuButton>
+                        </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                        side={isMobile ? "bottom" : "right"}
+                        className="w-72 rounded-xl shadow-xl border border-red-100 dark:border-red-900/40 bg-white dark:bg-muted/90 p-0"
                         align="end"
-                        sideOffset={4}
                     >
                         <DropdownMenuLabel className="p-0 font-normal">
-                            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                                <Avatar className="h-8 w-8 rounded-lg">
-                                    <AvatarImage src={user.avatar} alt={user.name} />
-                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                            <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/30 rounded-t-xl">
+                                <Avatar className="h-10 w-10 rounded-lg ring-2 ring-red-400">
+                                    <AvatarImage src={undefined} alt={displayName} />
+                                    <AvatarFallback className="rounded-lg bg-red-200 text-red-700 font-bold">
+                                        {getInitials(displayName)}
+                                    </AvatarFallback>
                                 </Avatar>
-                                <div className="grid flex-1 text-left text-sm leading-tight">
-                                    <span className="truncate font-semibold">{user.name}</span>
-                                    <span className="truncate text-xs">{user.email}</span>
+                                <div className="flex-1 min-w-0 text-left">
+                                    <span className="truncate font-semibold capitalize text-gray-900 dark:text-white text-base">
+                                        {displayName}
+                                    </span>
+                                    <span className="truncate text-xs text-gray-500 dark:text-gray-300 block">
+                                        {displayEmail}
+                                    </span>
                                 </div>
                             </div>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="bg-red-100 dark:bg-red-900/40" />
+
                         <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <Sparkles />
-                                Upgrade to Pro
+                            <DropdownMenuItem
+                                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                                className={`
+                                    cursor-pointer gap-2 px-4 py-2 rounded-lg
+                                    hover:bg-red-100 dark:hover:bg-red-900/30
+                                    transition
+                                    text-gray-800 dark:text-gray-200
+                                    focus:bg-red-100 dark:focus:bg-red-900/30
+                                    focus:text-red-700
+                                `}
+                                aria-label={themeLabel}
+                            >
+                                {themeIcon}
+                                <span>
+                                    {themeText}
+                                </span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <BadgeCheck />
-                                Account
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <CreditCard />
-                                Billing
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Bell />
-                                Notifications
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
-                                {theme === "light" ? <Moon className="mr-2" /> : <Sun className="mr-2" />}
-                                {theme === "light" ? "Dark mode" : "Light mode"}
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <LogOut />
-                            Log out
+                        <DropdownMenuSeparator className="bg-red-100 dark:bg-red-900/40" />
+
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                setLoggingOut(true);
+                                await logout();
+                                router.replace("/staff");
+                            }}
+                            className={`
+                                cursor-pointer gap-2 px-4 py-2 rounded-lg
+                                text-red-700 font-semibold
+                                hover:bg-red-100 dark:hover:bg-red-900/30
+                                hover:text-red-800
+                                transition
+                                focus:bg-red-100 dark:focus:bg-red-900/30
+                                focus:text-red-800
+                                disabled:opacity-60
+                            `}
+                            aria-label="Log out"
+                            disabled={loggingOut}
+                        >
+                            <LogOut className="text-red-500" />
+                            {loggingOut ? "Logging out..." : "Log out"}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

@@ -63,13 +63,13 @@ export default function PatientRecordsComponent() {
                 const patient = row.original;
                 return (
                     <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => openViewModal(patient)}>
+                        <Button size="sm" variant="outline" className="border-red-400 text-red-600 hover:bg-red-50 rounded-xl" onClick={() => openViewModal(patient)}>
                             View
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={() => openEditModal(patient)}>
+                        <Button size="sm" variant="secondary" className="bg-gradient-to-r from-red-600 to-red-400 text-white rounded-xl shadow hover:from-red-700 hover:to-red-500" onClick={() => openEditModal(patient)}>
                             Edit
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => openDeleteModal(patient)}>
+                        <Button size="sm" variant="destructive" className="rounded-xl" onClick={() => openDeleteModal(patient)}>
                             Delete
                         </Button>
                     </div>
@@ -89,23 +89,25 @@ export default function PatientRecordsComponent() {
     };
 
     return (
-        <section>
-            <Card>
+        <section className="py-6 px-2 md:px-8 space-y-8 bg-gradient-to-br from-white via-red-50 to-red-100 min-h-screen rounded-3xl shadow-2xl">
+            <Card className="shadow-xl border-0 bg-white rounded-3xl">
                 <CardHeader>
-                    <CardTitle>Patient Records</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-red-800 flex items-center gap-3">Patient Records</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Input placeholder="Search by name, phone or ID" />
+                    <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Input placeholder="Search by name, phone or ID" className="bg-white/80 border border-red-200 focus:ring-2 focus:ring-red-400 rounded-xl shadow-sm" />
                     </div>
-                    <DataTable columns={columns} data={dummyPatients} />
+                    <div className="overflow-x-auto rounded-xl shadow-inner">
+                        <DataTable columns={columns} data={dummyPatients} />
+                    </div>
                 </CardContent>
             </Card>
 
             {/* View Modal */}
             <Modal isOpen={viewModalOpen} onClose={closeModals} title="Patient Details">
                 {selectedPatient && (
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-sm text-gray-800">
                         <p><strong>ID:</strong> {selectedPatient.id}</p>
                         <p><strong>Name:</strong> {selectedPatient.name}</p>
                         <p><strong>Gender:</strong> {selectedPatient.gender}</p>
@@ -121,13 +123,13 @@ export default function PatientRecordsComponent() {
             {/* Edit Modal */}
             <Modal isOpen={editModalOpen} onClose={closeModals} title="Edit Patient Record">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <Input {...register("name")} placeholder="Full Name" />
-                    <Input {...register("age")} type="number" placeholder="Age" />
-                    <Input {...register("phone")} placeholder="Phone" />
-                    <Input {...register("gender")} placeholder="Gender" />
-                    <Input {...register("address")} placeholder="Address" />
-                    <Textarea {...register("medicalNote")} placeholder="Medical Notes" />
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Input {...register("name")} placeholder="Full Name" className="bg-white/80 border border-red-200 focus:ring-2 focus:ring-red-400 rounded-xl shadow-sm" />
+                    <Input {...register("age")} type="number" placeholder="Age" className="bg-white/80 border border-red-200 focus:ring-2 focus:ring-red-400 rounded-xl shadow-sm" />
+                    <Input {...register("phone")} placeholder="Phone" className="bg-white/80 border border-red-200 focus:ring-2 focus:ring-red-400 rounded-xl shadow-sm" />
+                    <Input {...register("gender")} placeholder="Gender" className="bg-white/80 border border-red-200 focus:ring-2 focus:ring-red-400 rounded-xl shadow-sm" />
+                    <Input {...register("address")} placeholder="Address" className="bg-white/80 border border-red-200 focus:ring-2 focus:ring-red-400 rounded-xl shadow-sm" />
+                    <Textarea {...register("medicalNote")} placeholder="Medical Notes" className="bg-white/80 border border-red-200 focus:ring-2 focus:ring-red-400 rounded-xl shadow-sm" />
+                    <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-red-600 to-red-400 text-white font-semibold rounded-xl shadow hover:from-red-700 hover:to-red-500">
                         {isSubmitting ? "Saving..." : "Save Changes"}
                     </Button>
                 </form>
@@ -135,14 +137,14 @@ export default function PatientRecordsComponent() {
 
             {/* Delete Modal */}
             <Modal isOpen={deleteModalOpen} onClose={closeModals} title="Delete Patient Record">
-                <p className="mb-4">
+                <p className="mb-4 text-red-700 font-semibold">
                     Are you sure you want to delete this record?
                 </p>
                 <div className="flex gap-2">
-                    <Button variant="destructive">
+                    <Button variant="destructive" className="rounded-xl">
                         Confirm Delete
                     </Button>
-                    <Button variant="outline" onClick={closeModals}>
+                    <Button variant="outline" className="border-red-400 text-red-600 hover:bg-red-50 rounded-xl" onClick={closeModals}>
                         Cancel
                     </Button>
                 </div>

@@ -224,11 +224,22 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
                 });
             } else {
-                setFormError("The selected staff is not a nurse or pharmacist.");
+                setFormError("The selected staff does not have a valid role for this action.");
                 toast({
                     variant: "destructive",
-                    title: "Invalid Role",
-                    description: `The selected staff is not a nurse or pharmacist.`,
+                    title: "Invalid Staff Role",
+                    description: (
+                        <div>
+                            <span>
+                                The selected staff member is not eligible for this task.
+                            </span>
+                            <ul className="mt-2 ml-4 list-disc text-sm text-muted-foreground">
+                                <li>Only <b>Nurse</b>, <b>Pharmacist</b>, or <b>Lab Tech</b> can be assigned.</li>
+                                <li>Please select a staff member with an appropriate role.</li>
+                            </ul>
+                        </div>
+                    ),
+                    duration: 7000,
                 });
                 return;
             }
@@ -236,8 +247,23 @@ export default function PatientDetailsComponent({ patient }: Props) {
             setSuccessMessage("Consultation and task successfully assigned.");
             toast({
                 variant: "default",
-                title: "Success",
-                description: "Consultation and task successfully assigned.",
+                title: (
+                    <span className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        Success
+                    </span>
+                ),
+                description: (
+                    <div>
+                        <span>
+                            Consultation and task have been successfully assigned to <b>{selectedStaff?.name || "staff member"}</b>.
+                        </span>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                            You can view the updated status in the patient’s record.
+                        </div>
+                    </div>
+                ),
+                duration: 5000,
             });
 
             consultationDispatch({ type: "RESET_FORM" });
@@ -248,8 +274,20 @@ export default function PatientDetailsComponent({ patient }: Props) {
             setFormError("Failed to save consultation.");
             toast({
                 variant: "destructive",
-                title: "Error",
-                description: "Failed to save consultation.",
+                title: (
+                    <span className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        Error
+                    </span>
+                ),
+                description: (
+                    <div>
+                        <span>
+                            Failed to save consultation. Please try again or contact support if the issue persists.
+                        </span>
+                    </div>
+                ),
+                duration: 7000,
             });
         } finally {
             consultationDispatch({ type: "SET_LOADING", payload: false });

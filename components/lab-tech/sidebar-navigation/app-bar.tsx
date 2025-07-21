@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 // Icons
 import { MdDashboard, MdSupportAgent } from "react-icons/md";
-import { FiSettings, FiLogOut } from "react-icons/fi";
+import { FiSettings } from "react-icons/fi";
 import { FaUserClock } from "react-icons/fa";
 import { BiBarChartAlt2 } from "react-icons/bi";
 import { AiOutlineFileAdd } from "react-icons/ai";
@@ -23,19 +23,13 @@ import {
 } from "@/components/ui/sidebar";
 import { LabTechNavUser } from "./nav-user";
 
-// 🔐 Assume this comes from auth context or zustand
+// Assume this comes from auth context or zustand
 const getUserRole = () => "lab-tech";
 
-// 🔢 Dummy badge functions (replace with Zustand/React Query data)
-const getWaitingPatientsBadge = () => 5;
 
-// 🧠 Define nav items with RBAC and optional badges
+// Define nav items with RBAC and optional badges
 const data = {
-    user: {
-        name: "Chuka Lotanna ",
-        email: "lottanna47@gmail.com",
-        avatar: "/avatars/shadcn.jpg",
-    },
+    
     navMain: [
         {
             title: "Dashboard",
@@ -43,37 +37,37 @@ const data = {
             icon: MdDashboard,
             roles: ["lab-tech"],
         },
-        {
-            title: "Vitals & Check-in",
-            url: "/lab-tech/vitals-checkin",
-            icon: BiBarChartAlt2,
-            roles: ["lab-tech"],
-        },
-        {
-            title: "Patient Queue",
-            url: "/lab-tech/queue",
-            icon: FaUserClock,
-            roles: ["lab-tech"],
-            badge: getWaitingPatientsBadge,
-        },
-        {
-            title: "Patient Records",
-            url: "/lab-tech/patient-records",
-            icon: AiOutlineFileAdd,
-            roles: ["lab-tech"],
-        },
-        {
-            title: "Lab Workflow",
-            url: "/lab-tech/lab-tech-workflow",
-            icon: BiBarChartAlt2,
-            roles: ["lab-tech"],
-        },
-        {
-            title: "Visitors & Walk-ins",
-            url: "/lab-tech/visitors",
-            icon: BsPeople,
-            roles: ["lab-tech"],
-        },
+        // {
+        //     title: "Vitals & Check-in",
+        //     url: "/lab-tech/vitals-checkin",
+        //     icon: BiBarChartAlt2,
+        //     roles: ["lab-tech"],
+        // },
+        // {
+        //     title: "Patient Queue",
+        //     url: "/lab-tech/queue",
+        //     icon: FaUserClock,
+        //     roles: ["lab-tech"],
+        //     badge: getWaitingPatientsBadge,
+        // },
+        // {
+        //     title: "Patient Records",
+        //     url: "/lab-tech/patient-records",
+        //     icon: AiOutlineFileAdd,
+        //     roles: ["lab-tech"],
+        // },
+        // {
+        //     title: "Lab Workflow",
+        //     url: "/lab-tech/lab-tech-workflow",
+        //     icon: BiBarChartAlt2,
+        //     roles: ["lab-tech"],
+        // },
+        // {
+        //     title: "Visitors & Walk-ins",
+        //     url: "/lab-tech/visitors",
+        //     icon: BsPeople,
+        //     roles: ["lab-tech"],
+        // },
     ],
 
     navSecondary: [
@@ -87,14 +81,9 @@ const data = {
             url: "/lab-tech/settings",
             icon: FiSettings,
         },
-        {
-            title: "Logout",
-            url: "/lab-tech/logout",
-            icon: FiLogOut,
-        },
+
     ],
 };
-
 
 // 🔗 Reusable nav link
 function NavLink({
@@ -115,26 +104,30 @@ function NavLink({
             href={url}
             aria-current={isActive ? "page" : undefined}
             className={`
-                group flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors
+                group flex items-center justify-between rounded-lg px-3 py-2 text-[15px] font-medium transition-all
                 ${isActive
-                    ? "bg-blue-600 text-white font-semibold shadow-md border-l-4 border-blue-400"
-                    : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                    ? "bg-gradient-to-r from-red-600 to-red-500 text-white font-bold shadow-lg border-l-4 border-red-400"
+                    : "text-gray-700 hover:bg-red-50 hover:text-red-700"
                 }
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1
+                relative
             `}
+            tabIndex={0}
         >
             <div className="flex items-center gap-3">
                 <Icon
-                    className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? "text-white" : "text-gray-500 group-hover:text-blue-600"}`}
+                    className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? "text-white drop-shadow" : "text-red-400 group-hover:text-red-600"}`}
                     aria-hidden="true"
                 />
-                {title}
+                <span className="truncate">{title}</span>
             </div>
-
             {typeof badge === "number" && badge > 0 && (
-                <span className="ml-2 inline-block rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                <span className="ml-2 inline-block rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white shadow">
                     {badge}
                 </span>
+            )}
+            {isActive && (
+                <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-red-400 rounded-l-full shadow-md" aria-hidden="true"></span>
             )}
         </a>
     );
@@ -149,7 +142,7 @@ export function LabTechAppSidebar({ ...props }: React.ComponentProps<typeof Side
         .map((item) => ({
             ...item,
             isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
-            badge: item.badge?.(),
+            // badge: item.badge?.(),
         }));
 
     const navSecondaryWithActive = data.navSecondary.map((item) => ({
@@ -158,22 +151,27 @@ export function LabTechAppSidebar({ ...props }: React.ComponentProps<typeof Side
     }));
 
     return (
-        <Sidebar variant="inset" {...props} aria-label="Hospital Dashboard Sidebar">
+        <Sidebar
+            variant="inset"
+            {...props}
+            aria-label="Lab Tech Dashboard Sidebar"
+            className="bg-gradient-to-b from-red-50 via-white to-white border-r border-red-100 shadow-xl"
+        >
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
                             <a
-                                href="/dashboard"
-                                className="flex items-center gap-3 rounded-lg p-2 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+                                href="/lab-tech/dashboard"
+                                className="flex items-center gap-3 rounded-xl p-2 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400 transition"
                                 aria-label="Hospital Logo and Title"
                             >
-                                <div className="flex aspect-square w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-                                    <MdDashboard className="w-5 h-5" aria-hidden="true" />
+                                <div className="flex aspect-square w-10 h-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-400 text-white shadow-lg">
+                                    <MdDashboard className="w-6 h-6" aria-hidden="true" />
                                 </div>
                                 <div className="flex flex-col leading-tight">
-                                    <span className="truncate font-semibold text-base text-blue-900">Nile Mother & Child</span>
-                                    <span className="truncate text-xs text-blue-700/80">Hospital</span>
+                                    <span className="truncate font-extrabold text-lg text-red-700 drop-shadow">Nile Mother & Child</span>
+                                    <span className="truncate text-xs text-red-500/80 font-medium">Hospital</span>
                                 </div>
                             </a>
                         </SidebarMenuButton>
@@ -182,21 +180,22 @@ export function LabTechAppSidebar({ ...props }: React.ComponentProps<typeof Side
             </SidebarHeader>
 
             <SidebarContent className="flex flex-col">
-                <nav aria-label="Primary Navigation" className="flex flex-col gap-1 px-2">
-                    {navMainFiltered.map(({ title, url, icon, isActive, badge }) => (
-                        <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive} badge={badge} />
+                <nav aria-label="Primary Navigation" className="flex flex-col gap-1 px-2 mt-2">
+                    {navMainFiltered.map(({ title, url, icon, isActive }) => (
+                        <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive}  />
                     ))}
                 </nav>
 
                 <nav aria-label="Secondary Navigation" className="mt-auto flex flex-col gap-1 px-2 pb-4">
+                    <div className="border-t border-red-100 my-2" />
                     {navSecondaryWithActive.map(({ title, url, icon, isActive }) => (
                         <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive} />
                     ))}
                 </nav>
             </SidebarContent>
 
-            <SidebarFooter>
-                <LabTechNavUser user={data.user} />
+            <SidebarFooter className="bg-gradient-to-t from-red-50 via-white to-transparent border-t border-red-100">
+                <LabTechNavUser  />
             </SidebarFooter>
         </Sidebar>
     );
