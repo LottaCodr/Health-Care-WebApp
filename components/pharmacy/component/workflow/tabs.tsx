@@ -44,12 +44,12 @@ function MedicationRequests() {
     }, []);
 
     return (
-        <Card>
-            <CardContent>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="dark:text-gray-200">
                 <h2 className="text-lg font-semibold mb-4">Medication Requests</h2>
                 <ul className="space-y-2">
                     {requests.map((req) => (
-                        <li key={req.id} className="border rounded p-2 flex justify-between">
+                        <li key={req.id} className="border rounded p-2 flex justify-between bg-white dark:bg-gray-700">
                             <span>{req.name}</span>
                             <span className="text-sm text-gray-500">{req.status}</span>
                         </li>
@@ -73,8 +73,8 @@ function InventoryStatus() {
     }, []);
 
     return (
-        <Card>
-            <CardContent>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="dark:text-gray-200">
                 <h2 className="text-lg font-semibold mb-4">Inventory Status</h2>
                 <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={inventory}>
@@ -103,12 +103,12 @@ function DispensationHistory() {
     }, []);
 
     return (
-        <Card>
-            <CardContent>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="dark:text-gray-200">
                 <h2 className="text-lg font-semibold mb-4">Dispensation History</h2>
                 <ul className="space-y-2">
                     {history.map((entry, idx) => (
-                        <li key={idx} className="border rounded p-2">
+                        <li key={idx} className="border rounded p-2 bg-white dark:bg-gray-700">
                             <div className="text-sm text-gray-700">{entry.date}</div>
                             <div className="font-medium">{entry.medication} to {entry.patient}</div>
                         </li>
@@ -133,12 +133,12 @@ function StockRefill() {
     }, []);
 
     return (
-        <Card>
-            <CardContent>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="dark:text-gray-200">
                 <h2 className="text-lg font-semibold mb-4">Stock Refill Logs</h2>
                 <ul className="space-y-2">
                     {refills.map((entry, idx) => (
-                        <li key={idx} className="border rounded p-2">
+                        <li key={idx} className="border rounded p-2 bg-white dark:bg-gray-700">
                             <div className="text-sm text-gray-700">{entry.date}</div>
                             <div className="font-medium">{entry.medication}: {entry.quantity} units</div>
                         </li>
@@ -162,12 +162,12 @@ function InteractionWarnings() {
     }, []);
 
     return (
-        <Card>
-            <CardContent>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="dark:text-gray-200">
                 <h2 className="text-lg font-semibold mb-4">Drug Interaction Warnings</h2>
                 <ul className="space-y-2">
                     {warnings.map((warn) => (
-                        <li key={warn.id} className="border-l-4 border-red-500 bg-red-50 p-3">
+                        <li key={warn.id} className="border-l-4 border-red-500 bg-red-50 p-3 dark:bg-red-900 dark:border-red-700">
                             <span className="text-red-800 text-sm">{warn.message}</span>
                         </li>
                     ))}
@@ -180,14 +180,13 @@ function InteractionWarnings() {
 export default function PharmacistTabs() {
     return (
         <Tabs defaultValue="requests" className="w-full space-y-4">
-            <TabsList className="grid grid-cols-5 w-full">
-                <TabsTrigger value="requests">Medication Requests</TabsTrigger>
-                <TabsTrigger value="inventory">Inventory Status</TabsTrigger>
-                <TabsTrigger value="dispensation">Dispensation History</TabsTrigger>
-                <TabsTrigger value="refill">Stock Refill Logs</TabsTrigger>
-                <TabsTrigger value="warnings">Interaction Warnings</TabsTrigger>
+            <TabsList className="grid grid-cols-5 w-full bg-white dark:bg-gray-900 border-b border-red-100 dark:border-gray-700 rounded-t-xl">
+                <TabsTrigger value="requests" className="data-[state=active]:bg-red-100 dark:data-[state=active]:bg-gray-800 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-200 transition font-bold">Medication Requests</TabsTrigger>
+                <TabsTrigger value="inventory" className="data-[state=active]:bg-red-100 dark:data-[state=active]:bg-gray-800 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-200 transition font-bold">Inventory Status</TabsTrigger>
+                <TabsTrigger value="dispensation" className="data-[state=active]:bg-red-100 dark:data-[state=active]:bg-gray-800 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-200 transition font-bold">Dispensation History</TabsTrigger>
+                <TabsTrigger value="refill" className="data-[state=active]:bg-red-100 dark:data-[state=active]:bg-gray-800 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-200 transition font-bold">Stock Refill Logs</TabsTrigger>
+                <TabsTrigger value="warnings" className="data-[state=active]:bg-red-100 dark:data-[state=active]:bg-gray-800 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-200 transition font-bold">Interaction Warnings</TabsTrigger>
             </TabsList>
-
             <TabsContent value="requests"><MedicationRequests /></TabsContent>
             <TabsContent value="inventory"><InventoryStatus /></TabsContent>
             <TabsContent value="dispensation"><DispensationHistory /></TabsContent>

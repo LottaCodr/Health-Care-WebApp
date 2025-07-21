@@ -79,13 +79,13 @@ export function PharmacyNavUser({
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-[--radix-dropdown-menu-trigger-width] min-w-60 rounded-xl shadow-lg border border-red-100 bg-white"
+                        className="w-[--radix-dropdown-menu-trigger-width] min-w-60 rounded-xl shadow-lg border border-red-100 dark:border-gray-700 bg-white dark:bg-gray-900"
                         side={isMobile ? "bottom" : "right"}
                         align="end"
                         sideOffset={6}
                     >
                         <DropdownMenuLabel className="p-0 font-normal">
-                            <div className="flex items-center gap-3 px-3 py-3 bg-red-50 rounded-t-xl">
+                            <div className="flex items-center gap-3 px-3 py-3 bg-red-50 dark:bg-gray-800 rounded-t-xl">
                                 <Avatar className="h-10 w-10 rounded-lg border-2 border-red-500 shadow">
                                     <AvatarImage src={user.avatar} alt={user.name} />
                                     <AvatarFallback className="rounded-lg bg-red-500 text-white font-bold">
@@ -93,40 +93,40 @@ export function PharmacyNavUser({
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                    <span className="block truncate font-semibold text-base text-red-700">{user.name}</span>
-                                    <span className="block truncate text-xs text-gray-500">{user.email}</span>
+                                    <span className="block truncate font-semibold text-base text-red-700 dark:text-red-200">{user.name}</span>
+                                    <span className="block truncate text-xs text-gray-500 dark:text-gray-400">{user.email}</span>
                                 </div>
                             </div>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator className="bg-red-100" />
+                        <DropdownMenuSeparator className="bg-red-100 dark:bg-gray-700" />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem className="gap-2 font-medium text-red-600 hover:bg-red-100 transition-colors rounded-md px-3 py-2 cursor-pointer">
+                            <DropdownMenuItem className="gap-2 font-medium text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-gray-800 transition-colors rounded-md px-3 py-2 cursor-pointer">
                                 <Sparkles className="text-red-500" />
-                                <span>Upgrade to <span className="font-bold text-red-700">Pro</span></span>
-                                <span className="ml-auto bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-semibold">New</span>
+                                <span>Upgrade to <span className="font-bold text-red-700 dark:text-red-200">Pro</span></span>
+                                <span className="ml-auto bg-red-100 dark:bg-gray-800 text-red-600 dark:text-red-200 text-xs px-2 py-0.5 rounded-full font-semibold">New</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator className="bg-red-100" />
+                        <DropdownMenuSeparator className="bg-red-100 dark:bg-gray-700" />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem className="gap-2 hover:bg-red-50 transition-colors rounded-md px-3 py-2 cursor-pointer">
+                            <DropdownMenuItem className="gap-2 hover:bg-red-50 dark:hover:bg-gray-800 transition-colors rounded-md px-3 py-2 cursor-pointer">
                                 <BadgeCheck className="text-red-500" />
                                 <span>Account</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2 hover:bg-red-50 transition-colors rounded-md px-3 py-2 cursor-pointer">
+                            <DropdownMenuItem className="gap-2 hover:bg-red-50 dark:hover:bg-gray-800 transition-colors rounded-md px-3 py-2 cursor-pointer">
                                 <CreditCard className="text-red-500" />
                                 <span>Billing</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2 hover:bg-red-50 transition-colors rounded-md px-3 py-2 cursor-pointer">
+                            <DropdownMenuItem className="gap-2 hover:bg-red-50 dark:hover:bg-gray-800 transition-colors rounded-md px-3 py-2 cursor-pointer">
                                 <Bell className="text-red-500" />
                                 <span>Notifications</span>
                                 <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">3</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator className="bg-red-100" />
+                        <DropdownMenuSeparator className="bg-red-100 dark:bg-gray-700" />
                         <DropdownMenuGroup>
                             <DropdownMenuItem
                                 onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                                className="gap-2 hover:bg-red-50 transition-colors rounded-md px-3 py-2 cursor-pointer"
+                                className="gap-2 hover:bg-red-50 dark:hover:bg-gray-800 transition-colors rounded-md px-3 py-2 cursor-pointer"
                             >
                                 {theme === "light" ? (
                                     <Moon className="text-red-500 mr-2" />
@@ -138,9 +138,9 @@ export function PharmacyNavUser({
                                 </span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator className="bg-red-100" />
+                        <DropdownMenuSeparator className="bg-red-100 dark:bg-gray-700" />
                         <DropdownMenuItem
-                            className="gap-2 text-red-700 font-semibold hover:bg-red-100 transition-colors rounded-md px-3 py-2 cursor-pointer"
+                            className="gap-2 text-red-700 dark:text-red-300 font-semibold hover:bg-red-100 dark:hover:bg-gray-800 transition-colors rounded-md px-3 py-2 cursor-pointer"
                         >
                             <LogOut className="text-red-500" />
                             <span>Log out</span>
