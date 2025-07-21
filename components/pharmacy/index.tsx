@@ -149,12 +149,12 @@ function PharmacyDashboardContent() {
 
     // Improved: Responsive, sticky header, subtle background, better spacing
     return (
-        <div className="p-2 sm:p-6 md:p-10 space-y-12 bg-gradient-to-br from-red-50 via-white to-red-100 min-h-screen flex justify-center">
+        <div className="p-2 sm:p-6 md:p-10 space-y-12 bg-gradient-to-br from-red-50 via-white to-red-100 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 min-h-screen flex justify-center">
             <div className="w-full max-w-[1800px] mx-auto flex flex-col gap-12">
                 {/* Header */}
-                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 sticky top-0 z-20 bg-gradient-to-r from-white/90 to-red-50/80 backdrop-blur-md py-4 px-2 rounded-2xl shadow-sm">
-                    <h1 className="text-4xl sm:text-5xl font-extrabold text-red-700 tracking-tight flex items-center gap-4 drop-shadow-sm">
-                        <span className="inline-flex items-center justify-center rounded-2xl bg-red-100 p-3 shadow">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 sticky top-0 z-20 bg-gradient-to-r from-white/90 to-red-50/80 dark:from-gray-900/90 dark:to-gray-900/80 backdrop-blur-md py-4 px-2 rounded-2xl shadow-sm">
+                    <h1 className="text-4xl sm:text-5xl font-extrabold text-red-700 dark:text-red-200 tracking-tight flex items-center gap-4 drop-shadow-sm">
+                        <span className="inline-flex items-center justify-center rounded-2xl bg-red-100 dark:bg-gray-800 p-3 shadow">
                             <BarChart2 className="w-10 h-10 text-red-500" />
                         </span>
                         <span className="whitespace-nowrap">Pharmacy Dashboard</span>
@@ -162,14 +162,14 @@ function PharmacyDashboardContent() {
                     <div className="flex items-center gap-4">
                         <Button
                             variant="outline"
-                            className="border-2 border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400 transition-all font-semibold flex items-center gap-2 shadow px-6 py-3 text-lg"
+                            className="border-2 border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 hover:bg-red-100 dark:hover:bg-gray-800 hover:border-red-400 dark:hover:border-red-500 transition-all font-semibold flex items-center gap-2 shadow px-6 py-3 text-lg"
                             aria-label="Filter prescriptions"
                         >
                             <FilterIcon className="mr-2 h-5 w-5" /> Filters
                         </Button>
                         <Button
                             variant="ghost"
-                            className="relative hover:bg-red-100 transition-all p-3 rounded-full"
+                            className="relative hover:bg-red-100 dark:hover:bg-gray-800 transition-all p-3 rounded-full"
                             aria-label="Notifications"
                         >
                             <BellIcon className="h-7 w-7 text-red-600" />
@@ -186,8 +186,8 @@ function PharmacyDashboardContent() {
                             title={stat.title}
                             value={<AnimatedNumber value={stat.value} />}
                             icon={stat.icon}
-                            color={stat.color}
-                            border={stat.border}
+                            color={stat.color + ' dark:bg-gray-900 dark:text-red-200'}
+                            border={stat.border + ' dark:border-gray-700'}
                             href={stat.href}
                             tooltip={stat.tooltip}
                         />
@@ -196,19 +196,19 @@ function PharmacyDashboardContent() {
 
                 {/* Tabs Section */}
                 <Tabs defaultValue="myPatients" className="w-full">
-                    <TabsList className="mb-10 flex gap-4 bg-white rounded-2xl p-4 shadow border-2 border-red-100 w-full sticky top-24 z-10">
+                    <TabsList className="mb-10 flex gap-4 bg-white dark:bg-gray-900 rounded-2xl p-4 shadow border-2 border-red-100 dark:border-gray-700 w-full sticky top-24 z-10">
                         <TabsTrigger
                             value="myPatients"
-                            className="flex-1 px-10 py-4 rounded-xl data-[state=active]:bg-red-100 data-[state=active]:text-red-700 transition font-bold text-lg focus:outline-none focus:ring-2 focus:ring-red-400"
+                            className="flex-1 px-10 py-4 rounded-xl data-[state=active]:bg-red-100 dark:data-[state=active]:bg-gray-800 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-200 transition font-bold text-lg focus:outline-none focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600"
                         >
                             <span className="flex items-center gap-3">
-                                <span className="inline-block w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
+                                <span className="inline-block w-3 h-3 rounded-full bg-red-500"></span>
                                 My Patients
                             </span>
                         </TabsTrigger>
                         <TabsTrigger
                             value="recentlyDispensed"
-                            className="flex-1 px-10 py-4 rounded-xl data-[state=active]:bg-red-50 data-[state=active]:text-red-600 transition font-bold text-lg focus:outline-none focus:ring-2 focus:ring-red-400"
+                            className="flex-1 px-10 py-4 rounded-xl data-[state=active]:bg-red-50 dark:data-[state=active]:bg-gray-800 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-200 transition font-bold text-lg focus:outline-none focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600"
                         >
                             <span className="flex items-center gap-3">
                                 <span className="inline-block w-3 h-3 rounded-full bg-red-400"></span>
