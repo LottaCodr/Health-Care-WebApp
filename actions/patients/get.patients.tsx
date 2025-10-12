@@ -1,83 +1,112 @@
 import { parseStringify } from "@/app/lib/utils";
 import { Patient } from "@/context/patients/types";
-import { databases } from "@/lib/appwrite.config";
-import { Query } from "appwrite";
+import { RegisterUserParams } from "@/types";
+import supabase from "@/utils/supabase/client";
 
-const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
-const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
+/**
+ * Register a new patient
+ */
+export async function registerPatient({ ...patient }: RegisterUserParams): Promise<Patient | null> {
+    try {
+        const { data, error } = await supabase
+            .from("patients")
+            .insert([{ ...patient }])
+            .select()
+            .single(); // Return the inserted patient
 
+        if (error) {
+            console.error("Error registering patient:", error.message);
+            return null;
+        }
+
+        const registeredPatient = parseStringify(data) as Patient;
+        return registeredPatient;
+    } catch (error) {
+        console.error("Unexpected error registering patient:", error);
+        return null;
+    }
+}
+
+/**
+ * Get all patients
+ */
 export async function getAllPatients(): Promise<Patient[]> {
     try {
-        const res = await databases.listDocuments(
-            databaseId,
-            patientCollectionId
-        );
+        const { data, error } = await supabase.from("patients").select("*");
 
-        // It's safer to map and explicitly type each document
-        const patients: Patient[] = res.documents.map((doc: any) => ({
-            ...doc,
-            birthDate: new Date(doc.birthDate), // Optional: convert to Date if needed
-        }));
+        if (error) {
+            console.error("Error fetching patients:", error.message);
+            return [];
+        }
 
-        return patients;
+        return parseStringify(data) as Patient[];
     } catch (error) {
-        console.error("Error fetching patients:", error);
+        console.error("Unexpected error fetching patients:", error);
         return [];
     }
 }
 
+/**
+ * Get a patient by userId
+ */
 export const getPatient = async (userId: string): Promise<Patient | null> => {
     if (!userId || userId.trim() === "") {
         console.error("Invalid userId provided to getPatient.");
         return null;
     }
 
-    console.log('recieved:', userId)
+    console.log("Received userId:", userId);
 
     try {
-        const res = await databases.listDocuments(
-            databaseId,
-            patientCollectionId,
-            [Query.equal("userId", userId)]
-        );
+        const { data, error } = await supabase
+            .from("patients")
+            .select("*")
+            .eq("user_id", userId)
+            .single();
 
-        if (!res.documents.length) {
-            console.warn("No patient found with userId:", userId);
+        if (error) {
+            console.error("Error fetching patient:", error.message);
             return null;
         }
 
-        const patient = parseStringify(res.documents[0]) as Patient;
+        if (!data) {
+            console.warn("No patient found for userId:", userId);
+            return null;
+        }
 
-        console.log("user detail", patient);
+        const patient = parseStringify(data) as Patient;
+        console.log("Fetched patient:", patient);
         return patient;
-
     } catch (error) {
-        console.error("An error occurred while getting a patient:", error);
+        console.error("Unexpected error getting patient:", error);
         return null;
     }
 };
 
+/**
+ * Update a patient record
+ */
 export const updatePatient = async (
     patientId: string,
     data: Partial<Patient>
-): Promise<Patient> => {
+): Promise<Patient | null> => {
     try {
-        const res = await databases.updateDocument(
-            databaseId,
-            patientCollectionId,
-            patientId,
-            data
-        );
-        // Ensure the returned object matches the Patient type
-        const updatedPatient = parseStringify(res) as Patient;
+        const { data: updatedData, error } = await supabase
+            .from("patients")
+            .update(data)
+            .eq("id", patientId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error updating patient:", error.message);
+            return null;
+        }
+
+        const updatedPatient = parseStringify(updatedData) as Patient;
         return updatedPatient;
     } catch (error) {
-        console.error("Error updating patient:", error);
-        // Instead of returning null, throw the error to let the caller handle it,
-        // or you can return a default Patient object if appropriate.
-        throw error;
+        console.error("Unexpected error updating patient:", error);
+        return null;
     }
-}
-
-
-
+};

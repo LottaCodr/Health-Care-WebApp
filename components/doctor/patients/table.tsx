@@ -105,7 +105,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, curr
         return (
             <tbody>
                 <tr>
-                    <td colSpan={7} className="py-16 text-center justify-center items-center flex flex-col gap-4 bg-white/80 dark:bg-muted/40 rounded-xl shadow-inner">
+                    <td colSpan={7} className="py-16 text-center h-full w-full justify-center items-center flex flex-col gap-4 bg-white/80 dark:bg-muted/40 rounded-xl shadow-inner">
                         <Spinner size="lg" />
                         <span className="text-lg text-blue-700 font-semibold">Getting your patients...</span>
                     </td>
@@ -119,7 +119,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, curr
         return (
             <tbody>
                 <tr>
-                    <td colSpan={7} className="py-16 text-center text-gray-500 bg-white/80 dark:bg-muted/40 rounded-xl shadow-inner">
+                    <td colSpan={7} className="py-16 h-full text-center text-gray-500 bg-white/80 dark:bg-muted/40 rounded-xl shadow-inner">
                         <MdWarning className="mx-auto text-3xl text-red-400 mb-2" />
                         <span className="block text-lg font-medium">No patients found.</span>
                     </td>
@@ -141,7 +141,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, curr
                 <tr
                     key={`${currentPage}-${patient?.userId}`}
                     ref={el => { rowRefs.current[idx] = el; }}
-                    onClick={() => router.push(`/doctor/patients/${patient?.userId}`)}
+                    onClick={() => router.push(`/doctor/patients/${patient?.$id}`)}
                     className={clsx(
                         "hover:bg-blue-50 dark:hover:bg-muted/30 cursor-pointer transition group outline-none",
                         idx % 2 === 0 ? "bg-white dark:bg-background" : "bg-gray-50 dark:bg-muted/20",

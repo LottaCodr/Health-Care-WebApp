@@ -10,8 +10,7 @@ import {
   FormMessage,
 } from './ui/form';
 import { FormFieldType } from './forms/PatientForm';
-import Image from 'next/image';
-import PhoneInput from 'react-phone-number-input';
+
 import DatePicker from 'react-datepicker';
 import {
   Select,
@@ -25,9 +24,39 @@ import { Checkbox } from './ui/checkbox';
 import 'react-phone-number-input/style.css';
 import 'react-datepicker/dist/react-datepicker.css';
 
-// Customized UI/UX styles
+// Import react-icons
+import { MdPerson, MdEmail, MdPhone, MdCalendarToday, MdWork, MdHome } from 'react-icons/md';
+import { FaPrayingHands } from "react-icons/fa";
+
+import { IconType } from 'react-icons';
+
+const ICON_MAP: Record<string, IconType> = {
+  '/assets/icons/user.svg': MdPerson,
+  '/assets/icons/email.svg': MdEmail,
+  '/assets/icons/phone.svg': MdPhone,
+  '/assets/icons/calendar.svg': MdCalendarToday,
+  '/assets/icons/religion.svg': FaPrayingHands,
+  '/assets/icons/work.svg': MdWork,
+  '/assets/icons/home.svg': MdHome,
+};
+
 const COMMON_CLASS =
-  'w-full rounded-xl bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-300 px-5 py-3 text-base focus:outline-none focus:ring-2 focus:ring-primary-600 transition-shadow shadow-md placeholder-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed focus:border-primary-600';
+  [
+    'w-full',
+    'rounded-xl',
+    // 'dark:from-gray-900 dark:via-gray-950 dark:to-gray-900',
+    'border border-gray-300 dark:border-gray-700',
+    'px-5 py-3',
+    'text-base',
+    'focus:outline-none',
+    'focus:ring-2 focus:ring-primary-600 focus:border-primary-600',
+    'hover:border-primary-500',
+    'active:ring-2 active:ring-primary-400',
+    'focus:shadow-lg',
+    'placeholder-gray-400 dark:placeholder-gray-500',
+    'disabled:bg-gray-100 dark:disabled:bg-gray-800',
+    'disabled:cursor-not-allowed',
+  ].join(' ')
 
 const LABEL_CLASS =
   'text-[16px] font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1 mb-2 tracking-wide';
@@ -36,7 +65,7 @@ const ERROR_CLASS =
   'text-xs text-red-600 mt-1 font-semibold';
 
 const ICON_CLASS =
-  'text-primary-400 dark:text-primary-300 drop-shadow-sm';
+  'text-primary-400 dark:text-primary-300 ';
 
 const FOCUS_RING =
   'focus:ring-2 focus:ring-primary-600 focus:border-primary-600';
@@ -51,7 +80,8 @@ const DISABLED_CLASS =
   'opacity-50 pointer-events-none';
 
 const FIELD_SHADOW =
-  'shadow focus:shadow-lg transition-shadow';
+  // 'shadow focus:shadow-lg transition-shadow'
+  '';
 
 interface CustomProps {
   control: any;
@@ -70,6 +100,13 @@ interface CustomProps {
   autoFocus?: boolean;
   required?: boolean;
 }
+
+const getIconComponent = (iconSrc?: string) => {
+  if (!iconSrc) return null;
+  const Icon = ICON_MAP[iconSrc];
+  if (Icon) return <Icon size={22} className={ICON_CLASS + " opacity-80"} aria-hidden="true" />;
+  return null;
+};
 
 const renderField = (field: any, props: CustomProps, inputId: string, fieldState: any, inputRef: any) => {
   const {
@@ -94,14 +131,7 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
         <div className="relative flex items-center group">
           {iconSrc && (
             <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <Image
-                src={iconSrc}
-                alt={iconAlt || 'icon'}
-                height={22}
-                width={22}
-                className={ICON_CLASS + " opacity-80"}
-                aria-hidden="true"
-              />
+              {getIconComponent(iconSrc)}
             </span>
           )}
           <FormControl>
@@ -139,21 +169,15 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
         <FormControl>
           <div className="relative flex items-center group">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <Image
-                src="/assets/icons/phone.svg"
-                alt="phone icon"
-                height={22}
-                width={22}
-                className={ICON_CLASS + " opacity-80"}
-                aria-hidden="true"
-              />
+              {getIconComponent('/assets/icons/phone.svg')}
             </span>
-            <PhoneInput
-              international
-              defaultCountry="NG"
-              value={field.value}
-              onChange={field.onChange}
+            <Input
+              {...field}
+              id={inputId}
+              ref={inputRef}
               placeholder={placeholder}
+              disabled={disabled}
+              required={required}
               className={[
                 COMMON_CLASS,
                 'pl-14',
@@ -165,13 +189,13 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
                 disabled ? DISABLED_CLASS : '',
                 'transition-all',
               ].join(' ')}
-              id={inputId}
-              disabled={disabled}
+              autoComplete="off"
               aria-label={props.label}
               aria-describedby={props.description ? `${inputId}-desc` : undefined}
               aria-invalid={!!error}
               aria-required={required}
               autoFocus={autoFocus}
+              type="tel"
             />
           </div>
         </FormControl>
@@ -277,14 +301,7 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
       return (
         <div className="relative flex items-center">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-            <Image
-              src="/assets/icons/calendar.svg"
-              height={22}
-              width={22}
-              alt="calendar icon"
-              className={ICON_CLASS + " opacity-80"}
-              aria-hidden="true"
-            />
+            {getIconComponent('/assets/icons/calendar.svg')}
           </span>
           <FormControl>
             <DatePicker
@@ -318,7 +335,6 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
 
     case FormFieldType.SKELETON:
       return renderSkeleton ? renderSkeleton(field) : null;
-
     default:
       return null;
   }

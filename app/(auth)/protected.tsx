@@ -2,8 +2,8 @@
 
 import { ReactNode, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { account } from "@/lib/appwrite.config";
-import { Models } from "appwrite";
+import supabase from "@/utils/supabase/client";
+
 
 const PUBLIC_ROUTES = ["/", "/staff"] as const;
 
@@ -11,8 +11,8 @@ const ROLE_DASHBOARD_MAP: Record<string, string> = {
   doctor: "/doctor/dashboard",
   nurse: "/nurse/dashboard",
   pharmacist: "/pharmacist/dashboard",
-  "lab-tech": "/lab-tech/dashboard",
-  "front-desk": "/front-desk/dashboard",
+  labtech: "/labtech/dashboard",
+  frontdesk: "/frontdesk/dashboard",
 };
 
 function getDashboardRoute(role?: string): string {
@@ -30,12 +30,14 @@ export default function ProtectedRedirect({ children }: { children: ReactNode })
   const hasRedirected = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
-
     async function checkAuthAndRedirect() {
-      try {
-        const user: Models.User<Models.Preferences> = await account.get();
-        const role = user?.prefs?.role;
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const role = (user.user_metadata as any)?.role; // Supabase custom claim
 
         // If on a public route, redirect authenticated user to their dashboard
         if (isPublicRoute(pathname)) {
@@ -45,8 +47,8 @@ export default function ProtectedRedirect({ children }: { children: ReactNode })
             router.replace(dashboardRoute);
           }
         }
-      } catch {
-        // If not authenticated and on a protected route, redirect to /staff
+      } else {
+        // Not authenticated and on a protected route → redirect to /staff (login)
         if (!isPublicRoute(pathname) && !hasRedirected.current) {
           hasRedirected.current = true;
           router.replace("/staff");
@@ -55,12 +57,7 @@ export default function ProtectedRedirect({ children }: { children: ReactNode })
     }
 
     checkAuthAndRedirect();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, router]);
 
   return <>{children}</>;
 }

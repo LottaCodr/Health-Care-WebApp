@@ -65,9 +65,9 @@ export default function ConsultationForm({
     // Primary color is red
     return (
         <section aria-labelledby="doctor-consultation">
-            <Card className="shadow-2xl rounded-3xl border bg-gradient-to-br from-white via-red-50 to-red-100 dark:from-background dark:to-muted/40">
+            <Card className="shadow-2xl rounded-3xl border dark:from-background dark:to-muted/40">
                 <CardHeader className="pb-6 border-b flex flex-col gap-2">
-                    <CardTitle id="doctor-consultation" className="text-3xl font-bold text-red-900 flex items-center gap-3">
+                    <CardTitle id="doctor-consultation" className="text-3xl font-bold text-black flex items-center gap-3">
                         <FaStethoscope className="text-red-700 text-2xl" /> Doctor's Consultation
                     </CardTitle>
                     <span className="text-gray-500 text-base font-normal">
@@ -195,12 +195,12 @@ export default function ConsultationForm({
                             </div>
                         </div>
 
-                        <div className="col-span-1 md:col-span-2 flex justify-end mt-8">
+                        <div className="w-full justify-center items-center h-18 mt-8">
                             <Button
                                 type="submit"
                                 onClick={onSubmit}
                                 disabled={loading}
-                                className="w-full md:w-auto text-white text-base px-10 py-3 rounded-2xl shadow-lg bg-gradient-to-r from-red-700 to-red-500 hover:from-red-800 hover:to-red-600 transition font-semibold tracking-wide"
+                                className="w-full md:w-full text-white text-base px-10 py-3 rounded-2xl shadow-lg bg-primary hover:from-red-800 hover:to-red-600 transition font-semibold tracking-wide"
                             >
                                 {loading ? (
                                     <span className="flex items-center gap-2">

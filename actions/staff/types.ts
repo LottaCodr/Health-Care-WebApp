@@ -1,17 +1,16 @@
 import { Patient } from "@/context/patients/types";
-import { Models } from "node-appwrite";
 
 
-export type StaffRole = "doctor" | "nurse" | "front-desk" | "pharmacist" | "lab-tech" | "user";
+export type StaffRole = "doctor" | "nurse" | "frontdesk" | "pharmacist" | "labtech" | "user";
 
-export interface Staff extends Models.Document {
-    staff_id: string;
+export interface Staff {
+    id: string;
     role: StaffRole;
-    phone_number: string;
-    department: string;
+    phone_number?: string;
+    department?: string;
     email: string;
-    full_name: string;
+    name: string;
     created_at: Date
-    patient: Patient[];
+    patient?: Patient[];
     status?: "active" | "inactive"
 }

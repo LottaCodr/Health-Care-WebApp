@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAllPatients } from '@/actions/patients/get.patients';
 
 import SearchInput from './search-input';
 import PatientsTableHeader from './table-header';
@@ -11,8 +10,10 @@ import { Patient, SortConfig } from '@/context/patients/types';
 
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users } from 'lucide-react';
+import { RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import { getAllPatients } from '@/actions/patients/patients';
 
 interface PatientProps {
     thePatients: Patient[];
@@ -84,7 +85,9 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     }, [search, sortConfig]);
 
     return (
-        <section className="relative max-w-6xl mx-auto px-2 md:px-6 py-10 space-y-8">
+        <section className="relative mx-auto w-full px-2 md:px-6 py-10 space-y-8">
+
+
 
             {/* Animate Top Progress Bar */}
             <AnimatePresence>
@@ -120,7 +123,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                         <Users size={22} />
                     </span>
                     <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                        Patients Directory
+                        List of Patients
                         {isFetching && !isPending && <Spinner size="sm" />}
                     </h2>
                     <span className="ml-2 text-muted-foreground text-sm hidden md:inline">
@@ -130,6 +133,18 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     <div className="flex-1 min-w-0 md:w-64">
                         <SearchInput value={search} onChange={setSearch} placeholder="Search by name..." />
+                    </div>
+
+                    {/* Add New Patient Button */}
+                    <div className="flex flex-1 min-w-0 md:w-64 justify-center mb-2">
+                        <Link href="/frontdesk/patient/new" passHref legacyBehavior>
+                            <Button asChild className="gap-2 rounded-xl text-white">
+                                <a>
+                                    <Plus size={18} />
+                                    Add New Patient
+                                </a>
+                            </Button>
+                        </Link>
                     </div>
                     <Button
                         variant="ghost"

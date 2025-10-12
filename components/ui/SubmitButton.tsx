@@ -20,7 +20,7 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
       type="submit"
       disabled={isLoading}
       aria-busy={isLoading}
-      className={className ?? 'w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-150 disabled:opacity-60'}
+      className={className ?? 'w-full bg-red-800 hover:bg-red-900 text-white py-2 px-4 rounded transition duration-150 disabled:opacity-60'}
     >
       {isLoading ? (
         <span className="flex items-center justify-center gap-2">

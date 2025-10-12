@@ -2,68 +2,25 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useCallback, useRef, useEffect } from "react";
-import { MdDashboard, MdEventNote, MdSupportAgent } from "react-icons/md";
+import { MdDashboard } from "react-icons/md";
 import { FiSettings } from "react-icons/fi";
 import { FaUserPlus, FaUserClock } from "react-icons/fa";
 
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { FrontDeskNavUser } from "./nav-user";
+import Image from "next/image";
+import { useAuth } from "@/context/auth-provider";
 
 // Dummy role + badge logic
-const getUserRole = () => "receptionist";
-const getAppointmentsBadge = () => 3;
-const getWaitingPatientsBadge = () => 5;
 
-// Navigation schema
-const data = {
-    user: {
-        name: "Codehagen",
-        email: "m@example.com",
-        avatar: "/avatars/shadcn.jpg",
-    },
-    navMain: [
-        { title: "Dashboard", url: "/front-desk/dashboard", icon: MdDashboard, roles: ["receptionist", "admin"] },
-        { title: "Register Patient", url: "/front-desk/register", icon: FaUserPlus, roles: ["receptionist"] },
-        {
-            title: "Appointment Booking",
-            url: "/front-desk/appointment-booking",
-            icon: MdEventNote,
-            roles: ["receptionist"],
-            badge: getAppointmentsBadge,
-        },
-        {
-            title: "Patient Queue",
-            url: "/front-desk/queue",
-            icon: FaUserClock,
-            roles: ["receptionist"],
-            badge: getWaitingPatientsBadge,
-        },
-        // {
-        //     title: "Patient Records",
-        //     url: "/front-desk/patient-records",
-        //     icon: AiOutlineFileAdd,
-        //     roles: ["receptionist", "nurse"],
-        // },
-        // {
-        //     title: "Visitors & Walk-ins",
-        //     url: "/front-desk/visitors",
-        //     icon: BsPeople,
-        //     roles: ["receptionist"],
-        // },
-    ],
-    navSecondary: [
-        { title: "Support", url: "/front-desk/support", icon: MdSupportAgent },
-        { title: "Settings", url: "/front-desk/settings", icon: FiSettings },
-    ],
-};
+
+
 
 type NavLinkProps = {
     title: string;
@@ -90,8 +47,8 @@ function NavLink({ title, url, Icon, isActive, badge, onNavigate }: NavLinkProps
         <button
             type="button"
             aria-current={isActive ? "page" : undefined}
-            className={`group flex items-center justify-between rounded-xl px-4 py-2 text-base font-semibold transition-all w-full
-        ${isActive ? "bg-gradient-to-r from-red-600 to-red-400 text-white font-bold shadow-xl scale-[1.04]" : "text-gray-700 hover:bg-red-50 hover:text-red-700"}
+            className={` flex items-center justify-between rounded-xl px-4 py-2 text-base font-semibold w-full
+        ${isActive ? "bg-primary text-white font-bold scale-[1.04]" : "text-gray-700 hover:bg-red-50 hover:text-primary"}
         focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2`}
             tabIndex={0}
             onClick={() => onNavigate && onNavigate(url)}
@@ -100,25 +57,18 @@ function NavLink({ title, url, Icon, isActive, badge, onNavigate }: NavLinkProps
         >
             <div className="flex items-center gap-3 min-w-0">
                 <span
-                    className={`flex items-center justify-center rounded-lg transition-colors
-                        ${isActive ? "bg-white/30" : "bg-gray-100 group-hover:bg-red-100"}
-                        w-9 h-9 shadow-sm`}
+                    className={`flex items-center justify-center rounded-lg
+                        ${isActive ? "bg-transparent" : "bg-gray-100 "}
+                        w-9 h-9`}
                 >
                     <Icon
-                        className={`w-6 h-6 transition-colors ${isActive ? "text-white" : "text-red-600 group-hover:text-red-700"}`}
+                        className={`w-6 h-6 transition-colors ${isActive ? "text-white" : "text-primary"}`}
                         aria-hidden="true"
                     />
                 </span>
                 <span className="truncate text-base">{title}</span>
             </div>
-            {badge !== undefined && badge > 0 && (
-                <span
-                    className="ml-2 flex items-center justify-center rounded-full bg-gradient-to-tr from-red-500 to-red-400 px-2 py-0.5 text-xs font-bold text-white shadow-lg animate-bounce"
-                    aria-label={`${badge} new ${title.toLowerCase()}`}
-                >
-                    {badge}
-                </span>
-            )}
+
         </button>
     );
 }
@@ -126,29 +76,86 @@ function NavLink({ title, url, Icon, isActive, badge, onNavigate }: NavLinkProps
 export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
     const router = useRouter();
-    const role = getUserRole();
-    const sidebarRef = useRef<HTMLDivElement>(null);
+    const user = useAuth()
+    const getUserRole = user?.user?.role ?? "";
+
+
+
+    // role-based navigation schema
+    const navConfig: Record<
+        string,
+        {
+            navMain: { title: string; url: string; icon: React.ElementType; badge?: () => number }[];
+            navSecondary: { title: string; url: string; icon: React.ElementType }[];
+        }
+    > = {
+        frontdesk: {
+            navMain: [
+                { title: "Dashboard", url: "/frontdesk/dashboard", icon: MdDashboard },
+                { title: "Patients", url: "/frontdesk/patient", icon: FaUserPlus },
+                {
+                    title: "Payments",
+                    url: "/frontdesk/queue",
+                    icon: FaUserClock,
+                    badge: () => 0, // dynamic badge
+                },
+            ],
+            navSecondary: [
+                // { title: "Support", url: "/frontdesk/support", icon: MdSupportAgent },
+                { title: "Settings", url: "/frontdesk/settings", icon: FiSettings },
+            ],
+        },
+
+        doctor: {
+            navMain: [
+                { title: "Dashboard", url: "/doctor/dashboard", icon: MdDashboard },
+                { title: "Patients", url: "/doctor/patients", icon: FaUserPlus },
+                { title: "Reports", url: "/doctor/reports", icon: FaUserClock },
+            ],
+            navSecondary: [
+                // { title: "Support", url: "/doctor/support", icon: MdSupportAgent },
+                { title: "Settings", url: "/doctor/settings", icon: FiSettings },
+            ],
+        },
+
+        admin: {
+            navMain: [
+                { title: "Dashboard", url: "/admin/dashboard", icon: MdDashboard },
+                { title: "Users", url: "/admin/users", icon: FaUserPlus },
+                { title: "Reports", url: "/admin/reports", icon: FaUserClock },
+            ],
+            navSecondary: [
+                // { title: "Support", url: "/admin/support", icon: MdSupportAgent },
+                { title: "Settings", url: "/admin/settings", icon: FiSettings },
+            ],
+        },
+    };
+
+    const { navMain: roleNavMain, navSecondary: roleNavSecondary } =
+        (getUserRole && navConfig[getUserRole])
+            ? navConfig[getUserRole]
+            : { navMain: [], navSecondary: [] };
+    const getWaitingPatientsBadge = () => 5; const sidebarRef = useRef<HTMLDivElement>(null);
 
     // Memoize navigation data for performance
+    // Show all navMain items (make the navMain titles display)
     const navMain = useMemo(
         () =>
-            data.navMain
-                .filter((item) => item.roles.includes(role))
-                .map((item) => ({
-                    ...item,
-                    isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
-                    badge: item.badge?.(),
-                })),
-        [pathname, role]
+            roleNavMain.map((item) => ({
+                ...item,
+                isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
+                badge: item.badge?.(),
+            })),
+        [pathname, getUserRole]
     );
 
     const navSecondary = useMemo(
         () =>
-            data.navSecondary.map((item) => ({
+            roleNavSecondary.map((item) => ({
                 ...item,
                 isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
             })),
-        [pathname]
+        [pathname, getUserRole]
     );
 
     // Navigation handler for better SPA experience
@@ -181,7 +188,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
         <>
             <a
                 href={`#${skipLinkId}`}
-                className="sr-only focus:not-sr-only absolute top-2 left-2 z-50 bg-white dark:bg-gray-900 text-red-700 dark:text-red-200 font-bold px-4 py-2 rounded shadow transition"
+                className="sr-only focus:not-sr-only absolute top-2 left-2 z-50 bg-white dark:bg-gray-900 text-black dark:text-red-200 font-bold px-4 py-2 rounded shadow transition"
                 tabIndex={0}
             >
                 Skip to main content
@@ -192,24 +199,24 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 variant="inset"
                 {...props}
                 aria-label="Sidebar for Front Desk Staff"
-                className="bg-gradient-to-b from-white via-red-50 to-red-100 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 border-r border-red-200 dark:border-gray-800 shadow-2xl min-h-screen"
+                className="dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 border-r border-gray-200 dark:border-gray-800 min-h-screen"
             >
                 <SidebarHeader>
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <SidebarMenuButton size="lg" asChild>
+                            <SidebarMenuButton size="sm" asChild>
                                 <button
                                     type="button"
                                     onClick={() => handleNavigate("/front-desk/dashboard")}
-                                    className="flex items-center gap-3 rounded-2xl p-3 bg-gradient-to-r from-red-600 to-red-400 dark:from-red-900 dark:to-red-700 shadow-lg hover:from-red-700 hover:to-red-500 dark:hover:from-red-800 dark:hover:to-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all w-full"
+                                    className="items-center gap-3 rounded-2xl p-6 dark:from-red-900 dark:to-primary hover:from-red-700 hover:to-red-500 dark:hover:from-red-800 dark:hover:to-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all w-full h-auto"
                                     aria-label="Nile Hospital Homepage"
                                 >
-                                    <div className="flex w-12 h-12 items-center justify-center rounded-2xl bg-white/30 dark:bg-gray-800 text-white shadow-lg">
-                                        <MdDashboard className="w-7 h-7" />
+                                    <div className="flex w-fit h-fit items-center justify-center rounded-full dark:bg-gray-800 text-black">
+                                        <Image src="/assets/icons/nilelogo.jpeg" alt="Logo" width={66} height={66} className="h-14 w-auto" priority />
                                     </div>
-                                    <div className="leading-tight text-left">
-                                        <span className="block font-extrabold text-xl text-white drop-shadow">Nile Mother & Child</span>
-                                        <span className="block text-xs text-white/80 tracking-wide">Hospital</span>
+                                    <div className=" text-left">
+                                        <span className="block font-extrabold text-xl text-primary">Nile Mother & Child</span>
+                                        <span className="block text-xs text-grey-300 tracking-wide">Hospital</span>
                                     </div>
                                 </button>
                             </SidebarMenuButton>
@@ -219,9 +226,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
 
                 <SidebarContent className="flex flex-col">
                     <nav aria-label="Primary Navigation" className="flex flex-col gap-2 px-3 pt-8">
-                        <span className="text-xs font-semibold text-red-500 dark:text-red-300 uppercase tracking-widest px-2 pb-1 select-none">
-                            Main
-                        </span>
+
                         {navMain.map(({ title, url, icon, isActive, badge }) => (
                             <NavLink
                                 key={url}
@@ -235,12 +240,10 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                         ))}
                     </nav>
 
-                    <div className="my-6 border-t border-red-200 dark:border-gray-800" />
+                    {/* <div className="my-6 border-t border-black dark:border-gray-800" /> */}
 
                     <nav aria-label="Secondary Navigation" className="flex flex-col gap-2 px-3 pb-8">
-                        <span className="text-xs font-semibold text-red-400 dark:text-red-500 uppercase tracking-widest px-2 pb-1 select-none">
-                            More
-                        </span>
+
                         {navSecondary.map(({ title, url, icon, isActive }) => (
                             <NavLink
                                 key={url}
@@ -254,17 +257,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                     </nav>
                 </SidebarContent>
 
-                <SidebarFooter>
-                    <div className="px-4 py-4 border-t border-red-100 dark:border-gray-800 bg-gradient-to-t from-red-50/80 dark:from-gray-900/80 to-transparent">
-                        <FrontDeskNavUser user={data.user} />
-                        <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 text-center">
-                            <span>
-                                <kbd className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs font-mono text-gray-700 dark:text-gray-200">Alt</kbd>
-                                +<kbd className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs font-mono text-gray-700 dark:text-gray-200">S</kbd> to focus sidebar
-                            </span>
-                        </div>
-                    </div>
-                </SidebarFooter>
+
             </Sidebar>
         </>
     );

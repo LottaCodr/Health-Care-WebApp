@@ -85,7 +85,7 @@ class AuthService {
 
       // Create secure session
       const session = createSecureSession(user.$id, role);
-      this.sessions.set(session.sessionId, session);
+      this.sessions.set(session.sessionId, session as SessionData);
 
       // Update user preferences
       await account.updatePrefs({ role });
@@ -178,7 +178,7 @@ class AuthService {
 
       logSecurityEvent('LOGOUT_SUCCESS', { sessionId });
     } catch (error) {
-      logSecurityEvent('LOGOUT_ERROR', { error: error.message });
+      logSecurityEvent('LOGOUT_ERROR', { error: error });
       console.error('Logout error:', error);
     }
   }

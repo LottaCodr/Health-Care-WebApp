@@ -31,3 +31,23 @@ export function formatTime(time: string, format: "12h" | "24h" = "12h"): string 
         hour12: format === "12h",
     });
 }
+
+export function getInitials(name: string): string {
+    return name.split(" ").map((n) => n[0]).join("");
+}
+
+export function calculateAge(birthDate: string): number {
+    const today = new Date();
+    const userDob = new Date(birthDate);
+
+    let age = today.getFullYear() - userDob.getFullYear();
+    let month = today.getMonth() - userDob.getMonth();
+    let day = today.getDay() - userDob.getDay();
+
+    //if birthday has not happened this year 
+    if (month < 0 || (month === 0 && today.getDate() < userDob.getDate())) {
+        age--;
+    }
+
+    return age;
+}

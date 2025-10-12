@@ -1,32 +1,59 @@
-export const GenderOptions = ["Male", "Female", "Other"];
-import { Gender } from "@/types";
-import { StaffRole } from "@/types/appwrite.types";
+export const GenderOptions = ["Male", "Female"];
+export const CovidVaccinationOptions = ['Yes', "No"];
+import { StaffRole } from "@/actions/staff/types";
+import { Patient, PatientStatus } from "@/context/patients/types";
 
 
-export const PatientFormDefaultValues = {
-  firstName: "",
-  lastName: "",
+export const PatientFormDefaultValues: Patient = {
+  // System fields
+  $id: '',
+  $createdAt: '',
+  $updatedAt: '',
+
+  // Step 1: Personal Information
+  name: "",
+  religion: "",
   email: "",
   phone: "",
-  birthDate: new Date(Date.now()),
-  gender: "Male" as Gender,
-  address: "",
+  birth_date: new Date(Date.now()),
+  gender: "Male",
   occupation: "",
+  address: "",
+
+  // Step 2: Emergency Contact
   emergencyContactName: "",
   emergencyContactNumber: "",
-  primaryPhysician: "",
-  insuranceProvider: "",
-  insurancePolicyNumber: "",
+  emergencyContactRelationship: "",
+  emergencyContactEmail: "",
+  emergencyContactAddress: "",
+
+  // Step 3: General Medical History
   allergies: "",
-  currentMedication: "",
-  familyMedicalHistory: "",
-  pastMedicalHistory: "",
-  identificationType: "Birth Certificate",
-  identificationNumber: "",
-  identificationDocument: [],
-  treatmentConsent: false,
-  disclosureConsent: false,
-  privacyConsent: false,
+  // currentMedication: "",
+  significantMedicationHistory: "",
+  longTermMedication: "",
+  covidVaccinationOptions: "No",
+  bloodGroup: "",
+  genoType: "",
+
+  // Step 4: Medical Insurance Detail
+  policyNumber: "",
+  hmo: false,
+  hmoName: "",
+  company: false,
+  companyName: "",
+  privateClient: false,
+
+  // Other required fields
+  status: "active" as PatientStatus, // ⚡ adjust depending on your PatientStatus enum
+  userId: "",
+
+  // Optional fields
+  notes: "",
+  symptoms: "",
+  diagnosis: "",
+  prescriptions: "",
+  recommendations: "",
 };
 
 export const IdentificationTypes = [
@@ -91,10 +118,10 @@ export const StatusIcon = {
 
 export const ROLE_ROUTES: Record<StaffRole, string> = {
   doctor: "/doctor/dashboard",
-  "lab-tech": "/lab-tech/dashboard",
+  labtech: "/lab-tech/dashboard",
   nurse: "/nurse/dashboard",
   pharmacist: "/pharmacist/dashboard",
-  "front-desk": "/front-desk/dashboard",
+  frontdesk: "/front-desk/dashboard",
   user: "/staff",
 
 };

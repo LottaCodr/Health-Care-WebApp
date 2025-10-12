@@ -92,7 +92,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                 <MdHistory size={90} className="text-red-400 mb-4 animate-bounce" />
                 <span className="text-center text-red-600 text-lg font-semibold">Failed to load consultations.</span>
                 <Button
-                    className="mt-6 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow"
+                    className="mt-6 bg-primary hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow"
                     onClick={() => queryClient.invalidateQueries({ queryKey: ["consultations", patientId] })}
                 >
                     Retry
@@ -115,7 +115,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                         const formSection = document.getElementById("doctor-consultation");
                         if (formSection) formSection.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className="text-white bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 px-7 py-3 rounded-2xl shadow-lg text-lg transition font-semibold"
+                    className="text-white bg-primary hover:scale-105 hover:shadow-xl px-7 py-3 rounded-2xl shadow-lg text-lg transition-all duration-200 font-semibold focus:ring-2 focus:ring-red-400"
                 >
                     Add First Consultation
                 </Button>

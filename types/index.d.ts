@@ -5,7 +5,7 @@ export type SearchParamProps = {
   searchParams: { [key: string]: string | string[] | undefined };
 };
 
-declare type Gender = "Male" | "Female" | "Other";
+declare type Gender = "Male" | "Female";
 declare type Status = "pending" | "scheduled" | "cancelled";
 
 declare interface CreateUserParams {
@@ -17,25 +17,53 @@ declare interface User extends CreateUserParams {
   $id: string;
 }
 
+declare type CovidVaccinationOptions = "Yes" | "No";
+
 declare interface RegisterUserParams extends CreateUserParams {
-  // userId: string;
+  // Step 1: Personal Information
+  name: string;
+  religion: string;
+  email: string;
+  phone: string;
   birthDate: Date;
   gender: Gender;
-  address: string;
   occupation: string;
+  address: string;
+
+  // Step 2: Emergency Contact
   emergencyContactName: string;
   emergencyContactNumber: string;
-  primaryPhysician: string;
-  insuranceProvider?: string;
-  insurancePolicyNumber?: string;
-  allergies?: string | undefined;
-  currentMedication?: string | undefined;
-  familyMedicalHistory?: string | undefined;
-  pastMedicalHistory?: string | undefined;
-  identificationType?: string | undefined;
-  identificationNumber?: string | undefined;
-  identificationDocument?: FormData | undefined;
-  privacyConsent: boolean;
+  emergencyContactRelationship: string;
+  emergencyContactEmail: string;
+  emergencyContactAddress: string;
+
+  // Step 3: General Medical History
+  allergies: string;
+  // currentMedication?: string;
+  significantMedicationHistory: string;
+  longTermMedication: string;
+  covidVaccinationOptions: CovidVaccinationOptions;
+  bloodGroup: string;
+  genoType: string;
+
+  // Step 4: Medical Insurance Detail
+  policyNumber: string;
+  hmo: boolean;
+  hmoName: string;
+  company: boolean;
+  companyName: string;
+  privateClient: boolean;
+
+  // System-level
+  status?: PatientStatus;
+  userId: string; // Creator (front desk staff)
+  notes?: string;
+
+  // Optional consultation fields
+  symptoms?: string;
+  diagnosis?: string;
+  prescriptions?: string;
+  recommendations?: string;
 }
 
 

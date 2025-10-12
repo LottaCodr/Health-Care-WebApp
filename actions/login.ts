@@ -1,48 +1,48 @@
-// app/actions/login.ts
-"use server";
+'use server'
 
-import { account, databases } from "@/lib/appwrite.config";
-import { ID, Query } from "appwrite";
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 
-export interface Role {
-    role: "doctor" | "lab-tech" | "admin" | "nurse" | "pharmacist";
+import { createClient } from '@/utils/supabase/server'
+
+export async function login(formData: FormData) {
+    const supabase = await createClient()
+
+    // type-casting here for convenience
+    // in practice, you should validate your inputs
+    const data = {
+        email: formData.get('email') as string,
+        password: formData.get('password') as string,
+    }
+
+    console.log('login data: ', data)
+
+    const { error } = await supabase.auth.signInWithPassword(data)
+
+    if (error) {
+        redirect('/error')
+    }
+
+    revalidatePath('/', 'layout')
+    redirect('/')
 }
 
-export const loginStaff = async (
-    email: string,
-    password: string
-): Promise<{
-    success: boolean;
-    message: string;
-    role?: Role;
-}> => {
-    try {
-        const session = await account.createSession(email, password);
+export async function signup(formData: FormData) {
+    const supabase = await createClient()
 
-        const user = await account.get();
-
-        const staffData = await databases.listDocuments(
-            "your_database_id",     // replace with your actual DB ID
-            "your_staff_collection", // replace with your collection ID
-            [Query.equal("email", user.email)]
-        );
-
-        if (staffData.documents.length === 0) {
-            throw new Error("Staff record not found.");
-        }
-
-        const doc = staffData.documents[0];
-        const role = doc.role as Role["role"];
-
-        return {
-            success: true,
-            message: "Login successful",
-            role: { role },
-        };
-    } catch (error: any) {
-        return {
-            success: false,
-            message: error.message ?? "Login failed",
-        };
+    // type-casting here for convenience
+    // in practice, you should validate your inputs
+    const data = {
+        email: formData.get('email') as string,
+        password: formData.get('password') as string,
     }
-};
+
+    const { error } = await supabase.auth.signUp(data)
+
+    if (error) {
+        redirect('/error')
+    }
+
+    revalidatePath('/', 'layout')
+    redirect('/')
+}
