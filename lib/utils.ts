@@ -94,3 +94,32 @@ export function getGreeting() {
   if (hour < 18) return "Good afternoon";
   return "Good evening";
 }
+
+export function calculateAge(dob: string | Date): number {
+  let birthDate: Date;
+
+  if (typeof dob === "string") {
+    // Support both 'YYYY-MM-DD' and ISO format strings
+    if (!dob.includes("T")) {
+      dob = `${dob}T00:00:00`;
+    }
+    birthDate = new Date(dob);
+  } else {
+    birthDate = dob;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+
+  // Adjust age if birthday not reached yet this year
+  const thisYearBirthday = new Date(
+    today.getFullYear(),
+    birthDate.getMonth(),
+    birthDate.getDate()
+  );
+  if (today < thisYearBirthday) {
+    age--;
+  }
+
+  return age;
+}

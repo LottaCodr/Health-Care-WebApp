@@ -40,12 +40,13 @@ export default function PatientDetailsComponent({ patient }: Props) {
     const { state: consultationState, dispatch: consultationDispatch } = useConsultationContext();
     const { user } = useAuth();
 
-    const currentDoctorId = user?.$id;
+    const currentDoctorId = user?.id;
 
     const { data: staff = [], isPending, isError, refetch } = useQuery({
         queryKey: ["staffs"],
         queryFn: getAllStaffs,
     });
+
 
     const [selectedStaffId, setSelectedStaffId] = useState<string | undefined>(undefined);
     const [formError, setFormError] = useState<string | null>(null);
@@ -162,11 +163,11 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
             // Update patient status only if changed
             if (patientState.status !== patient.status) {
-                await databases.updateDocument(databaseId, patientCollectionId, patient.$id!, { status: patientState.status });
+                await databases.updateDocument(databaseId, patientCollectionId, patient.id!, { status: patientState.status });
             }
 
             await createConsultation({
-                patientId: patient.$id!,
+                patientId: patient.id!,
                 doctorId: currentDoctorId!,
                 symptom: consultationState.symptoms,
                 diagnosis: consultationState.diagnosis,
@@ -177,7 +178,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 referredTo: consultationState.referredTo,
             });
 
-            const selectedStaff = staff.find((s) => s.$id === selectedStaffId);
+            const selectedStaff = staff.find((s) => s.id === selectedStaffId);
 
             if (!selectedStaff) {
                 setFormError("Selected staff not found.");
@@ -193,7 +194,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
             if (role === "nurse") {
                 await assignNurse({
-                    patientId: patient.$id!,
+                    patientId: patient.id!,
                     nurseId: selectedStaffId!,
                     doctorInstructions: consultationState.recommendations,
                     prescribedMedication: consultationState.prescriptions,
@@ -203,7 +204,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
             } else if (role === "pharmacist") {
                 console.log("assigning pharmacist", selectedStaffId);
                 await assignPharmacist({
-                    patientId: patient.$id!,
+                    patientId: patient.id!,
                     pharmacyId: selectedStaffId!,
                     doctorInstructions: consultationState.recommendations,
                     doctorPrescription: consultationState.prescriptions,
@@ -212,7 +213,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 });
             } else if (role === "lab-tech") {
                 await assignLabTech({
-                    patientId: patient.$id!,
+                    patientId: patient.id!,
                     labTechId: selectedStaffId!,
                     doctorInstructions: consultationState.recommendations,
                     doctorMedications: consultationState.prescriptions,
@@ -221,8 +222,6 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     testResults: "",
                     // status: "awaitingPayment",
                     // updatedAt: new Date().toISOString(),
-
-
                 });
             } else {
                 setFormError("The selected staff does not have a valid role for this action.");
@@ -302,7 +301,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
         consultationState.symptoms,
         currentDoctorId,
         getMissingFields,
-        patient.$id,
+        patient.id,
         patient.status,
         patientState.status,
         scrollToFirstError,
@@ -328,13 +327,13 @@ export default function PatientDetailsComponent({ patient }: Props) {
     }, []);
 
     if (isPending || consultationState.loading) return <PatientDetailsSkeleton />;
-    if (isError) return (
-        <ErrorMessage
-            message="Failed to load staff list."
-            actionLabel="Retry"
-            onAction={handleRefresh}
-        />
-    );
+    // if (isError) return (
+    //     <ErrorMessage
+    //         message="Failed to load staff list."
+    //         actionLabel="Retry"
+    //         onAction={handleRefresh}
+    //     />
+    // );
     if (!patientState.patient || !patientState.patient.length) return (
         <ErrorMessage
             message="Patient not found."
@@ -346,25 +345,20 @@ export default function PatientDetailsComponent({ patient }: Props) {
     const currentPatient = patientState.patient[0];
 
     return (
-        <main className="max-w-full mx-auto px-2 md:px-6 py-10 space-y-10">
-            <div className="flex flex-col md:flex-row gap-8">
-                <div className="w-full md:w-1/2">
-                    <PatientProfile
-                        patient={currentPatient}
-                        status={patientState.status}
-                        onCopyId={() => handleCopyId(currentPatient.$id!)}
-                        showCopied={showCopied}
-                    />
-                </div>
-                <div className="w-full md:w-1/2">
-                    <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background h-full flex flex-col">
-                        <ConsultationHistoryTable patientId={currentPatient.$id!} />
-                    </Card>
-                </div>
+        <main className="max-w-full px-2 md:px-6 py-10 space-y-10">
+            <div className="w-full">
+                <PatientProfile
+                    patient={currentPatient}
+                    status={patientState.status}
+                    onCopyId={() => handleCopyId(currentPatient.id!)}
+                    showCopied={showCopied}
+                />
+
+
             </div>
 
             <PatientDetailTabs />
-            
+            {user?.role === "doctor" ? 
             <div>
                 <Card className="shadow-lg rounded-2xl border bg-white dark:bg-background">
                     <CardHeader className="pb-2 border-b flex items-center justify-between">
@@ -393,6 +387,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                                 <span>{successMessage}</span>
                             </div>
                         )}
+
                         <ConsultationForm
                             symptoms={consultationState.symptoms}
                             diagnosis={consultationState.diagnosis}
@@ -411,10 +406,11 @@ export default function PatientDetailsComponent({ patient }: Props) {
                             selectedStaffId={selectedStaffId}
                             availableStaff={availableStaff}
                             onStaffSelect={setSelectedStaffId}
-                        />
+                        /> 
+
                     </CardContent>
                 </Card>
-            </div>
+                </div> : ('')}
         </main>
     );
 }
@@ -569,10 +565,26 @@ function PatientProfile({
                     <div className="mb-6">
                         <h3 className="text-lg font-semibold text-gray-600 mb-2">Personal Information</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-                            {renderInfo("Patient ID", <MdAssignment className="text-blue-400" />, patientData.$id, profileFields.find(f => f.key === "$id")?.render)}
+                            {renderInfo(
+                                "Patient ID",
+                                <MdAssignment className="text-blue-400" />,
+                                patientData.id,
+                                (val: any, onCopyId?: () => void, showCopied?: boolean) => {
+                                    // Should use the "$id" key for the renderer, not "id"
+                                    const idField = profileFields.find(f => f.key === "$id");
+                                    if (typeof idField?.render === "function") {
+                                        return idField.render(val, onCopyId, !!showCopied);
+                                    }
+                                    return val;
+                                }
+                            )}
                             {renderInfo("Name", <FaUserMd className="text-blue-700" />, patientData.name)}
                             {renderInfo("Gender", <BsGenderAmbiguous className="text-pink-500" />, patientData.gender)}
-                            {renderInfo("Birth Date", <MdAssignment className="text-blue-700" />, patientData.birth_date ? new Date(patientData.birth_date).toLocaleDateString() : "Not provided")}
+                            {renderInfo(
+                                "Birth Date",
+                                <MdAssignment className="text-blue-700" />,
+                                patientData.birth_date ? new Date(patientData.birth_date).toLocaleDateString() : "Not provided"
+                            )}
                             {renderInfo("Religion", <MdAssignment className="text-blue-700" />, patientData.religion)}
                             {renderInfo("Occupation", <MdWork className="text-gray-600" />, patientData.occupation)}
                             {renderInfo("Address", <MdLocationOn className="text-green-600" />, patientData.address)}
@@ -625,7 +637,18 @@ function PatientProfile({
                         <h3 className="text-lg font-semibold text-gray-600 mb-2">Status & Notes</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
                             {renderInfo("Current Status", <MdAssignment className="text-blue-700" />, status)}
-                            {renderInfo("Note", <MdNote className="text-gray-700" />, patientData.notes, profileFields.find(f => f.key === "notes")?.render)}
+                            {renderInfo(
+                                "Note",
+                                <MdNote className="text-gray-700" />,
+                                patientData.notes,
+                                (val: any, onCopyId?: () => void, showCopied?: boolean) => {
+                                    const notesField = profileFields.find(f => f.key === "notes");
+                                    if (notesField && typeof notesField.render === "function") {
+                                        return notesField.render(val, onCopyId, !!showCopied);
+                                    }
+                                    return val;
+                                }
+                            )}
                         </div>
                     </div>
                 </CardContent>

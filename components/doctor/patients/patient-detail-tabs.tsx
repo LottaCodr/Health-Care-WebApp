@@ -7,6 +7,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FaPills, FaFlask, FaCalendarAlt, FaNotesMedical } from "react-icons/fa";
 import { MdOutlineEventNote } from "react-icons/md";
 import ConsultationHistoryTable from "./consultation-history";
+import VitalsAdCheckInComponent from "@/components/nurse/component/vitals-checkin";
+import PrescriptionDetails from "./prescription-details";
+import PrescriptionHistory from "./prescription-history";
 
 export default function PatientDetailTabs() {
     const [tab, setTab] = useState("overview");
@@ -23,12 +26,20 @@ export default function PatientDetailTabs() {
                     <span className="hidden sm:inline">Overview</span>
                 </TabsTrigger>
                 <TabsTrigger
-                    value="appointments"
+                    value="vitals-recording"
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/70 data-[state=active]:bg-primary text-primary data-[state=active]:text-white data-[state=active]:shadow data-[state=active]:font-bold data-[state=active]:scale-105`}
-                    aria-label="Appointments"
+                    aria-label="vitals-recording"
                 >
                     <FaCalendarAlt className="text-lg" />
-                    <span className="hidden sm:inline">Appointments</span>
+                    <span className="hidden sm:inline">Vitals Recording</span>
+                </TabsTrigger>
+                <TabsTrigger
+                    value="consultations"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-primary transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/70 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow data-[state=active]:font-bold data-[state=active]:scale-105`}
+                    aria-label="Notes"
+                >
+                    <FaNotesMedical className="text-lg" />
+                    <span className="hidden sm:inline">Consultations</span>
                 </TabsTrigger>
                 <TabsTrigger
                     value="prescriptions"
@@ -45,14 +56,6 @@ export default function PatientDetailTabs() {
                 >
                     <FaFlask className="text-lg" />
                     <span className="hidden sm:inline">Lab Results</span>
-                </TabsTrigger>
-                <TabsTrigger
-                    value="consultations"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-primary transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/70 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow data-[state=active]:font-bold data-[state=active]:scale-105`}
-                    aria-label="Notes"
-                >
-                    <FaNotesMedical className="text-lg" />
-                    <span className="hidden sm:inline">Consultations</span>
                 </TabsTrigger>
             </TabsList>
 
@@ -95,27 +98,35 @@ export default function PatientDetailTabs() {
             </TabsContent>
 
             {/* Appointments Tab */}
-            <TabsContent value="appointments">
+            <TabsContent value="vitals-recording">
                 <Card className=" text-black">
                     <CardHeader>
-                        <CardTitle>Appointments</CardTitle>
+                        <CardTitle>Vitals Recording</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-black">No upcoming appointments.</div>
+                        {/* <div className="text-black">No vitals recording yet.</div> */}
+                        <VitalsAdCheckInComponent />
                     </CardContent>
                 </Card>
             </TabsContent>
 
             {/* Prescriptions Tab */}
             <TabsContent value="prescriptions">
-                <Card className=" text-black">
-                    <CardHeader>
+                {/* <Card className=" text-black"> */}
+                    {/* <CardHeader>
                         <CardTitle>Prescriptions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-gray-400">No active prescriptions.</div>
+                    </CardHeader> */}
+                    <CardContent className="pt-0">
+                        <div className="grid justify-center h-full grid-cols-1 md:grid-cols-2 gap-8 w-full items-start">
+                            <div>
+                                <PrescriptionDetails />
+                            </div>
+                            <div>
+                                <PrescriptionHistory />
+                            </div>
+                        </div>
                     </CardContent>
-                </Card>
+                {/* </Card> */}
             </TabsContent>
 
             {/* Lab Results Tab */}

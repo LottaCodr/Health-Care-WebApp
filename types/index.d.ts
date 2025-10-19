@@ -19,44 +19,44 @@ declare interface User extends CreateUserParams {
 
 declare type CovidVaccinationOptions = "Yes" | "No";
 
-declare interface RegisterUserParams extends CreateUserParams {
+interface RegisterUserParams {
   // Step 1: Personal Information
   name: string;
   religion: string;
   email: string;
   phone: string;
-  birthDate: Date;
+  birth_date: Date;
   gender: Gender;
   occupation: string;
   address: string;
 
   // Step 2: Emergency Contact
-  emergencyContactName: string;
-  emergencyContactNumber: string;
-  emergencyContactRelationship: string;
-  emergencyContactEmail: string;
-  emergencyContactAddress: string;
+  emergency_contact_name: string;
+  emergency_contact_number: string;
+  emergency_contact_relationship: string;
+  emergency_contact_email: string;
+  emergency_contact_address: string;
 
   // Step 3: General Medical History
   allergies: string;
-  // currentMedication?: string;
-  significantMedicationHistory: string;
-  longTermMedication: string;
-  covidVaccinationOptions: CovidVaccinationOptions;
-  bloodGroup: string;
-  genoType: string;
+  // current_medication?: string; // dropped
+  significant_medication_history: string;
+  long_term_medication: string;
+  covid_vaccination_options: CovidVaccinationOptions;
+  blood_group: string;
+  geno_type: string;
 
   // Step 4: Medical Insurance Detail
-  policyNumber: string;
+  policy_number: string;
   hmo: boolean;
-  hmoName: string;
+  hmo_name: string;
   company: boolean;
-  companyName: string;
-  privateClient: boolean;
+  company_name: string;
+  private_client: boolean;
 
   // System-level
   status?: PatientStatus;
-  userId: string; // Creator (front desk staff)
+  user_id: string; // Creator (front desk staff)
   notes?: string;
 
   // Optional consultation fields
@@ -65,6 +65,7 @@ declare interface RegisterUserParams extends CreateUserParams {
   prescriptions?: string;
   recommendations?: string;
 }
+
 
 
 

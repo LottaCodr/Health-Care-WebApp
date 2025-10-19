@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import supabase from "@/utils/supabase/client";
 import { Staff } from "@/actions/staff/types";
 import { fetchStaffProfile } from "@/actions/staff/staff";
+import { useRouter } from "next/navigation";
 
 interface AuthContextType {
     user: Staff | null;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<Staff | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const redirect = useRouter()
 
     useEffect(() => {
         // Check initial session
@@ -95,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         await supabase.auth.signOut();
         setUser(null);
+        redirect.replace('/staff')
     };
 
     const value = useMemo(

@@ -15,8 +15,8 @@ export type PatientStatus =
     | 'no-status';
 
 export interface Patient {
-    $id?: string; // Important: Appwrite adds this as a unique identifier
-    $createdAt?: string;
+    id?: string; // Important: Appwrite adds this as a unique identifier
+    created_at?: string;
     $updatedAt?: string;
 
     // Step 1: Personal Information

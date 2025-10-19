@@ -5,11 +5,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { FaUserDoctor, FaUserNurse, FaWallet, FaHospitalUser } from 'react-icons/fa6';
 
-import { getAllPatients } from '@/actions/patients/get.patients';
+import { getAllPatients } from '@/actions/front-desk/get.patients';
 import { fetchAppointments } from '@/actions/appointments/appointment.action';
 import { NurseDashboardCard } from './card';
 import { useAuth } from '@/context/auth-provider';
 import { Card, CardContent } from '@/components/ui/card';
+import { Patient } from '@/context/patients/types';
 
 const personalizedGreeting = () => {
     const hour = new Date().getHours();
@@ -176,20 +177,26 @@ export default function FrontDeskDashboardComponent() {
                             </tr>
                         </thead>
                         <tbody>
-                            {allPatients.map((patient: any) => (
+                            {allPatients.map((patient: Patient) => (
                                 <tr key={patient.id}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                         {patient.name}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        {patient.birth_date || 'N/A'}
+                                        {patient.birth_date
+                                            ? typeof patient.birth_date === 'string'
+                                                ? patient.birth_date
+                                                : patient.birth_date instanceof Date
+                                                    ? patient.birth_date.toLocaleDateString()
+                                                    : 'N/A'
+                                            : 'N/A'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {patient.gender || 'N/A'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                                            Active
+                                            {patient.status}
                                         </span>
                                     </td>
                                 </tr>

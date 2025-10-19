@@ -34,6 +34,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
     const queryClient = useQueryClient();
     const carouselRef = useRef<HTMLDivElement>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const { user } = useAuth()
 
     const { data, isPending, isError } = useQuery<Consultation[]>({
         queryKey: ["consultations", patientId],
@@ -107,10 +108,16 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                     <MdHistory size={160} className="opacity-70" />
                 </div>
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-white">No Consultation History Yet</h2>
-                <p className="text-gray-600 dark:text-gray-300 max-w-md text-base">
+                {user?.role === 'doctor' ? (<p className="text-gray-600 dark:text-gray-300 max-w-md text-base">
                     You haven’t added any consultations for this patient yet. Start by filling out the consultation form below to keep track of their medical history.
-                </p>
-                <Button
+                </p>) : (
+
+                    <p className="text-gray-600 dark:text-gray-300 max-w-md text-base">
+                        The doctor haven’t added any consultations for this patient yet.
+                    </p>
+                )
+                }
+                {user?.role === 'doctor' ? (<Button
                     onClick={() => {
                         const formSection = document.getElementById("doctor-consultation");
                         if (formSection) formSection.scrollIntoView({ behavior: "smooth" });
@@ -118,7 +125,9 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                     className="text-white bg-primary hover:scale-105 hover:shadow-xl px-7 py-3 rounded-2xl shadow-lg text-lg transition-all duration-200 font-semibold focus:ring-2 focus:ring-red-400"
                 >
                     Add First Consultation
-                </Button>
+                </Button>) : ''}
+
+
             </section>
         );
 
@@ -179,7 +188,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                                     <span className="ml-2 text-xs text-gray-500 dark:text-gray-300">
                                         {new Date(consultation.consultationDate).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                                     </span>
-                                    {consultation.isCompleted && (
+                                    {consultation.consultationDate && (
                                         <FaRegCheckCircle className="text-green-500 ml-2" title="Consultation completed" />
                                     )}
                                 </div>
@@ -243,6 +252,7 @@ function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: stri
 
 // TooltipInfo: shows more details in a tooltip/popover for accessibility and UX
 import { useState as useReactState } from "react";
+import { useAuth } from "@/context/auth-provider";
 function TooltipInfo({ consultation }: { consultation: Consultation }) {
     const [show, setShow] = useReactState(false);
 

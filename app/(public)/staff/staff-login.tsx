@@ -26,7 +26,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 const ROLE_DASHBOARD_MAP: Record<string, string> = {
     doctor: "/doctor/dashboard",
     nurse: "/nurse/dashboard",
-    pharmacist: "/pharmacy/dashboard",
+    pharmacist: "/pharmacist/dashboard",
     labtech: "/labtech/dashboard",
     frontdesk: "/frontdesk/dashboard",
     admin: "/admin/dashboard",

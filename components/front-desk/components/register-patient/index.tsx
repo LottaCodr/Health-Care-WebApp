@@ -9,11 +9,22 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PatientFormValidation } from "@/lib/validation";
 import { CovidVaccinationOptions, GenderOptions, PatientFormDefaultValues } from "@/constants";
 import { FormFieldType } from "@/components/forms/PatientForm";
-import { usePatientMutations } from "@/actions/patients/mutation";
+import { usePatientMutations } from "@/actions/front-desk/mutation";
 import { usePatientContext } from "@/context/patients/patient-context";
 import { useEffect, useState } from "react";
 import { CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import { useRouter } from "next/navigation";
+import { startVisit } from "@/actions/front-desk/get.patients";
+import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-provider";
+
+/** Safe scroll helper (guard for SSR) */
+function safeScrollToTop() {
+    if (typeof window !== "undefined" && window.scrollTo) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+}
 
 /**
  * Section Title Component
@@ -21,12 +32,8 @@ import { v4 as uuidv4 } from "uuid";
  */
 const SectionTitle = ({ title, description }: { title: string; description?: string }) => (
     <div className="mb-6">
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {title}
-        </h3>
-        {description && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>
-        )}
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h3>
+        {description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>}
         <div className="h-1 w-12 bg-primary mt-3 rounded-full" />
     </div>
 );
@@ -69,21 +76,14 @@ const Stepper = ({ currentStep, steps }: { currentStep: number; steps: string[] 
                             {idx < currentStep ? <CheckCircle2 size={20} /> : idx + 1}
                         </div>
                         <span
-                            className={`text-xs font-medium mt-2 text-center transition-colors ${idx === currentStep
-                                ? "text-primary"
-                                : idx < currentStep
-                                    ? "text-green-600"
-                                    : "text-gray-400"
+                            className={`text-xs font-medium mt-2 text-center transition-colors ${idx === currentStep ? "text-primary" : idx < currentStep ? "text-green-600" : "text-gray-400"
                                 }`}
                         >
                             {step}
                         </span>
                     </div>
                     {idx < steps.length - 1 && (
-                        <div
-                            className={`h-1 flex-1 mx-2 rounded transition-colors ${idx < currentStep ? "bg-green-500" : "bg-gray-200"
-                                }`}
-                        />
+                        <div className={`h-1 flex-1 mx-2 rounded transition-colors ${idx < currentStep ? "bg-green-500" : "bg-gray-200"}`} />
                     )}
                 </div>
             ))}
@@ -91,17 +91,19 @@ const Stepper = ({ currentStep, steps }: { currentStep: number; steps: string[] 
     </div>
 );
 
-const steps = [
-    "Patient Information",
-    "Emergency Contact",
-    "Medical History",
-    "Insurance Details",
-];
+const steps = ["Patient Information", "Emergency Contact", "Medical History", "Insurance Details"];
 
 const RegisterPatientComponent = () => {
+    const router = useRouter();
+    const user = useAuth();
+
     const form = useForm<z.infer<typeof PatientFormValidation>>({
         resolver: zodResolver(PatientFormValidation),
-        defaultValues: { ...PatientFormDefaultValues },
+        defaultValues: {
+            ...PatientFormDefaultValues,
+            userId: user?.user?.id!,
+            status: "registered", // ✅ default status
+        },
         mode: "onTouched",
     });
 
@@ -111,6 +113,7 @@ const RegisterPatientComponent = () => {
     const [currentStep, setCurrentStep] = useState(0);
     const [submitted, setSubmitted] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [validatingStep, setValidatingStep] = useState(false);
 
     // Step field names for validation
     const stepFields = [
@@ -121,12 +124,15 @@ const RegisterPatientComponent = () => {
     ];
 
     const validateStep = async () => {
+        setValidatingStep(true);
         const fields = stepFields[currentStep];
         const result = await form.trigger(fields as any, { shouldFocus: true });
+        setValidatingStep(false);
         return result;
     };
 
     const handleNext = async () => {
+        if (validatingStep) return;
         const valid = await validateStep();
         if (valid) {
             setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
@@ -141,51 +147,94 @@ const RegisterPatientComponent = () => {
         setSubmitError(null);
         const userId = uuidv4();
 
+        console.log('Attempting submission')
+
         try {
-            await registerPatient.mutateAsync({
-                ...values,
-                userId,
-                birthDate: new Date(values.birthDate),
-            });
+            const payload = {
+                // Map all fields from values according to RegisterUserParams
+                name: values.name,
+                address: values.address,
+                email: values.email,
+                id: userId, // generated above
+                religion: values.religion,
+                phone: values.phone,
+                gender: values.gender,
+                occupation: values.occupation,
+                birth_date: values.birthDate, // Might require format conversion if RegisterUserParams needs a Date object
+                emergency_contact_name: values.emergencyContactName,
+                emergency_contact_number: values.emergencyContactNumber,
+                emergency_contact_relationship: values.emergencyContactRelationship,
+                emergency_contact_email: values.emergencyContactEmail,
+                emergency_contact_address: values.emergencyContactAddress,
+                allergies: values.allergies,
+                significant_medication_history: values.significantMedicationHistory,
+                long_term_medication: values.longTermMedication,
+                covid_vaccination_options: values.covidVaccinationOptions,
+                blood_group: values.bloodGroup,
+                geno_type: values.genoType,
+                policy_number: values.policyNumber,
+                hmo: values.hmo,
+                user_id: user?.user?.id,
+                hmo_name: values.hmoName,
+                company: values.company,
+                company_name: values.companyName,
+                private_client: values.privateClient,
+                recommendations: values.recommendations
+            };
+
+            // Fix mapping and param names per RegisterUserParams
+            const fixedPayload = {
+                ...payload,
+                user_id: user?.user?.id!, // RegisterUserParams expects user_id, not userId (if so in interface)
+            };
+
+
+            await registerPatient.mutateAsync(fixedPayload);
+            setSubmitError(null);
+
             setSubmitted(true);
         } catch (error: any) {
-            setSubmitError(error?.message || "Failed to register patient. Please try again.");
+            let details = error?.message || "Failed to register patient. Please try again.";
+            if (error?.response?.data) details += " | " + JSON.stringify(error.response.data);
+            setSubmitError(details);
             setSubmitted(false);
+            safeScrollToTop();
         }
     };
 
     // Scroll to top smoothly on step change
     useEffect(() => {
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        safeScrollToTop();
     }, [currentStep]);
 
-    // Auto-dismiss success message after 5 seconds
+    // Auto-dismiss success message after 5 seconds (resets form)
     useEffect(() => {
         if (submitted) {
             const timer = setTimeout(() => {
                 form.reset();
                 setSubmitted(false);
                 setCurrentStep(0);
+                // Optionally redirect after success:
+                router.push("/patient");
             }, 5000);
             return () => clearTimeout(timer);
         }
-    }, [submitted, form]);
+    }, [submitted, form, router]);
+
+
+    console.log("Form Errors:", form.formState.errors);
+    console.log("User Id:", user?.user?.id);
+
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 w-full">
             <div className="container max-w-4xl mx-auto">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-10">
                     <Form {...form}>
-                        <form
-                            onSubmit={form.handleSubmit(onSubmit)}
-                            className="space-y-8"
-                            autoComplete="off"
-                        >
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" autoComplete="off">
                             {/* Header */}
                             <div className="text-center space-y-3 pb-4 border-b border-gray-200 dark:border-gray-700">
-                                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-                                    Patient Registration
-                                </h1>
+                                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Patient Registration</h1>
                                 <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base max-w-2xl mx-auto">
                                     Complete all required fields to register a new patient.
                                     <span className="text-red-500 ml-1">*</span> indicates required fields.
@@ -202,9 +251,7 @@ const RegisterPatientComponent = () => {
                                         <CheckCircle2 className="text-green-500 relative" size={80} strokeWidth={1.5} />
                                     </div>
                                     <div className="text-center space-y-2">
-                                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                                            Registration Successful!
-                                        </h2>
+                                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Registration Successful!</h2>
                                         <p className="text-gray-600 dark:text-gray-300 max-w-md">
                                             The patient has been successfully registered. You will be redirected shortly.
                                         </p>
@@ -233,10 +280,7 @@ const RegisterPatientComponent = () => {
                                                 <p className="font-medium">Registration Failed</p>
                                                 <p className="text-sm mt-1">{submitError}</p>
                                             </div>
-                                            <button
-                                                onClick={() => setSubmitError(null)}
-                                                className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                                            >
+                                            <button onClick={() => setSubmitError(null)} className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">
                                                 ×
                                             </button>
                                         </div>
@@ -245,10 +289,7 @@ const RegisterPatientComponent = () => {
                                     {/* Step 1: Personal Information */}
                                     {currentStep === 0 && (
                                         <section className="space-y-6 animate-fade-in">
-                                            <SectionTitle
-                                                title="Personal Information"
-                                                description="Basic details about the patient"
-                                            />
+                                            <SectionTitle title="Personal Information" description="Basic details about the patient" />
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <CustomFormField
                                                     fieldType={FormFieldType.INPUT}
@@ -289,13 +330,7 @@ const RegisterPatientComponent = () => {
                                                     iconAlt="phone"
                                                     required
                                                 />
-                                                <CustomFormField
-                                                    fieldType={FormFieldType.DATE_PICKER}
-                                                    control={form.control}
-                                                    name="birthDate"
-                                                    label="Date of Birth"
-                                                    required
-                                                />
+                                                <CustomFormField fieldType={FormFieldType.DATE_PICKER} control={form.control} name="birthDate" label="Date of Birth" required />
                                                 <CustomFormField
                                                     fieldType={FormFieldType.SKELETON}
                                                     control={form.control}
@@ -304,18 +339,11 @@ const RegisterPatientComponent = () => {
                                                     required
                                                     renderSkeleton={(field) => (
                                                         <FormControl>
-                                                            <RadioGroup
-                                                                className="flex gap-6 h-11 items-center"
-                                                                onValueChange={field.onChange}
-                                                                defaultValue={field.value}
-                                                            >
+                                                            <RadioGroup className="flex gap-6 h-11 items-center" onValueChange={field.onChange} defaultValue={field.value}>
                                                                 {GenderOptions.map((gender) => (
                                                                     <div key={gender} className="flex items-center gap-2">
                                                                         <RadioGroupItem value={gender} id={gender} />
-                                                                        <label
-                                                                            htmlFor={gender}
-                                                                            className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
-                                                                        >
+                                                                        <label htmlFor={gender} className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
                                                                             {gender}
                                                                         </label>
                                                                     </div>
@@ -324,22 +352,8 @@ const RegisterPatientComponent = () => {
                                                         </FormControl>
                                                     )}
                                                 />
-                                                <CustomFormField
-                                                    fieldType={FormFieldType.INPUT}
-                                                    control={form.control}
-                                                    name="occupation"
-                                                    label="Occupation"
-                                                    placeholder="Software Engineer"
-                                                    required
-                                                />
-                                                <CustomFormField
-                                                    fieldType={FormFieldType.INPUT}
-                                                    control={form.control}
-                                                    name="address"
-                                                    label="Residential Address"
-                                                    placeholder="123 Main Street, City"
-                                                    required
-                                                />
+                                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="occupation" label="Occupation" placeholder="Software Engineer" required />
+                                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="address" label="Residential Address" placeholder="123 Main Street, City" required />
                                             </div>
                                         </section>
                                     )}
@@ -347,52 +361,14 @@ const RegisterPatientComponent = () => {
                                     {/* Step 2: Emergency Contact */}
                                     {currentStep === 1 && (
                                         <section className="space-y-6 animate-fade-in">
-                                            <SectionTitle
-                                                title="Emergency Contact Information"
-                                                description="Person to contact in case of emergency"
-                                            />
+                                            <SectionTitle title="Emergency Contact Information" description="Person to contact in case of emergency" />
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <CustomFormField
-                                                    fieldType={FormFieldType.INPUT}
-                                                    control={form.control}
-                                                    name="emergencyContactName"
-                                                    label="Contact Name"
-                                                    placeholder="Jane Doe"
-                                                    required
-                                                />
-                                                <CustomFormField
-                                                    fieldType={FormFieldType.PHONE_INPUT}
-                                                    control={form.control}
-                                                    name="emergencyContactNumber"
-                                                    label="Contact Phone"
-                                                    placeholder="+234 800 000 0000"
-                                                    required
-                                                />
-                                                <CustomFormField
-                                                    fieldType={FormFieldType.INPUT}
-                                                    control={form.control}
-                                                    name="emergencyContactRelationship"
-                                                    label="Relationship"
-                                                    placeholder="Spouse, Parent, Sibling"
-                                                    required
-                                                />
-                                                <CustomFormField
-                                                    fieldType={FormFieldType.INPUT}
-                                                    control={form.control}
-                                                    name="emergencyContactEmail"
-                                                    label="Contact Email"
-                                                    placeholder="contact@example.com"
-                                                    required
-                                                />
+                                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactName" label="Contact Name" placeholder="Jane Doe" required />
+                                                <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="emergencyContactNumber" label="Contact Phone" placeholder="+234 800 000 0000" required />
+                                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactRelationship" label="Relationship" placeholder="Spouse, Parent, Sibling" required />
+                                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactEmail" label="Contact Email" placeholder="contact@example.com" required />
                                                 <div className="md:col-span-2">
-                                                    <CustomFormField
-                                                        fieldType={FormFieldType.INPUT}
-                                                        control={form.control}
-                                                        name="emergencyContactAddress"
-                                                        label="Contact Address"
-                                                        placeholder="123 Main Street, City"
-                                                        required
-                                                    />
+                                                    <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactAddress" label="Contact Address" placeholder="123 Main Street, City" required />
                                                 </div>
                                             </div>
                                         </section>
@@ -401,10 +377,7 @@ const RegisterPatientComponent = () => {
                                     {/* Step 3: Medical History */}
                                     {currentStep === 2 && (
                                         <section className="space-y-6 animate-fade-in">
-                                            <SectionTitle
-                                                title="Medical History"
-                                                description="Relevant medical information"
-                                            />
+                                            <SectionTitle title="Medical History" description="Relevant medical information" />
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <CustomFormField
                                                     fieldType={FormFieldType.TEXTAREA}
@@ -440,18 +413,11 @@ const RegisterPatientComponent = () => {
                                                     required
                                                     renderSkeleton={(field) => (
                                                         <FormControl>
-                                                            <RadioGroup
-                                                                className="flex flex-col gap-3"
-                                                                onValueChange={field.onChange}
-                                                                defaultValue={field.value}
-                                                            >
+                                                            <RadioGroup className="flex flex-col gap-3" onValueChange={field.onChange} defaultValue={field.value}>
                                                                 {CovidVaccinationOptions.map((option) => (
                                                                     <div key={option} className="flex items-center gap-2">
                                                                         <RadioGroupItem value={option} id={option} />
-                                                                        <label
-                                                                            htmlFor={option}
-                                                                            className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
-                                                                        >
+                                                                        <label htmlFor={option} className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
                                                                             {option}
                                                                         </label>
                                                                     </div>
@@ -461,22 +427,8 @@ const RegisterPatientComponent = () => {
                                                     )}
                                                 />
                                                 <div className="space-y-6">
-                                                    <CustomFormField
-                                                        fieldType={FormFieldType.INPUT}
-                                                        control={form.control}
-                                                        name="bloodGroup"
-                                                        label="Blood Group"
-                                                        placeholder="O+, A-, B+, AB-"
-                                                        required
-                                                    />
-                                                    <CustomFormField
-                                                        fieldType={FormFieldType.INPUT}
-                                                        control={form.control}
-                                                        name="genoType"
-                                                        label="Genotype"
-                                                        placeholder="AA, AS, SS"
-                                                        required
-                                                    />
+                                                    <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="bloodGroup" label="Blood Group" placeholder="O+, A-, B+, AB-" required />
+                                                    <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="genoType" label="Genotype" placeholder="AA, AS, SS" required />
                                                 </div>
                                             </div>
                                         </section>
@@ -485,62 +437,20 @@ const RegisterPatientComponent = () => {
                                     {/* Step 4: Insurance Details */}
                                     {currentStep === 3 && (
                                         <section className="space-y-6 animate-fade-in">
-                                            <SectionTitle
-                                                title="Insurance Information"
-                                                description="Medical insurance and payment details"
-                                            />
+                                            <SectionTitle title="Insurance Information" description="Medical insurance and payment details" />
                                             <div className="space-y-6">
-                                                <CustomFormField
-                                                    control={form.control}
-                                                    fieldType={FormFieldType.INPUT}
-                                                    name="policyNumber"
-                                                    label="Policy Number"
-                                                    placeholder="ABC123456789"
-                                                    required
-                                                />
+                                                <CustomFormField control={form.control} fieldType={FormFieldType.INPUT} name="policyNumber" label="Policy Number" placeholder="ABC123456789" required />
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-3">
-                                                        <CustomFormField
-                                                            fieldType={FormFieldType.CHECKBOX}
-                                                            control={form.control}
-                                                            name="hmo"
-                                                            label="Covered by HMO"
-                                                            required
-                                                        />
-                                                        <CustomFormField
-                                                            fieldType={FormFieldType.INPUT}
-                                                            control={form.control}
-                                                            name="hmoName"
-                                                            label="HMO Provider Name"
-                                                            placeholder="Enter HMO name"
-                                                            required
-                                                        />
+                                                        <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="hmo" label="Covered by HMO" required />
+                                                        <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="hmoName" label="HMO Provider Name" placeholder="Enter HMO name" required />
                                                     </div>
                                                     <div className="space-y-3">
-                                                        <CustomFormField
-                                                            fieldType={FormFieldType.CHECKBOX}
-                                                            control={form.control}
-                                                            name="company"
-                                                            label="Company Insurance"
-                                                            required
-                                                        />
-                                                        <CustomFormField
-                                                            fieldType={FormFieldType.INPUT}
-                                                            control={form.control}
-                                                            name="companyName"
-                                                            label="Company Name"
-                                                            placeholder="Enter company name"
-                                                            required
-                                                        />
+                                                        <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="company" label="Company Insurance" required />
+                                                        <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="companyName" label="Company Name" placeholder="Enter company name" required />
                                                     </div>
                                                 </div>
-                                                <CustomFormField
-                                                    fieldType={FormFieldType.CHECKBOX}
-                                                    control={form.control}
-                                                    name="privateClient"
-                                                    label="Private Client (Self-Pay)"
-                                                    required
-                                                />
+                                                <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="privateClient" label="Private Client (Self-Pay)" required />
                                             </div>
                                         </section>
                                     )}
@@ -552,12 +462,10 @@ const RegisterPatientComponent = () => {
                                 <div className="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
                                     <button
                                         type="button"
-                                        className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${currentStep === 0
-                                            ? "invisible"
-                                            : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                                        className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${currentStep === 0 ? "invisible" : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
                                             }`}
                                         onClick={handleBack}
-                                        disabled={currentStep === 0}
+                                        disabled={currentStep === 0 || validatingStep}
                                     >
                                         <ChevronLeft size={20} />
                                         Back
@@ -568,7 +476,9 @@ const RegisterPatientComponent = () => {
                                             type="button"
                                             className="flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-semibold shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all"
                                             onClick={handleNext}
+                                            disabled={validatingStep}
                                         >
+                                            {validatingStep ? <Loader2 size={16} className="animate-spin" /> : null}
                                             Next
                                             <ChevronRight size={20} />
                                         </button>

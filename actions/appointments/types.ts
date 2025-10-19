@@ -1,5 +1,5 @@
 import { Models } from "appwrite";
-import { Patient } from "../patients/types";
+import { Patient } from "../front-desk/types";
 
 export interface Appointment {
     id: string;

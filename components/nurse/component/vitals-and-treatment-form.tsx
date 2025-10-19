@@ -16,7 +16,7 @@ import {
     HelpCircle,
 } from 'lucide-react';
 import { updateNursingAction } from '@/actions/nursing-action/get.nurse.task';
-import { usePatientMutations } from '@/actions/patients/mutation';
+import { usePatientMutations } from '@/actions/front-desk/mutation';
 import { PatientAction, PatientStatus } from '@/context/patients/types';
 import { Dispatch } from 'react';
 

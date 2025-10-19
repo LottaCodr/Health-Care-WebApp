@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import supabase from "@/utils/supabase/client";
 
 
-const PUBLIC_ROUTES = ["/", "/staff"] as const;
+const PUBLIC_ROUTES = ["/", "/staff", "/staff/signup"] as const;
 
 const ROLE_DASHBOARD_MAP: Record<string, string> = {
   doctor: "/doctor/dashboard",

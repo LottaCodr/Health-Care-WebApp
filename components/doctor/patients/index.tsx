@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { getAllPatients } from '@/actions/patients/patients';
+import { useAuth } from '@/context/auth-provider';
+import { getAllPatients } from '@/actions/front-desk/get.patients';
 
 interface PatientProps {
     thePatients: Patient[];
@@ -25,6 +26,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     const [search, setSearch] = useState('');
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const { user } = useAuth()
 
     const { data: patients = [], isPending, isFetching, refetch } = useQuery({
         queryKey: ['patients'],
@@ -136,8 +138,8 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                     </div>
 
                     {/* Add New Patient Button */}
-                    <div className="flex flex-1 min-w-0 md:w-64 justify-center mb-2">
-                        <Link href="/frontdesk/patient/new" passHref legacyBehavior>
+                    {user?.role === "frontdesk" ? (<div className="flex flex-1 min-w-0 md:w-64 justify-center mb-2">
+                        <Link href="/frontdesk/patient/new" >
                             <Button asChild className="gap-2 rounded-xl text-white">
                                 <a>
                                     <Plus size={18} />
@@ -145,7 +147,8 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                                 </a>
                             </Button>
                         </Link>
-                    </div>
+                    </div>) : ""}
+
                     <Button
                         variant="ghost"
                         onClick={() => refetch()}
@@ -159,23 +162,18 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                 </div>
             </header>
 
-            <div className="overflow-x-auto rounded-2xl border border-border bg-background shadow-md relative">
-                {filteredPatients.length === 0 && !isPending ? (
+            {filteredPatients.length === 0 && !isPending ? (
+                <div className="overflow-x-auto rounded-2xl border border-border bg-background shadow-md relative">
                     <div className="flex flex-col items-center justify-center p-10 text-muted-foreground min-h-[200px]">
                         <Users size={40} className="mb-2 text-blue-200" />
                         <span className="font-medium text-lg">No patients found.</span>
                         <span className="text-sm mt-1">Try adjusting your search or filters.</span>
                     </div>
-                ) : (
-                    <table className="min-w-full divide-y divide-border text-sm">
-                        <PatientsTableHeader
-                            sortConfig={sortConfig}
-                            onSortChange={handleSortChange}
-                        />
-                        <PatientsTable patients={paginatedPatients} isPending={isPending} currentPage={currentPage} />
-                    </table>
-                )}
-            </div>
+                </div>
+            ) : (
+
+                <PatientsTable patients={paginatedPatients} isPending={isPending} currentPage={currentPage} />
+            )}
 
             {filteredPatients.length > 0 && (
                 <footer className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4">

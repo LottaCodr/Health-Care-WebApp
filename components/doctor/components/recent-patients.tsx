@@ -10,7 +10,7 @@ import {
     CardContent,
     CardFooter,
 } from "@/components/ui/card";
-import { getAllPatients } from "@/actions/patients/patients";
+import { getAllPatients } from "@/actions/front-desk/patients";
 import { Patient } from "@/context/patients/types";
 
 

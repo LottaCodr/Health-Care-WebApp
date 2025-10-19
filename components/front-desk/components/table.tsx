@@ -139,9 +139,9 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, curr
         >
             {patients.map((patient, idx) => (
                 <tr
-                    key={`${currentPage}-${patient?.userId}`}
+                    key={`${currentPage}-${patient?.email}`}
                     ref={el => { rowRefs.current[idx] = el; }}
-                    onClick={() => router.push(`/doctor/patients/${patient?.userId}`)}
+                    onClick={() => router.push(`/doctor/patients/${patient?.$id}`)}
                     className={clsx(
                         "hover:bg-blue-50 dark:hover:bg-muted/30 cursor-pointer transition group outline-none",
                         idx % 2 === 0 ? "bg-white dark:bg-background" : "bg-gray-50 dark:bg-muted/20",
@@ -185,8 +185,8 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending, curr
                         icon={<MdOutlineMedication className="text-purple-600" />}
                         className="text-gray-700 dark:text-gray-200"
                     >
-                        <span className="truncate max-w-[120px] block" title={patient.currentMedication ?? 'N/A'}>
-                            {patient.currentMedication ?? <span className="italic text-gray-400">N/A</span>}
+                        <span className="truncate max-w-[120px] block" title={patient.phone ?? 'N/A'}>
+                            {patient.phone ?? <span className="italic text-gray-400">N/A</span>}
                         </span>
                     </TableCell>
                     <TableCell

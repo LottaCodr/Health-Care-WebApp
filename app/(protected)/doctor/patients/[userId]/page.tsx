@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getPatient } from "@/actions/patients/get.patients";
+import { getPatient } from "@/actions/front-desk/get.patients";
 import PatientDetailsComponent from "@/components/doctor/patients/patient-detail";
 import Loading from "@/app/useloading";
-import { getPatientById } from "@/actions/patients/patients";
+import { getPatientById } from "@/actions/front-desk/patients";
 
 export default function PatientDetailsPage() {
     const { userId } = useParams<{ userId: string }>();

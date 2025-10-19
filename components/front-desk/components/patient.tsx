@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAllPatients } from '@/actions/patients/get.patients';
+import { getAllPatients } from '@/actions/front-desk/get.patients';
 
 import SearchInput from './search-input';
 import PatientsTableHeader from './table-header';

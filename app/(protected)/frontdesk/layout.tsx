@@ -26,7 +26,6 @@ export default function DashboardLayout({
 
     const user = useAuth()
 
-    console.log("user details: ", user?.user?.email)
 
 
     return (

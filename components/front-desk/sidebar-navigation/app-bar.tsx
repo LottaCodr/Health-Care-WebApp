@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useCallback, useRef, useEffect } from "react";
 import { MdDashboard } from "react-icons/md";
 import { FiSettings } from "react-icons/fi";
-import { FaUserPlus, FaUserClock } from "react-icons/fa";
+import { FaUserPlus, FaUserClock, FaUserCheck, FaUserNurse } from "react-icons/fa";
 
 import {
     Sidebar,
@@ -105,6 +105,34 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 { title: "Settings", url: "/frontdesk/settings", icon: FiSettings },
             ],
         },
+        nurse: {
+            navMain: [
+                {
+                    title: "Dashboard",
+                    url: "/nurse/dashboard",
+                    icon: MdDashboard,
+                },
+                {
+                    title: "Patients Queue",
+                    url: "/nurse/queue",
+                    icon: FaUserClock,
+                    badge: () => 0, // dynamically shows number of patients awaiting vitals
+                },
+
+                {
+                    title: "Completed",
+                    url: "/nurse/completed",
+                    icon: FaUserCheck,
+                },
+            ],
+            navSecondary: [
+                {
+                    title: "Settings",
+                    url: "/nurse/settings",
+                    icon: FiSettings,
+                },
+            ],
+        },
 
         doctor: {
             navMain: [
@@ -115,6 +143,17 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
             navSecondary: [
                 // { title: "Support", url: "/doctor/support", icon: MdSupportAgent },
                 { title: "Settings", url: "/doctor/settings", icon: FiSettings },
+            ],
+        },
+        pharmacist: {
+            navMain: [
+                { title: "Dashboard", url: "/pharmacist/dashboard", icon: MdDashboard },
+                { title: "Patients Queue", url: "/pharmacist/queue", icon: FaUserPlus },
+                { title: "Reports", url: "/pharmacist/completed", icon: FaUserClock },
+            ],
+            navSecondary: [
+
+                { title: "Settings", url: "/pharmacist/settings", icon: FiSettings },
             ],
         },
 

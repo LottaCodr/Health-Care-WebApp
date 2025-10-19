@@ -18,7 +18,7 @@ interface StatCardProps {
 const StatCard = ({ type, icon, label, count = 0, comparison }: StatCardProps) => {
   return (
     <Card
-      className="rounded-2xl border-grey-300 p-6 transition-transform duration-300 hover:scale-[1.02] flex flex-col justify-between gap-4"
+      className="rounded-2xl bg-white border-grey-300 p-6 transition-transform duration-300 hover:scale-[1.02] flex flex-col justify-between gap-4"
       role="region"
       aria-label={label}
     >

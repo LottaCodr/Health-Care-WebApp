@@ -16,7 +16,7 @@ export async function assignNurse(nurseTaskData: NursingAction) {
             ID.unique(),
             nurseTaskData
         );
-
+imoi
         console.log('Nurse Assigment successfully created:', response);
         return response;
     } catch (error) {
@@ -50,8 +50,8 @@ export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
                 try {
                     const p = await databases.getDocument(databaseId, patientCollectionId, pid);
                     patientMap[pid] = {
-                        $id: p.$id,
-                        $createdAt: p.$createdAt,
+                        id: p.$id,
+                        createdAt: p.$createdAt,
                         $updatedAt: p.$updatedAt,
                         name: p.name,
                         email: p.email,

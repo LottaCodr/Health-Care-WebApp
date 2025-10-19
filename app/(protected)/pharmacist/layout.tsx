@@ -1,12 +1,17 @@
+"use client"
+
+
 import {
     SidebarProvider,
     SidebarTrigger,
     SidebarInset,
 } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
-import { Breadcrumbs } from "@/components/breadcrumbs";
-import { PharmacyAppSidebar } from "@/components/pharmacy/sidebar-navigation/app-bar";
-import { FaCapsules } from "react-icons/fa";
+import { FrontDeskAppSidebar } from "@/components/front-desk/sidebar-navigation/app-bar";
+
+
+import { FrontDeskNavUser } from "@/components/front-desk/sidebar-navigation/nav-user";
+import { useAuth } from "@/context/auth-provider";
+
 
 interface DashboardLayoutProps {
     children?: React.ReactNode;
@@ -17,30 +22,61 @@ export default function DashboardLayout({
     children,
     params,
 }: DashboardLayoutProps) {
+
+
+    const user = useAuth()
+
+
+
     return (
-        <SidebarProvider>
-            <PharmacyAppSidebar />
-            <SidebarInset>
-                <header className="flex h-20 shrink-0 items-center gap-4 bg-red-50 border-b border-red-200 shadow-sm">
-                    <div className="flex items-center gap-4 px-6 w-full">
-                        <SidebarTrigger className="-ml-1 text-red-600 hover:bg-red-100 focus:ring-2 focus:ring-red-400 rounded transition" />
-                        <Separator orientation="vertical" className="mr-2 h-6 bg-red-200" />
-                        <div className="flex items-center gap-3">
-                            <span className="bg-red-100 rounded-xl p-2 flex items-center justify-center">
-                                <FaCapsules className="w-7 h-7 text-red-600" aria-hidden="true" />
-                            </span>
-                            <span className="text-2xl font-bold text-red-700 tracking-tight drop-shadow">
-                                Pharmacy Dashboard
-                            </span>
+
+        user?.isLoading ? (
+
+
+            <div className="flex flex-col items-center justify-center h-screen min-h-[40vh] mb-4 p-6">
+                <svg
+                    className="animate-spin w-12 h-12 text-primary mb-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                >
+                    <circle
+                        className="opacity-20"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                    ></circle>
+                    <path
+                        className="opacity-70"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    ></path>
+                </svg>
+                <div className="text-lg md:text-xl font-semibold text-center text-primary">
+                    Welcome to Nile Valley Mother & Child Hospital...
+                </div>
+            </div>
+        ) : (
+            <SidebarProvider>
+                <FrontDeskAppSidebar />
+                <SidebarInset>
+                    <header className="flex h-16 justify-between w-full shrink-0 items-center gap-2 bg-white dark:bg-gray-900 border-b border-grey-100 dark:border-gray-800">
+                        <div className="flex items-center gap-2 px-4 justify-between w-full">
+                            <SidebarTrigger className="-ml-1 hover:bg-red-100 dark:hover:bg-gray-800 focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600 rounded transition" />
+
+
+                            <FrontDeskNavUser />
                         </div>
-                        <div className="flex-1" />
-                        <Breadcrumbs />
-                    </div>
-                </header>
-                <main className="flex flex-1 flex-col gap-6 pt-0 bg-white rounded-b-3xl shadow-lg border-x border-b border-red-100 animate-fade-in">
-                    {children}
-                </main>
-            </SidebarInset>
-        </SidebarProvider>
+                    </header>
+                    <main className="flex flex-1 flex-col gap-4 pt-0 bg-gray-100 dark:bg-gray-900">{children}</main>
+                </SidebarInset>
+            </SidebarProvider>
+
+        )
+
+
     );
 }
+
+// 
