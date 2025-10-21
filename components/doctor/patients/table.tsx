@@ -168,7 +168,8 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
     return (
         <motion.div
             className={clsx(
-                "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 py-2 w-full"
+                // Mobile-first: start with 1 column, then 2 at >=480px, 3 at >=768px, 4 at >=1200px (xl)!
+                "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 py-2 w-full"
             )}
             variants={containerVariants}
             initial="hidden"
@@ -188,7 +189,8 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                             }
                         }}
                         className={clsx(
-                            "group relative flex flex-col rounded-2xl border border-border shadow-sm bg-white dark:bg-muted/60 px-6 py-5 cursor-pointer hover:shadow-lg outline-none transition ring-blue-400 focus:ring-2"
+                            // Responsive padding and spacing for card, mobile-first
+                            "group relative flex flex-col rounded-2xl border border-border shadow-sm bg-white dark:bg-muted/60 px-4 py-4 sm:px-6 sm:py-5 cursor-pointer hover:shadow-lg outline-none transition ring-blue-400 focus:ring-2"
                         )}
                         style={{ minHeight: "182px" }}
                         variants={cardVariants}
@@ -207,10 +209,10 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                                 <FaUserMd className="text-blue-700 text-xl" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-gray-900 dark:text-white truncate max-w-[140px]" title={patient?.name ?? 'N/A'}>
+                                <div className="font-semibold text-gray-900 dark:text-white truncate max-w-[120px] xs:max-w-[140px]" title={patient?.name ?? 'N/A'}>
                                     {patient?.name ?? <span className="italic text-gray-400">N/A</span>}
                                 </div>
-                                <div className="flex gap-2 items-center mt-1">
+                                <div className="flex flex-wrap gap-2 items-center mt-1">
                                     <span className={clsx(
                                         "flex items-center gap-1 font-medium text-xs",
                                         genderColorMap[(patient.gender || "").toLowerCase()] || 'text-gray-400'
@@ -225,7 +227,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-3 mt-6">
+                        <div className="flex flex-col gap-2 mt-6">
                             <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200 text-xs font-medium">
                                 <FaNotesMedical className="text-green-600" />
                                 <span>
@@ -234,13 +236,13 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                             </div>
                             <div className="flex items-center gap-2 text-xs font-medium">
                                 <MdOutlineMedication className="text-purple-600" />
-                                <span className="truncate max-w-[108px]" title={patient.longTermMedication ?? 'N/A'}>
+                                <span className="truncate max-w-[88px] xs:max-w-[108px]" title={patient.longTermMedication ?? 'N/A'}>
                                     {patient.bloodGroup ?? <span className="italic text-gray-400">N/A</span>}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2 text-xs font-medium">
                                 <FaPills className="text-pink-500" />
-                                <span className="truncate max-w-[108px]" title={patient.allergies ?? 'N/A'}>
+                                <span className="truncate max-w-[88px] xs:max-w-[108px]" title={patient.allergies ?? 'N/A'}>
                                     {patient.allergies ?? <span className="italic text-gray-400">N/A</span>}
                                 </span>
                             </div>

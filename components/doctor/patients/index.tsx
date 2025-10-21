@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import SearchInput from './search-input';
-import PatientsTableHeader from './table-header';
 import PatientsTable from './table';
 import { Patient, SortConfig } from '@/context/patients/types';
 
@@ -68,13 +67,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
         return filteredPatients.slice(start, start + ITEMS_PER_PAGE);
     }, [filteredPatients, currentPage]);
 
-    const handleSortChange = (key: keyof Patient) => {
-        setSortConfig((prev) =>
-            !prev || prev.key !== key
-                ? { key, direction: 'asc' }
-                : { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
-        );
-    };
+    
 
     const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
     const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
