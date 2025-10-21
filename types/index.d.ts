@@ -5,7 +5,7 @@ export type SearchParamProps = {
   searchParams: { [key: string]: string | string[] | undefined };
 };
 
-declare type Gender = "Male" | "Female" | "Other";
+declare type Gender = "Male" | "Female";
 declare type Status = "pending" | "scheduled" | "cancelled";
 
 declare interface CreateUserParams {
@@ -17,26 +17,55 @@ declare interface User extends CreateUserParams {
   $id: string;
 }
 
-declare interface RegisterUserParams extends CreateUserParams {
-  // userId: string;
-  birthDate: Date;
+declare type CovidVaccinationOptions = "Yes" | "No";
+
+interface RegisterUserParams {
+  // Step 1: Personal Information
+  name: string;
+  religion: string;
+  email: string;
+  phone: string;
+  birth_date: Date;
   gender: Gender;
-  address: string;
   occupation: string;
-  emergencyContactName: string;
-  emergencyContactNumber: string;
-  primaryPhysician: string;
-  insuranceProvider?: string;
-  insurancePolicyNumber?: string;
-  allergies?: string | undefined;
-  currentMedication?: string | undefined;
-  familyMedicalHistory?: string | undefined;
-  pastMedicalHistory?: string | undefined;
-  identificationType?: string | undefined;
-  identificationNumber?: string | undefined;
-  identificationDocument?: FormData | undefined;
-  privacyConsent: boolean;
+  address: string;
+
+  // Step 2: Emergency Contact
+  emergency_contact_name: string;
+  emergency_contact_number: string;
+  emergency_contact_relationship: string;
+  emergency_contact_email: string;
+  emergency_contact_address: string;
+
+  // Step 3: General Medical History
+  allergies: string;
+  // current_medication?: string; // dropped
+  significant_medication_history: string;
+  long_term_medication: string;
+  covid_vaccination_options: CovidVaccinationOptions;
+  blood_group: string;
+  geno_type: string;
+
+  // Step 4: Medical Insurance Detail
+  policy_number: string;
+  hmo: boolean;
+  hmo_name: string;
+  company: boolean;
+  company_name: string;
+  private_client: boolean;
+
+  // System-level
+  status?: PatientStatus;
+  user_id: string; // Creator (front desk staff)
+  notes?: string;
+
+  // Optional consultation fields
+  symptoms?: string;
+  diagnosis?: string;
+  prescriptions?: string;
+  recommendations?: string;
 }
+
 
 
 

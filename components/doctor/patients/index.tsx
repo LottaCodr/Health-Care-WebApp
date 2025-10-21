@@ -2,17 +2,18 @@
 
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAllPatients } from '@/actions/patients/get.patients';
 
 import SearchInput from './search-input';
-import PatientsTableHeader from './table-header';
 import PatientsTable from './table';
 import { Patient, SortConfig } from '@/context/patients/types';
 
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users } from 'lucide-react';
+import { RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import { useAuth } from '@/context/auth-provider';
+import { getAllPatients } from '@/actions/front-desk/get.patients';
 
 interface PatientProps {
     thePatients: Patient[];
@@ -24,6 +25,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     const [search, setSearch] = useState('');
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const { user } = useAuth()
 
     const { data: patients = [], isPending, isFetching, refetch } = useQuery({
         queryKey: ['patients'],
@@ -65,13 +67,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
         return filteredPatients.slice(start, start + ITEMS_PER_PAGE);
     }, [filteredPatients, currentPage]);
 
-    const handleSortChange = (key: keyof Patient) => {
-        setSortConfig((prev) =>
-            !prev || prev.key !== key
-                ? { key, direction: 'asc' }
-                : { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
-        );
-    };
+    
 
     const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
     const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
@@ -84,7 +80,9 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     }, [search, sortConfig]);
 
     return (
-        <section className="relative max-w-6xl mx-auto px-2 md:px-6 py-10 space-y-8">
+        <section className="relative mx-auto w-full px-2 md:px-6 py-10 space-y-8">
+
+
 
             {/* Animate Top Progress Bar */}
             <AnimatePresence>
@@ -120,7 +118,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                         <Users size={22} />
                     </span>
                     <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                        Patients Directory
+                        List of Patients
                         {isFetching && !isPending && <Spinner size="sm" />}
                     </h2>
                     <span className="ml-2 text-muted-foreground text-sm hidden md:inline">
@@ -131,6 +129,19 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                     <div className="flex-1 min-w-0 md:w-64">
                         <SearchInput value={search} onChange={setSearch} placeholder="Search by name..." />
                     </div>
+
+                    {/* Add New Patient Button */}
+                    {user?.role === "frontdesk" ? (<div className="flex flex-1 min-w-0 md:w-64 justify-center mb-2">
+                        <Link href="/frontdesk/patient/new" >
+                            <Button asChild className="gap-2 rounded-xl text-white">
+                                <a>
+                                    <Plus size={18} />
+                                    Add New Patient
+                                </a>
+                            </Button>
+                        </Link>
+                    </div>) : ""}
+
                     <Button
                         variant="ghost"
                         onClick={() => refetch()}
@@ -144,23 +155,18 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                 </div>
             </header>
 
-            <div className="overflow-x-auto rounded-2xl border border-border bg-background shadow-md relative">
-                {filteredPatients.length === 0 && !isPending ? (
+            {filteredPatients.length === 0 && !isPending ? (
+                <div className="overflow-x-auto rounded-2xl border border-border bg-background shadow-md relative">
                     <div className="flex flex-col items-center justify-center p-10 text-muted-foreground min-h-[200px]">
                         <Users size={40} className="mb-2 text-blue-200" />
                         <span className="font-medium text-lg">No patients found.</span>
                         <span className="text-sm mt-1">Try adjusting your search or filters.</span>
                     </div>
-                ) : (
-                    <table className="min-w-full divide-y divide-border text-sm">
-                        <PatientsTableHeader
-                            sortConfig={sortConfig}
-                            onSortChange={handleSortChange}
-                        />
-                        <PatientsTable patients={paginatedPatients} isPending={isPending} currentPage={currentPage} />
-                    </table>
-                )}
-            </div>
+                </div>
+            ) : (
+
+                <PatientsTable patients={paginatedPatients} isPending={isPending} currentPage={currentPage} />
+            )}
 
             {filteredPatients.length > 0 && (
                 <footer className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4">

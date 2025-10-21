@@ -1,71 +1,83 @@
-"use client"
+"use client";
 
+import { useState } from "react";
 import {
     ChevronsUpDown,
     LogOut,
-    Moon,
-    Sun,
-    User as UserIcon,
     Mail,
     BadgeCheck,
-    Copy as CopyIcon,
-    CheckCircle2,
-} from "lucide-react"
+} from "lucide-react";
 
 import {
     Avatar,
     AvatarFallback,
-    AvatarImage,
-} from "@/components/ui/avatar"
+} from "@/components/ui/avatar";
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
     useSidebar,
-} from "@/components/ui/sidebar"
-import { useTheme } from "next-themes"
-import { useState } from "react"
+} from "@/components/ui/sidebar";
+import { useAuth } from "@/context/auth-provider";
 
-export function FrontDeskNavUser({
-    user,
-}: {
-    user: {
-        name: string
-        email: string
-        avatar: string
-    }
-}) {
-    const { isMobile } = useSidebar()
-    const { setTheme, theme } = useTheme()
-    const [copied, setCopied] = useState(false)
+/**
+ * Navigation User Component
+ * 
+ * Displays authenticated user information in the sidebar with a dropdown menu
+ * for account actions including logout functionality.
+ */
+export function FrontDeskNavUser() {
+    const { isMobile } = useSidebar();
+    const { user, logout } = useAuth();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-    // Get initials for fallback
-    const getInitials = (name: string) => {
-        if (!name) return "U"
-        const parts = name.split(" ")
-        if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "U"
-        return (parts[0][0] + parts[1][0]).toUpperCase()
-    }
+    /**
+     * Generates user initials from name or email
+     * @param text - User's name or email
+     * @returns Two-letter initials in uppercase
+     */
+    const getInitials = (text: string): string => {
+        if (!text) return "U";
 
-    // Copy email to clipboard
-    const handleCopyEmail = async () => {
-        try {
-            await navigator.clipboard.writeText(user.email)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1200)
-        } catch {
-            // fallback: do nothing
+        const parts = text.split(" ");
+
+        if (parts.length === 1) {
+            return parts[0][0]?.toUpperCase() ?? "U";
         }
+
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    };
+
+    /**
+     * Handles user logout with loading state
+     */
+    const handleLogout = async () => {
+        if (isLoggingOut) return;
+
+        try {
+            setIsLoggingOut(true);
+            await logout();
+        } catch (error) {
+            console.error("Logout failed:", error);
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
+
+    // Guard against no user data
+    if (!user) {
+        return null;
     }
+
+    const userInitials = getInitials(user.name || user.email || "");
 
     return (
         <SidebarMenu>
@@ -74,104 +86,85 @@ export function FrontDeskNavUser({
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
-                            className="data-[state=open]:bg-red-100 data-[state=open]:text-red-700 transition-all hover:bg-red-50 rounded-xl border border-red-200 shadow-sm"
+                            className="data-[state=open]:bg-red-100 data-[state=open]:text-primary transition-all hover:bg-red-50 rounded-full border border-red-200 shadow-sm w-fit h-fit"
                             aria-label="Open user menu"
                         >
-                            <Avatar className="h-9 w-9 rounded-lg border border-red-200 bg-red-50 shadow">
-                                <AvatarImage src={user.avatar} alt={user.name} />
-                                <AvatarFallback className="rounded-lg bg-red-200 text-red-700 font-bold">
-                                    {getInitials(user.name)}
+                            <Avatar className="h-9 w-9 rounded-full border border-red-200 bg-red-50 shadow">
+                                <AvatarFallback className="rounded-lg bg-red-200 text-primary font-bold">
+                                    {userInitials}
                                 </AvatarFallback>
                             </Avatar>
+
                             <div className="flex-1 min-w-0 ml-3 text-left">
-                                <span className="block truncate font-semibold text-base text-red-900">{user.name}</span>
-                                <span className="block truncate text-xs text-red-500">{user.email}</span>
+                                <span className="block truncate font-semibold text-base text-primary">
+                                   {user.role.charAt(0).toUpperCase() || ""} {user.name || "User"}
+                                </span>
+                                <span className="block truncate text-xs text-primary/70">
+                                    {user.email || ""}
+                                </span>
                             </div>
-                            <ChevronsUpDown className="ml-auto size-4 text-red-400" aria-hidden="true" />
+
+                            <ChevronsUpDown
+                                className="ml-auto size-4 text-red-400"
+                                aria-hidden="true"
+                            />
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
+
                     <DropdownMenuContent
                         className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-xl shadow-2xl border border-red-100 bg-white p-0"
                         side={isMobile ? "bottom" : "right"}
                         align="end"
                         sideOffset={6}
                     >
+                        {/* User Info Header */}
                         <DropdownMenuLabel className="p-0 font-normal">
                             <div className="flex items-center gap-3 px-4 py-4 bg-red-50/70 rounded-t-xl">
-                                <Avatar className="h-11 w-11 rounded-lg border border-red-200 bg-red-100 shadow">
-                                    <AvatarImage src={user.avatar} alt={user.name} />
-                                    <AvatarFallback className="rounded-lg bg-red-200 text-red-700 font-bold">
-                                        {getInitials(user.name)}
+                                <Avatar className="h-11 w-11 rounded-full border border-red-200 bg-red-100 shadow">
+                                    <AvatarFallback className="rounded-full bg-red-200 text-primary font-bold">
+                                        {userInitials}
                                     </AvatarFallback>
                                 </Avatar>
+
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1">
-                                        <span className="truncate font-semibold text-base text-red-900">{user.name}</span>
-                                        <BadgeCheck className="w-4 h-4 text-green-500" aria-label="Verified" />
+                                        <span className="truncate font-semibold text-base text-primary">
+                                            {user.role.charAt(0).toUpperCase() || ""} 
+                                            {user.name || "User"}
+                                        </span>
+                                        <BadgeCheck
+                                            className="w-4 h-4 text-green-500 flex-shrink-0"
+                                            aria-label="Verified account"
+                                        />
                                     </div>
-                                    <span className="truncate text-xs text-red-500 flex items-center gap-1 mt-1">
-                                        <Mail className="w-3 h-3 mr-1 text-red-400" aria-hidden="true" />
-                                        {user.email}
-                                        <button
-                                            onClick={handleCopyEmail}
-                                            className={`ml-2 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1 transition-colors ${
-                                                copied
-                                                    ? "bg-green-50 text-green-700"
-                                                    : "text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                                            }`}
-                                            aria-label="Copy email"
-                                            tabIndex={0}
-                                            type="button"
-                                        >
-                                            {copied ? (
-                                                <>
-                                                    <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                                    Copied!
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <CopyIcon className="w-3 h-3" />
-                                                    Copy
-                                                </>
-                                            )}
-                                        </button>
-                                    </span>
+
+                                    {user.email && (
+                                        <span className="truncate text-xs text-gray-600 flex items-center gap-1 mt-1">
+                                            <Mail
+                                                className="w-3 h-3 text-primary flex-shrink-0"
+                                                aria-hidden="true"
+                                            />
+                                            {user.email}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </DropdownMenuLabel>
+
                         <DropdownMenuSeparator className="bg-red-100" />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem
-                                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                                className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-red-100 transition-colors"
-                                aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-                            >
-                                {theme === "light" ? (
-                                    <>
-                                        <Moon className="w-4 h-4 text-gray-700" aria-hidden="true" />
-                                        <span>Dark mode</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sun className="w-4 h-4 text-yellow-500" aria-hidden="true" />
-                                        <span>Light mode</span>
-                                    </>
-                                )}
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator className="bg-red-100" />
+
+                        {/* Logout Action */}
                         <DropdownMenuItem
-                            className="flex items-center gap-2 px-4 py-2 rounded-md text-red-600 hover:bg-red-100 font-semibold transition-colors"
-                            asChild
+                            className="flex items-center gap-2 px-4 py-2 mx-2 my-1 rounded-md text-red-600 hover:bg-red-50 focus:bg-red-50 font-semibold transition-colors cursor-pointer"
+                            onClick={handleLogout}
+                            disabled={isLoggingOut}
                         >
-                            <a href="/front-desk/logout" aria-label="Log out">
-                                <LogOut className="w-4 h-4" aria-hidden="true" />
-                                Log out
-                            </a>
+                            <LogOut className="w-4 h-4" aria-hidden="true" />
+                            <span>{isLoggingOut ? "Logging out..." : "Log out"}</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>
         </SidebarMenu>
-    )
+    );
 }

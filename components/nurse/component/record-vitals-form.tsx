@@ -25,7 +25,11 @@ export default function RecordVitalsForm({ task, onClose }: Props) {
     const [treatment, setTreatment] = useState('');
 
     const { mutate, isPending } = useMutation({
-        mutationFn: () => { },
+        mutationFn: async () => {
+            // Replace with your actual call, e.g.
+            // return await recordVitals(...);
+            return Promise.resolve(); // Dummy promise to satisfy MutationFunction contract
+        },
         onSuccess: () => {
             toast.success('Vitals recorded successfully');
             queryClient.invalidateQueries({ queryKey: ['nurse-tasks'] });
@@ -38,19 +42,14 @@ export default function RecordVitalsForm({ task, onClose }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        //     mutate({
-        //         patientId: task.patientId,
-        //         nurseId: task.nurseId,
-        //         vitals,
-        //         treatmentGiven: treatment,
-        //     });
+        mutate();
     };
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Record Vitals for {task?.patientName}</DialogTitle>
+                    <DialogTitle>Record Vitals for {task?.patient?.name}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>

@@ -93,7 +93,6 @@ export default function LabTechDashboardComponent() {
         queryKey: ['user'],
         queryFn: getUser,
         staleTime: 1000 * 60 * 5,
-        cacheTime: 1000 * 60 * 10, // cache for 10 minutes
         retry: 3,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
@@ -112,7 +111,6 @@ export default function LabTechDashboardComponent() {
         queryFn: () => user?.id ? getLabRequest(user.id) : Promise.resolve([]),
         enabled: !!user?.id,
         staleTime: 1000 * 60 * 2,
-        cacheTime: 1000 * 60 * 10,
         select: (data) => Array.isArray(data) ? data : [],
     });
 
@@ -126,7 +124,6 @@ export default function LabTechDashboardComponent() {
         queryFn: () => user?.id ? getLabTechTasks(user.id) : Promise.resolve([]),
         enabled: !!user?.id,
         staleTime: 1000 * 60 * 2,
-        cacheTime: 1000 * 60 * 10,
         select: (data) => Array.isArray(data) ? data : [],
     });
 

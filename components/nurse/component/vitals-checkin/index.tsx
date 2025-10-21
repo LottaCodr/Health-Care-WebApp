@@ -75,11 +75,8 @@ export default function VitalsAdCheckInComponent() {
     };
 
     return (
-        <div className="max-w-4xl mx-6 p-6">
-            <Card className="shadow-lg border rounded-2xl">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-semibold">Patient Vitals & Admission Check-In</CardTitle>
-                </CardHeader>
+        <div className="max-w-full mx-2 p-6">
+
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {[
                         { id: 'temperature', label: 'Temperature (°C)', placeholder: 'e.g. 37.0', type: 'number' },
@@ -117,11 +114,10 @@ export default function VitalsAdCheckInComponent() {
                         />
                     </div>
 
-                    <div className="md:col-span-2 text-right">
+                    <div className="md:col-span-2 text-white text-right">
                         <Button onClick={handleSubmit}>Submit Vitals</Button>
                     </div>
                 </CardContent>
-            </Card>
         </div>
     );
 }

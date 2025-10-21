@@ -56,56 +56,56 @@ export default function DispenseModal({ prescription }: { prescription: any }) {
                     Dispense
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg p-0 overflow-hidden rounded-xl shadow-2xl">
-                <DialogHeader className="bg-red-50 px-8 py-5 border-b">
-                    <DialogTitle className="flex items-center gap-3 text-red-800 text-lg font-bold">
+            <DialogContent className="max-w-lg p-0 overflow-hidden rounded-xl shadow-2xl bg-white dark:bg-gray-900 border border-red-200 dark:border-gray-700">
+                <DialogHeader className="bg-red-50 dark:bg-gray-800 px-8 py-5 border-b border-red-100 dark:border-gray-700">
+                    <DialogTitle className="flex items-center gap-3 text-red-800 dark:text-red-200 text-lg font-bold">
                         <ClipboardList className="w-6 h-6" />
                         Dispense Medication
                     </DialogTitle>
                 </DialogHeader>
-                <div className="px-8 py-6 bg-white">
+                <div className="px-8 py-6 bg-white dark:bg-gray-900">
                     <div className="mb-5 flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2">
                             <UserIcon className="w-5 h-5 text-red-500" />
-                            <span className="font-semibold text-gray-900">{prescription?.patientName || 'Unknown Patient'}</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">{prescription?.patientName || 'Unknown Patient'}</span>
                         </div>
-                        <span className="mx-2 text-gray-300 hidden sm:inline">|</span>
+                        <span className="mx-2 text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
                         <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4 text-red-400" />
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-gray-600 dark:text-gray-300">
                                 Prescribed by <span className="font-medium">{prescription?.doctorName || 'Unknown Doctor'}</span>
                             </span>
                         </div>
                     </div>
                     <div className="mb-5">
-                        <div className="font-semibold text-gray-700 mb-2">Medications:</div>
+                        <div className="font-semibold text-gray-700 dark:text-gray-200 mb-2">Medications:</div>
                         <ul className="list-none pl-0 space-y-2">
                             {medications.length > 0 ? (
                                 medications.map((med: string, i: number) => (
                                     <li
                                         key={i}
-                                        className="flex items-center gap-2 bg-red-50 rounded px-3 py-1 text-gray-900 text-sm"
+                                        className="flex items-center gap-2 bg-red-50 dark:bg-gray-800 rounded px-3 py-1 text-gray-900 dark:text-gray-100 text-sm"
                                     >
                                         <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
                                         {med}
                                     </li>
                                 ))
                             ) : (
-                                <li className="text-gray-400 italic px-3 py-1">No medications listed.</li>
+                                <li className="text-gray-400 dark:text-gray-500 italic px-3 py-1">No medications listed.</li>
                             )}
                         </ul>
                     </div>
                     <div className="mb-5">
                         <label
-                            className="block text-sm font-semibold text-gray-700 mb-2"
+                            className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2"
                             htmlFor={`notes-${prescription?.id ?? 'unknown'}`}
                         >
                             Dispensing Notes{' '}
-                            <span className="text-gray-400 font-normal">(optional)</span>
+                            <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
                         </label>
                         <Textarea
                             id={`notes-${prescription?.id ?? 'unknown'}`}
-                            className="w-full border-red-200 focus:border-red-400 focus:ring-red-200 transition"
+                            className="w-full border-red-200 dark:border-gray-700 focus:border-red-400 dark:focus:border-red-400 focus:ring-red-200 dark:focus:ring-red-600 transition bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                             rows={3}
                             placeholder="Add any relevant notes for this dispense..."
                             value={notes}
@@ -113,23 +113,23 @@ export default function DispenseModal({ prescription }: { prescription: any }) {
                             disabled={loading || success}
                             maxLength={300}
                         />
-                        <div className="text-xs text-gray-400 text-right mt-1">
+                        <div className="text-xs text-gray-400 dark:text-gray-500 text-right mt-1">
                             {notes.length}/300
                         </div>
                     </div>
                     {success && (
-                        <div className="flex items-center gap-2 mt-3 text-green-800 bg-green-50 border border-green-200 rounded px-4 py-2 animate-fade-in">
+                        <div className="flex items-center gap-2 mt-3 text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded px-4 py-2 animate-fade-in">
                             <CheckCircle2 className="w-5 h-5" />
                             <span className="font-medium">Dispense confirmed!</span>
                         </div>
                     )}
                 </div>
-                <DialogFooter className="bg-gray-50 px-8 py-4 flex justify-end gap-3 border-t">
+                <DialogFooter className="bg-gray-50 dark:bg-gray-800 px-8 py-4 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-700">
                     <DialogClose asChild>
                         <Button
                             variant="ghost"
                             disabled={loading}
-                            className="text-gray-600 hover:bg-gray-100 transition"
+                            className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                         >
                             Cancel
                         </Button>

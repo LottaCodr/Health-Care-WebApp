@@ -30,14 +30,14 @@ export default function RootLayout({
         className={cn("min-h-screen font-sans antialiased", fontSans.variable)}
       >
         <ProtectedRedirect>
-          <Providers>
-            <ThemeProvider attribute="class" defaultTheme="light">
-              {children}
-              <Toaster />
-              <Toaster />
+        <Providers>
+          <ThemeProvider attribute="class" defaultTheme="light">
+            {children}
+            <Toaster />
+            <Toaster />
 
-            </ThemeProvider>
-          </Providers>
+          </ThemeProvider>
+        </Providers>
         </ ProtectedRedirect>
       </body>
     </html>

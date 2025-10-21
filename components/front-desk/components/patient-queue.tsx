@@ -4,7 +4,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FiEye, FiUserCheck } from "react-icons/fi";
 
-import { getAllPatients } from "@/actions/patients/get.patients";
+import { getAllPatients } from "@/actions/front-desk/get.patients";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -2,20 +2,14 @@ import React from 'react'
 import clsx from 'clsx'
 import { Skeleton } from '../../../ui/skeleton'
 
-interface StatCardSkeletonProps {
-    type: 'admitted' | 'staff' | 'discharged'
-}
 
-const StatCardSkeleton = ({ type }: StatCardSkeletonProps) => {
+
+const StatCardSkeleton = () => {
     return (
         <div
             className={clsx(
                 'stat-card p-6 rounded-lg shadow-md flex flex-col',
-                {
-                    'bg-blue-600': type === 'admitted',
-                    'bg-green-600': type === 'staff',
-                    'bg-purple-600': type === 'discharged',
-                }
+              
             )}
             aria-busy="true"
             aria-label="Loading statistics"

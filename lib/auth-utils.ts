@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { toast } from "@/hooks/use-toast";
 
 // Password validation schema with enhanced security
 export const passwordSchema = z

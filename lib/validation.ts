@@ -11,25 +11,30 @@ export const UserFormValidation = z.object({
     .refine((phone) => /^\+\d{10,15}$/.test(phone), "Invalid phone number"),
 });
 
+
 export const PatientFormValidation = z.object({
+  // Step 1: Personal Information
   name: z
     .string()
     .min(2, "Name must be at least 2 characters")
-    .max(50, "Name must be at most 50 characters"),
+    .max(500, "Name must be at most 500 characters"),
+  religion: z.string().min(2, "Religion must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   phone: z
     .string()
     .refine((phone) => /^\+\d{10,15}$/.test(phone), "Invalid phone number"),
   birthDate: z.coerce.date(),
-  gender: z.enum(["Male", "Female", "Other"]),
-  address: z
-    .string()
-    .min(5, "Address must be at least 5 characters")
-    .max(500, "Address must be at most 500 characters"),
+  gender: z.enum(["Male", "Female"]),
   occupation: z
     .string()
     .min(2, "Occupation must be at least 2 characters")
     .max(500, "Occupation must be at most 500 characters"),
+  address: z
+    .string()
+    .min(5, "Address must be at least 5 characters")
+    .max(500, "Address must be at most 500 characters"),
+
+  // Step 2: Emergency Contact
   emergencyContactName: z
     .string()
     .min(2, "Contact name must be at least 2 characters")
@@ -40,41 +45,46 @@ export const PatientFormValidation = z.object({
       (emergencyContactNumber) => /^\+\d{10,15}$/.test(emergencyContactNumber),
       "Invalid phone number"
     ),
-  primaryPhysician: z.string().min(2, "Select at least one doctor"),
-  insuranceProvider: z
+  emergencyContactRelationship: z
     .string()
-    .min(2, "Insurance name must be at least 2 characters")
-    .max(50, "Insurance name must be at most 50 characters"),
-  insurancePolicyNumber: z
+    .min(2, "Relationship must be at least 2 characters"),
+  emergencyContactEmail: z.string().email("Invalid emergency contact email"),
+  emergencyContactAddress: z
+    .string()
+    .min(5, "Address must be at least 5 characters"),
+
+  // Step 3: General Medical History
+  allergies: z.string(),
+  // currentMedication: z.string().optional(),
+  significantMedicationHistory: z.string(),
+  longTermMedication: z.string(),
+  covidVaccinationOptions: z.enum(["Yes", "No"]),
+  bloodGroup: z.string().min(1, "Blood group is required"),
+  genoType: z.string().min(1, "Geno type is required"),
+
+  // Step 4: Medical Insurance Detail
+  policyNumber: z
     .string()
     .min(2, "Policy number must be at least 2 characters")
     .max(50, "Policy number must be at most 50 characters"),
-  allergies: z.string().optional(),
-  currentMedication: z.string().optional(),
-  familyMedicalHistory: z.string().optional(),
-  pastMedicalHistory: z.string().optional(),
-  identificationType: z.string().optional(),
-  identificationNumber: z.string().optional(),
-  identificationDocument: z.custom<File[]>().optional(),
-  treatmentConsent: z
-    .boolean()
-    .default(false)
-    .refine((value) => value === true, {
-      message: "You must consent to treatment in order to proceed",
-    }),
-  disclosureConsent: z
-    .boolean()
-    .default(false)
-    .refine((value) => value === true, {
-      message: "You must consent to disclosure in order to proceed",
-    }),
-  privacyConsent: z
-    .boolean()
-    .default(false)
-    .refine((value) => value === true, {
-      message: "You must consent to privacy in order to proceed",
-    }),
+  hmo: z.boolean(),
+  hmoName: z.string().min(2, "HMO name must be at least 2 characters"),
+  company: z.boolean(),
+  companyName: z
+    .string()
+    .min(2, "Company name must be at least 2 characters"),
+  privateClient: z.boolean(),
+
+  // Additional fields in Patient interface
+  status: z.enum(['registered', 'awaiting-consultation', 'under-consultation', 'sent-to-nurse', 'sent-to-lab', 'sent-to-pharmacy', 'awaiting-payment', 'admitted', 'under-observation', 'discharged', 'no-status']).optional(), // If you have an enum for PatientStatus, replace with z.enum([...])
+  userId: z.string().min(1, "User ID is required"),
+  notes: z.string().optional(),
+  symptoms: z.string().optional(),
+  diagnosis: z.string().optional(),
+  prescriptions: z.string().optional(),
+  recommendations: z.string().optional(),
 });
+
 
 export const CreateAppointmentSchema = z.object({
   primaryPhysician: z.string().min(2, "Select at least one doctor"),

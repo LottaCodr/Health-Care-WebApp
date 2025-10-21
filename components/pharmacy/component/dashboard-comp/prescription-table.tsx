@@ -3,9 +3,9 @@ import DispenseModal from './dispense-modal';
 import { PharmacyRecord } from '@/actions/pharmacy/get.prescription';
 
 const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-50 text-yellow-800 border border-yellow-200',
-    dispensed: 'bg-green-50 text-green-800 border border-green-200',
-    cancelled: 'bg-red-100 text-red-800 border border-red-300',
+    pending: 'bg-yellow-50 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-700',
+    dispensed: 'bg-green-50 dark:bg-green-900 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-700',
+    cancelled: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700',
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -31,17 +31,17 @@ function formatDate(dateString?: string) {
 
 export default function PrescriptionTable({ data, isLoading }: { data: PharmacyRecord[]; isLoading: boolean }) {
     return (
-        <div className="bg-white border border-red-200 rounded-2xl w-full overflow-x-auto shadow-lg">
-            <table className="min-w-full text-sm">
+        <div className="bg-white dark:bg-gray-900 border border-red-200 dark:border-gray-700 rounded-2xl w-full overflow-x-auto shadow-lg">
+            <table className="min-w-full text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
                 <thead>
-                    <tr className="bg-red-50 border-b border-red-100">
-                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Patient</th>
-                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Doctor</th>
-                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Medications</th>
-                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Instructions</th>
-                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Created</th>
-                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Status</th>
-                        <th className="px-6 py-4 text-left font-bold text-red-700 tracking-wide uppercase">Actions</th>
+                    <tr className="bg-red-50 dark:bg-gray-800 border-b border-red-100 dark:border-gray-700">
+                        <th className="px-6 py-4 text-left font-bold text-red-700 dark:text-red-200 tracking-wide uppercase">Patient</th>
+                        <th className="px-6 py-4 text-left font-bold text-red-700 dark:text-red-200 tracking-wide uppercase">Doctor</th>
+                        <th className="px-6 py-4 text-left font-bold text-red-700 dark:text-red-200 tracking-wide uppercase">Medications</th>
+                        <th className="px-6 py-4 text-left font-bold text-red-700 dark:text-red-200 tracking-wide uppercase">Instructions</th>
+                        <th className="px-6 py-4 text-left font-bold text-red-700 dark:text-red-200 tracking-wide uppercase">Created</th>
+                        <th className="px-6 py-4 text-left font-bold text-red-700 dark:text-red-200 tracking-wide uppercase">Status</th>
+                        <th className="px-6 py-4 text-left font-bold text-red-700 dark:text-red-200 tracking-wide uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

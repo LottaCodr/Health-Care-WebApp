@@ -1,5 +1,6 @@
 import { getAllStaffs } from '@/actions/staff/get.staff';
-import { Staff } from '@/types/appwrite.types';
+import { Staff } from '@/actions/staff/types';
+
 import { useQuery } from '@tanstack/react-query';
 import React, { useReducer, createContext, useContext, useEffect, useMemo } from 'react';
 
@@ -26,15 +27,15 @@ export function reducer(state: State, action: Action): State {
         case "SET_EMPLOYEES":
             return { ...state, employees: action.payload }
         case "UPDATE_EMPLOYEE":
-            if (!action.payload || !action.payload.$id) return state;
+            if (!action.payload || !action.payload.id) return state;
             return {
                 ...state,
                 employees: state.employees.map((e) =>
-                    e.$id === action.payload.$id ? action.payload : e
+                    e.id === action.payload.id ? action.payload : e
                 ),
             };
         case "DELETE_EMPLOYEE":
-            return { ...state, employees: state.employees.filter((e) => e.$id !== action.payload) }
+            return { ...state, employees: state.employees.filter((e) => e.id !== action.payload) }
         case "ADD_EMPLOYEE":
             return { ...state, employees: [...state.employees, action.payload] }
         case "SET_LOADING":
@@ -54,31 +55,30 @@ export const useEmployeesContext = () => {
 }
 
 export const EmployeeProvider = ({ children }: { children: React.ReactNode }) => {
-    const [state, dispatch] = useReducer(reducer, initialState)
-    const { data = [], isPending, isError } = useQuery({
+    const [state, dispatch] = useReducer(reducer, initialState);
+    const { data = [], isPending } = useQuery({
         queryKey: ['employees'],
-        queryFn: getAllStaffs,
+        // queryFn: getAllStaffs,
+        queryFn: () => [],
         staleTime: 1000 * 60 * 2,
-        cacheTime: 1000 * 60 * 10,
         select: (data) => Array.isArray(data) ? data : [],
     });
-    useEffect(() => {
-        dispatch({ type: 'SET_LOADING', payload: isPending })
-
-    }, [isPending])
 
     useEffect(() => {
-        if (data) {
-            dispatch({ type: 'SET_EMPLOYEES', payload: data });
-        }
-    }, [data]);
+        dispatch({ type: 'SET_LOADING', payload: isPending });
+    }, [isPending]);
 
-    const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
+    useEffect(() => {
+        dispatch({ type: 'SET_EMPLOYEES', payload: data });
+    }, []);
+
+    const value = useMemo(() => ({ state, dispatch }), [state]); // Only memoize on state
+
     return (
         <EmployeeContext.Provider value={value}>
             {children}
         </EmployeeContext.Provider>
-    )
+    );
+};
 
-}
 

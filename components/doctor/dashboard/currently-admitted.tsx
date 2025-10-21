@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { MdInfoOutline, MdRefresh, MdNavigateBefore, MdNavigateNext } from "react-icons/md";
 import { useQuery } from "@tanstack/react-query";
-import { getAllPatients } from "@/actions/patients/get.patients";
+import { getAllPatients } from "@/actions/front-desk/get.patients";
 import { Patient } from "@/context/patients/types";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

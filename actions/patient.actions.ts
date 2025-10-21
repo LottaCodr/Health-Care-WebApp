@@ -1,10 +1,9 @@
 
 "use server"
 import { ID, Query } from "node-appwrite";
-import { storage, BUCKET_ID, databases, } from "../lib/appwrite.config";
+import {  databases, } from "../lib/appwrite.config";
 import { parseStringify } from "@/app/lib/utils";
-import { InputFile } from "node-appwrite/file";
-import { CreateUserParams, RegisterUserParams } from "@/types";
+import {  RegisterUserParams } from "@/types";
 
 
 // export const createUser = async (user: CreateUserParams) => {
@@ -34,35 +33,29 @@ import { CreateUserParams, RegisterUserParams } from "@/types";
 
 
 
-export const registerPatient = async ({ identificationDocument, ...patient }: RegisterUserParams) => {
+export const registerPatient = async ({ ...patient }: RegisterUserParams) => {
   try {
     let file;
 
-    if (identificationDocument) {
-      const inputFile = InputFile.fromBuffer(
-        identificationDocument?.get('blobFile') as Blob,
-        identificationDocument?.get('fileName') as string
-      )
-
-      file = await storage.createFile(BUCKET_ID!, ID.unique(), inputFile)
-    }
+    
 
     const newPatient = await databases.createDocument(
       process.env.NEXT_PUBLIC_DATABASE_ID!,
       process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!,
       ID.unique(),
       {
-        identificationDocumentId: file?.$id || null,
-        identificationDocumentUrl: `${process.env.NEXT_PUBLIC_ENDPOINT}/storage/buckets/${BUCKET_ID}/files/${file?.$id}/view?project=${process.env.NEXT_PUBLIC_PROJECT_ID}`,
         ...patient
       }
     );
 
     return parseStringify(newPatient);
-  } catch (error) {
+  }
+
+  catch (error) {
     console.log(error);
   }
 }
+
 
 export const getPatient = async (userId: string) => {
   try {

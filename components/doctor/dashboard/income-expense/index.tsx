@@ -4,7 +4,7 @@ import StatCard from './stat-card';
 
 export default function IncomeExpenseSection() {
     return (
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 bg-white rounded-xl shadow-lg">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 p-4 md:p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
             <StatCard
                 type="income"
                 icon={

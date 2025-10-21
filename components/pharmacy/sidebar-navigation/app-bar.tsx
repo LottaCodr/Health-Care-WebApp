@@ -176,9 +176,9 @@ export function PharmacyAppSidebar({ ...props }: React.ComponentProps<typeof Sid
             variant="inset"
             {...props}
             aria-label="Hospital Dashboard Sidebar"
-            className="bg-white border-r border-red-100 shadow-lg min-w-[270px] max-w-[320px]"
+            className="bg-white dark:bg-gray-900 border-r border-red-100 dark:border-gray-800 shadow-lg min-w-[270px] max-w-[320px]"
         >
-            <SidebarHeader className="py-4 px-3 border-b border-red-100 bg-gradient-to-r from-red-50 to-white">
+            <SidebarHeader className="py-4 px-3 border-b border-red-100 dark:border-gray-800 bg-gradient-to-r from-red-50 to-white dark:from-gray-900 dark:to-gray-950">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
@@ -206,17 +206,14 @@ export function PharmacyAppSidebar({ ...props }: React.ComponentProps<typeof Sid
                         <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive} badge={badge} />
                     ))}
                 </nav>
-
-                <div className="my-4 border-t border-red-100" />
-
+                <div className="my-4 border-t border-red-100 dark:border-gray-800" />
                 <nav aria-label="Secondary Navigation" className="mt-auto flex flex-col gap-1 px-2 pb-4">
                     {navSecondaryWithActive.map(({ title, url, icon, isActive }) => (
                         <NavLink key={url} title={title} url={url} Icon={icon} isActive={isActive} />
                     ))}
                 </nav>
             </SidebarContent>
-
-            <SidebarFooter className="bg-gradient-to-t from-red-50 to-white border-t border-red-100 py-4 px-3">
+            <SidebarFooter className="bg-gradient-to-t from-red-50 to-white dark:from-gray-900 dark:to-gray-950 border-t border-red-100 dark:border-gray-800 py-4 px-3">
                 <PharmacyNavUser user={data.user} />
             </SidebarFooter>
         </Sidebar>

@@ -11,8 +11,8 @@ interface Props {
 const headers: { key: keyof Patient; label: string }[] = [
     { key: 'name', label: 'Full Name' },
     { key: 'gender', label: 'Gender' },
-    { key: '$updatedAt', label: 'Admission Date' },
-    { key: 'currentMedication', label: 'Current Medication' },
+    { key: 'created_at', label: 'Admission Date' },
+    { key: 'genoType', label: 'Geno Type' },
     { key: 'allergies', label: 'Allergies' },
     { key: 'status', label: 'Status' },
 ];
@@ -51,20 +51,17 @@ export default function PatientsTableHeader({ sortConfig, onSortChange }: Props)
                             <span className="flex items-center gap-1">
                                 <span>{label}</span>
                                 <span
-                                    className={`inline-flex flex-col ml-1 transition-opacity duration-150 ${
-                                        isActive ? "opacity-100 text-red-600 dark:text-red-300" : "opacity-40 group-hover:opacity-80 text-gray-400"
-                                    }`}
+                                    className={`inline-flex flex-col ml-1 transition-opacity duration-150 ${isActive ? "opacity-100 text-red-600 dark:text-red-300" : "opacity-40 group-hover:opacity-80 text-gray-400"
+                                        }`}
                                     aria-hidden="true"
                                 >
                                     <FaSortUp
-                                        className={`h-3 w-3 mb-[-2px] ${
-                                            isActive && direction === "asc" ? "text-red-600 dark:text-red-300" : ""
-                                        }`}
+                                        className={`h-3 w-3 mb-[-2px] ${isActive && direction === "asc" ? "text-red-600 dark:text-red-300" : ""
+                                            }`}
                                     />
                                     <FaSortDown
-                                        className={`h-3 w-3 mt-[-2px] ${
-                                            isActive && direction === "desc" ? "text-red-600 dark:text-red-300" : ""
-                                        }`}
+                                        className={`h-3 w-3 mt-[-2px] ${isActive && direction === "desc" ? "text-red-600 dark:text-red-300" : ""
+                                            }`}
                                     />
                                 </span>
                             </span>
