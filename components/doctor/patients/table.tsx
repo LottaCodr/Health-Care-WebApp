@@ -42,11 +42,11 @@ function StatusBadge({ status }: { status: PatientStatus | string }) {
     return (
         <span
             className={clsx(
-                'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-white shadow-sm transition',
+                'inline-flex items-center gap-1 rounded-full px-4 py-1 text-base md:text-lg font-bold text-white shadow-sm transition',
                 color
             )}
         >
-            <FaExclamationCircle className="text-white/80 text-xs" />
+            <FaExclamationCircle className="text-white/80 text-base md:text-lg" />
             {typeof status === 'string'
                 ? status.replace(/-/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase())
                 : 'No Status'}
@@ -96,6 +96,7 @@ const spinnerPulse = {
     }
 };
 
+// BIGGER TEXTS, MORE RESPONSIVE LAYOUT
 const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) => {
     const router = useRouter();
     const { user } = useAuth();
@@ -127,12 +128,12 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                     exit="exit"
                     key="loader"
                 >
-                    <motion.div className="flex flex-col gap-4 items-center">
+                    <motion.div className="flex flex-col gap-6 items-center">
                         <motion.div variants={spinnerPulse} animate="animate">
-                            <Spinner size="lg" />
+                            <Spinner size="xl" />
                         </motion.div>
                         <motion.span
-                            className="text-lg text-blue-700 font-semibold"
+                            className="text-2xl md:text-3xl text-blue-700 font-bold"
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0, transition: { delay: 0.2, duration: 0.44 } }}
                             exit={{ opacity: 0, y: 4, transition: { duration: 0.18 } }}
@@ -155,9 +156,9 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                     animate={{ opacity: 1, y: 0, transition: { duration: 0.28 } }}
                     exit={{ opacity: 0, y: 8, transition: { duration: 0.17 } }}
                 >
-                    <div className="flex flex-col gap-2 items-center">
-                        <MdWarning className="mx-auto text-3xl text-red-400 mb-2" />
-                        <span className="block text-lg font-medium">No patients found.</span>
+                    <div className="flex flex-col gap-3 items-center">
+                        <MdWarning className="mx-auto text-4xl md:text-5xl text-red-400 mb-2" />
+                        <span className="block text-xl md:text-2xl font-bold">No patients found.</span>
                     </div>
                 </motion.div>
             </AnimatePresence>
@@ -168,8 +169,8 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
     return (
         <motion.div
             className={clsx(
-                // Mobile-first: start with 1 column, then 2 at >=480px, 3 at >=768px, 4 at >=1200px (xl)!
-                "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 py-2 w-full"
+                // Responsive: 1 col on xs, 2 col sm, 3 col md, 4 col lg, 5 col xl+
+                "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 md:gap-8 py-4 w-full px-2 md:px-0"
             )}
             variants={containerVariants}
             initial="hidden"
@@ -189,65 +190,65 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                             }
                         }}
                         className={clsx(
-                            // Responsive padding and spacing for card, mobile-first
-                            "group relative flex flex-col rounded-2xl border border-border shadow-sm bg-white dark:bg-muted/60 px-4 py-4 sm:px-6 sm:py-5 cursor-pointer hover:shadow-lg outline-none transition ring-blue-400 focus:ring-2"
+                            "group relative flex flex-col rounded-2xl border border-border shadow-sm bg-white dark:bg-muted/60 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 cursor-pointer hover:shadow-lg outline-none transition ring-blue-400 focus:ring-2",
+                            "min-h-[222px] sm:min-h-[212px] md:min-h-[220px]"
                         )}
-                        style={{ minHeight: "182px" }}
+                        style={{}}
                         variants={cardVariants}
                         initial="hidden"
                         animate="visible"
                         exit="exit"
                         layout
                         whileHover={{
-                            scale: 1.02,
-                            boxShadow: '0 6px 32px 5px rgba(60,72,175,0.08)'
+                            scale: 1.03,
+                            boxShadow: '0 6px 32px 5px rgba(60,72,175,0.10)'
                         }}
-                        whileTap={{ scale: 0.98 }}
+                        whileTap={{ scale: 0.97 }}
                     >
                         <div className="flex items-center gap-4 w-full">
-                            <div className="rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center h-12 w-12">
-                                <FaUserMd className="text-blue-700 text-xl" />
+                            <div className="rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center h-16 w-16 md:h-20 md:w-20">
+                                <FaUserMd className="text-blue-700 text-3xl md:text-4xl" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-gray-900 dark:text-white truncate max-w-[120px] xs:max-w-[140px]" title={patient?.name ?? 'N/A'}>
+                                <div className="font-bold text-lg md:text-2xl text-gray-900 dark:text-white truncate max-w-[180px] md:max-w-[220px]" title={patient?.name ?? 'N/A'}>
                                     {patient?.name ?? <span className="italic text-gray-400">N/A</span>}
                                 </div>
-                                <div className="flex flex-wrap gap-2 items-center mt-1">
+                                <div className="flex flex-wrap gap-3 items-center mt-2">
                                     <span className={clsx(
-                                        "flex items-center gap-1 font-medium text-xs",
+                                        "flex items-center gap-1 font-semibold text-base md:text-lg",
                                         genderColorMap[(patient.gender || "").toLowerCase()] || 'text-gray-400'
                                     )}>
-                                        <FaHeartbeat /> {patient.gender ?? <span className="italic text-gray-400">N/A</span>}
+                                        <FaHeartbeat className="text-xl md:text-2xl" /> {patient.gender ?? <span className="italic text-gray-400">N/A</span>}
                                     </span>
                                     {patient?.birth_date && (
-                                        <span className="text-gray-600 dark:text-gray-300 font-medium text-xs ml-2">
+                                        <span className="text-gray-700 dark:text-gray-300 font-semibold text-base md:text-lg ml-3">
                                             {calculateAge(patient.birth_date)} yrs
                                         </span>
                                     )}
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-2 mt-6">
-                            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200 text-xs font-medium">
-                                <FaNotesMedical className="text-green-600" />
+                        <div className="flex flex-col gap-3 mt-8 md:mt-10">
+                            <div className="flex items-center gap-3 text-gray-700 dark:text-gray-200 text-base md:text-lg font-semibold">
+                                <FaNotesMedical className="text-green-600 text-lg md:text-xl" />
                                 <span>
                                     {patient?.created_at ? formatDate(patient.created_at) : <span className="italic text-gray-400">N/A</span>}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs font-medium">
-                                <MdOutlineMedication className="text-purple-600" />
-                                <span className="truncate max-w-[88px] xs:max-w-[108px]" title={patient.longTermMedication ?? 'N/A'}>
+                            <div className="flex items-center gap-3 text-base md:text-lg font-semibold">
+                                <MdOutlineMedication className="text-purple-600 text-lg md:text-xl" />
+                                <span className="truncate max-w-[120px] md:max-w-[180px]" title={patient.longTermMedication ?? 'N/A'}>
                                     {patient.bloodGroup ?? <span className="italic text-gray-400">N/A</span>}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs font-medium">
-                                <FaPills className="text-pink-500" />
-                                <span className="truncate max-w-[88px] xs:max-w-[108px]" title={patient.allergies ?? 'N/A'}>
+                            <div className="flex items-center gap-3 text-base md:text-lg font-semibold">
+                                <FaPills className="text-pink-500 text-lg md:text-xl" />
+                                <span className="truncate max-w-[120px] md:max-w-[180px]" title={patient.allergies ?? 'N/A'}>
                                     {patient.allergies ?? <span className="italic text-gray-400">N/A</span>}
                                 </span>
                             </div>
                         </div>
-                        <div className="absolute top-4 right-4">
+                        <div className="absolute top-4 right-4 md:top-6 md:right-6">
                             <StatusBadge status={patient.status} />
                         </div>
                     </motion.div>
