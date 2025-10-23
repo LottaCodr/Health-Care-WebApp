@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
  * Displays personalized welcome message and patient overview.
  */
 const DashboardPage: React.FC = () => {
-    const { user, isLoading, isAuthenticated } = useAuth();
+    const { user, isLoading } = useAuth();
 
     // Loading state
     if (isLoading) {
@@ -20,24 +20,27 @@ const DashboardPage: React.FC = () => {
             <main className="min-h-screen flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+                    <h1 className="text-2xl font-bold text-center text-gray-800">Welcome to the Doctor Dashboard</h1>
+                    <p className="text-base text-muted-foreground text-center">
+                        Loading your dashboard. Please wait...
+                    </p>
                 </div>
             </main>
         );
     }
 
     // Authentication check
-    if (!isAuthenticated || !user) {
-        return (
-            <main className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <p className="text-lg text-muted-foreground">
-                        Authentication required to view this page.
-                    </p>
-                </div>
-            </main>
-        );
-    }
+    // if (isLoading) {
+    //     return (
+    //         <main className="min-h-screen flex items-center justify-center">
+    //             <div className="text-center">
+    //                 <p className="text-lg text-muted-foreground">
+    //                     Authentication required to view this page.
+    //                 </p>
+    //             </div>
+    //         </main>
+    //     );
+    // }
 
     // Format role for display (capitalize first letter)
     const formattedRole = user.role

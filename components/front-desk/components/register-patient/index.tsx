@@ -15,8 +15,6 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
-import { startVisit } from "@/actions/front-desk/get.patients";
-import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
 
 /** Safe scroll helper (guard for SSR) */
@@ -45,7 +43,7 @@ const SectionTitle = ({ title, description }: { title: string; description?: str
 const Stepper = ({ currentStep, steps }: { currentStep: number; steps: string[] }) => (
     <div className="mb-8">
         {/* Mobile: Simple progress bar */}
-        <div className="md:hidden">
+        <div className="sm:hidden">
             <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-700">
                     Step {currentStep + 1} of {steps.length}
@@ -60,30 +58,30 @@ const Stepper = ({ currentStep, steps }: { currentStep: number; steps: string[] 
             </div>
         </div>
 
-        {/* Desktop: Full stepper */}
-        <div className="hidden md:flex items-center justify-between">
+        {/* Tablet/Desktop: Full stepper */}
+        <div className="hidden sm:flex items-center justify-between gap-1 flex-wrap">
             {steps.map((step, idx) => (
-                <div key={step} className="flex items-center flex-1">
-                    <div className="flex flex-col items-center flex-1">
+                <div key={step} className="flex items-center flex-1 min-w-[100px]">
+                    <div className="flex flex-col items-center flex-1 min-w-0">
                         <div
-                            className={`w-10 h-10 flex items-center justify-center rounded-full border-2 transition-all duration-300 ${idx === currentStep
+                            className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full border-2 transition-all duration-300 ${idx === currentStep
                                 ? "border-primary bg-primary text-white shadow-lg scale-110"
                                 : idx < currentStep
                                     ? "border-green-500 bg-green-500 text-white"
                                     : "border-gray-300 bg-white text-gray-400"
                                 } font-semibold`}
                         >
-                            {idx < currentStep ? <CheckCircle2 size={20} /> : idx + 1}
+                            {idx < currentStep ? <CheckCircle2 size={18} /> : idx + 1}
                         </div>
                         <span
-                            className={`text-xs font-medium mt-2 text-center transition-colors ${idx === currentStep ? "text-primary" : idx < currentStep ? "text-green-600" : "text-gray-400"
+                            className={`text-xs md:text-sm font-medium mt-2 text-center transition-colors break-words ${idx === currentStep ? "text-primary" : idx < currentStep ? "text-green-600" : "text-gray-400"
                                 }`}
                         >
                             {step}
                         </span>
                     </div>
                     {idx < steps.length - 1 && (
-                        <div className={`h-1 flex-1 mx-2 rounded transition-colors ${idx < currentStep ? "bg-green-500" : "bg-gray-200"}`} />
+                        <div className={`h-1 flex-1 mx-1 md:mx-2 rounded transition-colors min-w-2 ${idx < currentStep ? "bg-green-500" : "bg-gray-200"}`} />
                     )}
                 </div>
             ))}
@@ -146,8 +144,6 @@ const RegisterPatientComponent = () => {
     const onSubmit = async (values: z.infer<typeof PatientFormValidation>) => {
         setSubmitError(null);
         const userId = uuidv4();
-
-        console.log('Attempting submission')
 
         try {
             const payload = {
@@ -215,27 +211,29 @@ const RegisterPatientComponent = () => {
                 setSubmitted(false);
                 setCurrentStep(0);
                 // Optionally redirect after success:
-                router.push("/patient");
+                router.push("/frontdesk/patient");
             }, 5000);
             return () => clearTimeout(timer);
         }
     }, [submitted, form, router]);
 
 
-    console.log("Form Errors:", form.formState.errors);
-    console.log("User Id:", user?.user?.id);
-
-
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 w-full">
-            <div className="container max-w-4xl mx-auto">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-10">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8 px-2 sm:px-4 w-full">
+            <div className="mx-auto w-full max-w-lg sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+                <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-8 lg:p-10">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" autoComplete="off">
+                        <form
+                            onSubmit={form.handleSubmit(onSubmit)}
+                            className="space-y-6 sm:space-y-8"
+                            autoComplete="off"
+                        >
                             {/* Header */}
-                            <div className="text-center space-y-3 pb-4 border-b border-gray-200 dark:border-gray-700">
-                                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Patient Registration</h1>
-                                <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base max-w-2xl mx-auto">
+                            <div className="text-center space-y-2 sm:space-y-3 pb-4 border-b border-gray-200 dark:border-gray-700">
+                                <h1 className="text-2xl xs:text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+                                    Patient Registration
+                                </h1>
+                                <p className="text-gray-600 dark:text-gray-300 text-xs xs:text-sm sm:text-base max-w-2xl mx-auto">
                                     Complete all required fields to register a new patient.
                                     <span className="text-red-500 ml-1">*</span> indicates required fields.
                                 </p>
@@ -245,18 +243,20 @@ const RegisterPatientComponent = () => {
 
                             {/* Success State */}
                             {submitted ? (
-                                <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+                                <div className="flex flex-col items-center justify-center py-10 sm:py-16 space-y-5 sm:space-y-6 animate-fade-in">
                                     <div className="relative">
                                         <div className="absolute inset-0 bg-green-100 rounded-full blur-xl opacity-50" />
-                                        <CheckCircle2 className="text-green-500 relative" size={80} strokeWidth={1.5} />
+                                        <CheckCircle2 className="text-green-500 relative" size={60} sm-size={80} strokeWidth={1.5} />
                                     </div>
-                                    <div className="text-center space-y-2">
-                                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Registration Successful!</h2>
-                                        <p className="text-gray-600 dark:text-gray-300 max-w-md">
+                                    <div className="text-center space-y-1.5 sm:space-y-2">
+                                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                                            Registration Successful!
+                                        </h2>
+                                        <p className="text-gray-600 dark:text-gray-300 max-w-md text-sm sm:text-base">
                                             The patient has been successfully registered. You will be redirected shortly.
                                         </p>
                                     </div>
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-2 sm:gap-3 flex-col xs:flex-row w-full xs:w-auto">
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -264,7 +264,7 @@ const RegisterPatientComponent = () => {
                                                 setCurrentStep(0);
                                                 form.reset();
                                             }}
-                                            className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                                            className="w-full xs:w-auto px-4 py-2 sm:px-6 sm:py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
                                         >
                                             Register Another Patient
                                         </button>
@@ -274,13 +274,17 @@ const RegisterPatientComponent = () => {
                                 <>
                                     {/* Error Alert */}
                                     {submitError && (
-                                        <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg animate-fade-in">
+                                        <div className="flex items-start gap-2 sm:gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 rounded-lg animate-fade-in">
                                             <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
                                             <div className="flex-1">
                                                 <p className="font-medium">Registration Failed</p>
-                                                <p className="text-sm mt-1">{submitError}</p>
+                                                <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">{submitError}</p>
                                             </div>
-                                            <button onClick={() => setSubmitError(null)} className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">
+                                            <button
+                                                onClick={() => setSubmitError(null)}
+                                                className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-lg leading-none ml-2"
+                                                aria-label="Dismiss"
+                                            >
                                                 ×
                                             </button>
                                         </div>
@@ -288,9 +292,9 @@ const RegisterPatientComponent = () => {
 
                                     {/* Step 1: Personal Information */}
                                     {currentStep === 0 && (
-                                        <section className="space-y-6 animate-fade-in">
+                                        <section className="space-y-4 sm:space-y-6 animate-fade-in">
                                             <SectionTitle title="Personal Information" description="Basic details about the patient" />
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                 <CustomFormField
                                                     fieldType={FormFieldType.INPUT}
                                                     control={form.control}
@@ -330,7 +334,13 @@ const RegisterPatientComponent = () => {
                                                     iconAlt="phone"
                                                     required
                                                 />
-                                                <CustomFormField fieldType={FormFieldType.DATE_PICKER} control={form.control} name="birthDate" label="Date of Birth" required />
+                                                <CustomFormField
+                                                    fieldType={FormFieldType.DATE_PICKER}
+                                                    control={form.control}
+                                                    name="birthDate"
+                                                    label="Date of Birth"
+                                                    required
+                                                />
                                                 <CustomFormField
                                                     fieldType={FormFieldType.SKELETON}
                                                     control={form.control}
@@ -339,35 +349,47 @@ const RegisterPatientComponent = () => {
                                                     required
                                                     renderSkeleton={(field) => (
                                                         <FormControl>
-                                                            <RadioGroup className="flex gap-6 h-11 items-center" onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <RadioGroup className="flex flex-row gap-3 xs:gap-4 sm:gap-6 h-11 items-center flex-wrap" onValueChange={field.onChange} defaultValue={field.value}>
                                                                 {GenderOptions.map((gender) => (
                                                                     <div key={gender} className="flex items-center gap-2">
                                                                         <RadioGroupItem value={gender} id={gender} />
-                                                                        <label htmlFor={gender} className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                                                                            {gender}
-                                                                        </label>
+                                                                        <label htmlFor={gender} className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer whitespace-nowrap">{gender}</label>
                                                                     </div>
                                                                 ))}
                                                             </RadioGroup>
                                                         </FormControl>
                                                     )}
                                                 />
-                                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="occupation" label="Occupation" placeholder="Software Engineer" required />
-                                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="address" label="Residential Address" placeholder="123 Main Street, City" required />
+                                                <CustomFormField
+                                                    fieldType={FormFieldType.INPUT}
+                                                    control={form.control}
+                                                    name="occupation"
+                                                    label="Occupation"
+                                                    placeholder="Software Engineer"
+                                                    required
+                                                />
+                                                <CustomFormField
+                                                    fieldType={FormFieldType.INPUT}
+                                                    control={form.control}
+                                                    name="address"
+                                                    label="Residential Address"
+                                                    placeholder="123 Main Street, City"
+                                                    required
+                                                />
                                             </div>
                                         </section>
                                     )}
 
                                     {/* Step 2: Emergency Contact */}
                                     {currentStep === 1 && (
-                                        <section className="space-y-6 animate-fade-in">
+                                        <section className="space-y-4 sm:space-y-6 animate-fade-in">
                                             <SectionTitle title="Emergency Contact Information" description="Person to contact in case of emergency" />
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                 <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactName" label="Contact Name" placeholder="Jane Doe" required />
                                                 <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="emergencyContactNumber" label="Contact Phone" placeholder="+234 800 000 0000" required />
                                                 <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactRelationship" label="Relationship" placeholder="Spouse, Parent, Sibling" required />
                                                 <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactEmail" label="Contact Email" placeholder="contact@example.com" required />
-                                                <div className="md:col-span-2">
+                                                <div className="sm:col-span-2">
                                                     <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactAddress" label="Contact Address" placeholder="123 Main Street, City" required />
                                                 </div>
                                             </div>
@@ -376,9 +398,9 @@ const RegisterPatientComponent = () => {
 
                                     {/* Step 3: Medical History */}
                                     {currentStep === 2 && (
-                                        <section className="space-y-6 animate-fade-in">
+                                        <section className="space-y-4 sm:space-y-6 animate-fade-in">
                                             <SectionTitle title="Medical History" description="Relevant medical information" />
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                 <CustomFormField
                                                     fieldType={FormFieldType.TEXTAREA}
                                                     control={form.control}
@@ -395,7 +417,7 @@ const RegisterPatientComponent = () => {
                                                     placeholder="Diabetes, Hypertension, Previous surgeries"
                                                     required
                                                 />
-                                                <div className="md:col-span-2">
+                                                <div className="sm:col-span-2">
                                                     <CustomFormField
                                                         fieldType={FormFieldType.TEXTAREA}
                                                         control={form.control}
@@ -413,20 +435,18 @@ const RegisterPatientComponent = () => {
                                                     required
                                                     renderSkeleton={(field) => (
                                                         <FormControl>
-                                                            <RadioGroup className="flex flex-col gap-3" onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <RadioGroup className="flex flex-col gap-2 xs:gap-3" onValueChange={field.onChange} defaultValue={field.value}>
                                                                 {CovidVaccinationOptions.map((option) => (
                                                                     <div key={option} className="flex items-center gap-2">
                                                                         <RadioGroupItem value={option} id={option} />
-                                                                        <label htmlFor={option} className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                                                                            {option}
-                                                                        </label>
+                                                                        <label htmlFor={option} className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">{option}</label>
                                                                     </div>
                                                                 ))}
                                                             </RadioGroup>
                                                         </FormControl>
                                                     )}
                                                 />
-                                                <div className="space-y-6">
+                                                <div className="space-y-2 sm:space-y-6">
                                                     <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="bloodGroup" label="Blood Group" placeholder="O+, A-, B+, AB-" required />
                                                     <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="genoType" label="Genotype" placeholder="AA, AS, SS" required />
                                                 </div>
@@ -436,16 +456,16 @@ const RegisterPatientComponent = () => {
 
                                     {/* Step 4: Insurance Details */}
                                     {currentStep === 3 && (
-                                        <section className="space-y-6 animate-fade-in">
+                                        <section className="space-y-4 sm:space-y-6 animate-fade-in">
                                             <SectionTitle title="Insurance Information" description="Medical insurance and payment details" />
-                                            <div className="space-y-6">
+                                            <div className="space-y-4 sm:space-y-6">
                                                 <CustomFormField control={form.control} fieldType={FormFieldType.INPUT} name="policyNumber" label="Policy Number" placeholder="ABC123456789" required />
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-3">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                                    <div className="space-y-2 sm:space-y-3">
                                                         <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="hmo" label="Covered by HMO" required />
                                                         <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="hmoName" label="HMO Provider Name" placeholder="Enter HMO name" required />
                                                     </div>
-                                                    <div className="space-y-3">
+                                                    <div className="space-y-2 sm:space-y-3">
                                                         <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="company" label="Company Insurance" required />
                                                         <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="companyName" label="Company Name" placeholder="Enter company name" required />
                                                     </div>
@@ -459,11 +479,10 @@ const RegisterPatientComponent = () => {
 
                             {/* Navigation Buttons */}
                             {!submitted && (
-                                <div className="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col xs:flex-row justify-between items-stretch xs:items-center pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700 gap-2 xs:gap-4">
                                     <button
                                         type="button"
-                                        className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${currentStep === 0 ? "invisible" : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                                            }`}
+                                        className={`flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all text-sm sm:text-base ${currentStep === 0 ? "invisible" : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"}`}
                                         onClick={handleBack}
                                         disabled={currentStep === 0 || validatingStep}
                                     >
@@ -474,7 +493,7 @@ const RegisterPatientComponent = () => {
                                     {currentStep < steps.length - 1 ? (
                                         <button
                                             type="button"
-                                            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white font-semibold shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all"
+                                            className="flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-primary text-white font-semibold shadow hover:shadow-md hover:bg-primary/90 transition-all text-sm sm:text-base"
                                             onClick={handleNext}
                                             disabled={validatingStep}
                                         >
@@ -485,7 +504,7 @@ const RegisterPatientComponent = () => {
                                     ) : (
                                         <button
                                             type="submit"
-                                            className="flex items-center gap-2 px-8 py-3 rounded-lg bg-primary text-white font-semibold shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                            className="flex items-center justify-center gap-1.5 sm:gap-2 px-6 sm:px-8 py-2 sm:py-3 rounded-lg bg-primary text-white font-semibold shadow hover:shadow-md hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed text-sm sm:text-base"
                                             disabled={registerPatient.isPending}
                                         >
                                             {registerPatient.isPending ? (

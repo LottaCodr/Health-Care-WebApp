@@ -6,25 +6,33 @@ import { registerPatient, startVisit, updatePatient } from "./get.patients";
 import { parseStringify } from "@/app/lib/utils";
 import { RegisterUserParams } from "@/types";
 
-export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
-    const queryClient = useQueryClient()
+import { useRouter } from "next/navigation";
 
+export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
+    const queryClient = useQueryClient();
+    const router = useRouter();
 
     const registerPatientMutation = useMutation({
         mutationFn: async (patientData: RegisterUserParams) => {
+            // Optimistically redirect to patients page BEFORE waiting for API
+            // You may want to change the redirect destination as suits your app
+            router.push('/frontdesk/patient');
+
+            // Continue with API call
             const result = await registerPatient(patientData);
+            if (!result || !result.id) {
+                throw new Error("Failed to register patient.");
+            }
+            const { error } = await startVisit(result.id as string);
 
-            if (!result || !result.id) throw new Error("Failed to register patient.");
+            if (!result || !result.id || error) {
+                // toast({
+                //     title: "Failed to register patient", description: `Sorry: The visit hasn't started because ${error}.`,
+                // });
+                throw new Error("Failed to register patient.");
+            }
 
-            const { error } = await startVisit(result.id);
-            if (error) throw new Error(error.message);
-
-            toast({
-                title: `Visit started for ${result.name}`,
-                description: "The visit has been successfully started.",
-            });
-
-            console.log("Attempting to submit patient Data: ", patientData)
+            if (error) throw new Error(error);
 
             if (!result) {
                 throw new Error("Registration Failed");
@@ -33,11 +41,13 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
         },
         onSuccess: (data) => {
             dispatch({ type: "ADD_PATIENT", payload: data as Patient });
-            toast({ title: "Registration Successful" })
+            toast({
+                title: "Registration Successful", description: "The visit has been successfully started.",
+            });
         },
 
         onSettled() {
-            queryClient.invalidateQueries({ queryKey: ['patients'] })
+            queryClient.invalidateQueries({ queryKey: ['patients'] });
         },
         onError: (error) => {
             toast({
@@ -47,6 +57,7 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
             });
         }
     })
+
 
     //TODO: create update and delete mutations
     const updatePatientMutation = useMutation({

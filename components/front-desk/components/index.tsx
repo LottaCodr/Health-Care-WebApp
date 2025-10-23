@@ -81,7 +81,7 @@ export default function FrontDeskDashboardComponent() {
             </div>
 
             {/* Dashboard Cards */}
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                 {/* Add new patient */}
                 <Card className="w-full max-w-sm bg-white">
                     <CardContent className="flex flex-col items-center justify-center gap-4 py-8 px-6 bg-white">
@@ -124,26 +124,17 @@ export default function FrontDeskDashboardComponent() {
                 ))}
 
                 {/* Payments */}
-                <Card className="w-full max-w-sm bg-white">
+                <Card className="w-full rounded-lg max-w-sm bg-white">
                     <CardContent className="flex flex-col gap-4 py-8 px-6 bg-white">
                         <div className="items-center justify-center">
-                            <FaWallet className="w-10 h-10 text-primary mb-2" />
-                            <p className="text-gray-500 font-semibold text-lg mb-4">Today's Payments</p>
+                            <span className="text-primary text-4xl">
+                                <svg className="hidden" />
+                                <FaWallet className="w-10 h-10 text-primary mb-2" />
+                            </span>
+                            <p className="text-gray-500 font-semibold uppercase text-lg mb-4"> Payment Queue</p>
                         </div>
-                        <h1 className="font-semibold text-3xl md:text-6xl mb-1">$20,000</h1>
-                        <div className="inline-flex items-center justify-center px-4 py-1 rounded-full bg-green-600 text-white text-sm font-semibold w-fit">
-                            <svg
-                                className="w-4 h-4 mr-1.5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 20 20"
-                                aria-hidden="true"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l4 4 6-8" />
-                            </svg>
-                            Collected
-                        </div>
+                        <h1 className="font-extrabold text-6xl md:text-7xl text-gray-900">120</h1>
+                        <p className="text-gray-500 font-semibold capitalize text-lg mb-4"> completed payments</p>
                     </CardContent>
                 </Card>
             </section>
