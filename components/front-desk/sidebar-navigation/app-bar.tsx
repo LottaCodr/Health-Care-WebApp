@@ -89,12 +89,14 @@ function NavLink({ title, url, Icon, isActive, badge, onNavigate }: NavLinkProps
 
 /**
  * Sidebar with improved structure and accessibility.
+ * Shows navigation strictly according to the user's role.
  */
 export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
     const router = useRouter();
-    const user = useAuth();
-    const getUserRole = user?.user?.role ?? "";
+    const auth = useAuth();
+    const user = auth?.user;
+    const userRole = user?.role ?? "";
 
     // Role-based navigation schema
     const navConfig: Record<
@@ -104,7 +106,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
             navSecondary: { title: string; url: string; icon: React.ElementType }[];
         }
     > = {
-        frontdesk: {
+        Frontdesk: {
             navMain: [
                 { title: "Dashboard", url: "/frontdesk/dashboard", icon: MdDashboard },
                 { title: "Patients", url: "/frontdesk/patient", icon: FaUserPlus },
@@ -112,14 +114,14 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                     title: "Payments",
                     url: "/frontdesk/queue",
                     icon: FaUserClock,
-                    badge: () => 0, // dynamic badge
+                    badge: () => 0, // dynamic badge placeholder
                 },
             ],
             navSecondary: [
                 { title: "Settings", url: "/frontdesk/settings", icon: FiSettings },
             ],
         },
-        nurse: {
+        Nurse: {
             navMain: [
                 { title: "Dashboard", url: "/nurse/dashboard", icon: MdDashboard },
                 {
@@ -134,7 +136,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 { title: "Settings", url: "/nurse/settings", icon: FiSettings },
             ],
         },
-        doctor: {
+        Doctor: {
             navMain: [
                 { title: "Dashboard", url: "/doctor/dashboard", icon: MdDashboard },
                 { title: "Patients", url: "/doctor/patients", icon: FaUserPlus },
@@ -144,7 +146,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 { title: "Settings", url: "/doctor/settings", icon: FiSettings },
             ],
         },
-        pharmacist: {
+        Pharmacist: {
             navMain: [
                 { title: "Dashboard", url: "/pharmacist/dashboard", icon: MdDashboard },
                 { title: "Patients Queue", url: "/pharmacist/queue", icon: FaUserPlus },
@@ -154,7 +156,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 { title: "Settings", url: "/pharmacist/settings", icon: FiSettings },
             ],
         },
-        admin: {
+        Admin: {
             navMain: [
                 { title: "Dashboard", url: "/admin/dashboard", icon: MdDashboard },
                 { title: "Users", url: "/admin/users", icon: FaUserPlus },
@@ -166,31 +168,36 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
         },
     };
 
-    const { navMain: roleNavMain, navSecondary: roleNavSecondary } =
-        (getUserRole && navConfig[getUserRole])
-            ? navConfig[getUserRole]
-            : { navMain: [], navSecondary: [] };
+    // Only load navigation if userRole is recognized
+    const nav =
+        userRole && Object.hasOwn(navConfig, userRole)
+            ? navConfig[userRole]
+            : null;
 
     const sidebarRef = useRef<HTMLDivElement>(null);
 
     // Memoize navigation data for performance & accessibility
     const navMain = useMemo(
         () =>
-            roleNavMain.map((item) => ({
-                ...item,
-                isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
-                badge: item.badge?.(),
-            })),
-        [pathname, getUserRole, roleNavMain]
+            nav
+                ? nav.navMain.map((item) => ({
+                      ...item,
+                      isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
+                      badge: item.badge?.(),
+                  }))
+                : [],
+        [pathname, userRole, nav]
     );
 
     const navSecondary = useMemo(
         () =>
-            roleNavSecondary.map((item) => ({
-                ...item,
-                isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
-            })),
-        [pathname, getUserRole, roleNavSecondary]
+            nav
+                ? nav.navSecondary.map((item) => ({
+                      ...item,
+                      isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
+                  }))
+                : [],
+        [pathname, userRole, nav]
     );
 
     // Navigation handler for better SPA experience
@@ -218,6 +225,25 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
     // For skip link target, ensure an ID is available for main content.
     const skipLinkId = "main-content";
 
+    // If the user is not authenticated or does not have a proper role, show nothing
+    if (!user || !userRole || !nav) {
+        return null;
+    }
+
+    // For homepage button, route based on current role
+    const homeUrl =
+        userRole === "frontdesk"
+            ? "/frontdesk/dashboard"
+            : userRole === "nurse"
+            ? "/nurse/dashboard"
+            : userRole === "doctor"
+            ? "/doctor/dashboard"
+            : userRole === "pharmacist"
+            ? "/pharmacist/dashboard"
+            : userRole === "admin"
+            ? "/admin/dashboard"
+            : "/";
+
     return (
         <>
             <a
@@ -242,7 +268,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                             <SidebarMenuButton size="sm" asChild>
                                 <button
                                     type="button"
-                                    onClick={() => handleNavigate("/front-desk/dashboard")}
+                                    onClick={() => handleNavigate(homeUrl)}
                                     className="items-center gap-3 rounded-2xl p-6 dark:from-red-900 dark:to-primary hover:from-red-700 hover:to-red-500 dark:hover:from-red-800 dark:hover:to-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all w-full h-auto"
                                     aria-label="Nile Hospital Homepage"
                                 >
@@ -260,7 +286,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 </SidebarHeader>
 
                 <SidebarContent aria-label="Sidebar Navigation" className="flex flex-col">
-                    {/* Hierarchical structure: primary nav first */}
+                    {/* Display navigations corresponding to the user's role */}
                     <section aria-labelledby="main-navigation-label" className="flex flex-col gap-2 px-3 pt-8">
                         <h2 id="main-navigation-label" className="sr-only">Main Navigation</h2>
                         <ul className="flex flex-col gap-2" role="menu" aria-orientation="vertical">
