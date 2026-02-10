@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
 import { UserRole } from '@/types/models';
 import { Stethoscope, ShieldCheck, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 const LoginScreen: React.FC = () => {
     const router = useRouter();
@@ -14,9 +15,12 @@ const LoginScreen: React.FC = () => {
     const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    // FIX: type to number, not string
+    const [year, setYear] = useState<number>(new Date().getFullYear());
 
-
-  
+    useEffect(() => {
+        setYear(new Date().getFullYear());
+    }, []);
 
     // Dashboard routes by role
     const getDashboardRoute = (role?: string): string => {
@@ -118,9 +122,15 @@ const LoginScreen: React.FC = () => {
             <div className="max-w-2xl w-full">
                 {/* Header */}
                 <div className="text-center mb-12">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white mb-6 shadow-lg shadow-blue-200">
-                        <Stethoscope size={40} />
-                    </div>
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl text-white mb-6 shadow-lg shadow-red-200">
+                        <Image
+                            src="/assets/icons/nilelogo.jpeg"
+                            alt="Logo"
+                            width={56}
+                            height={56}
+                            className="h-14 w-auto drop-shadow-lg"
+                            priority
+                        />                    </div>
                     <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Nile Mother & Child hospital</h1>
                     <p className="text-slate-600 mt-2 text-lg">Nile Valley Hospital EMR System</p>
                 </div>
@@ -205,7 +215,7 @@ const LoginScreen: React.FC = () => {
 
                 {/* Footer */}
                 <p className="text-center text-slate-500 text-sm mt-10">
-                    &copy; 2026 Nile Valley Mother & Child Hospital. All rights reserved.
+                    &copy; {year} Nile Valley Mother & Child Hospital. All rights reserved.
                 </p>
             </div>
         </div>
