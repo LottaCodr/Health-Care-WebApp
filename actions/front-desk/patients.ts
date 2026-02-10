@@ -47,14 +47,14 @@ const PATIENT_SELECT = `
 // ✅ Mapper: DB → Patient type
 function mapPatient(row: any): Patient {
     return {
-        $id: row.id,
-        $createdAt: row.created_at,
+        id: row.id,
+        // $createdAt: row.created_at,
         $updatedAt: row.updated_at,
         name: row.name,
         religion: row.religion,
         email: row.email,
         phone: row.phone,
-        birthDate: row.birth_date ? new Date(row.birth_date) : null,
+        birth_date: row.birth_date ? new Date(row.birth_date) : null,
         gender: row.gender,
         occupation: row.occupation,
         address: row.address,
