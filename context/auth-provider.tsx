@@ -2,25 +2,25 @@
 
 import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import supabase from "@/utils/supabase/client";
-import { Staff } from "@/actions/staff/types";
 import { fetchStaffProfile } from "@/actions/staff/staff";
 import { useRouter } from "next/navigation";
 
 interface AuthContextType {
-    user: Staff | null;
+    user: any | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    loading?: boolean; // legacy alias used across components
     login: (
         email: string,
         password: string
-    ) => Promise<{ success: boolean; message: string; staff?: Staff }>;
+    ) => Promise<{ success: boolean; message: string; staff?: any }>;
     logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<Staff | null>(null);
+    const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const redirect = useRouter()
 
@@ -32,7 +32,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 if (authUser) {
                     const staff = await fetchStaffProfile(authUser.id);
-                    setUser(staff?.profile as Staff || null);
+                    const profile = staff?.profile as any | undefined;
+                    if (profile) {
+                        profile.$id = profile.id || profile.$id;
+                        // normalize role strings to PascalCase used elsewhere
+                        if (typeof profile.role === "string") {
+                            const r = String(profile.role).toLowerCase();
+                            if (r.includes("front")) profile.role = "FrontDesk";
+                            else if (r.includes("doc")) profile.role = "Doctor";
+                            else if (r.includes("nurs")) profile.role = "Nurse";
+                            else if (r.includes("lab")) profile.role = "LabTechnician";
+                            else if (r.includes("pharm")) profile.role = "Pharmacist";
+                            else profile.role = profile.role;
+                        }
+
+                        setUser(profile || null);
+                    } else {
+                        setUser(null);
+                    }
                 } else {
                     setUser(null);
                 }
@@ -51,7 +68,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             async (_event, session) => {
                 if (session?.user) {
                     const staff = await fetchStaffProfile(session.user.id);
-                    setUser(staff?.profile as Staff || null);
+                    const profile = staff?.profile as any | undefined;
+                    if (profile) {
+                        profile.$id = profile.id || profile.$id;
+                        if (typeof profile.role === "string") {
+                            const r = String(profile.role).toLowerCase();
+                            if (r.includes("front")) profile.role = "FrontDesk";
+                            else if (r.includes("doc")) profile.role = "Doctor";
+                            else if (r.includes("nurs")) profile.role = "Nurse";
+                            else if (r.includes("lab")) profile.role = "LabTechnician";
+                            else if (r.includes("pharm")) profile.role = "Pharmacist";
+                            else profile.role = profile.role;
+                        }
+                        setUser(profile || null);
+                    } else {
+                        setUser(null);
+                    }
                 } else {
                     setUser(null);
                 }
@@ -82,12 +114,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return { success: false, message: "Staff profile not found" };
             }
 
-            setUser(staff.profile as Staff);
+            setUser(staff.profile as any);
 
             return {
                 success: true,
                 message: "Login successful",
-                staff: staff.profile as Staff
+                staff: staff.profile as any
             };
         } catch (err: any) {
             return { success: false, message: err.message };
@@ -105,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user,
             isAuthenticated: !!user,
             isLoading,
+            loading: isLoading,
             login,
             logout,
         }),

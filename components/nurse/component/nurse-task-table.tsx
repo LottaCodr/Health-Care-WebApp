@@ -206,7 +206,9 @@ function TaskRow({
             )}
         >
             <td className="px-6 py-5 font-semibold text-blue-900 whitespace-nowrap">
-                {String(task.patientId?.name) || <span className="italic text-gray-400">Fetching name...</span>}
+                {typeof task.patientId === 'object' && task.patientId !== null
+                    ? (task.patientId as any).name
+                    : task.patientId || <span className="italic text-gray-400">Fetching name...</span>}
             </td>
             <td className="px-6 py-5 text-gray-600 whitespace-nowrap">
                 {formatDate(task?.taskDate || new Date().toISOString())}

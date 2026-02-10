@@ -9,7 +9,10 @@ import { Patient, SortConfig } from '@/context/patients/types';
 
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, Plus } from 'lucide-react';
+import {
+    RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight,
+    ChevronsRight, Users, Plus
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-provider';
@@ -25,7 +28,7 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
     const [search, setSearch] = useState('');
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const { user } = useAuth()
+    const { user } = useAuth();
 
     const { data: patients = [], isPending, isFetching, refetch } = useQuery({
         queryKey: ['patients'],
@@ -67,8 +70,6 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
         return filteredPatients.slice(start, start + ITEMS_PER_PAGE);
     }, [filteredPatients, currentPage]);
 
-    
-
     const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
     const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
     const handleFirst = () => setCurrentPage(1);
@@ -81,9 +82,6 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
 
     return (
         <section className="relative mx-auto w-full px-2 md:px-6 py-10 space-y-8">
-
-
-
             {/* Animate Top Progress Bar */}
             <AnimatePresence>
                 {isFetching && !isPending && (
@@ -112,68 +110,82 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                 )}
             </AnimatePresence>
 
-            <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center rounded-full bg-blue-100 text-blue-700 p-2">
-                        <Users size={22} />
-                    </span>
-                    <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                        List of Patients
-                        {isFetching && !isPending && <Spinner size="sm" />}
-                    </h2>
-                    <span className="ml-2 text-muted-foreground text-sm hidden md:inline">
-                        ({patients.length} total)
-                    </span>
-                </div>
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                    <div className="flex-1 min-w-0 md:w-64">
-                        <SearchInput value={search} onChange={setSearch} placeholder="Search by name..." />
+            {/* --- Improved Visual Hierarchy Starts Here --- */}
+            <header className="flex flex-col mb-4 gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center rounded-full bg-blue-100 text-blue-700 p-3">
+                        <Users size={28} />
                     </div>
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-extrabold text-foreground leading-tight flex items-center gap-2">
+                            Patients
+                            {isFetching && !isPending && <Spinner size="sm" />}
+                        </h1>
+                        <div className="ml-1 text-muted-foreground text-base md:text-lg">
+                            <span>
+                                {patients.length} total patients
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-                    {/* Add New Patient Button */}
-                    {user?.role === "frontdesk" ? (<div className="flex flex-1 min-w-0 md:w-64 justify-center mb-2">
-                        <Link href="/frontdesk/patient/new" >
-                            <Button asChild className="gap-2 rounded-xl text-white">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                {/* Left/Top: Search & Add */}
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    <SearchInput
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="Search by name..."
+                    />
+                    {user?.role === "frontdesk" && (
+                        <Link href="/frontdesk/patient/new" className="min-w-max">
+                            <Button asChild className="gap-2 rounded-xl font-medium text-white shadow-md bg-blue-600 hover:bg-blue-700">
                                 <a>
                                     <Plus size={18} />
                                     Add New Patient
                                 </a>
                             </Button>
                         </Link>
-                    </div>) : ""}
-
+                    )}
+                </div>
+                <div className="flex flex-row justify-end w-full md:w-auto">
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => refetch()}
-                        className="rounded-xl flex items-center gap-2 px-3"
+                        className="rounded-xl flex items-center gap-2 px-4 font-medium"
                         aria-label="Refresh patients"
                         disabled={isFetching}
                     >
                         <RefreshCcw size={18} className={isFetching ? 'animate-spin' : ''} />
-                        <span className="hidden sm:inline">Refresh</span>
+                        <span>Refresh</span>
                     </Button>
                 </div>
-            </header>
+            </div>
+            {/* --- End Visual Hierarchy Head --- */}
 
             {filteredPatients.length === 0 && !isPending ? (
-                <div className="overflow-x-auto rounded-2xl border border-border bg-background shadow-md relative">
-                    <div className="flex flex-col items-center justify-center p-10 text-muted-foreground min-h-[200px]">
-                        <Users size={40} className="mb-2 text-blue-200" />
-                        <span className="font-medium text-lg">No patients found.</span>
-                        <span className="text-sm mt-1">Try adjusting your search or filters.</span>
+                <div className="overflow-x-auto rounded-2xl border-2 border-dashed border-border bg-background shadow-lg relative">
+                    <div className="flex flex-col items-center justify-center p-12 text-muted-foreground min-h-[210px]">
+                        <Users size={44} className="mb-2 text-blue-200" />
+                        <span className="font-semibold text-xl">No patients found.</span>
+                        <span className="text-base mt-2">Try adjusting your search or filters.</span>
                     </div>
                 </div>
             ) : (
-
-                <PatientsTable patients={paginatedPatients} isPending={isPending} currentPage={currentPage} />
+                <PatientsTable
+                    patients={paginatedPatients}
+                    isPending={isPending}
+                    currentPage={currentPage}
+                />
             )}
 
             {filteredPatients.length > 0 && (
-                <footer className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
-                    <span className="text-muted-foreground text-sm">
-                        Showing <span className="font-semibold">{paginatedPatients.length}</span> of <span className="font-semibold">{filteredPatients.length}</span> patients
+                <footer className="flex flex-col md:flex-row items-center justify-between gap-6 pt-4 mt-4 border-t border-border">
+                    <span className="text-muted-foreground text-base">
+                        Showing <span className="font-bold text-blue-700">{paginatedPatients.length}</span> of <span className="font-bold">{filteredPatients.length}</span> patients
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 bg-accent/40 rounded-xl px-3 py-1">
                         <Button
                             onClick={handleFirst}
                             disabled={currentPage === 1}
@@ -194,8 +206,10 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                         >
                             <ChevronLeft size={18} />
                         </Button>
-                        <span className="text-sm text-muted-foreground px-2">
-                            Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                        <span className="text-base text-muted-foreground px-3 font-medium">
+                            Page <span className="font-bold text-foreground">{currentPage}</span>
+                            <span className="mx-1 text-muted-foreground">/</span>
+                            <span className="font-bold text-foreground">{totalPages}</span>
                         </span>
                         <Button
                             onClick={handleNext}

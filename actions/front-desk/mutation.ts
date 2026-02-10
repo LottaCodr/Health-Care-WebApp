@@ -15,7 +15,6 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
     const registerPatientMutation = useMutation({
         mutationFn: async (patientData: RegisterUserParams) => {
             // Optimistically redirect to patients page BEFORE waiting for API
-            // You may want to change the redirect destination as suits your app
             router.push('/frontdesk/patient');
 
             // Continue with API call
@@ -26,9 +25,7 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
             const { error } = await startVisit(result.id as string);
 
             if (!result || !result.id || error) {
-                // toast({
-                //     title: "Failed to register patient", description: `Sorry: The visit hasn't started because ${error}.`,
-                // });
+                
                 throw new Error("Failed to register patient.");
             }
 

@@ -114,6 +114,9 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
         if (user?.role === 'pharmacist') {
             router.push(`/pharmacist/queue/patient/${userId}`);
         }
+        if (user?.role === 'frontdesk') {
+            router.push(`/frontdesk/patient/${userId}`);
+        }
     };
 
     // Loading State Animation
@@ -130,7 +133,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                 >
                     <motion.div className="flex flex-col gap-6 items-center">
                         <motion.div variants={spinnerPulse} animate="animate">
-                            <Spinner size="xl" />
+                            <Spinner  />
                         </motion.div>
                         <motion.span
                             className="text-2xl md:text-3xl text-blue-700 font-bold"
