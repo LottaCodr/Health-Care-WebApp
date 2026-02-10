@@ -4,11 +4,11 @@
 
 | Topic | File |
 |-------|------|
-| API Functions | `API_REFERENCE.md` |
-| How to Integrate | `INTEGRATION_GUIDE.md` |
-| Architecture | `COMPLETE_IMPLEMENTATION.md` |
-| Patient Status | `PATIENT_STATUS_FLOW.md` |
-| File Inventory | `FILE_INVENTORY.md` |
+| Workflow Guide | `COMPLETE_WORKFLOW_GUIDE.md` |
+| Complete API | `API_REFERENCE_COMPLETE.md` |
+| Testing Guide | `TESTING_GUIDE.md` |
+| Status Reference | `PATIENT_STATUS_FLOW.md` |
+| Implementation Status | `IMPLEMENTATION_COMPLETE.md` |
 | Full Overview | `README_COMPLETE.md` |
 
 ---

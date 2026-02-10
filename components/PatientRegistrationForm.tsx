@@ -8,13 +8,19 @@ export const PatientRegistrationForm = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleSubmit = async (e) => {
+    interface PatientData {
+        name: string;
+        age: string;
+        gender: string;
+    }
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
         try {
-            await createPatient({ name, age, gender });
+            await createPatient({ name, age, gender } as PatientData);
             // Handle success (e.g., redirect or show success message)
         } catch (err) {
             setError('Failed to register patient.');

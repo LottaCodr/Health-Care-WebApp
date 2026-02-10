@@ -236,7 +236,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 className="dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 border-r border-gray-200 dark:border-gray-800 min-h-screen"
             >
                 {/* Site logo and hospital title */}
-                <SidebarHeader as="header" aria-label="Main Site Identity">
+                <SidebarHeader aria-label="Main Site Identity">
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton size="sm" asChild>
@@ -259,7 +259,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                     </SidebarMenu>
                 </SidebarHeader>
 
-                <SidebarContent as="nav" aria-label="Sidebar Navigation" className="flex flex-col">
+                <SidebarContent aria-label="Sidebar Navigation" className="flex flex-col">
                     {/* Hierarchical structure: primary nav first */}
                     <section aria-labelledby="main-navigation-label" className="flex flex-col gap-2 px-3 pt-8">
                         <h2 id="main-navigation-label" className="sr-only">Main Navigation</h2>

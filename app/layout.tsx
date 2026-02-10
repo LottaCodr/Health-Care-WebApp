@@ -5,6 +5,7 @@ import "./globals.css";
 import { cn } from "./lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+// import { NotificationContainer } from "@/components/notification-container";
 import ProtectedRedirect from "./(auth)/protected";
 import { Providers } from "@/context/provider";
 
@@ -30,15 +31,14 @@ export default function RootLayout({
         className={cn("min-h-screen font-sans antialiased", fontSans.variable)}
       >
         <ProtectedRedirect>
-        <Providers>
-          <ThemeProvider attribute="class" defaultTheme="light">
-            {children}
-            <Toaster />
-            <Toaster />
-
-          </ThemeProvider>
-        </Providers>
-        </ ProtectedRedirect>
+          <Providers>
+            <ThemeProvider attribute="class" defaultTheme="light">
+              {children}
+              {/* <NotificationContainer /> */}
+              <Toaster />
+            </ThemeProvider>
+          </Providers>
+        </ProtectedRedirect>
       </body>
     </html>
   );

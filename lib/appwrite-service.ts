@@ -616,3 +616,209 @@ export async function logAction(userId: string, action: string, entityType: stri
         timestamp: new Date().toISOString(),
     });
 }
+
+/**
+ * EXTENDED OPERATIONS FOR COMPLETE WORKFLOW
+ */
+
+/**
+ * Get all patients (for queue management)
+ */
+export async function getAllPatients(): Promise<Patient[]> {
+    try {
+        const response = await databases.listDocuments(
+            DB_ID,
+            COLLECTIONS.PATIENTS,
+            [Query.limit(1000)] // Adjust limit as needed
+        );
+        return response.documents as unknown as Patient[];
+    } catch (error) {
+        console.error("Failed to list all patients:", error);
+        return [];
+    }
+}
+
+/**
+ * Get pending prescriptions by pharmacist
+ */
+export async function listPrescriptionsByPharmacist(pharmacistId: string): Promise<Prescription[]> {
+    try {
+        const response = await databases.listDocuments(
+            DB_ID,
+            COLLECTIONS.PRESCRIPTIONS,
+            [
+                Query.equal("status", "Active"),
+                // Note: May need to add pharmacistId field to prescriptions if not present
+            ]
+        );
+        return response.documents as unknown as Prescription[];
+    } catch (error) {
+        console.error("Failed to list prescriptions for pharmacist:", error);
+        return [];
+    }
+}
+
+/**
+ * Get pending lab requests assigned to a lab tech
+ */
+export async function listLabRequestsForTech(techId: string): Promise<LabRequest[]> {
+    try {
+        const response = await databases.listDocuments(
+            DB_ID,
+            COLLECTIONS.LAB_REQUESTS,
+            [Query.equal("status", "Pending")]
+        );
+        return response.documents as unknown as LabRequest[];
+    } catch (error) {
+        console.error("Failed to list lab requests for tech:", error);
+        return [];
+    }
+}
+
+/**
+ * Get nursing actions assigned to a nurse
+ */
+export async function listNursingActionsForNurse(nurseId: string): Promise<any[]> {
+    try {
+        const response = await databases.listDocuments(
+            DB_ID,
+            COLLECTIONS.NURSING_ACTIONS,
+            [
+                Query.equal("status", "Pending"),
+                Query.equal("assignedNurse", nurseId),
+            ]
+        );
+        return response.documents;
+    } catch (error) {
+        console.error("Failed to list nursing actions for nurse:", error);
+        return [];
+    }
+}
+
+/**
+ * Complete a lab request and update patient status
+ */
+export async function completeLabRequest(
+    labRequestId: string,
+    results: string,
+    patientId: string,
+    nextStatus: PatientStatus = PatientStatus.AwaitingPayment
+): Promise<{ labRequest: LabRequest; patient: Patient } | null> {
+    try {
+        // Update lab request
+        const updatedLabRequest = await updateLabRequest(labRequestId, {
+            status: "Completed",
+            results,
+            completionDate: new Date().toISOString(),
+        });
+
+        // Update patient status
+        const updatedPatient = await updatePatientStatus(patientId, nextStatus);
+
+        return {
+            labRequest: updatedLabRequest as unknown as LabRequest,
+            patient: updatedPatient as unknown as Patient,
+        };
+    } catch (error) {
+        console.error("Failed to complete lab request:", error);
+        throw error;
+    }
+}
+
+/**
+ * Complete a nursing action and update patient status
+ */
+export async function completeNursingAction(
+    actionId: string,
+    patientId: string,
+    completionNotes?: string,
+    nextStatus: PatientStatus = PatientStatus.AwaitingPayment
+): Promise<{ action: any; patient: Patient } | null> {
+    try {
+        // Update nursing action
+        const updatedAction = await updateNursingAction(actionId, {
+            status: "Completed",
+            completionTime: new Date().toISOString(),
+            completionNotes,
+        });
+
+        // Update patient status
+        const updatedPatient = await updatePatientStatus(patientId, nextStatus);
+
+        return {
+            action: updatedAction,
+            patient: updatedPatient as unknown as Patient,
+        };
+    } catch (error) {
+        console.error("Failed to complete nursing action:", error);
+        throw error;
+    }
+}
+
+/**
+ * Dispense prescription and create dispensing record
+ */
+export async function dispensePrescription(
+    prescriptionId: string,
+    patientId: string,
+    pharmacistId: string,
+    dispensedMedications: any[],
+    nextStatus: PatientStatus = PatientStatus.AwaitingPayment
+): Promise<{ prescription: Prescription; dispensing: any; patient: Patient } | null> {
+    try {
+        // Update prescription status
+        const updatedPrescription = await updatePrescription(prescriptionId, {
+            status: "Dispensed",
+        });
+
+        // Create dispensing record
+        const dispensingRecord = await createDrugDispensingRecord({
+            prescriptionId,
+            patientId,
+            pharmacistId,
+            dispensedDate: new Date().toISOString(),
+            dispensedMedications,
+            notes: "",
+        });
+
+        // Update patient status
+        const updatedPatient = await updatePatientStatus(patientId, nextStatus);
+
+        return {
+            prescription: updatedPrescription as unknown as Prescription,
+            dispensing: dispensingRecord,
+            patient: updatedPatient as unknown as Patient,
+        };
+    } catch (error) {
+        console.error("Failed to dispense prescription:", error);
+        throw error;
+    }
+}
+
+/**
+ * Route patient after consultation
+ * Based on what services are needed, update patient status accordingly
+ */
+export async function routePatientAfterConsultation(
+    patientId: string,
+    hasNursingActions: boolean,
+    hasLabRequests: boolean,
+    hasPrescription: boolean
+): Promise<Patient | null> {
+    try {
+        let nextStatus = PatientStatus.AwaitingPayment;
+
+        if (hasNursingActions) {
+            nextStatus = PatientStatus.SentToNurse;
+        } else if (hasLabRequests) {
+            nextStatus = PatientStatus.SentToLab;
+        } else if (hasPrescription) {
+            nextStatus = PatientStatus.SentToPharmacy;
+        }
+
+        return await updatePatientStatus(patientId, nextStatus);
+    } catch (error) {
+        console.error("Failed to route patient:", error);
+        throw error;
+    }
+}

@@ -23,6 +23,8 @@ export function PatientInfoCard({ patient }: { patient: Patient }) {
       [PatientStatus.AwaitingPayment]: "bg-red-100 text-red-800",
       [PatientStatus.Discharged]: "bg-gray-100 text-gray-800",
       [PatientStatus.Cancelled]: "bg-red-100 text-red-800",
+      [PatientStatus.AwaitingDoctorReview]: "bg-cyan-100 text-cyan-800",
+      [PatientStatus.AwaitingNextStep]: "bg-teal-100 text-teal-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };

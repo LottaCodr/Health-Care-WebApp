@@ -20,36 +20,42 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+    const router = useRouter();
     const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const redirect = useRouter()
+
+    // Normalize role strings
+    const normalizeRole = (role: any): string => {
+        if (typeof role !== "string") return role;
+        const r = String(role).toLowerCase();
+        if (r.includes("front")) return "FrontDesk";
+        if (r.includes("doc")) return "Doctor";
+        if (r.includes("nurs")) return "Nurse";
+        if (r.includes("lab")) return "LabTechnician";
+        if (r.includes("pharm")) return "Pharmacist";
+        return role;
+    };
+
+    // Build normalized profile
+    const buildProfile = (authUser: any, profile: any) => {
+        if (!profile) return null;
+        return {
+            ...profile,
+            $id: profile.id || profile.$id,
+            role: normalizeRole(profile.role),
+        };
+    };
 
     useEffect(() => {
-        // Check initial session
         const initSession = async () => {
+            setIsLoading(true);
             try {
                 const { data: { user: authUser } } = await supabase.auth.getUser();
 
                 if (authUser) {
                     const staff = await fetchStaffProfile(authUser.id);
-                    const profile = staff?.profile as any | undefined;
-                    if (profile) {
-                        profile.$id = profile.id || profile.$id;
-                        // normalize role strings to PascalCase used elsewhere
-                        if (typeof profile.role === "string") {
-                            const r = String(profile.role).toLowerCase();
-                            if (r.includes("front")) profile.role = "FrontDesk";
-                            else if (r.includes("doc")) profile.role = "Doctor";
-                            else if (r.includes("nurs")) profile.role = "Nurse";
-                            else if (r.includes("lab")) profile.role = "LabTechnician";
-                            else if (r.includes("pharm")) profile.role = "Pharmacist";
-                            else profile.role = profile.role;
-                        }
-
-                        setUser(profile || null);
-                    } else {
-                        setUser(null);
-                    }
+                    const profile = buildProfile(authUser, staff?.profile);
+                    setUser(profile);
                 } else {
                     setUser(null);
                 }
@@ -68,22 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             async (_event, session) => {
                 if (session?.user) {
                     const staff = await fetchStaffProfile(session.user.id);
-                    const profile = staff?.profile as any | undefined;
-                    if (profile) {
-                        profile.$id = profile.id || profile.$id;
-                        if (typeof profile.role === "string") {
-                            const r = String(profile.role).toLowerCase();
-                            if (r.includes("front")) profile.role = "FrontDesk";
-                            else if (r.includes("doc")) profile.role = "Doctor";
-                            else if (r.includes("nurs")) profile.role = "Nurse";
-                            else if (r.includes("lab")) profile.role = "LabTechnician";
-                            else if (r.includes("pharm")) profile.role = "Pharmacist";
-                            else profile.role = profile.role;
-                        }
-                        setUser(profile || null);
-                    } else {
-                        setUser(null);
-                    }
+                    const profile = buildProfile(session.user, staff?.profile);
+                    setUser(profile);
                 } else {
                     setUser(null);
                 }
@@ -94,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const login = async (email: string, password: string) => {
+        setIsLoading(true);
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
@@ -101,38 +94,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             if (error) {
+                setIsLoading(false);
                 return { success: false, message: error.message };
             }
 
-            if (!data.user) {
-                return { success: false, message: "Login failed" };
+            if (data?.user) {
+                const staff = await fetchStaffProfile(data.user.id);
+                const profile = buildProfile(data.user, staff?.profile);
+                setUser(profile);
+                setIsLoading(false);
+
+                return {
+                    success: true,
+                    message: "Login successful",
+                    staff: profile,
+                };
             }
 
-            const staff = await fetchStaffProfile(data.user.id);
-
-            if (!staff?.profile) {
-                return { success: false, message: "Staff profile not found" };
-            }
-
-            setUser(staff.profile as any);
-
-            return {
-                success: true,
-                message: "Login successful",
-                staff: staff.profile as any
-            };
-        } catch (err: any) {
-            return { success: false, message: err.message };
+            throw new Error("Login failed");
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Login failed";
+            setIsLoading(false);
+            return { success: false, message };
         }
     };
 
     const logout = async () => {
-        await supabase.auth.signOut();
-        setUser(null);
-        redirect.replace('/staff')
+        try {
+            await supabase.auth.signOut();
+            setUser(null);
+            router.push("/login");
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Logout failed";
+            throw error;
+        }
     };
 
-    const value = useMemo(
+    const contextValue: AuthContextType = useMemo(
         () => ({
             user,
             isAuthenticated: !!user,
@@ -144,7 +142,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         [user, isLoading]
     );
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={contextValue}>
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 export const useAuth = () => {

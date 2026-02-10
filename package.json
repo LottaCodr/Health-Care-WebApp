@@ -69,7 +69,8 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.1.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@types/file-saver": "^2.0.7",

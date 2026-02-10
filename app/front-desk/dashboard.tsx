@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/auth-provider';
-import { PatientRegistrationForm } from '../components/PatientRegistrationForm';
+import { PatientRegistrationForm } from '@/components/PatientRegistrationForm';
 
 const FrontDeskDashboard = () => {
     const router = useRouter();

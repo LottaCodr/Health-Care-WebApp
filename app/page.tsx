@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FaUserMd } from "react-icons/fa";
 import { MdOutlineLogin } from "react-icons/md";
 import PatientForm from "@/components/forms/PatientForm";
+import LoginScreen from "./login";
 
 export default function Home() {
   return (
@@ -11,6 +12,8 @@ export default function Home() {
       <section className="flex w-full flex-col justify-center px-6 py-10 sm:px-10 lg:w-1/2 lg:px-20 xl:px-28 bg-white/95 dark:bg-zinc-950/90 shadow-2xl z-10">
         <div className="mx-auto w-full min-h-screen max-w-md flex flex-col justify-center">
           {/* Logo & Welcome */}
+
+          <LoginScreen/>
           <div className="flex flex-col items-center mb-10">
             <Image
               src="/assets/icons/logo-full.svg"
