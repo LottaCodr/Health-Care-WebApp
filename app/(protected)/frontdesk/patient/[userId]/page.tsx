@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 // import { getPatientById } from "@/actions/front-desk/get.patients";
-import PatientDetailsComponent from "@/components/doctor/patients/patient-detail";
+import PatientDetailsComponent from "@/components/patients/patient-detail";
 import Loading from "@/app/useloading";
 import { getPatientById } from "@/actions/front-desk/patients";
 

@@ -176,7 +176,7 @@ export default function ConsultationForm({
                                             <SelectContent className="bg-white z-30 shadow-lg rounded-xl max-h-60 overflow-y-auto">
                                                 {availableStaff.map((staff) => (
                                                     <SelectItem key={staff.$id} value={staff.$id}>
-                                                        {staff.full_name || staff.name}
+                                                        { staff.name}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>

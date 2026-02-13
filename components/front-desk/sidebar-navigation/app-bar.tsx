@@ -1,11 +1,10 @@
 "use client";
 
+import React, { useMemo, useCallback, useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useCallback, useRef, useEffect } from "react";
 import { MdDashboard } from "react-icons/md";
 import { FiSettings } from "react-icons/fi";
 import { FaUserPlus, FaUserClock, FaUserCheck } from "react-icons/fa";
-
 import {
     Sidebar,
     SidebarContent,
@@ -18,7 +17,8 @@ import Image from "next/image";
 import { useAuth } from "@/context/auth-provider";
 
 /**
- * Accessible and hierarchical NavLink component.
+ * NavLink component for navigation links in the sidebar.
+ * Provides keyboard accessibility, badge support, and active styling.
  */
 type NavLinkProps = {
     title: string;
@@ -29,8 +29,15 @@ type NavLinkProps = {
     onNavigate?: (url: string) => void;
 };
 
-function NavLink({ title, url, Icon, isActive, badge, onNavigate }: NavLinkProps) {
-    // Keyboard accessibility: allow Enter/Space to trigger navigation
+const NavLink: React.FC<NavLinkProps> = ({
+    title,
+    url,
+    Icon,
+    isActive,
+    badge,
+    onNavigate,
+}) => {
+    // Enables navigation on Enter/Space keys
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
             if (onNavigate && (e.key === "Enter" || e.key === " ")) {
@@ -41,8 +48,11 @@ function NavLink({ title, url, Icon, isActive, badge, onNavigate }: NavLinkProps
         [onNavigate, url]
     );
 
-    // Tooltip for badge, screen reader announcement
-    const badgeId = badge !== undefined ? `${title.replace(/\s+/g, "-").toLowerCase()}-badge` : undefined;
+    // For aria-describedby if badge exists
+    const badgeId =
+        badge !== undefined
+            ? `${title.replace(/\s+/g, "-").toLowerCase()}-badge`
+            : undefined;
 
     return (
         <li role="none" className="w-full">
@@ -50,24 +60,28 @@ function NavLink({ title, url, Icon, isActive, badge, onNavigate }: NavLinkProps
                 type="button"
                 aria-current={isActive ? "page" : undefined}
                 className={`flex items-center justify-between rounded-xl px-4 py-2 text-base font-semibold w-full
-                    ${isActive ? "bg-primary text-white font-bold scale-[1.04]" : "text-gray-700 hover:bg-red-50 hover:text-primary"}
+                    ${isActive ? "bg-white text-primary font-bold scale-[1.04]" : "text-white hover:bg-red-50 hover:text-primary"}
                     focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2`}
                 tabIndex={0}
                 onClick={() => onNavigate && onNavigate(url)}
                 onKeyDown={handleKeyDown}
-                aria-label={badge !== undefined ? `${title}, ${badge} items` : title}
+                aria-label={
+                    badge !== undefined ? `${title}, ${badge} items` : title
+                }
                 aria-describedby={badgeId}
             >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 hover:text-primary">
                     <span
-                        className={`
-                            flex items-center justify-center rounded-lg
-                            ${isActive ? "bg-transparent" : "bg-gray-100 "}
-                            w-9 h-9
-                        `}
+                        className={`flex items-center justify-center rounded-lg ${
+                            isActive
+                                ? "bg-transparent border border-primary"
+                                : "bg-transparent"
+                        } w-9 h-9`}
                     >
                         <Icon
-                            className={`w-6 h-6 transition-colors ${isActive ? "text-white" : "text-primary"}`}
+                            className={`w-6 h-6 transition-colors ${
+                                isActive ? "text-primary" : "text-white"
+                            }`}
                             aria-hidden="true"
                         />
                     </span>
@@ -85,25 +99,36 @@ function NavLink({ title, url, Icon, isActive, badge, onNavigate }: NavLinkProps
             </button>
         </li>
     );
-}
+};
 
 /**
- * Sidebar with improved structure and accessibility.
- * Shows navigation strictly according to the user's role.
+ * FrontDeskAppSidebar displays a role-based sidebar for authenticated users.
+ * Navigation links and sections are dynamically rendered depending on role.
  */
-export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+export function FrontDeskAppSidebar(
+    props: React.ComponentProps<typeof Sidebar>
+) {
     const pathname = usePathname();
     const router = useRouter();
     const auth = useAuth();
     const user = auth?.user;
     const userRole = user?.role ?? "";
 
-    // Role-based navigation schema
+    // Define navigation schema per role
     const navConfig: Record<
         string,
         {
-            navMain: { title: string; url: string; icon: React.ElementType; badge?: () => number }[];
-            navSecondary: { title: string; url: string; icon: React.ElementType }[];
+            navMain: {
+                title: string;
+                url: string;
+                icon: React.ElementType;
+                badge?: () => number;
+            }[];
+            navSecondary: {
+                title: string;
+                url: string;
+                icon: React.ElementType;
+            }[];
         }
     > = {
         Frontdesk: {
@@ -114,7 +139,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                     title: "Payments",
                     url: "/frontdesk/queue",
                     icon: FaUserClock,
-                    badge: () => 0, // dynamic badge placeholder
+                    badge: () => 0, // Replace with real badge logic if available
                 },
             ],
             navSecondary: [
@@ -130,7 +155,11 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                     icon: FaUserClock,
                     badge: () => 0,
                 },
-                { title: "Completed", url: "/nurse/completed", icon: FaUserCheck },
+                {
+                    title: "Completed",
+                    url: "/nurse/completed",
+                    icon: FaUserCheck,
+                },
             ],
             navSecondary: [
                 { title: "Settings", url: "/nurse/settings", icon: FiSettings },
@@ -168,7 +197,7 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
         },
     };
 
-    // Only load navigation if userRole is recognized
+    // Only get navs if userRole is there and valid
     const nav =
         userRole && Object.hasOwn(navConfig, userRole)
             ? navConfig[userRole]
@@ -176,31 +205,36 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
 
     const sidebarRef = useRef<HTMLDivElement>(null);
 
-    // Memoize navigation data for performance & accessibility
+    // Compute main navigation links
     const navMain = useMemo(
         () =>
             nav
                 ? nav.navMain.map((item) => ({
                       ...item,
-                      isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
+                      isActive:
+                          pathname === item.url ||
+                          pathname.startsWith(item.url + "/"),
                       badge: item.badge?.(),
                   }))
                 : [],
         [pathname, userRole, nav]
     );
 
+    // Compute secondary navigation links
     const navSecondary = useMemo(
         () =>
             nav
                 ? nav.navSecondary.map((item) => ({
                       ...item,
-                      isActive: pathname === item.url || pathname.startsWith(item.url + "/"),
+                      isActive:
+                          pathname === item.url ||
+                          pathname.startsWith(item.url + "/"),
                   }))
                 : [],
         [pathname, userRole, nav]
     );
 
-    // Navigation handler for better SPA experience
+    // SPA navigation handler
     const handleNavigate = useCallback(
         (url: string) => {
             if (url !== pathname) {
@@ -210,45 +244,51 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
         [router, pathname]
     );
 
-    // Keyboard shortcut: Focus sidebar with Alt+S or Cmd+S
+    // Focus sidebar with Alt+S or Cmd+S
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.altKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+            if (
+                (e.altKey || e.metaKey) &&
+                (e.key === "s" || e.key === "S")
+            ) {
                 e.preventDefault();
                 sidebarRef.current?.focus();
             }
         };
         window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        return () =>
+            window.removeEventListener("keydown", handleKeyDown);
     }, []);
 
-    // For skip link target, ensure an ID is available for main content.
+    // Skip link for accessibility
     const skipLinkId = "main-content";
 
-    // If the user is not authenticated or does not have a proper role, show nothing
+    // Guard: only render sidebar if user is authenticated and role is recognized
     if (!user || !userRole || !nav) {
         return null;
     }
 
-    // For homepage button, route based on current role
+    // Determine homepage URL based on current role
     const homeUrl =
-        userRole === "frontdesk"
+        userRole === "Frontdesk"
             ? "/frontdesk/dashboard"
-            : userRole === "nurse"
+            : userRole === "Nurse"
             ? "/nurse/dashboard"
-            : userRole === "doctor"
+            : userRole === "Doctor"
             ? "/doctor/dashboard"
-            : userRole === "pharmacist"
+            : userRole === "Pharmacist"
             ? "/pharmacist/dashboard"
-            : userRole === "admin"
+            : userRole === "Admin"
             ? "/admin/dashboard"
+            : userRole === "LabTechnician"
+            ? "/labtech/dashboard"
             : "/";
 
     return (
         <>
             <a
                 href={`#${skipLinkId}`}
-                className="sr-only focus:not-sr-only absolute top-2 left-2 z-50 bg-white dark:bg-gray-900 text-black dark:text-red-200 font-bold px-4 py-2 rounded shadow transition"
+                className="sr-only focus:not-sr-only absolute top-2 left-2 z-50 bg-primary dark:bg-gray-900 text-black dark:text-red-200 font-bold px-4 py-2 rounded shadow transition"
                 tabIndex={0}
             >
                 Skip to main content
@@ -259,9 +299,9 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                 variant="inset"
                 {...props}
                 aria-label="Main site navigation"
-                className="dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 border-r border-gray-200 dark:border-gray-800 min-h-screen"
+                className="dark:from-gray-900 dark:via-gray-950 bg-primary dark:to-gray-900 border-r border-gray-200 dark:border-gray-800 min-h-screen"
             >
-                {/* Site logo and hospital title */}
+                {/* Logo and hospital title */}
                 <SidebarHeader aria-label="Main Site Identity">
                     <SidebarMenu>
                         <SidebarMenuItem>
@@ -273,11 +313,22 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                                     aria-label="Nile Hospital Homepage"
                                 >
                                     <div className="flex w-fit h-fit items-center justify-center rounded-full dark:bg-gray-800 text-black">
-                                        <Image src="/assets/icons/nilelogo.jpeg" alt="Nile Hospital logo" width={66} height={66} className="h-14 w-auto" priority />
+                                        <Image
+                                            src="/assets/icons/nilelogo.jpeg"
+                                            alt="Nile Hospital logo"
+                                            width={66}
+                                            height={66}
+                                            className="h-14 rounded-mb w-auto"
+                                            priority
+                                        />
                                     </div>
                                     <div className="text-left" aria-hidden="true">
-                                        <span className="block font-extrabold text-xl text-primary">Nile Mother & Child</span>
-                                        <span className="block text-xs text-grey-300 tracking-wide">Hospital</span>
+                                        <span className="block font-extrabold text-xl text-white">
+                                            Nile Mother & Child
+                                        </span>
+                                        <span className="block text-xs text-white tracking-wide">
+                                            Hospital
+                                        </span>
                                     </div>
                                 </button>
                             </SidebarMenuButton>
@@ -285,38 +336,67 @@ export function FrontDeskAppSidebar(props: React.ComponentProps<typeof Sidebar>)
                     </SidebarMenu>
                 </SidebarHeader>
 
-                <SidebarContent aria-label="Sidebar Navigation" className="flex flex-col">
-                    {/* Display navigations corresponding to the user's role */}
-                    <section aria-labelledby="main-navigation-label" className="flex flex-col gap-2 px-3 pt-8">
-                        <h2 id="main-navigation-label" className="sr-only">Main Navigation</h2>
-                        <ul className="flex flex-col gap-2" role="menu" aria-orientation="vertical">
-                            {navMain.map(({ title, url, icon, isActive, badge }) => (
-                                <NavLink
-                                    key={url}
-                                    title={title}
-                                    url={url}
-                                    Icon={icon}
-                                    isActive={isActive}
-                                    badge={badge}
-                                    onNavigate={handleNavigate}
-                                />
-                            ))}
+                <SidebarContent
+                    aria-label="Sidebar Navigation"
+                    className="flex flex-col"
+                >
+                    {/* Main navigation */}
+                    <section
+                        aria-labelledby="main-navigation-label"
+                        className="flex flex-col gap-2 px-3 pt-8"
+                    >
+                        <h2 id="main-navigation-label" className="sr-only">
+                            Main Navigation
+                        </h2>
+                        <ul
+                            className="flex flex-col gap-2"
+                            role="menu"
+                            aria-orientation="vertical"
+                        >
+                            {navMain.map(
+                                ({ title, url, icon, isActive, badge }) => (
+                                    <NavLink
+                                        key={url}
+                                        title={title}
+                                        url={url}
+                                        Icon={icon}
+                                        isActive={isActive}
+                                        badge={badge}
+                                        onNavigate={handleNavigate}
+                                    />
+                                )
+                            )}
                         </ul>
                     </section>
 
-                    <section aria-labelledby="secondary-navigation-label" className="flex flex-col gap-2 px-3 pb-8 mt-6 border-t border-gray-200 dark:border-gray-800">
-                        <h2 id="secondary-navigation-label" className="sr-only">Secondary Navigation</h2>
-                        <ul className="flex flex-col gap-2" role="menu" aria-orientation="vertical">
-                            {navSecondary.map(({ title, url, icon, isActive }) => (
-                                <NavLink
-                                    key={url}
-                                    title={title}
-                                    url={url}
-                                    Icon={icon}
-                                    isActive={isActive}
-                                    onNavigate={handleNavigate}
-                                />
-                            ))}
+                    {/* Secondary navigation */}
+                    <section
+                        aria-labelledby="secondary-navigation-label"
+                        className="flex flex-col gap-2 px-3 pb-8 mt-6 border-t border-gray-200 dark:border-gray-800"
+                    >
+                        <h2
+                            id="secondary-navigation-label"
+                            className="sr-only"
+                        >
+                            Secondary Navigation
+                        </h2>
+                        <ul
+                            className="flex flex-col gap-2"
+                            role="menu"
+                            aria-orientation="vertical"
+                        >
+                            {navSecondary.map(
+                                ({ title, url, icon, isActive }) => (
+                                    <NavLink
+                                        key={url}
+                                        title={title}
+                                        url={url}
+                                        Icon={icon}
+                                        isActive={isActive}
+                                        onNavigate={handleNavigate}
+                                    />
+                                )
+                            )}
                         </ul>
                     </section>
                 </SidebarContent>

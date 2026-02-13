@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
  * Displays key patient details
  */
 export function PatientInfoCard({ patient }: { patient: Patient }) {
+
   const getStatusColor = (status: PatientStatus) => {
     const colors: Record<PatientStatus, string> = {
       [PatientStatus.Registered]: "bg-blue-100 text-blue-800",

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-provider';
 import { UserRole } from '@/types/models';
-import { Stethoscope, ShieldCheck, Loader2 } from 'lucide-react';
+import {  ShieldCheck, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 const LoginScreen: React.FC = () => {
@@ -15,7 +15,6 @@ const LoginScreen: React.FC = () => {
     const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    // FIX: type to number, not string
     const [year, setYear] = useState<number>(new Date().getFullYear());
 
     useEffect(() => {
@@ -42,34 +41,7 @@ const LoginScreen: React.FC = () => {
         }
     }, [user, authLoading, router]);
 
-    // const handleLogin = async (role: UserRole) => {
-    //     try {
-    //         setLoading(true);
-    //         setError(null);
-
-    //         const creds = demoCredentials[role];
-    //         if (!creds) {
-    //             setError('Invalid role selected');
-    //             setLoading(false);
-    //             return;
-    //         }
-
-    //         // Call login with email and password
-    //         const result = await login(creds.email, creds.password);
-
-    //         if (!result.success) {
-    //             setError(result.message || 'Login failed');
-    //             setLoading(false);
-    //             return;
-    //         }
-
-    //         // Navigation will be handled by useEffect when user updates
-    //     } catch (err) {
-    //         setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
-    //         console.error('Login error:', err);
-    //         setLoading(false);
-    //     }
-    // };
+    
 
     const handleSubmitLogin = async () => {
         if (!email || !password || !selectedRole) {
@@ -106,16 +78,16 @@ const LoginScreen: React.FC = () => {
         { value: UserRole.Admin, label: 'Admin', description: 'System administration', color: 'from-slate-600 to-slate-700' },
     ];
 
-    if (authLoading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 size={40} className="text-blue-600 animate-spin mx-auto mb-4" />
-                    <p className="text-slate-600">Loading...</p>
-                </div>
-            </div>
-        );
-    }
+    // if (authLoading) {
+    //     return (
+    //         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+    //             <div className="text-center">
+    //                 <Loader2 size={40} className="text-blue-600 animate-spin mx-auto mb-4" />
+    //                 <p className="text-slate-600">Loading...</p>
+    //             </div>
+    //         </div>
+    //     );
+    // }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
@@ -157,7 +129,7 @@ const LoginScreen: React.FC = () => {
                                 <button
                                     key={role.value}
                                     onClick={() => setSelectedRole(role.value)}
-                                    className="text-left rounded-xl border border-slate-200 hover:border-blue-400 transition-all hover:shadow-lg p-6"
+                                    className="text-left rounded-xl border border-slate-200 hover:border-red-400 transition-all hover:shadow-lg p-6"
                                 >
                                     <div className="font-bold text-lg">{role.label}</div>
                                     <div className="text-sm text-slate-600">{role.description}</div>
@@ -193,7 +165,7 @@ const LoginScreen: React.FC = () => {
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setSelectedRole(null)}
-                                    className="flex-1 border rounded-lg py-3"
+                                    className="flex-1 border border-red-500 rounded-lg py-3"
                                 >
                                     Back
                                 </button>
@@ -201,7 +173,7 @@ const LoginScreen: React.FC = () => {
                                 <button
                                     onClick={handleSubmitLogin}
                                     disabled={loading}
-                                    className="flex-1 bg-blue-600 text-white rounded-lg py-3"
+                                    className="flex-1 bg-red-600 text-white rounded-lg py-3"
                                 >
                                     {loading ? 'Signing in…' : 'Sign In'}
                                 </button>

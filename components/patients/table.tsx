@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Patient, PatientStatus } from '@/context/patients/types';
 import { Spinner } from '@/components/ui/spinner';
 import { calculateAge, formatDate } from '@/lib/utils';
-import { FaUserMd, FaHeartbeat, FaNotesMedical, FaPills, FaExclamationCircle } from 'react-icons/fa';
+import { FaUserMd, FaHeartbeat, FaNotesMedical, FaPills, FaExclamationCircle, FaUserNurse, FaUser } from 'react-icons/fa';
 import { MdOutlineMedication, MdWarning } from 'react-icons/md';
 import { useAuth } from '@/context/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -102,20 +102,17 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
     const { user } = useAuth();
 
     const handleClickOnPatient = (userId: string) => {
-        if (user?.role === 'doctor') {
+        if (user?.role === 'Doctor') {
             router.push(`/doctor/patients/${userId}`);
         }
-        if (user?.role === "nurse") {
+        if (user?.role === "Nurse") {
             router.push(`/nurse/queue/patient/${userId}`);
         }
-        if (user?.role === "labtech") {
+        if (user?.role === "Labtech") {
             router.push(`/labtech/patients/${userId}`);
         }
-        if (user?.role === 'pharmacist') {
+        if (user?.role === 'Pharmacist') {
             router.push(`/pharmacist/queue/patient/${userId}`);
-        }
-        if (user?.role === 'frontdesk') {
-            router.push(`/frontdesk/patient/${userId}`);
         }
     };
 
@@ -133,7 +130,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                 >
                     <motion.div className="flex flex-col gap-6 items-center">
                         <motion.div variants={spinnerPulse} animate="animate">
-                            <Spinner  />
+                            <Spinner />
                         </motion.div>
                         <motion.span
                             className="text-2xl md:text-3xl text-blue-700 font-bold"
@@ -173,7 +170,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
         <motion.div
             className={clsx(
                 // Responsive: 1 col on xs, 2 col sm, 3 col md, 4 col lg, 5 col xl+
-                "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 md:gap-8 py-4 w-full px-2 md:px-0"
+                "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-6 md:gap-8 py-4 w-full px-2 md:px-0"
             )}
             variants={containerVariants}
             initial="hidden"
@@ -193,7 +190,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                             }
                         }}
                         className={clsx(
-                            "group relative flex flex-col rounded-2xl border border-border shadow-sm bg-white dark:bg-muted/60 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 cursor-pointer hover:shadow-lg outline-none transition ring-blue-400 focus:ring-2",
+                            "group relative flex flex-col rounded-2xl border hover:border-primary shadow-sm bg-white dark:bg-muted/60 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 cursor-pointer hover:shadow-lg outline-none transition ring-blue-400 focus:ring-2",
                             "min-h-[222px] sm:min-h-[212px] md:min-h-[220px]"
                         )}
                         style={{}}
@@ -210,7 +207,11 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                     >
                         <div className="flex items-center gap-4 w-full">
                             <div className="rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center h-16 w-16 md:h-20 md:w-20">
-                                <FaUserMd className="text-blue-700 text-3xl md:text-4xl" />
+                                {patient.gender?.toLowerCase() === 'female' ? (
+                                    <FaUser className="text-pink-600 text-3xl md:text-4xl" />
+                                ) : (
+                                    <FaUser className="text-blue-700 text-3xl md:text-4xl" />
+                                )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="font-bold text-lg md:text-2xl text-gray-900 dark:text-white truncate max-w-[180px] md:max-w-[220px]" title={patient?.name ?? 'N/A'}>

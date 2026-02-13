@@ -31,7 +31,7 @@ export default function DashboardLayout({
     return (
 
         user?.isLoading ? (
-            
+
 
             <div className="flex flex-col items-center justify-center h-screen min-h-[40vh] mb-4 p-6">
                 <svg
@@ -53,25 +53,25 @@ export default function DashboardLayout({
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                     ></path>
                 </svg>
-                <div className="text-lg md:text-xl font-semibold text-center text-primary">
+                <div className="text-lg md:text-xl font-semibold text-center text-black">
                     Welcome to Nile Valley Mother & Child Hospital...
                 </div>
             </div>
-        ) :  (
-                <SidebarProvider>
-                    <FrontDeskAppSidebar />
-                    <SidebarInset>
-                        <header className="flex h-16 justify-between w-full shrink-0 items-center gap-2 bg-white dark:bg-gray-900 border-b border-grey-100 dark:border-gray-800">
-                            <div className="flex items-center gap-2 px-4 justify-between w-full">
-                                <SidebarTrigger className="-ml-1 hover:bg-red-100 dark:hover:bg-gray-800 focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600 rounded transition" />
+        ) : (
+            <SidebarProvider>
+                <FrontDeskAppSidebar />
+                <SidebarInset>
+                    <header className="flex z-50 top-0 fixed h-20 justify-between w-full shrink-0 items-center gap-2 bg-white dark:bg-gray-900 border-b border-grey-100 dark:border-gray-800">
+                        <div className="flex items-center gap-2 px-4 justify-between w-full">
+                            <SidebarTrigger className="-ml-1 hover:bg-red-100 dark:hover:bg-gray-800 focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600 rounded transition" />
 
 
-                                <FrontDeskNavUser />
-                            </div>
-                        </header>
-                        <main className="flex flex-1 flex-col gap-4 pt-0 bg-gray-100 dark:bg-gray-900">{children}</main>
-                    </SidebarInset>
-                </SidebarProvider>
+                            <FrontDeskNavUser />
+                        </div>
+                    </header>
+                    <main className="flex flex-1 mt-8 flex-col gap-4 pt-0 bg-gray-100 dark:bg-gray-900">{children}</main>
+                </SidebarInset>
+            </SidebarProvider>
 
         )
 

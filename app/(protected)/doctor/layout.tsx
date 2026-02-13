@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: { children?: React.ReactNo
                             className="hover:bg-red-100 dark:hover:bg-gray-800 rounded transition focus:outline-none focus:ring-2 focus:ring-primary/70"
                         />
                     </nav>
-                    <div className="flex items-center">
+                    <div className="flex justify-between items-center">
                         <FrontDeskNavUser />
                     </div>
                 </header>
