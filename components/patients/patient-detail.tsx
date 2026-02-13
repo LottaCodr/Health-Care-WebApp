@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, ReactNode } from "react";
 import { usePatientContext } from "@/context/patients/patient-context";
 import { useConsultationContext } from "@/context/consultation/consultation";
 import PatientDetailsSkeleton from "./skeleton";
@@ -30,6 +30,19 @@ import PatientDetailTabs from "./patient-detail-tabs";
 interface Props {
   patient: Patient;
 }
+
+type Field =
+  | {
+      label: string;
+      icon: ReactNode;
+      value: any;
+      render?: (val: any) => ReactNode;
+    }
+  | {
+      label: string;
+      icon: ReactNode;
+      value: any;
+    };
 
 export default function PatientDetailsComponent({ patient }: Props) {
   const { state: patientState, dispatch: patientDispatch } = usePatientContext();
@@ -111,7 +124,11 @@ function PatientProfile({
   showCopied: boolean;
 }) {
   // Define field groupings for better visual structure
-  const fieldGroups = [
+  const fieldGroups: {
+    title: string;
+    icon: ReactNode;
+    fields: Field[];
+  }[] = [
     {
       title: "Basic Information",
       icon: <FaUserMd className="text-primary" />,
@@ -336,14 +353,20 @@ function PatientProfile({
                 <div className="flex-1 border-t border-dashed border-blue-200 ml-3" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-                {group.fields.map((field) => (
-                  <InfoItem
-                    key={field.label}
-                    label={field.label}
-                    icon={field.icon}
-                    value={field.render ? field.render(field.value) : (field.value ?? "Not provided")}
-                  />
-                ))}
+                {group.fields.map((field) => {
+                  // TypeScript safe access for .render property
+                  const hasRender = typeof (field as any).render === "function";
+                  return (
+                    <InfoItem
+                      key={field.label}
+                      label={field.label}
+                      icon={field.icon}
+                      value={hasRender
+                        ? (field as any).render(field.value)
+                        : (field.value ?? "Not provided")}
+                    />
+                  );
+                })}
               </div>
             </div>
           ))}
