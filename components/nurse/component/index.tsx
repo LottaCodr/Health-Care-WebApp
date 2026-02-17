@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { FaUserDoctor, FaUserNurse, FaHospitalUser } from 'react-icons/fa6';
@@ -28,63 +28,71 @@ export default function NurseDashboardComponent() {
         ? user?.role.charAt(0).toUpperCase() + user?.role.slice(1)
         : "Staff";
 
-   
-   
-   
+
+
+
     return (
-        <div className="p-6 md:p-10 space-y-8 min-h-screen rounded-3xl">
-            {/* Greeting */}
-            <header className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">
-                    {personalizedGreeting()}, {formattedRole} {user?.name || ""}
-                </h1>
-                <p className="text-base text-gray-600">
-                    Here's what's happening with your patients today.
-                </p>
-            </header>
+        <Suspense fallback={
+            <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary" />
+                <span className="ml-4 text-primary font-semibold">Loading Dashboard...</span>
+            </div>
+        }>
 
-            {/* Dashboard Cards */}
-            <section>
+            <div className="p-6 md:p-10 space-y-8 min-h-screen rounded-3xl">
+                {/* Greeting */}
+                <header className="space-y-2">
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">
+                        {personalizedGreeting()}, {formattedRole} {user?.name || ""}
+                    </h1>
+                    <p className="text-base text-gray-600">
+                        Here's what's happening with your patients today.
+                    </p>
+                </header>
 
-                <NurseStatCardsSection />
+                {/* Dashboard Cards */}
+                <section>
+
+                    <NurseStatCardsSection />
 
 
-            </section>
+                </section>
 
-            <section className="mt-8">
-                <Tabs defaultValue="patients" className="w-full">
-                    <TabsList className="bg-transparent border-gray-700 rounded-none px-0">
+                <section className="mt-8">
+                    <Tabs defaultValue="patients" className="w-full">
+                        <TabsList className="bg-transparent border-gray-700 rounded-none px-0">
 
-                        <TabsTrigger
-                            value="patients"
-                            className="px-4 py-2 text-sm font-medium data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary border-b-2 border-transparent text-gray-300"
-                        >
-                            Patients
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="vitals"
-                            className="px-4 py-2 text-sm font-medium data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary border-b-2 border-transparent text-gray-300"
-                        >
-                            Vitals Recording
-                        </TabsTrigger>
+                            <TabsTrigger
+                                value="patients"
+                                className="px-4 py-2 text-sm font-medium data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary border-b-2 border-transparent text-gray-300"
+                            >
+                                Patients
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="vitals"
+                                className="px-4 py-2 text-sm font-medium data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary border-b-2 border-transparent text-gray-300"
+                            >
+                                Vitals Recording
+                            </TabsTrigger>
 
-                    </TabsList>
+                        </TabsList>
 
-                    <TabsContent value="patients">
-                        {/* <div className="py-4 text-gray-400">Patients content goes here.</div> */}
-                        <RecentPatients />
-                    </TabsContent>
-                    <TabsContent value="vitals">
-                        <div className="py-4  w-full items-start">
+                        <TabsContent value="patients">
+                            {/* <div className="py-4 text-gray-400">Patients content goes here.</div> */}
+                            <RecentPatients />
+                        </TabsContent>
+                        <TabsContent value="vitals">
+                            <div className="py-4  w-full items-start">
 
-                            <RecentVitalsRecording />
+                                <RecentVitalsRecording />
 
-                        </div>
-                    </TabsContent>
+                            </div>
+                        </TabsContent>
 
-                </Tabs>
-            </section>
+                    </Tabs>
+                </section>
 
-        </div>
+            </div>
+        </Suspense>
     );
 }

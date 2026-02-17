@@ -56,7 +56,7 @@ export function FrontDeskNavUser() {
 
     // This matches the right screenshot: avatar left, name (big) and email (small) stacked, with dropdown for settings/logout.
     return (
-        <div className="w-full px-6 py-4 flex items-center gap-4 ">
+        <div className="w-full px-6  py-4 flex items-center gap-4 ">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <button className="outline-none text-red flex items-center">

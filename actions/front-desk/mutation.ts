@@ -12,13 +12,29 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
     const queryClient = useQueryClient();
     const router = useRouter();
 
+    // Utility: update the patient in cache
+    const cacheAddPatient = (patient: Patient) => {
+        queryClient.setQueryData<Patient[]>(['patients'], (prev) => {
+            if (!prev) return [patient];
+            // If patient already exists, replace
+            if (prev.some(p => p.id === patient.id)) {
+                return prev.map(p => (p.id === patient.id ? patient : p));
+            }
+            return [patient, ...prev];
+        });
+    };
+
+    // Utility: update cache for patient
+    const cacheUpdatePatient = (patient: Patient) => {
+        queryClient.setQueryData<Patient[]>(['patients'], (prev) => {
+            if (!prev) return [patient];
+            return prev.map(p => (p.id === patient.id ? patient : p));
+        });
+    };
+
     const registerPatientMutation = useMutation({
         mutationFn: async (patientData: RegisterUserParams) => {
-            // Optimistically redirect to patients page BEFORE waiting for API
-            // You may want to change the redirect destination as suits your app
             router.push('/frontdesk/patient');
-
-            // Continue with API call
             const result = await registerPatient(patientData);
             if (!result || !result.id) {
                 throw new Error("Failed to register patient.");
@@ -26,12 +42,8 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
             const { error } = await startVisit(result.id as string);
 
             if (!result || !result.id || error) {
-                // toast({
-                //     title: "Failed to register patient", description: `Sorry: The visit hasn't started because ${error}.`,
-                // });
                 throw new Error("Failed to register patient.");
             }
-
             if (error) throw new Error(error);
 
             if (!result) {
@@ -41,11 +53,11 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
         },
         onSuccess: (data) => {
             dispatch({ type: "ADD_PATIENT", payload: data as Patient });
+            cacheAddPatient(data as Patient);
             toast({
                 title: "Registration Successful", description: "The visit has been successfully started.",
             });
         },
-
         onSettled() {
             queryClient.invalidateQueries({ queryKey: ['patients'] });
         },
@@ -56,10 +68,8 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
                 variant: 'default',
             });
         }
-    })
+    });
 
-
-    //TODO: create update and delete mutations
     const updatePatientMutation = useMutation({
         mutationFn: async ({ id, updates }: { id: string, updates: Partial<Patient> }) => {
             const updated = await updatePatient(id, updates);
@@ -69,6 +79,7 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
         onSuccess: (data) => {
             if (data) {
                 dispatch({ type: "UPDATE_PATIENT", payload: data });
+                cacheUpdatePatient(data as Patient);
                 toast({ title: "Patient updated successfully" });
             }
         },
@@ -80,7 +91,7 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
             });
         },
         onSettled() {
-            queryClient.invalidateQueries({ queryKey: ['patients'] })
+            queryClient.invalidateQueries({ queryKey: ['patients'] });
         },
         onMutate: async (data) => {
             const prev = queryClient.getQueryData<Patient[]>(['patients']);
@@ -90,14 +101,17 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
                 const optimistic = {
                     ...prevPatient, ...updates
                 }
-                dispatch({ type: "UPDATE_PATIENT", payload: optimistic })
-            } return { prevPatient }
+                dispatch({ type: "UPDATE_PATIENT", payload: optimistic });
+                cacheUpdatePatient(optimistic as Patient);
+            } 
+            return { prevPatient };
         },
 
-    })
+    });
 
+    // To cache all mutations, just return the mutations with cache update handled inside mutations
     return {
         registerPatient: registerPatientMutation,
         updatePatient: updatePatientMutation
-    }
+    };
 }

@@ -49,15 +49,15 @@ export default function DashboardLayout({
                 </SidebarInset>
             </SidebarProvider>
         ) : (
-                <main className="min-h-screen flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <h1 className="text-2xl font-bold text-center text-gray-800">Welcome to the FrontDesk Dashboard</h1>
-                        <p className="text-base text-muted-foreground text-center">
-                            Loading your dashboard. Please wait...
-                        </p>
-                    </div>
-                </main>
+            <main className="min-h-screen flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <h1 className="text-2xl font-bold text-center text-gray-800">Welcome to the FrontDesk Dashboard</h1>
+                    <p className="text-base text-muted-foreground text-center">
+                        Loading your dashboard. Please wait...
+                    </p>
+                </div>
+            </main>
 
         )
 

@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getPatientById } from "@/actions/front-desk/get.patients";
-import PatientDetailsComponent from "@/components/doctor/patients/patient-detail";
+import PatientDetailsComponent from "@/components/patients/patient-detail";
 
 export default function PatientDetailsPage() {
     const { userId } = useParams<{ userId: string }>();

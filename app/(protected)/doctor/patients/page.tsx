@@ -1,6 +1,6 @@
 
 import React from 'react'
-import PatientsComponent from '@/components/doctor/patients'
+import PatientsComponent from '@/components/patients'
 import { getAllPatients } from '@/actions/front-desk/get.patients'
 
 
