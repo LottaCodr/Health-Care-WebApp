@@ -383,6 +383,18 @@ export function useUpdatePatientStatus() {
 
 export function useCreateAuditLog() {
     return useMutation({
-        mutationFn: logAction,
+        mutationFn: ({
+            userId,
+            action,
+            entityType,
+            entityId,
+            changes,
+        }: {
+            userId: string;
+            action: string;
+            entityType: string;
+            entityId: string;
+            changes?: any;
+        }) => logAction(userId, action, entityType, entityId, changes),
     });
 }

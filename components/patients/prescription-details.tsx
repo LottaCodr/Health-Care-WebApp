@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/context/auth-provider";
 import { useCreatePrescription } from "@/hooks/use-emr";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +20,32 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Plus, Trash2, Pill } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+//
+// MODEL WE SHOULD USE:
+//
+// interface Prescription {
+//   patientId: string;
+//   doctorId: string;
+//   medications: PrescriptionMedication[];
+//   notes?: string;
+//   createdBy: string;
+// }
+//
+// interface PrescriptionMedication {
+//   drugName: string;
+//   strength?: string;
+//   dosage: string;
+//   frequency?: string;
+//   route?: string;
+//   duration?: string;
+//   instructions?: string;
+//   status: "Active" | "Completed" | "Expired" | string;
+//   note: string; // << REQUIRED singular, not 'notes'
+// }
+//
+
 const defaultPatient = {
+    id: "pat-dummy-123",
     name: "John Doe",
     dob: "1980-05-14",
     sex: "Male",
@@ -22,33 +53,36 @@ const defaultPatient = {
 };
 
 const defaultDoctor = {
+    id: "doc-dummy-456",
     name: "Dr. Sarah Munson",
     specialty: "Internal Medicine",
     npi: "1234567890",
-    address: "1234 Main St, NYC, NY",
+    address: "1234 Main St, NYC, NY"
 };
 
 function statusColor(status: string) {
-    switch (status) {
-        case "Active":
-            return "bg-green-100 text-green-700";
-        case "Completed":
-            return "bg-blue-100 text-blue-700";
-        case "Expired":
-            return "bg-red-100 text-red-700";
-        default:
-            return "bg-gray-100 text-gray-700";
+    if (status === "Active") {
+        return "bg-green-100 text-green-700";
+    } else if (status === "Completed") {
+        return "bg-blue-100 text-blue-700";
+    } else if (status === "Expired") {
+        return "bg-red-100 text-red-700";
+    } else {
+        return "bg-gray-100 text-gray-700";
     }
 }
 
+// Model for medication entry UI, matching PrescriptionMedication interface
 interface MedicationInput {
     drugName: string;
-    strength: string;
+    strength?: string;
     dosage: string;
-    route: string;
-    duration: string;
-    instructions: string;
-    status: string;
+    frequency?: string;
+    route?: string;
+    duration?: string;
+    instructions?: string;
+    status?: string;
+    note: string; // required (singular, matches backend interface exactly!)
 }
 
 export default function PrescriptionDetails() {
@@ -60,12 +94,15 @@ export default function PrescriptionDetails() {
             drugName: "",
             strength: "",
             dosage: "",
+            frequency: "",
             route: "",
             duration: "",
             instructions: "",
             status: "Active",
+            note: "",
         },
     ]);
+
     const [checkedMedications, setCheckedMedications] = useState<Set<number>>(new Set());
     const [notes, setNotes] = useState("");
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -75,6 +112,7 @@ export default function PrescriptionDetails() {
     const { toast } = useToast();
     const router = useRouter();
 
+    // Handle medication field change (updates value in array)
     const handleMedicationChange = (
         index: number,
         field: keyof MedicationInput,
@@ -89,7 +127,6 @@ export default function PrescriptionDetails() {
             return updated;
         });
 
-        // Error clearing inline
         const errorKey = `med_${index}_${field}`;
         if (errors[errorKey]) {
             setErrors((prev) => {
@@ -107,10 +144,12 @@ export default function PrescriptionDetails() {
                 drugName: "",
                 strength: "",
                 dosage: "",
+                frequency: "",
                 route: "",
                 duration: "",
                 instructions: "",
                 status: "Active",
+                note: "",
             },
         ]);
     };
@@ -136,6 +175,7 @@ export default function PrescriptionDetails() {
         });
     };
 
+    // Validate: need at least 1 med, and each required field
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
 
@@ -150,34 +190,86 @@ export default function PrescriptionDetails() {
             if (!med.dosage.trim()) {
                 newErrors[`med_${idx}_dosage`] = "Dosage is required";
             }
+            // note is required by backend
+            if (typeof med.note !== "string" || med.note.trim().length === 0) {
+                newErrors[`med_${idx}_note`] = "Medication note is required";
+            }
         });
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
+    // Convert MedicationInput[] to PrescriptionMedication[] (make optional fields undefined if blank, otherwise ensure string)
+    function buildMedicationsPayload(inputs: MedicationInput[]): {
+        drugName: string;
+        strength?: string;
+        dosage: string;
+        frequency?: string;
+        route?: string;
+        duration?: string;
+        instructions?: string;
+        status: string;
+        note: string;
+    }[] {
+        return inputs.map(med => {
+            // Ensure all optional fields are either a string or undefined (never the actual value "", always undefined if empty)
+            const payload: {
+                drugName: string;
+                strength?: string;
+                dosage: string;
+                frequency?: string;
+                route?: string;
+                duration?: string;
+                instructions?: string;
+                status: string;
+                note: string;
+            } = {
+                drugName: med.drugName,
+                dosage: med.dosage,
+                status: med.status ?? "Active",
+                note: med.note ? med.note : "",
+            };
+            if (med.strength && med.strength.trim() !== "") payload.strength = med.strength;
+            if (med.frequency && med.frequency.trim() !== "") payload.frequency = med.frequency;
+            if (med.route && med.route.trim() !== "") payload.route = med.route;
+            if (med.duration && med.duration.trim() !== "") payload.duration = med.duration;
+            if (med.instructions && med.instructions.trim() !== "") payload.instructions = med.instructions;
+            return payload;
+        });
+    }
+
+    // Handle submit with model
     const handleCreatePrescription = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!validateForm()) {
-            toast.error("Please fill in all required fields");
+            toast({
+                title: "Error",
+                description: "Please fill in all required fields (including note on each medication)",
+                variant: "destructive"
+            });
             return;
         }
         setSubmitting(true);
         try {
-            // Replace with API call
             await createPrescription({
-                patient: patientInfo,
-                doctor: doctorInfo,
-                // medications: medications,
-                notes: notes,
-                createdBy: user?.id ?? ""
+                patientId: patientInfo.id,
+                medications: buildMedicationsPayload(medications) as any,
+                status: "Completed",
+                consultationId: "",
+                nurseId: user?.id,
+                instructions: "",
+                createdDate: Date.now().toString()
             });
             setSubmitting(false);
-            // toast("Prescription created successfully!");
             router.back();
         } catch (error) {
             setSubmitting(false);
-            // toast("Failed to create prescription. Please try again.");
+            toast({
+                title: "Failed",
+                description: "Failed to create prescription. Please try again.",
+                variant: "destructive"
+            });
         }
     };
 
@@ -215,7 +307,10 @@ export default function PrescriptionDetails() {
                         )}
                         <div className="space-y-4">
                             {medications.map((med, idx) => (
-                                <div key={idx} className="border rounded-md p-4 bg-gray-50 relative space-y-3">
+                                <div
+                                    key={idx}
+                                    className="border rounded-md p-4 bg-gray-50 relative space-y-3"
+                                >
                                     {/* Checkbox and Header */}
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-start gap-3">
@@ -226,7 +321,10 @@ export default function PrescriptionDetails() {
                                                 disabled={submitting || creating}
                                                 className="mt-1"
                                             />
-                                            <Label htmlFor={`med_check_${idx}`} className="font-semibold cursor-pointer">
+                                            <Label
+                                                htmlFor={`med_check_${idx}`}
+                                                className="font-semibold cursor-pointer"
+                                            >
                                                 Medication {idx + 1}
                                             </Label>
                                         </div>
@@ -235,7 +333,9 @@ export default function PrescriptionDetails() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => removeMedication(idx)}
-                                            disabled={(submitting || creating) || medications.length === 1}
+                                            disabled={
+                                                submitting || creating || medications.length === 1
+                                            }
                                         >
                                             <Trash2 className="h-4 w-4 text-destructive" />
                                         </Button>
@@ -254,10 +354,14 @@ export default function PrescriptionDetails() {
                                                     handleMedicationChange(idx, "drugName", e.target.value)
                                                 }
                                                 disabled={submitting || creating}
-                                                className={errors[`med_${idx}_drugName`] ? "border-destructive" : ""}
+                                                className={
+                                                    errors[`med_${idx}_drugName`] ? "border-destructive" : ""
+                                                }
                                             />
                                             {errors[`med_${idx}_drugName`] && (
-                                                <p className="text-sm text-destructive">{errors[`med_${idx}_drugName`]}</p>
+                                                <p className="text-sm text-destructive">
+                                                    {errors[`med_${idx}_drugName`]}
+                                                </p>
                                             )}
                                         </div>
                                         <div>
@@ -266,7 +370,9 @@ export default function PrescriptionDetails() {
                                                 id={`strength_${idx}`}
                                                 value={med.strength}
                                                 placeholder="e.g. 500mg"
-                                                onChange={e => handleMedicationChange(idx, "strength", e.target.value)}
+                                                onChange={e =>
+                                                    handleMedicationChange(idx, "strength", e.target.value)
+                                                }
                                                 disabled={submitting || creating}
                                             />
                                         </div>
@@ -282,10 +388,14 @@ export default function PrescriptionDetails() {
                                                     handleMedicationChange(idx, "dosage", e.target.value)
                                                 }
                                                 disabled={submitting || creating}
-                                                className={errors[`med_${idx}_dosage`] ? "border-destructive" : ""}
+                                                className={
+                                                    errors[`med_${idx}_dosage`] ? "border-destructive" : ""
+                                                }
                                             />
                                             {errors[`med_${idx}_dosage`] && (
-                                                <p className="text-sm text-destructive">{errors[`med_${idx}_dosage`]}</p>
+                                                <p className="text-sm text-destructive">
+                                                    {errors[`med_${idx}_dosage`]}
+                                                </p>
                                             )}
                                         </div>
                                     </div>
@@ -296,7 +406,9 @@ export default function PrescriptionDetails() {
                                                 id={`route_${idx}`}
                                                 value={med.route}
                                                 placeholder="e.g. Oral"
-                                                onChange={e => handleMedicationChange(idx, "route", e.target.value)}
+                                                onChange={e =>
+                                                    handleMedicationChange(idx, "route", e.target.value)
+                                                }
                                                 disabled={submitting || creating}
                                             />
                                         </div>
@@ -306,7 +418,9 @@ export default function PrescriptionDetails() {
                                                 id={`duration_${idx}`}
                                                 value={med.duration}
                                                 placeholder="e.g. 5 days"
-                                                onChange={e => handleMedicationChange(idx, "duration", e.target.value)}
+                                                onChange={e =>
+                                                    handleMedicationChange(idx, "duration", e.target.value)
+                                                }
                                                 disabled={submitting || creating}
                                             />
                                         </div>
@@ -316,24 +430,64 @@ export default function PrescriptionDetails() {
                                                 id={`instructions_${idx}`}
                                                 value={med.instructions}
                                                 placeholder="e.g. After meals"
-                                                onChange={e => handleMedicationChange(idx, "instructions", e.target.value)}
+                                                onChange={e =>
+                                                    handleMedicationChange(idx, "instructions", e.target.value)
+                                                }
                                                 disabled={submitting || creating}
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 mt-2">
-                                        <Label htmlFor={`status_${idx}`}>Status</Label>
-                                        <select
-                                            id={`status_${idx}`}
-                                            className="border rounded px-2 py-1"
-                                            value={med.status}
-                                            onChange={e => handleMedicationChange(idx, "status", e.target.value)}
-                                            disabled={submitting || creating}
-                                        >
-                                            <option value="Active">Active</option>
-                                            <option value="Completed">Completed</option>
-                                            <option value="Expired">Expired</option>
-                                        </select>
+                                    <div className="grid md:grid-cols-3 gap-4 mb-2">
+                                        <div>
+                                            <Label htmlFor={`frequency_${idx}`}>Frequency</Label>
+                                            <Input
+                                                id={`frequency_${idx}`}
+                                                value={med.frequency}
+                                                placeholder="e.g. Twice daily"
+                                                onChange={e =>
+                                                    handleMedicationChange(idx, "frequency", e.target.value)
+                                                }
+                                                disabled={submitting || creating}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor={`note_${idx}`}>
+                                                Note <span className="text-destructive">*</span>
+                                            </Label>
+                                            <Input
+                                                id={`note_${idx}`}
+                                                value={med.note}
+                                                placeholder="Required note for this drug"
+                                                onChange={e =>
+                                                    handleMedicationChange(idx, "note", e.target.value)
+                                                }
+                                                disabled={submitting || creating}
+                                                className={
+                                                    errors[`med_${idx}_note`] ? "border-destructive" : ""
+                                                }
+                                            />
+                                            {errors[`med_${idx}_note`] && (
+                                                <p className="text-sm text-destructive">
+                                                    {errors[`med_${idx}_note`]}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-3 mt-2">
+                                            <Label htmlFor={`status_${idx}`}>Status</Label>
+                                            <select
+                                                id={`status_${idx}`}
+                                                className={`border rounded px-2 py-1 ${statusColor(
+                                                    med.status ?? "Active"
+                                                )}`}
+                                                value={med.status ?? "Active"}
+                                                onChange={e => handleMedicationChange(idx, "status", e.target.value)}
+                                                disabled={submitting || creating}
+                                            >
+                                                <option value="Active">Active</option>
+                                                <option value="Completed">Completed</option>
+                                                <option value="Expired">Expired</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -341,7 +495,9 @@ export default function PrescriptionDetails() {
                     </div>
                     {/* Notes */}
                     <div className="mb-4">
-                        <Label className="font-semibold mb-1 block">Additional Notes</Label>
+                        <Label className="font-semibold mb-1 block">
+                            Additional Notes
+                        </Label>
                         <Textarea
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
@@ -372,7 +528,9 @@ export default function PrescriptionDetails() {
                     {/* Info Box */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
                         <p className="text-sm text-blue-900">
-                            <strong>Note:</strong> Ensure all medication details are accurate before submission. The prescription will be associated with the selected patient and doctor.
+                            <strong>Note:</strong> Ensure all medication details are accurate before
+                            submission. The prescription will be associated with the selected
+                            patient and doctor.
                         </p>
                     </div>
                 </form>

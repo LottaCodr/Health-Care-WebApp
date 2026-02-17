@@ -90,10 +90,9 @@ export interface Prescription {
     $id: string;
     consultationId: string;
     patientId: string;
-    doctorId: string;
+    nurseId: string;
     medications: PrescriptionMedication[];
     instructions: string;
-    dosageDuration: string;
     status: "Active" | "Dispensed" | "Completed";
     createdDate: string;
     $createdAt: string;
@@ -106,7 +105,8 @@ export interface PrescriptionMedication {
     dosage: string;
     frequency: string;
     duration: string;
-    instructions: string;
+    note: string;
+    route: string;
 }
 
 // Lab Request entity
