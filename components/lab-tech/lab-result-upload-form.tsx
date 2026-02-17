@@ -97,7 +97,7 @@ export function LabResultUploadForm({
         e.preventDefault();
 
         if (!validateForm()) {
-            toast.error("Please fill in all required fields");
+            // toast.error("Please fill in all required fields");
             return;
         }
 
@@ -137,7 +137,7 @@ ${formData.remarks || "N/A"}
 
             if (result) {
                 setUploadProgress(100);
-                toast.success("Lab results recorded and patient updated");
+                // toast.success("Lab results recorded and patient updated");
 
                 // Reset form
                 setFormData({
@@ -157,35 +157,35 @@ ${formData.remarks || "N/A"}
             }
         } catch (error) {
             console.error("Error uploading lab results:", error);
-            toast.error("Failed to upload lab results. Please try again.");
+            // toast.error("Failed to upload lab results. Please try again.");
             setUploadProgress(0);
         }
     };
 
-    if (labLoading) {
-        return (
-            <Card>
-                <CardContent className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">Loading lab request...</span>
-                </CardContent>
-            </Card>
-        );
-    }
+    // if (labLoading) {
+    //     return (
+    //         <Card>
+    //             <CardContent className="flex items-center justify-center py-12">
+    //                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    //                 <span className="ml-2 text-muted-foreground">Loading lab request...</span>
+    //             </CardContent>
+    //         </Card>
+    //     );
+    // }
 
-    if (!labRequest) {
-        return (
-            <Card className="border-destructive">
-                <CardContent className="flex items-center gap-3 py-6">
-                    <AlertCircle className="h-5 w-5 text-destructive" />
-                    <div>
-                        <p className="font-semibold text-destructive">Lab request not found</p>
-                        <p className="text-sm text-muted-foreground">Please check the request ID and try again</p>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
+    // if (!labRequest) {
+    //     return (
+    //         <Card className="border-destructive">
+    //             <CardContent className="flex items-center gap-3 py-6">
+    //                 <AlertCircle className="h-5 w-5 text-destructive" />
+    //                 <div>
+    //                     <p className="font-semibold text-destructive">Lab request not found</p>
+    //                     <p className="text-sm text-muted-foreground">Please check the request ID and try again</p>
+    //                 </div>
+    //             </CardContent>
+    //         </Card>
+    //     );
+    // }
 
     return (
         <Card>
@@ -207,16 +207,16 @@ ${formData.remarks || "N/A"}
                             </div>
                             <div>
                                 <span className="text-muted-foreground">Status:</span>
-                                <p className="font-medium">{labRequest.status}</p>
+                                {/* <p className="font-medium">{labRequest.status}</p> */}
                             </div>
                             <div>
                                 <span className="text-muted-foreground">Priority:</span>
-                                <p className="font-medium">{labRequest.priority}</p>
+                                {/* <p className="font-medium">{labRequest.priority}</p> */}
                             </div>
                             <div>
                                 <span className="text-muted-foreground">Request Date:</span>
                                 <p className="font-medium">
-                                    {new Date(labRequest.requestDate).toLocaleDateString()}
+                                    {/* {new Date(labRequest.requestDate).toLocaleDateString()} */}
                                 </p>
                             </div>
                         </div>

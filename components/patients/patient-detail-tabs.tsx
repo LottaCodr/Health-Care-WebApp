@@ -21,6 +21,7 @@ import { createConsultation } from "@/actions/consultations/consultation";
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { useQuery } from "@tanstack/react-query";
 import { Staff } from "@/actions/staff/types";
+import { LabResultUploadForm } from "../lab-tech/lab-result-upload-form";
 
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
@@ -40,7 +41,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         queryFn: getAllStaffs,
     });
 
-
     // Memoize available staff for the selected referral type
     const availableStaff = useMemo(
         () =>
@@ -54,7 +54,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     );
 
     const [selectedStaffId, setSelectedStaffId] = useState<string | undefined>(undefined);
-
 
     // Initialize patient and consultation state only when patient changes
     useEffect(() => {
@@ -80,8 +79,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
             return () => clearTimeout(t);
         }
     }, [successMessage]);
-
-
 
     // Scroll to first error field
     const scrollToFirstError = useCallback(() => {
@@ -112,7 +109,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         consultationState.referredTo,
         selectedStaffId,
     ]);
-
 
     const handleSubmit = useCallback(async () => {
         setFormError(null);
@@ -153,8 +149,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                 createdAt: new Date().toISOString(),
                 referredTo: consultationState.referredTo,
             });
-
-
 
             setSuccessMessage("Consultation and task successfully assigned.");
             toast({
@@ -233,23 +227,29 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                 </TabsTrigger>
             </TabsList>
 
-
-
             {/* Appointments Tab */}
+            {/* Vitals Recording Tab */}
             <TabsContent value="vitals-recording">
-                <Card className=" text-black">
-                    <CardHeader>
-                        <CardTitle>Vitals Recording</CardTitle>
+                <Card className="text-black shadow-lg border-slate-200">
+                    <CardHeader className="bg-gradient-to-r from-primary/30 to-slate-100 rounded-t-lg">
+                        <CardTitle className="flex items-center gap-2 text-xl">
+                            <FaCalendarAlt className="text-primary" />
+                            Vitals Recording
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent>
-
+                    <CardContent className="py-6">
                         <div className="grid justify-center h-full grid-cols-1 md:grid-cols-2 gap-8 w-full items-start">
-
-                            <div className="text-black">No vitals recording yet.</div>
-                            {user?.role === "Nurse" ?
-
-                                <VitalsAdCheckInComponent />
-                                : ""}
+                            <div className="flex flex-col items-center justify-center bg-slate-50 rounded-lg p-6 min-h-[170px] shadow-inner">
+                                <span className="text-gray-500 flex items-center gap-2">
+                                    <MdOutlineEventNote className="text-2xl text-gray-400" />
+                                    No vitals recording yet.
+                                </span>
+                            </div>
+                            {user?.role === "Nurse" && (
+                                <div className="flex flex-col items-center justify-center bg-white p-6 rounded-lg border border-primary/10 shadow-md">
+                                    <VitalsAdCheckInComponent />
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -257,34 +257,52 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
             {/* Prescriptions Tab */}
             <TabsContent value="prescriptions">
-
-                <CardContent className="pt-0">
-                    <div className="grid justify-center h-full grid-cols-1 md:grid-cols-2 gap-8 w-full items-start">
-                        {user?.role === "Pharmacist" ? (<div>
-                            <PrescriptionDetails />
-                        </div>) : ""}
-                        <div>
-                            <PrescriptionHistory />
+                <Card className="text-black shadow-lg border-slate-200">
+                    <CardHeader className="bg-gradient-to-r from-primary/30 to-slate-100 rounded-t-lg">
+                        <CardTitle className="flex items-center gap-2 text-xl">
+                            <FaPills className="text-primary" /> Prescriptions
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <div className="grid justify-center h-full grid-cols-1 md:grid-cols-2 gap-8 w-full items-start">
+                            {user?.role === "Nurse" && (
+                                <div className="bg-white rounded-lg p-6 border border-primary/10 shadow">
+                                    <PrescriptionDetails />
+                                </div>
+                            )}
+                            <div className="bg-slate-50 rounded-lg p-6 min-h-[170px] shadow-inner">
+                                <PrescriptionHistory />
+                            </div>
                         </div>
-                    </div>
-                </CardContent>
-                {/* </Card> */}
+                    </CardContent>
+                </Card>
             </TabsContent>
 
             {/* Lab Results Tab */}
             <TabsContent value="lab">
-                <Card className="text-black">
-                    <CardHeader>
-                        <CardTitle>Lab Results</CardTitle>
+                <Card className="text-black shadow-lg border-slate-200">
+                    <CardHeader className="bg-gradient-to-r from-blue-100 to-white rounded-t-lg">
+                        <CardTitle className="flex items-center gap-2 text-xl">
+                            <FaFlask className="text-blue-700" />
+                            Lab Results
+                        </CardTitle>
                     </CardHeader>
-
-                    <CardContent className="pt-0">
+                    <CardContent className="pt-6">
                         <div className="grid justify-center h-full grid-cols-1 md:grid-cols-2 gap-8 w-full items-start">
-                            {user?.role === "LabTechnician" ? (<div>
-                                <PrescriptionDetails />
-                            </div>) : ""}
-                            <div>
-                                <div className="text-black">No Lab Recordings yet.</div>
+                            {user?.role === "Nurse" && (
+                                <div className="bg-white rounded-lg p-6 border border-blue-200 shadow">
+                                    <LabResultUploadForm
+                                        labRequestId={"" /* Provide real labRequestId here if possible */}
+                                        patientId={patient?.id ?? ""}
+                                        testType={"" /* Provide test type if available */}
+                                    />
+                                </div>
+                            )}
+                            <div className="flex flex-col items-center justify-center bg-slate-50 rounded-lg p-6 min-h-[170px] shadow-inner">
+                                <span className="text-gray-500 flex items-center gap-2">
+                                    <MdOutlineEventNote className="text-2xl text-gray-400" />
+                                    No Lab Recordings yet.
+                                </span>
                             </div>
                         </div>
                     </CardContent>
@@ -293,29 +311,27 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
             {/* Consultations */}
             <TabsContent value="consultations">
-                <Card className="text-black">
-                    <CardHeader>
-                        {user?.role === "Doctor" ?
-                            <CardHeader className="pb-2 border-b flex items-center justify-between">
+                <Card className="text-black shadow-lg border-slate-200">
+                    <CardHeader className="bg-gradient-to-r from-green-100 to-white rounded-t-lg">
+                        {user?.role === "Doctor" && (
+                            <div className="pb-2 border-b flex items-center justify-between">
                                 <CardTitle className="text-2xl font-semibold text-black flex items-center gap-2">
-                                    <MdAssignment className="text-blue-900" /> New Consultation
+                                    <MdAssignment className="text-green-800" /> New Consultation
                                 </CardTitle>
-
-                            </CardHeader>
-
-                            : ""}
+                            </div>
+                        )}
                     </CardHeader>
 
-                    {user?.role === "Doctor" ? (
-                        <CardContent className="pt-6" ref={formRef}>
+                    {user?.role === "Doctor" && (
+                        <CardContent className="pt-8" ref={formRef}>
                             {formError && (
-                                <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+                                <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2 animate-pulse">
                                     <MdWarning className="text-xl" />
                                     <span>{formError}</span>
                                 </div>
                             )}
                             {successMessage && (
-                                <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 flex items-center gap-2">
+                                <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 flex items-center gap-2 animate-fade-in">
                                     <MdCheckCircle className="text-xl" />
                                     <span>{successMessage}</span>
                                 </div>
@@ -341,15 +357,16 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                                 onStaffSelect={setSelectedStaffId}
                             />
                         </CardContent>
-                    ) : ""}
+                    )}
 
-                    <ConsultationHistoryTable patientId={patient?.id!} />
-
+                    <div className={`${user?.role === "Doctor" ? "pt-2" : "pt-8"} px-6 pb-6`}>
+                        <div className="bg-white rounded-lg shadow-inner p-4">
+                            <ConsultationHistoryTable patientId={patient?.id!} />
+                        </div>
+                    </div>
                 </Card>
             </TabsContent>
 
         </Tabs>
     )
-
 }
-
