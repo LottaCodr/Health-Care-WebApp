@@ -167,7 +167,7 @@ export async function createConsultation(consultationData: Omit<Consultation, "$
         return document as unknown as Consultation;
     } catch (error) {
         console.error("Failed to create consultation:", error);
-        throw error;
+        throw error; 
     }
 }
 

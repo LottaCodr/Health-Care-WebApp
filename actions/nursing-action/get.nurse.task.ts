@@ -16,7 +16,7 @@ export async function assignNurse(nurseTaskData: NursingAction) {
             ID.unique(),
             nurseTaskData
         );
-imoi
+
         console.log('Nurse Assigment successfully created:', response);
         return response;
     } catch (error) {
@@ -51,7 +51,7 @@ export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
                     const p = await databases.getDocument(databaseId, patientCollectionId, pid);
                     patientMap[pid] = {
                         id: p.$id,
-                        createdAt: p.$createdAt,
+                        created_at: p.$createdAt,
                         $updatedAt: p.$updatedAt,
                         name: p.name,
                         email: p.email,
@@ -59,25 +59,33 @@ export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
                         gender: p.gender,
                         address: p.address,
                         occupation: p.occupation,
-                        birthDate: p.birthDate,
-                        privacyConsent: p.privacyConsent,
-                        disclosureConsent: p.disclosureConsent,
-                        treatmentConsent: p.treatmentConsent,
+                        birth_date: p.birth_date ?? null,
+                        religion: p.religion,
                         emergencyContactName: p.emergencyContactName,
                         emergencyContactNumber: p.emergencyContactNumber,
-                        insuranceProvider: p.insuranceProvider,
-                        insurancePolicyNumber: p.insurancePolicyNumber,
+                        emergencyContactRelationship: p.emergencyContactRelationship,
+                        emergencyContactEmail: p.emergencyContactEmail,
+                        emergencyContactAddress: p.emergencyContactAddress,
                         allergies: p.allergies,
                         currentMedication: p.currentMedication,
-                        familyMedicalHistory: p.familyMedicalHistory,
-                        pastMedicalHistory: p.pastMedicalHistory,
-                        primaryPhysician: p.primaryPhysician,
-                        identificationType: p.identificationType,
-                        identificationNumber: p.identificationNumber,
-                        identificationDocumentId: p.identificationDocumentId,
-                        identificationDocumentUrl: p.identificationDocumentUrl,
+                        significantMedicationHistory: p.significantMedicationHistory,
+                        longTermMedication: p.longTermMedication,
+                        covidVaccinationOptions: p.covidVaccinationOptions,
+                        bloodGroup: p.bloodGroup,
+                        genoType: p.genoType,
+                        policyNumber: p.policyNumber,
+                        hmo: p.hmo,
+                        hmoName: p.hmoName,
+                        company: p.company,
+                        companyName: p.companyName,
+                        privateClient: p.privateClient,
                         status: p.status,
                         userId: p.userId,
+                        notes: p.notes,
+                        symptoms: p.symptoms,
+                        diagnosis: p.diagnosis,
+                        prescriptions: p.prescriptions,
+                        recommendations: p.recommendations,
                     };
                 } catch (err) {
                     console.warn(`Patient not found for ID: ${pid}`);
