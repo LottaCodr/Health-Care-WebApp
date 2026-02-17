@@ -245,7 +245,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                                     No vitals recording yet.
                                 </span>
                             </div>
-                            {user?.role === "Nurse" && (
+                            {user?.role === "Doctor" && (
                                 <div className="flex flex-col items-center justify-center bg-white p-6 rounded-lg border border-primary/10 shadow-md">
                                     <VitalsAdCheckInComponent />
                                 </div>
@@ -265,7 +265,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                     </CardHeader>
                     <CardContent className="pt-6">
                         <div className="grid justify-center h-full grid-cols-1 md:grid-cols-2 gap-8 w-full items-start">
-                            {user?.role === "Nurse" && (
+                            {user?.role === "Doctor" && (
                                 <div className="bg-white rounded-lg p-6 border border-primary/10 shadow">
                                     <PrescriptionDetails />
                                 </div>
@@ -289,7 +289,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                     </CardHeader>
                     <CardContent className="pt-6">
                         <div className="grid justify-center h-full grid-cols-1 md:grid-cols-2 gap-8 w-full items-start">
-                            {user?.role === "Nurse" && (
+                            {user?.role === "Doctor" && (
                                 <div className="bg-white rounded-lg p-6 border border-blue-200 shadow">
                                     <LabResultUploadForm
                                         labRequestId={"" /* Provide real labRequestId here if possible */}
