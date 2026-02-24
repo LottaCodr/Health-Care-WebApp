@@ -32,7 +32,7 @@ interface AppointmentModalProps {
     existingAppointments: Appointment[];
 }
 
-const STATUS_OPTIONS: readonly AppointmentStatus[] = [
+const STATUS_OPTIONS = [
     'pending',
     'completed',
     'cancelled',
@@ -163,7 +163,7 @@ export default function AppointmentModal({
                                         ref={(node) => {
                                             field.ref(node);
                                             if (!initialData && node) {
-                                                firstInputRef.current = node;
+                                                // firstInputRef.current = node;
                                             }
                                         }}
                                         className={`mt-1 block w-full rounded-md border px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 ${errors.patientName ? 'border-red-500' : 'border-gray-300'

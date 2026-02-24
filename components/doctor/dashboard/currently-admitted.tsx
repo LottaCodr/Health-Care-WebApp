@@ -134,8 +134,8 @@ export default function AdmittedPatientsTableSection() {
                                         {patient.currentMedication || <span className="italic text-gray-400">None</span>}
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
-                                        {patient.$createdAt
-                                            ? new Date(patient.$createdAt).toLocaleDateString(undefined, {
+                                        {patient.created_at
+                                            ? new Date(patient.created_at).toLocaleDateString(undefined, {
                                                 year: "numeric",
                                                 month: "short",
                                                 day: "numeric",
