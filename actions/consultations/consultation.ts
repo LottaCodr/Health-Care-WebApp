@@ -6,8 +6,7 @@ import { Query } from "node-appwrite";
 
 
 const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
-const consultationCollectionId = process.env.NEXT_PUBLIC_CONSULTATION_COLLECTION_ID!
-console.log('consultId', consultationCollectionId)
+const consultationCollectionId = process.env.NEXT_PUBLIC_CONSULTATION_COLLECTION_ID!;
 
 
 export async function createConsultation(consultationData: Consultation) {
@@ -43,7 +42,7 @@ export async function getPatientConsultations(patientId: string): Promise<Consul
 
         // Map documents to Consultation type
         const consultations = response.documents.map((doc) => ({
-            $id: doc.$id, 
+            $id: doc.$id,
             patientId: doc.patientId,
             doctorId: doc.doctorId,
             symptom: doc.symptom,

@@ -40,8 +40,8 @@ export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
 
         const nurseActionsRaw = response.documents;
 
-        // Get valid patient IDs
-        const patientIds = nurseActionsRaw.map(n => n.patientId.$id);
+        // Get valid patient IDs (patientId is stored as a plain string ID)
+        const patientIds = nurseActionsRaw.map(n => n.patientId as string);
 
         // Fetch all patients in parallel
         const patientMap: Record<string, Patient> = {};
@@ -97,7 +97,7 @@ export async function getNurseTasks(nurseId: string): Promise<NursingAction[]> {
             $id: n.$id,
             patientId: n.patientId,
             nurseId: n.nurseId,
-            patient: patientMap[n.patientId], // may be undefined if not found
+            patient: patientMap[n.patientId as string], // may be undefined if not found
             bloodPressure: n.bloodPressure,
             temperature: n.temperature,
             pulseRate: n.pulseRate,

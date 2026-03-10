@@ -1,18 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import DashBoardComponent from "@/components/doctor";
 import { useAuth } from "@/context/auth-provider";
 import { Loader2 } from "lucide-react";
 
-/**
- * Dashboard Page Component
- * 
- * Main dashboard view for authenticated staff members.
- * Displays personalized welcome message and patient overview.
- */
 const DashboardPage: React.FC = () => {
+    const router = useRouter();
     const { user, isLoading } = useAuth();
+
+    // Redirect if not authenticated
+    useEffect(() => {
+        if (!isLoading && !user) {
+            router.push("/login");
+        }
+    }, [user, isLoading, router]);
 
     // Loading state
     if (isLoading) {
@@ -20,7 +23,6 @@ const DashboardPage: React.FC = () => {
             <main className="min-h-screen flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <h1 className="text-2xl font-bold text-center text-gray-800">Welcome to the Doctor Dashboard</h1>
                     <p className="text-base text-muted-foreground text-center">
                         Loading your dashboard. Please wait...
                     </p>
@@ -29,20 +31,9 @@ const DashboardPage: React.FC = () => {
         );
     }
 
-    // Authentication check
-    // if (isLoading) {
-    //     return (
-    //         <main className="min-h-screen flex items-center justify-center">
-    //             <div className="text-center">
-    //                 <p className="text-lg text-muted-foreground">
-    //                     Authentication required to view this page.
-    //                 </p>
-    //             </div>
-    //         </main>
-    //     );
-    // }
+    // Guard: user null after loading
+    if (!user) return null;
 
-    // Format role for display (capitalize first letter)
     const formattedRole = user.role
         ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
         : "Staff";
@@ -56,7 +47,7 @@ const DashboardPage: React.FC = () => {
                         Welcome back, {formattedRole} {user.name || ""}
                     </h1>
                     <p className="text-base text-gray-600">
-                        Here's what's happening with your patients today.
+                        Here&apos;s what&apos;s happening with your patients today.
                     </p>
                 </header>
 
