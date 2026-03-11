@@ -1,7 +1,6 @@
 
 import { parseStringify } from "@/app/lib/utils";
-import { databases, } from "../../lib/appwrite.config";
-import { ID, Query, } from "node-appwrite";
+import { Databases, ID, Query, } from "node-appwrite";
 import { Appointment, normalizeAppointment } from "./types";
 
 
@@ -19,7 +18,7 @@ export const createAppointment = async (
   }
 
   try {
-    const newAppointment = await databases.createDocument(
+    const newAppointment = await Databases.createDocument(
       databaseId,
       appointmentCollectionId,
       ID.unique(),

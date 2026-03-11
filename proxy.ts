@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 // ─── Public routes (no auth needed) ────────────────────────────────────────
-const PUBLIC_PATHS = ["/", "/unauthorized"];
+const PUBLIC_PATHS = ["/", "/unauthorized", "/login"];
 
 // ─── Role → dashboard route map (values match normalizeRole in auth-provider) ─
 const ROLE_DASHBOARD: Record<string, string> = {
