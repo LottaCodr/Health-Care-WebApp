@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { useLabRequest, useCompleteLabRequest } from "@/hooks/use-emr";
-import { getPatientById } from "@/lib/appwrite-service";
+import { getPatientById } from "@/lib/supabase-service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,21 +125,6 @@ ${formData.remarks || "N/A"}
             // If file was uploaded, we would handle file upload here
             // For now, we're storing the text results
             if (formData.resultFile) {
-                // TODO: Implement file upload to Appwrite storage
-                console.log("File upload would happen here:", formData.resultFile);
-                setUploadProgress(50);
-            }
-
-            setUploadProgress(75);
-
-            // Complete the lab request and update patient status
-            const result = await completeLabRequest(labRequestId, combinedResults, patientId);
-
-            if (result) {
-                setUploadProgress(100);
-                // toast.success("Lab results recorded and patient updated");
-
-                // Reset form
                 setFormData({
                     results: "",
                     normalRange: "",

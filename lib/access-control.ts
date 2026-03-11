@@ -6,8 +6,7 @@
 "use server";
 
 import { UserRole, PatientStatus } from "@/types/models";
-import { databases } from "@/lib/appwrite.config";
-import { Query } from "node-appwrite";
+import { createClient } from "@/utils/supabase/server";
 
 const DB_ID = process.env.NEXT_PUBLIC_DATABASE_ID!;
 
@@ -101,19 +100,16 @@ export async function enforceDocumentAccess(
 
     // Get document to check ownership/relevance
     try {
+        const supabase = await createClient();
         let document: any = null;
 
-        if (collectionName === "patients") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.PATIENTS, documentId);
-        } else if (collectionName === "consultations") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.CONSULTATIONS, documentId);
-        } else if (collectionName === "prescriptions") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.PRESCRIPTIONS, documentId);
-        } else if (collectionName === "lab_requests") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.LAB_REQUESTS, documentId);
-        } else if (collectionName === "nursing_actions") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.NURSING_ACTIONS, documentId);
-        }
+        const { data, error } = await supabase
+            .from(collectionName)
+            .select()
+            .eq("id", documentId)
+            .single();
+
+        document = data;
 
         if (!document) {
             return { allowed: false, reason: "Document not found" };
@@ -181,31 +177,31 @@ export function getRowLevelSecurityFilter(context: AccessContext, collectionName
     switch (context.role) {
         case UserRole.Doctor:
             if (collectionName === "consultations") {
-                filters.push(Query.equal("doctorId", context.userId));
+                filters.push({ column: "doctor_id", value: context.userId });
             }
             if (collectionName === "prescriptions") {
-                filters.push(Query.equal("doctorId", context.userId));
+                filters.push({ column: "doctor_id", value: context.userId });
             }
             if (collectionName === "lab_requests") {
-                filters.push(Query.equal("doctorId", context.userId));
+                filters.push({ column: "doctor_id", value: context.userId });
             }
             break;
 
         case UserRole.Nurse:
             if (collectionName === "nursing_actions") {
-                filters.push(Query.equal("assignedNurse", context.userId));
+                filters.push({ column: "assigned_nurse", value: context.userId });
             }
             break;
 
         case UserRole.Pharmacist:
             if (collectionName === "prescriptions") {
-                filters.push(Query.equal("status", "Active"));
+                filters.push({ column: "status", value: "Active" });
             }
             break;
 
         case UserRole.LabTechnician:
             if (collectionName === "lab_requests") {
-                filters.push(Query.equal("status", "Pending"));
+                filters.push({ column: "status", value: "Pending" });
             }
             break;
 

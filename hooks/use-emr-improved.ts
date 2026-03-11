@@ -46,7 +46,7 @@ import {
     logAction,
     getNursingActionById,
     getLabRequestById,
-} from "@/lib/appwrite-service";
+} from "@/lib/supabase-service";
 
 /**
  * PATIENT HOOKS

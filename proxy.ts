@@ -9,8 +9,8 @@ const ROLE_DASHBOARD: Record<string, string> = {
     Doctor: "/doctor/dashboard",
     Nurse: "/nurse/dashboard",
     Pharmacist: "/pharmacist/dashboard",
-    LabTechnician: "/labtech/dashboard",
-    FrontDesk: "/frontdesk/dashboard",
+    LabTechnician: "/lab-tech/dashboard",
+    FrontDesk: "/front-desk/dashboard",
     Admin: "/admin/dashboard",
 };
 
@@ -19,8 +19,8 @@ const ROLE_PREFIXES: Record<string, string> = {
     Doctor: "/doctor",
     Nurse: "/nurse",
     Pharmacist: "/pharmacist",
-    LabTechnician: "/labtech",
-    FrontDesk: "/frontdesk",
+    LabTechnician: "/lab-tech",
+    FrontDesk: "/front-desk",
     Admin: "/admin",
 };
 

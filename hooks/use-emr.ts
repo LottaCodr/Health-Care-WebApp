@@ -48,14 +48,14 @@ import {
     getNursingActionById,
     getLabRequestById,
     getAllPatients,
-    listPrescriptionsByPharmacist,
-    listLabRequestsForTech,
-    listNursingActionsForNurse,
-    completeLabRequest,
-    completeNursingAction,
-    dispensePrescription,
-    routePatientAfterConsultation,
-} from "@/lib/appwrite-service";
+    // listPrescriptionsByPharmacist,
+    // listLabRequestsForTech,
+    // listNursingActionsForNurse,
+    // completeLabRequest,
+    // completeNursingAction,
+    // dispensePrescription,
+    // routePatientAfterConsultation,
+} from "@/lib/supabase-service";
 
 // Type for hook state management
 interface UseAsyncState<T> {

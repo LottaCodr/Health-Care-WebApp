@@ -1,43 +1,40 @@
-import { StaffRole } from "@/actions/staff/types";
-import { account, databases } from "@/lib/appwrite.config";
-// import { cookies } from "next/headers";
-
-const DATABASE_ID = process.env.NEXT_PUBLIC_DATABASE_ID!;
-const STAFF_COLLECTION_ID = process.env.NEXT_PUBLIC_STAFF_COLLECTION_ID!;
+import { createClient } from "@/utils/supabase/server";
+import { UserRole } from "@/types/models";
 
 export async function getUser() {
-    // 1. Check if session cookie exists
-    // const cookie = (await cookies()).get(
-    //     "a_session_" + process.env.NEXT_PUBLIC_APPWRITE_PROJECT
-    // );
-    // if (!cookie) {
-    //     return null; // Not logged in
-    // }
-
     try {
-        // 2. Get user from Appwrite
-        const user = await account.get();
+        const supabase = await createClient();
 
-        // 3. Fetch staff document
-        const doc = await databases.getDocument(
-            DATABASE_ID,
-            STAFF_COLLECTION_ID,
-            user.$id
-        );
+        // 1. Get user from Supabase Auth
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) return null;
 
-        // 4. Return merged object
+        // 2. Fetch staff profile from public.staffs table
+        const { data: staff, error: staffError } = await supabase
+            .from("staffs")
+            .select("id, name, email, role")
+            .eq("id", user.id)
+            .single();
+
+        if (staffError || !staff) {
+            console.error("Staff profile not found for user:", user.id);
+            return null;
+        }
+
+        // 3. Return normalized object
         return {
-            id: user.$id,
-            name: user.name,
-            email: user.email,
-            role: doc.role as StaffRole,
+            id: staff.id,
+            name: staff.name,
+            email: staff.email,
+            role: staff.role as UserRole,
         };
     } catch (err) {
         console.error("getUser error:", err);
-        return null; // Fallback for guests
+        return null;
     }
 }
 
 export async function logout() {
-    await account.deleteSession("current");
+    const supabase = await createClient();
+    await supabase.auth.signOut();
 }

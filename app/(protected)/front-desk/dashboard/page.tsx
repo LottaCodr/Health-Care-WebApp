@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react'
-import DashBoardComponent from '@/components/nurse/DashBoardComponent'
+import DashBoardComponent from '@/components/front-desk/DashBoardComponent'
 
 const DashboardPage = () => {
     return (

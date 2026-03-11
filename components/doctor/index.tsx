@@ -28,22 +28,24 @@ function TabNavigation({
     onChange: (tab: string) => void;
 }) {
     return (
-        <div className="flex border-b border-gray-200 mb-6">
+        <div className="flex border-b border-white/10 mb-6 overflow-x-auto no-scrollbar">
             {tabs.map((tab) => (
                 <button
                     key={tab.id}
                     onClick={() => onChange(tab.id)}
-                    className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === tab.id
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-gray-600 hover:text-gray-900"
+                    className={`px-4 py-3 font-medium border-b-2 transition-all duration-300 whitespace-nowrap ${activeTab === tab.id
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
                         }`}
                 >
-                    {tab.label}
-                    {tab.badge !== undefined && (
-                        <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                            {tab.badge}
-                        </span>
-                    )}
+                    <span className="relative">
+                        {tab.label}
+                        {tab.badge !== undefined && (
+                            <span className="ml-2 bg-primary/20 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                {tab.badge}
+                            </span>
+                        )}
+                    </span>
                 </button>
             ))}
         </div>
@@ -103,41 +105,29 @@ const DashBoardComponent = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-full">
             {/* Header omitted as it's typically in the layout or page wrapper, 
                 but keeping the stats overview and tabs as requested */}
 
-            <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="max-w-7xl mx-auto space-y-8">
                 {/* Overview Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
-                        <p className="text-gray-600 text-sm font-medium">Waiting for Consultation</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">
-                            {awaitingConsultationPatients.data?.length || 0}
-                        </p>
-                    </div>
-                    <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-                        <p className="text-gray-600 text-sm font-medium">My Consultations</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">
-                            {myConsultations.data?.filter((c) => c.status === "InProgress").length || 0}
-                        </p>
-                    </div>
-                    <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-                        <p className="text-gray-600 text-sm font-medium">Completed Today</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">
-                            {myConsultations.data?.filter((c) => c.status === "Completed").length || 0}
-                        </p>
-                    </div>
-                    <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-                        <p className="text-gray-600 text-sm font-medium">Total Patients Seen</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">
-                            {myConsultations.data?.length || 0}
-                        </p>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    {[
+                        { label: "Waiting for Consultation", value: awaitingConsultationPatients.data?.length || 0, color: "text-amber-500", border: "border-amber-500/50" },
+                        { label: "My Consultations", value: myConsultations.data?.filter((c) => c.status === "InProgress").length || 0, color: "text-primary", border: "border-primary/50" },
+                        { label: "Completed Today", value: myConsultations.data?.filter((c) => c.status === "Completed").length || 0, color: "text-emerald-500", border: "border-emerald-500/50" },
+                        { label: "Total Patients Seen", value: myConsultations.data?.length || 0, color: "text-purple-500", border: "border-purple-500/50" },
+                    ].map((stat, i) => (
+                        <div key={i} className={`glass-card p-6 border-l-4 ${stat.border}`}>
+                            <p className="text-muted-foreground text-sm font-medium">{stat.label}</p>
+                            <p className={`text-3xl font-bold mt-2 ${stat.color}`}>
+                                {stat.value}
+                            </p>
+                        </div>
+                    ))}
                 </div>
 
-                {/* Tab Navigation */}
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="glass-card p-6">
                     <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
                     {/* Tab Content */}
