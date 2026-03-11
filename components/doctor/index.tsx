@@ -168,9 +168,9 @@ const DashBoardComponent = () => {
                                                 </div>
                                             </div>
                                             <div className="ml-4 flex gap-2">
-                                                <a href={`/patient-timeline/${patient.$id}`} className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium">
+                                                <Link href={`/patient-timeline/${patient.id || patient.$id}`} className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium">
                                                     Timeline
-                                                </a>
+                                                </Link>
                                                 <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium whitespace-nowrap">
                                                     Start Consultation
                                                 </button>

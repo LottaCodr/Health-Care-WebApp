@@ -20,8 +20,8 @@ const LoginScreen: React.FC = () => {
             Doctor: "/doctor/dashboard",
             Nurse: "/nurse/dashboard",
             Pharmacist: "/pharmacist/dashboard",
-            LabTechnician: "/labtech/dashboard",
-            FrontDesk: "/frontdesk/dashboard",
+            LabTechnician: "/lab-tech/dashboard",
+            FrontDesk: "/front-desk/dashboard",
             Admin: "/admin/dashboard",
         };
         return roleMap[role || ""] || "/login";

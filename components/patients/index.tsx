@@ -143,12 +143,10 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
 
                         {/* Add New Patient Button */}
                         {user?.role === "Frontdesk" ? (<div className="flex flex-1 min-w-0 md:w-64 justify-center mb-2">
-                            <Link href="/frontdesk/patient/new" >
-                                <Button asChild className="gap-2 rounded-xl text-white">
-                                    <a>
-                                        <Plus size={18} />
-                                        Add New Patient
-                                    </a>
+                            <Link href="/front-desk/patient/new" >
+                                <Button className="gap-2 rounded-xl text-white">
+                                    <Plus size={18} />
+                                    Add New Patient
                                 </Button>
                             </Link>
                         </div>) : ""}

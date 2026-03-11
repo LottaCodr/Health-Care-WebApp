@@ -15,20 +15,19 @@ import {
 } from "@/hooks/use-emr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSkeleton, ErrorAlert, EmptyState } from "@/components/emr-ui";
-import { ArrowLeft, Calendar, Pill, Beaker, Heart, DollarSign, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Calendar, Pill, Beaker, Heart, DollarSign } from "lucide-react";
 import Link from "next/link";
+import { PremiumLayout } from "@/components/layout/PremiumLayout";
 
-interface TimelineEvent {
-    id: string;
-    type: "registration" | "consultation" | "lab" | "nursing" | "pharmacy" | "payment";
-    title: string;
-    description: string;
-    timestamp: string;
-    status: string;
-    icon: React.ReactNode;
+export default function PatientTimelinePage() {
+    return (
+        <PremiumLayout>
+            <PatientTimeline />
+        </PremiumLayout>
+    );
 }
 
-export default function PatientTimeline() {
+function PatientTimeline() {
     const params = useParams();
     const patientId = params.id as string;
 
@@ -47,7 +46,7 @@ export default function PatientTimeline() {
     const { data: dispensingRecords, loading: dispensingLoading } = useDispensingRecordsByPatient(patientId);
     const { data: payments, loading: paymentLoading } = usePaymentsByPatient(patientId);
 
-    const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+    const [timeline, setTimeline] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -59,16 +58,16 @@ export default function PatientTimeline() {
             !dispensingLoading &&
             !paymentLoading
         ) {
-            const events: TimelineEvent[] = [];
+            const events: any[] = [];
 
             // Registration event
             if (patient) {
                 events.push({
-                    id: patient.$id,
+                    id: patient.id || patient.$id,
                     type: "registration",
                     title: "Patient Registered",
                     description: `${patient.name} registered in the system`,
-                    timestamp: patient.$createdAt,
+                    timestamp: patient.created_at || patient.$createdAt,
                     status: "Completed",
                     icon: <Calendar className="h-5 w-5" />,
                 });
@@ -78,11 +77,11 @@ export default function PatientTimeline() {
             if (consultations) {
                 consultations.forEach((consultation: any) => {
                     events.push({
-                        id: consultation.$id,
+                        id: consultation.id || consultation.$id,
                         type: "consultation",
                         title: "Consultation",
                         description: `Symptoms: ${consultation.symptoms}. Diagnosis: ${consultation.diagnosis}`,
-                        timestamp: consultation.$createdAt,
+                        timestamp: consultation.created_at || consultation.$createdAt,
                         status: consultation.status,
                         icon: <Heart className="h-5 w-5" />,
                     });
@@ -93,11 +92,11 @@ export default function PatientTimeline() {
             if (labRequests) {
                 labRequests.forEach((labRequest: any) => {
                     events.push({
-                        id: labRequest.$id,
+                        id: labRequest.id || labRequest.$id,
                         type: "lab",
                         title: `Lab Test: ${labRequest.testType}`,
                         description: labRequest.testDescription,
-                        timestamp: labRequest.$createdAt,
+                        timestamp: labRequest.created_at || labRequest.$createdAt,
                         status: labRequest.status,
                         icon: <Beaker className="h-5 w-5" />,
                     });
@@ -108,11 +107,11 @@ export default function PatientTimeline() {
             if (nursingActions) {
                 nursingActions.forEach((action: any) => {
                     events.push({
-                        id: action.$id,
+                        id: action.id || action.$id,
                         type: "nursing",
                         title: `Nursing: ${action.actionType}`,
                         description: action.description,
-                        timestamp: action.$createdAt,
+                        timestamp: action.created_at || action.$createdAt,
                         status: action.status,
                         icon: <Heart className="h-5 w-5" />,
                     });
@@ -123,11 +122,11 @@ export default function PatientTimeline() {
             if (dispensingRecords) {
                 dispensingRecords.forEach((record: any) => {
                     events.push({
-                        id: record.$id,
+                        id: record.id || record.$id,
                         type: "pharmacy",
                         title: "Medication Dispensed",
                         description: `${record.dispensedMedications?.length || 0} medications dispensed`,
-                        timestamp: record.$createdAt,
+                        timestamp: record.created_at || record.$createdAt,
                         status: "Completed",
                         icon: <Pill className="h-5 w-5" />,
                     });
@@ -138,11 +137,11 @@ export default function PatientTimeline() {
             if (payments) {
                 payments.forEach((payment: any) => {
                     events.push({
-                        id: payment.$id,
+                        id: payment.id || payment.$id,
                         type: "payment",
                         title: "Payment Processed",
                         description: `₦${payment.amount} via ${payment.paymentMethod}`,
-                        timestamp: payment.$createdAt,
+                        timestamp: payment.created_at || payment.$createdAt,
                         status: payment.status,
                         icon: <DollarSign className="h-5 w-5" />,
                     });
@@ -215,103 +214,81 @@ export default function PatientTimeline() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="mb-6 flex items-center gap-4">
-                    <Link href="/doctor/dashboard">
-                        <button className="p-2 hover:bg-gray-200 rounded-lg transition">
-                            <ArrowLeft className="h-5 w-5" />
-                        </button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Patient Timeline</h1>
-                        <p className="text-gray-600 mt-1">{patient.name}</p>
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex items-center gap-6">
+                <Link href="/doctor/dashboard">
+                    <button className="p-3 hover:bg-white/10 rounded-2xl glass-card transition-all group">
+                        <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform" />
+                    </button>
+                </Link>
+                <div>
+                    <h1 className="text-4xl font-black tracking-tight">Patient Timeline</h1>
+                    <p className="text-muted-foreground font-medium text-lg">{patient.name}</p>
+                </div>
+            </div>
+
+            {/* Patient Summary */}
+            <div className="glass-card p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-1">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Name</p>
+                    <p className="text-xl font-bold">{patient.name}</p>
+                </div>
+                <div className="space-y-1">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Contact</p>
+                    <p className="text-xl font-bold">{patient.phone}</p>
+                </div>
+                <div className="space-y-1">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Current Status</p>
+                    <div className="pt-1">
+                        <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-primary/20 text-primary border border-primary/20">
+                            {patient.status}
+                        </span>
                     </div>
                 </div>
+            </div>
 
-                {/* Patient Summary */}
-                <Card className="mb-8">
-                    <CardHeader>
-                        <CardTitle>Patient Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <p className="text-sm text-gray-600">Name</p>
-                            <p className="font-semibold text-gray-900">{patient.name}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Contact</p>
-                            <p className="font-semibold text-gray-900">{patient.phone}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Current Status</p>
-                            <span
-                                className={`inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}
-                            >
-                                {patient.status}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Timeline */}
+            <div className="glass-card p-10">
+                <h2 className="text-2xl font-bold mb-12">Medical History & Timeline</h2>
+                {timeline.length === 0 ? (
+                    <EmptyState title="No events" description="No medical events recorded yet" />
+                ) : (
+                    <div className="relative space-y-12">
+                        {/* Vertical Line */}
+                        <div className="absolute left-6 top-2 bottom-2 w-px bg-gradient-to-b from-primary/50 via-border to-transparent" />
 
-                {/* Timeline */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Medical History & Timeline</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {timeline.length === 0 ? (
-                            <EmptyState title="No events" description="No medical events recorded yet" />
-                        ) : (
-                            <div className="space-y-6">
-                                {timeline.map((event, index) => (
-                                    <div key={event.id} className="flex gap-4">
-                                        {/* Timeline marker */}
-                                        <div className="flex flex-col items-center">
-                                            <div
-                                                className={`p-3 rounded-full ${getStatusBgColor(event.status)}`}
-                                            >
-                                                <div className={getStatusColor(event.status)}>
-                                                    {event.icon}
-                                                </div>
-                                            </div>
-                                            {index < timeline.length - 1 && (
-                                                <div className="w-0.5 h-12 bg-gray-300 mt-2" />
-                                            )}
-                                        </div>
+                        {timeline.map((event, index) => (
+                            <div key={event.id} className="relative flex gap-10 items-start group">
+                                {/* Timeline marker */}
+                                <div className={`relative z-10 p-3.5 rounded-2xl glass-card ring-4 ring-background transition-all group-hover:scale-110 ${getStatusColor(event.status)}`}>
+                                    {event.icon}
+                                </div>
 
-                                        {/* Event details */}
-                                        <div className="flex-1 pb-4">
-                                            <div className="bg-white p-4 rounded-lg border border-gray-200">
-                                                <div className="flex items-start justify-between">
-                                                    <div>
-                                                        <h3 className="font-semibold text-gray-900">
-                                                            {event.title}
-                                                        </h3>
-                                                        <p className="text-sm text-gray-600 mt-1">
-                                                            {event.description}
-                                                        </p>
-                                                    </div>
-                                                    <span
-                                                        className={`px-2 py-1 rounded text-xs font-medium ${getStatusBgColor(
-                                                            event.status
-                                                        )} ${getStatusColor(event.status)}`}
-                                                    >
-                                                        {event.status}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-3">
-                                                    {new Date(event.timestamp).toLocaleString()}
+                                {/* Event details */}
+                                <div className="flex-1">
+                                    <div className="glass-card p-6 border-white/5 hover:border-primary/30 transition-all hover:bg-white/5">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div>
+                                                <h3 className="text-lg font-bold">{event.title}</h3>
+                                                <p className="text-muted-foreground font-medium mt-1 leading-relaxed">
+                                                    {event.description}
                                                 </p>
                                             </div>
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusBgColor(event.status)} ${getStatusColor(event.status)} border-current/20`}>
+                                                {event.status}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-4 text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                            <Calendar className="h-3 w-3" />
+                                            {new Date(event.timestamp).toLocaleString()}
                                         </div>
                                     </div>
-                                ))}
+                                </div>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

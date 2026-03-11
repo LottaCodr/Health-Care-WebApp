@@ -119,20 +119,20 @@ export async function enforceDocumentAccess(
         switch (context.role) {
             case UserRole.Doctor:
                 // Doctors can only access their own consultations and related prescriptions/labs
-                if (collectionName === "consultations" && document.doctorId !== context.userId) {
+                if (collectionName === "consultations" && document.doctor_id !== context.userId) {
                     return { allowed: false, reason: "Can only access own consultations" };
                 }
-                if (collectionName === "prescriptions" && document.doctorId !== context.userId) {
+                if (collectionName === "prescriptions" && document.doctor_id !== context.userId) {
                     return { allowed: false, reason: "Can only access own prescriptions" };
                 }
-                if (collectionName === "lab_requests" && document.doctorId !== context.userId) {
+                if (collectionName === "lab_requests" && document.doctor_id !== context.userId) {
                     return { allowed: false, reason: "Can only access own lab requests" };
                 }
                 break;
 
             case UserRole.Nurse:
                 // Nurses can access patients assigned to them (nursing actions)
-                if (collectionName === "nursing_actions" && document.assignedNurse !== context.userId) {
+                if (collectionName === "nursing_actions" && document.assigned_nurse !== context.userId) {
                     return { allowed: false, reason: "Can only access assigned nursing actions" };
                 }
                 break;
@@ -153,7 +153,7 @@ export async function enforceDocumentAccess(
 
             case UserRole.FrontDesk:
                 // Front desk can only update patient payments
-                if (collectionName === "payments" && document.processedBy !== context.userId) {
+                if (collectionName === "payments" && document.processed_by !== context.userId) {
                     return { allowed: false, reason: "Can only manage own payment records" };
                 }
                 break;
