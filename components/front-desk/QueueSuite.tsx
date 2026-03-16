@@ -38,12 +38,12 @@ export default function QueueSuite() {
                 {registeredPatients.loading && <LoadingSkeleton rows={3} />}
                 <div className="space-y-4">
                     {registeredPatients.data?.map(p => (
-                        <div key={p.$id} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div key={p.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-gray-100">
                             <div className="flex-1">
                                 <p className="font-bold text-gray-900">{p.name}</p>
                                 <p className="text-sm text-gray-500">Arrived: {new Date(p.registrationDate).toLocaleTimeString()}</p>
                             </div>
-                            <button onClick={() => handleMoveToQueue(p.$id, p.name)} className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold shadow-md shadow-blue-100 transition-all">
+                            <button onClick={() => handleMoveToQueue(p.id, p.name)} className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold shadow-md shadow-blue-100 transition-all">
                                 Move to Queue
                             </button>
                         </div>
@@ -58,7 +58,7 @@ export default function QueueSuite() {
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Doctor&apos;s Queue</h3>
                 <div className="space-y-3">
                     {awaitingConsultationPatients.data?.map((p, i) => (
-                        <div key={p.$id} className="flex items-center p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                        <div key={p.id} className="flex items-center p-4 bg-blue-50 rounded-2xl border border-blue-100">
                             <span className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white font-bold rounded-full mr-4 shadow-lg shadow-blue-200">{i + 1}</span>
                             <div className="flex-1">
                                 <p className="font-bold text-gray-900">{p.name}</p>

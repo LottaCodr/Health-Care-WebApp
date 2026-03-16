@@ -1,6 +1,6 @@
 "use client";
 
-import RegistrationSuite from "@/components/front-desk/RegistrationSuite";
+import RegistrationSuite from "@/components/front-desk/components/register-patient/RegistrationSuite";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
