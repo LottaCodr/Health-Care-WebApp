@@ -41,7 +41,7 @@ export default function DashBoardComponent() {
                     <p className="text-muted-foreground font-medium">Managing patient admissions and discharge flow</p>
                 </div>
                 <Link href="/front-desk/patient/new">
-                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 py-6 shadow-lg shadow-primary/20 flex gap-2 font-bold transition-all transform hover:scale-105">
+                    <Button className="bg-primary hover:bg-primary/90 text-white rounded-2xl px-6 py-6 shadow-lg shadow-primary/20 flex gap-2 font-bold transition-all transform hover:scale-105">
                         <Plus size={20} />
                         Register Patient
                     </Button>

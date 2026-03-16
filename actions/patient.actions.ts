@@ -1,77 +1,42 @@
 
 "use server"
-import { ID, Query } from "node-appwrite";
-import {  databases, } from "../lib/appwrite.config";
+import { createClient } from "@supabase/supabase-js";
 import { parseStringify } from "@/app/lib/utils";
-import {  RegisterUserParams } from "@/types";
+import { RegisterUserParams } from "@/types";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// export const createUser = async (user: CreateUserParams) => {
-//   try {
-//     // Create new user -> https://appwrite.io/docs/references/1.5.x/server-nodejs/users#create
-//     const newUser = await users.create(
-//       ID.unique(),
-//       user.email,
-//       user.phone,
-//       undefined,
-//       user.name
-//     );
-
-//     return parseStringify(newUser);
-//   } catch (error: any) {
-//     // Check existing user
-//     if (error && error?.code === 409) {
-//       const existingUser = await users.list([
-//         Query.equal("email", [user.email]),
-//       ]);
-
-//       return existingUser.users[0];
-//     }
-//     console.error("An error occurred while creating a new user:", error);
-//   }
-// };
-
-
-
-export const registerPatient = async ({ ...patient }: RegisterUserParams) => {
+export const registerPatient = async (patient: RegisterUserParams) => {
   try {
-    let file;
+    const { data, error } = await supabase
+      .from("patients")
+      .insert([{ ...patient }])
+      .select()
+      .single();
 
-    
+    if (error) throw error;
 
-    const newPatient = await databases.createDocument(
-      process.env.NEXT_PUBLIC_DATABASE_ID!,
-      process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!,
-      ID.unique(),
-      {
-        ...patient
-      }
-    );
-
-    return parseStringify(newPatient);
+    return parseStringify(data);
+  } catch (error) {
+    console.log("An error occurred while registering the patient:", error);
   }
-
-  catch (error) {
-    console.log(error);
-  }
-}
-
+};
 
 export const getPatient = async (userId: string) => {
   try {
-    const patients = await databases.listDocuments(
-      process.env.NEXT_PUBLIC_DATABASE_ID!,
-      process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!,
-      [Query.equal('userId', userId)]
-    );
+    const { data, error } = await supabase
+      .from("patients")
+      .select("*")
+      .eq("userId", userId)
+      .maybeSingle();
 
-    return parseStringify(patients.documents[0]);
+    if (error) throw error;
 
+    return parseStringify(data);
   } catch (error) {
     console.log("An error occurred while getting a user:", error);
   }
-
 };
-
-
 
