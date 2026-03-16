@@ -36,6 +36,7 @@ export const NAV_CONFIG: Record<UserRole | string, { main: NavItem[]; secondary:
         main: [
             { title: "Dashboard", url: "/front-desk/dashboard", icon: MdDashboard },
             { title: "Registration", url: "/front-desk/patient/new", icon: FaUserPlus },
+            { title: "All Patients", url: "/front-desk/patient", icon: MdPeople },
             { title: "Queue Mgmt", url: "/front-desk/queue", icon: FaUserClock },
             { title: "Payments", url: "/front-desk/payment", icon: MdPayments },
         ],

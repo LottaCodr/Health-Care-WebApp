@@ -5,7 +5,6 @@ import { toast } from "@/hooks/use-toast";
 import { registerPatient, startVisit, updatePatient } from "./get.patients";
 import { parseStringify } from "@/app/lib/utils";
 import { RegisterUserParams } from "@/types";
-
 import { useRouter } from "next/navigation";
 
 export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
@@ -34,22 +33,25 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
 
     const registerPatientMutation = useMutation({
         mutationFn: async (patientData: RegisterUserParams) => {
-            router.push('/frontdesk/patient');
+            // Logging for debugging
+            console.log("1. starting registerPatient");
             const result = await registerPatient(patientData);
-            if (!result || !result.id) {
-                throw new Error("Failed to register patient.");
-            }
-            const { error } = await startVisit(result.id as string);
+            console.log("2. registerPatient done:", result);
 
-            if (!result || !result.id || error) {
-                throw new Error("Failed to register patient.");
-            }
-            if (error) throw new Error(error);
+            if (!result || !result.id) throw new Error("Failed to register patient.");
 
-            if (!result) {
-                throw new Error("Registration Failed");
+            console.log("3. starting startVisit");
+
+            // Don't block registration if visit creation fails, add timeout guard if needed here
+            try {
+                const { error } = await startVisit(result.id as string);
+                console.log("4. startVisit done, error:", error);
+                if (error) console.warn("startVisit failed:", error.message);
+            } catch (e) {
+                console.warn("startVisit threw:", e);
             }
-            return result;
+
+            return result; // registration succeeds regardless of visit
         },
         onSuccess: (data) => {
             dispatch({ type: "ADD_PATIENT", payload: data as Patient });
@@ -57,6 +59,9 @@ export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
             toast({
                 title: "Registration Successful", description: "The visit has been successfully started.",
             });
+            router.push('/front-desk/patient');
+
+            console.log("registered:", data)
         },
         onSettled() {
             queryClient.invalidateQueries({ queryKey: ['patients'] });

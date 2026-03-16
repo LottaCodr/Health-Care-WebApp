@@ -108,7 +108,7 @@ const RegistrationSuite = () => {
     resolver: zodResolver(PatientFormValidation),
     defaultValues: {
       ...PatientFormDefaultValues,
-      userId: user?.user?.id!,
+      userId: user?.id!,
       status: "registered",
     },
     mode: "onTouched",
@@ -156,6 +156,7 @@ const RegistrationSuite = () => {
     ],
   ];
 
+  // Validate the fields of the *currentStep* before moving forward
   const validateStep = async () => {
     setValidatingStep(true);
     const fields = stepFields[currentStep];
@@ -176,7 +177,29 @@ const RegistrationSuite = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
+  // Helper: Scroll to the first error field in DOM
+  function scrollToFirstError(errors: any) {
+    // Get the field with first error (flat search)
+    const errorField = Object.keys(errors)[0];
+    if (errorField) {
+      const el = document.querySelector(`[name="${errorField}"]`);
+      if (el && typeof (el as any).focus === "function") {
+        (el as any).focus();
+        try {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch { /* ignore if scrollIntoView fails */ }
+      }
+    }
+  }
+
+  // SUBMIT LOGIC: No longer intercept <form> submit! Drive from button only.
+
+  // We must only drive submission from a button click event on the last step, not via <form onSubmit>.
+  // Therefore: leave <form onSubmit={e => e.preventDefault()}>, and control everything from the submit button's onClick.
+
   const onSubmit = async (values: z.infer<typeof PatientFormValidation>) => {
+    // Console the output on submit (as per instructions)
+    console.log("Form submitted. Output values:", values);
     setSubmitError(null);
     const userId = uuidv4();
 
@@ -204,20 +227,15 @@ const RegistrationSuite = () => {
         geno_type: values.genoType,
         policy_number: values.policyNumber,
         hmo: values.hmo,
-        user_id: user?.user?.id,
+        user_id: user?.id,
         hmo_name: values.hmoName,
         company: values.company,
         company_name: values.companyName,
         private_client: values.privateClient,
         recommendations: values.recommendations,
       };
-      // Fix mapping and param names per RegisterUserParams
-      const fixedPayload = {
-        ...payload,
-        user_id: user?.user?.id!,
-      };
 
-      await registerPatient.mutateAsync(fixedPayload);
+      await registerPatient.mutateAsync(payload);
       setSubmitError(null);
 
       setSubmitted(true);
@@ -250,13 +268,30 @@ const RegistrationSuite = () => {
     }
   }, [submitted, form, router]);
 
+  // This is the actual "Submit" drive logic for the last step
+  const handleFinalSubmit = async () => {
+    setSubmitError(null);
+    setValidatingStep(true);
+    const isValid = await validateStep();
+    setValidatingStep(false);
+    if (!isValid) {
+      safeScrollToTop();
+      scrollToFirstError(form.formState.errors);
+      return;
+    }
+    // If valid, get all current form values and submit
+    const values = form.getValues();
+    await onSubmit(values as z.infer<typeof PatientFormValidation>);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-8 px-2 sm:px-4 w-full">
       <div className="mx-auto w-full max-w-lg sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
         <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-8 lg:p-10">
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit(onSubmit)}
+              // Prevent native submit, so submit logic is driven only by the button
+              onSubmit={(e) => e.preventDefault()}
               className="space-y-6 sm:space-y-8"
               autoComplete="off"
             >
@@ -655,9 +690,10 @@ const RegistrationSuite = () => {
                     </button>
                   ) : (
                     <button
-                      type="submit"
+                      type="button"
                       className="flex items-center justify-center gap-1.5 sm:gap-2 px-6 sm:px-8 py-2 sm:py-3 rounded-lg bg-primary text-white font-semibold shadow hover:shadow-md hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed text-sm sm:text-base"
                       disabled={registerPatient.isPending}
+                      onClick={handleFinalSubmit}
                     >
                       {registerPatient.isPending ? (
                         <>

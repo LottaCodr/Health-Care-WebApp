@@ -8,7 +8,6 @@
 
 import { createClient } from "@/utils/supabase/server";
 import {
-    Patient,
     Staff,
     Consultation,
     Prescription,
@@ -18,6 +17,7 @@ import {
     UserRole,
 } from "@/types/models";
 import { PostgrestResponse } from "@supabase/supabase-js";
+import { Patient } from "@/context/patients/types";
 
 /**
  * Helper to handle Supabase responses and errors
