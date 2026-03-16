@@ -4,7 +4,20 @@ import { createServerClient } from "@supabase/ssr";
 // ─── Public routes (no auth needed) ────────────────────────────────────────
 const PUBLIC_PATHS = ["/", "/unauthorized", "/login"];
 
-// ─── Role → dashboard route map (values match normalizeRole in auth-provider) ─
+// ─── Role normalization (mirror logic from auth-provider) ──────────────────
+function normalizeRole(role: any): string {
+    if (typeof role !== "string") return role ?? "";
+    const r = String(role).toLowerCase();
+    if (r.includes("front")) return "FrontDesk";
+    if (r.includes("doc")) return "Doctor";
+    if (r.includes("nurse")) return "Nurse";
+    if (r.includes("lab")) return "LabTechnician";
+    if (r.includes("pharm")) return "Pharmacist";
+    if (r.includes("admin")) return "Admin";
+    return role;
+}
+
+// ─── Role → dashboard route map (values use normalized roles) ──────────────
 const ROLE_DASHBOARD: Record<string, string> = {
     Doctor: "/doctor/dashboard",
     Nurse: "/nurse/dashboard",
@@ -14,7 +27,7 @@ const ROLE_DASHBOARD: Record<string, string> = {
     Admin: "/admin/dashboard",
 };
 
-// ─── Role → route prefix map (used to guard wrong-role access) ──────────────
+// ─── Role → route prefix map (used to guard wrong-role access) ─────────────
 const ROLE_PREFIXES: Record<string, string> = {
     Doctor: "/doctor",
     Nurse: "/nurse",
@@ -74,14 +87,22 @@ export async function proxy(request: NextRequest) {
         // If already logged in and hitting /login, redirect to dashboard
         if (user && pathname === "/login") {
             // Fetch role from staffs table
+
+            const next = request.nextUrl.searchParams.get("next");
+
+            if (next) {
+                return NextResponse.redirect(new URL(next, request.url))
+            }
+
             const { data: staffRow } = await supabase
                 .from("staffs")
                 .select("role")
                 .eq("id", user.id)
                 .single();
 
-            const role = staffRow?.role ?? "";
-            const dashboard = ROLE_DASHBOARD[role] ?? "/login";
+            const normalizedRole = normalizeRole(staffRow?.role);
+            const dashboard = ROLE_DASHBOARD[normalizedRole] ?? "/login";
+
             return NextResponse.redirect(new URL(dashboard, request.url));
         }
         return supabaseResponse;
@@ -97,8 +118,8 @@ export async function proxy(request: NextRequest) {
             .select("role")
             .eq("id", user.id)
             .single();
-        const role = staffRow?.role ?? "";
-        const dashboard = ROLE_DASHBOARD[role] ?? "/login";
+        const normalizedRole = normalizeRole(staffRow?.role);
+        const dashboard = ROLE_DASHBOARD[normalizedRole] ?? "/login";
         return NextResponse.redirect(new URL(dashboard, request.url));
     }
 
@@ -116,7 +137,7 @@ export async function proxy(request: NextRequest) {
         .eq("id", user.id)
         .single();
 
-    const userRole = staffRow?.role ?? "";
+    const userRole = normalizeRole(staffRow?.role);
 
     // ── Role-based access control ────────────────────────────────────────────
     for (const [role, prefix] of Object.entries(ROLE_PREFIXES)) {

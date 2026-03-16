@@ -28,7 +28,7 @@ import {
     authService
 } from "@/lib/auth-utils";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+// import { Progress } from "@/components/ui/progress";
 
 const changePasswordSchema = z
     .object({
@@ -45,7 +45,7 @@ type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export default function SecuritySettings() {
     const { toast } = useToast();
-    const { user, session, logout } = useAuth();
+    const { user, logout } = useAuth();
     const [loading, setLoading] = useState(false);
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
@@ -267,7 +267,7 @@ export default function SecuritySettings() {
                                                         {getPasswordStrengthText(passwordStrength.score)}
                                                     </span>
                                                 </div>
-                                                <Progress value={passwordStrength.score} className="h-2" />
+                                                {/* <Progress value={passwordStrength.score} className="h-2" /> */}
 
                                                 {passwordStrength.feedback.length > 0 && (
                                                     <div className="text-xs text-red-600 space-y-1">

@@ -16,16 +16,16 @@ import { usePatientContext } from "@/context/patients/patient-context";
 import { ConsultationReferred } from "@/actions/consultations/types";
 import { Patient, PatientStatus } from "@/context/patients/types";
 import { toast } from "@/hooks/use-toast";
-import { databases } from "@/lib/appwrite.config";
-import { createConsultation } from "@/actions/consultations/consultation";
+// Remove Appwrite import and bring in supabase
+
+import { createConsultation } from "@/actions/consultations/consultation"; // Make sure this works with Supabase now, or inline it.
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { useQuery } from "@tanstack/react-query";
 import { Staff } from "@/actions/staff/types";
 import { LabResultUploadForm } from "../lab-tech/lab-result-upload-form";
+import supabase from "@/utils/supabase/client";
 
-
-const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
-const patientCollectionId = process.env.NEXT_PUBLIC_PATIENT_COLLECTION_ID!;
+// Remove Appwrite-specific constants
 
 export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     const [tab, setTab] = useState("consultation");
@@ -110,6 +110,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         selectedStaffId,
     ]);
 
+    // Replace Appwrite in handleSubmit with Supabase
     const handleSubmit = useCallback(async () => {
         setFormError(null);
         setSuccessMessage(null);
@@ -133,22 +134,32 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
             // Update patient status only if changed
             if (patientState.status !== patient.status) {
-                await databases.updateDocument(databaseId, patientCollectionId, patient.id!, {
-                    status: patientState.status,
-                });
+                const { error: updateError } = await supabase
+                    .from("patients")
+                    .update({ status: patientState.status })
+                    .eq("id", patient.id!);
+                if (updateError) throw updateError;
             }
 
-            await createConsultation({
-                patientId: patient.id!,
-                doctorId: user?.id!,
-                symptom: consultationState.symptoms,
-                diagnosis: consultationState.diagnosis,
-                prescription: consultationState.prescriptions,
-                recommendation: consultationState.recommendations,
-                consultationDate: new Date().toISOString(),
-                createdAt: new Date().toISOString(),
-                referredTo: consultationState.referredTo,
-            });
+            // Create new consultation (assuming createConsultation is now implemented via Supabase, else inline)
+            const { error: createError } = await supabase
+                .from("consultations")
+                .insert({
+                    patient_id: patient.id!,
+                    doctor_id: user?.id!,
+                    symptom: consultationState.symptoms,
+                    diagnosis: consultationState.diagnosis,
+                    prescription: consultationState.prescriptions,
+                    recommendation: consultationState.recommendations,
+                    consultation_date: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    referred_to: consultationState.referredTo,
+                    assigned_staff_id: selectedStaffId
+                });
+
+            if (createError) {
+                throw createError;
+            }
 
             setSuccessMessage("Consultation and task successfully assigned.");
             toast({

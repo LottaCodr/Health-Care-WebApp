@@ -1,78 +1,56 @@
 
-import { databases } from "@/lib/appwrite.config";
 import { Consultation } from "./types";
-import { ID } from "appwrite";
-import { Query } from "node-appwrite";
+import supabase from "@/utils/supabase/client";
 
+/**
+ * Create a new consultation in Supabase.
+ * @param consultationData Consultation object (without id, createdAt, etc.)
+ */
+export async function createConsultation(consultationData: Omit<Consultation, "$id" | "$createdAt" | "$updatedAt">) {
+    const { data, error } = await supabase
+        .from("consultations")
+        .insert([consultationData])
+        .select()
+        .single();
 
-const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!;
-const consultationCollectionId = process.env.NEXT_PUBLIC_CONSULTATION_COLLECTION_ID!;
-
-
-export async function createConsultation(consultationData: Consultation) {
-    try {
-        const response = await databases.createDocument(
-            databaseId,
-            consultationCollectionId,
-            ID.unique(),
-            consultationData
-        );
-
-        console.log("Consultation successfully created:", response);
-        return response;
-
-    } catch (error) {
+    if (error) {
         console.error("An error occurred while creating consultation:", error);
         throw new Error("Failed to create consultation.");
     }
+    return data as unknown as Consultation;
 }
 
-
-
+/**
+ * Fetch all consultations for a given patientId, ordered by consultationDate descending.
+ * @param patientId The ID of the patient.
+ */
 export async function getPatientConsultations(patientId: string): Promise<Consultation[]> {
-    try {
-        const response = await databases.listDocuments(
-            databaseId,
-            consultationCollectionId,
-            [
-                Query.equal("patientId", patientId),
-                Query.orderDesc("consultationDate")
-            ]
-        );
+    const { data, error } = await supabase
+        .from("consultations")
+        .select()
+        .eq("patient_id", patientId)
+        .order("consultation_date", { ascending: false });
 
-        // Map documents to Consultation type
-        const consultations = response.documents.map((doc) => ({
-            $id: doc.$id,
-            patientId: doc.patientId,
-            doctorId: doc.doctorId,
-            symptom: doc.symptom,
-            diagnosis: doc.diagnosis,
-            prescription: doc.prescription,
-            recommendation: doc.recommendation,
-            consultationDate: doc.consultationDate,
-            createdAt: doc.createdAt,
-            referredTo: doc.referredTo,
-        }));
-
-        return consultations;
-
-    } catch (error) {
+    if (error) {
         console.error("Error fetching consultations:", error);
         return [];
     }
+    return data as unknown as Consultation[];
 }
 
-
+/**
+ * Delete a consultation record by its id.
+ * @param consultationId Consultation record id.
+ */
 export async function deleteConsultation(consultationId: string) {
-    try {
-        const response = await databases.deleteDocument(
-            databaseId,
-            consultationCollectionId,
-            consultationId
-        );
-        return response;
-    } catch (error) {
+    const { error } = await supabase
+        .from("consultations")
+        .delete()
+        .eq("id", consultationId);
+
+    if (error) {
         console.error("Error deleting consultation:", error);
         throw new Error("Failed to delete consultation.");
     }
+    return { success: true };
 }

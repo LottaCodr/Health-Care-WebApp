@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { LogOut, User, ShieldCheck } from "lucide-react";
 
 export function NavUser() {
-    const { user, signOut } = useAuth();
+    const { user, logout } = useAuth();
 
     return (
         <DropdownMenu>
@@ -38,7 +38,7 @@ export function NavUser() {
                     <ShieldCheck size={18} /> Identity Verification
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-gray-50 mx-2" />
-                <DropdownMenuItem onClick={() => signOut()} className="rounded-2xl p-3 gap-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer mt-1">
+                <DropdownMenuItem onClick={() => logout()} className="rounded-2xl p-3 gap-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer mt-1">
                     <LogOut size={18} /> Terminate Session
                 </DropdownMenuItem>
             </DropdownMenuContent>

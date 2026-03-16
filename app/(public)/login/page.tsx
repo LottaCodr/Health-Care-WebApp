@@ -1,18 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { Stethoscope, ShieldCheck, Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 const LoginScreen: React.FC = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, login, isLoading: authLoading } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+
+    
 
     // Dashboard routes by role
     const getDashboardRoute = (role?: string): string => {
@@ -28,12 +31,12 @@ const LoginScreen: React.FC = () => {
     };
 
     // Redirect if already logged in
-    useEffect(() => {
-        if (user && !authLoading) {
-            const dashboardRoute = getDashboardRoute(user.role);
-            router.push(dashboardRoute);
-        }
-    }, [user, authLoading, router]);
+    // useEffect(() => {
+    //     if (user && !authLoading) {
+    //         const dashboardRoute = getDashboardRoute(user.role);
+    //         router.push(dashboardRoute);
+    //     }
+    // }, [user, authLoading, router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,13 +49,18 @@ const LoginScreen: React.FC = () => {
             setLoading(true);
             setError(null);
 
+            // const next = searchParams.get("next") || "/"
             const result = await login(email.trim(), password);
-
+            
             if (!result.success) {
                 setError(result.message || "Login failed. Please check your credentials.");
                 setLoading(false);
                 return;
             }
+            
+            const next = searchParams.get("next") || "/"
+            // router.replace(next)
+            window.location.href = next;
 
             // Navigation handled by useEffect when user updates
         } catch (err) {

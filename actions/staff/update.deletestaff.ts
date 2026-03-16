@@ -1,36 +1,49 @@
-import { databases } from "@/lib/appwrite.config";
-import { Staff } from "@/types/appwrite.types";
+import supabase from "@/utils/supabase/client";
+import { StaffRole } from "./types";
 
-
-const databaseId = process.env.NEXT_PUBLIC_DATABASE_ID!
-const staffCollectionId = process.env.NEXT_PUBLIC_STAFF_COLLECTION_ID!
-
-
-export async function updateStaff(id: string, updates: Partial<Staff>) {
+/**
+ * Update a staff record by its id using Supabase.
+ * @param id The id of the staff to update.
+ * @param updates Partial staff record with fields to change
+ */
+export async function updateStaff(id: string, updates: Partial<StaffRole>) {
     try {
-        const update = await databases.updateDocument(
-            databaseId, staffCollectionId, id, updates
-        )
+        const { data, error } = await supabase
+            .from("staffs")
+            .update(updates)
+            .eq("id", id)
+            .select()
+            .single();
 
-        return update as Staff
+        if (error) {
+            console.error("Failed to update staff:", error);
+            throw new Error("Could not update the staff: " + error.message);
+        }
+
+        return data;
     } catch (error) {
         console.error("Failed to update staff:", error);
-        // throw new Error('Could not update the staff')
+        throw error;
     }
-
 }
 
-
+/**
+ * Delete a staff record by its id using Supabase.
+ * @param id The id of the staff to delete.
+ */
 export async function deleteStaff(id: string) {
-
     try {
-        const remove = await databases.deleteDocument(databaseId, staffCollectionId, id)
+        const { error } = await supabase
+            .from("staffs")
+            .delete()
+            .eq("id", id);
 
-        return remove as Staff
+        if (error) {
+            throw new Error("Could not delete the staff: " + error.message);
+        }
+
+        return { success: true };
     } catch (error) {
-        throw new Error('Could not delete the staff')
-
+        throw new Error('Could not delete the staff');
     }
-
-
 }

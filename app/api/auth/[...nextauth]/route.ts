@@ -65,7 +65,8 @@ export const authOptions = {
         },
     },
     pages: {
-        signIn: "/staff", // custom login page
+        // Use /login as the single source of truth for unauthenticated access
+        signIn: "/login",
     },
 };
 
