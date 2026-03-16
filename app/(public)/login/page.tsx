@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { Stethoscope, ShieldCheck, Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
+import Image from "next/image";
 
 const LoginScreen: React.FC = () => {
     const router = useRouter();
@@ -15,28 +16,8 @@ const LoginScreen: React.FC = () => {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
 
-    
-
-    // Dashboard routes by role
-    const getDashboardRoute = (role?: string): string => {
-        const roleMap: Record<string, string> = {
-            Doctor: "/doctor/dashboard",
-            Nurse: "/nurse/dashboard",
-            Pharmacist: "/pharmacist/dashboard",
-            LabTechnician: "/lab-tech/dashboard",
-            FrontDesk: "/front-desk/dashboard",
-            Admin: "/admin/dashboard",
-        };
-        return roleMap[role || ""] || "/login";
-    };
-
-    // Redirect if already logged in
-    // useEffect(() => {
-    //     if (user && !authLoading) {
-    //         const dashboardRoute = getDashboardRoute(user.role);
-    //         router.push(dashboardRoute);
-    //     }
-    // }, [user, authLoading, router]);
+    // Get the current year for the footer
+    const currentYear = new Date().getFullYear();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -87,8 +68,16 @@ const LoginScreen: React.FC = () => {
 
                 {/* Header */}
                 <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white mb-6 shadow-lg shadow-blue-200">
-                        <Stethoscope size={40} />
+                    <div
+                        className="p-2 bg-white rounded-2xl shadow-xl shadow-blue-100 inline-flex items-center justify-center w-24 h-24 mb-6"
+                    >
+                        <Image
+                            src="/assets/icons/nilelogo.jpeg"
+                            alt="Logo"
+                            width={80}
+                            height={80}
+                            className="rounded-xl"
+                        />
                     </div>
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
                         Nile Valley Mother &amp; Child Hospital
@@ -181,7 +170,8 @@ const LoginScreen: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            // Use "bg-primary hover:bg-primary-700" to use primary colour and its "darker" variant from tailwind palette
+                            className="w-full py-3 px-4 bg-blue-600 hover:bg-primary-700 text-white font-semibold rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {loading ? (
                                 <>
@@ -197,7 +187,7 @@ const LoginScreen: React.FC = () => {
 
                 {/* Footer */}
                 <p className="text-center text-slate-400 text-xs mt-8">
-                    &copy; 2026 Nile Valley Mother &amp; Child Hospital. All rights reserved.
+                    &copy; {currentYear} Nile Valley Mother &amp; Child Hospital. All rights reserved.
                 </p>
             </div>
         </div>
