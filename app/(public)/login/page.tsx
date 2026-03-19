@@ -145,7 +145,7 @@ const LoginScreen: React.FC = () => {
                             <Image src="/assets/icons/nilelogo.jpeg" alt="Logo" width={40} height={40} className="w-full h-full object-cover" />
                         </div>
                         <div>
-                            <p className="text-gray-900 text-sm font-bold">Nile Valley Hospital</p>
+                            <p className="text-gray-900 text-sm font-bold">Nile Valley Mother & Child Hospital</p>
                             <p className="text-gray-400 text-[10px] uppercase tracking-widest">Staff Portal</p>
                         </div>
                     </div>
