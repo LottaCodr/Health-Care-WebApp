@@ -58,10 +58,10 @@ const REFERRAL_OPTIONS = [
 ] as const;
 
 const PATIENT_STATUSES = [
-    { value: 'sentToNurse', label: 'Sent to Nurse' },
-    { value: 'sentToLab', label: 'Sent to Lab' },
-    { value: 'sentToPharmacy', label: 'Sent to Pharmacy' },
-    { value: 'underObservation', label: 'Under Observation' },
+    { value: 'sent-to-nurse', label: 'Sent to Nurse' },
+    { value: 'sent-to-lab', label: 'Sent to Lab' },
+    { value: 'sent-to-pharmacy', label: 'Sent to Pharmacy' },
+    { value: 'under-observation', label: 'Under Observation' },
     { value: 'discharged', label: 'Discharged' },
 ];
 

@@ -5,17 +5,17 @@
 
 // Patient Status enum representing the patient journey
 export enum PatientStatus {
-    Registered = "Registered",
-    AwaitingConsultation = "AwaitingConsultation",
-    UnderConsultation = "UnderConsultation",
-    SentToNurse = "SentToNurse",
-    SentToLab = "SentToLab",
-    SentToPharmacy = "SentToPharmacy",
-    AwaitingPayment = "AwaitingPayment",
-    AwaitingDoctorReview = "AwaitingDoctorReview",
-    AwaitingNextStep = "AwaitingNextStep",
-    Discharged = "Discharged",
-    Cancelled = "Cancelled",
+    Registered = "registered",
+    AwaitingConsultation = "awaiting-consultation",
+    UnderConsultation = "under-consultation",
+    SentToNurse = "sent-to-nurse",
+    SentToLab = "sent-to-lab",
+    SentToPharmacy = "sent-to-pharmacy",
+    AwaitingPayment = "awaiting-payment",
+    Admitted = "admitted",
+    UnderObservation = "under-observation",
+    Discharged = "discharged",
+    NoStatus = "no-status",
 }
 
 // User Roles
