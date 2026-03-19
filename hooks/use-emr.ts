@@ -661,6 +661,35 @@ export function useLabRequest(requestId: string) {
  * PHARMACIST HOOKS
  */
 
+export function usePrescriptionsByPatient(patientId: string) {
+    const [state, setState] = useState<UseAsyncState<Prescription[]>>({
+        data: null,
+        loading: true,
+        error: null,
+    });
+
+    useEffect(() => {
+        if (!patientId) {
+            setState({ data: null, loading: false, error: null });
+            return;
+        }
+
+        const fetch = async () => {
+            setState({ data: null, loading: true, error: null });
+            try {
+                const prescriptions = await listPrescriptionsByPatient(patientId);
+                setState({ data: prescriptions, loading: false, error: null });
+            } catch (err) {
+                setState({ data: null, loading: false, error: err as Error });
+            }
+        };
+
+        fetch();
+    }, [patientId]);
+
+    return state;
+}
+
 export function usePendingPrescriptions() {
     const [state, setState] = useState<UseAsyncState<Prescription[]>>({
         data: null,

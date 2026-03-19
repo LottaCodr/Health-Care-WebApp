@@ -6,7 +6,10 @@ import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
 import { usePendingPrescriptions } from "@/hooks/use-emr";
 import { LoadingSkeleton, EmptyState } from "@/components/emr";
-import { Pill, Clock, CheckCircle, ChevronRight, Bookmark } from "lucide-react";
+import {
+    Pill, Clock, CheckCircle2, ChevronRight,
+    FlaskConical, Package, Activity,
+} from "lucide-react";
 import Link from "next/link";
 
 export default function DashBoardComponent() {
@@ -16,65 +19,152 @@ export default function DashBoardComponent() {
 
     if (!authorized) return null;
 
-    // Filter for current pharmacist if needed, or all for dashboard
-    const active = prescriptions?.filter(p => p.status === "Active") || [];
-    const dispensed = prescriptions?.filter(p => p.status === "Dispensed") || [];
+    const active = prescriptions?.filter((p) => p.status === "Active") ?? [];
+    const dispensed = prescriptions?.filter((p) => p.status === "Dispensed") ?? [];
+    const pending = active.filter((p) => !p.pharmacist_id);
 
     const stats = [
-        { label: "Active Orders", value: active.length, icon: <Pill className="text-blue-600" />, color: "bg-blue-50" },
-        { label: "Pending Review", value: active.filter(p => !p.pharmacist_id).length, icon: <Clock className="text-yellow-600" />, color: "bg-yellow-50" },
-        { label: "Dispensed Today", value: dispensed.length, icon: <CheckCircle className="text-green-600" />, color: "bg-green-50" },
+        {
+            label: "Active Orders",
+            value: active.length,
+            icon: Pill,
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+            border: "border-blue-100",
+        },
+        {
+            label: "Pending Review",
+            value: pending.length,
+            icon: Clock,
+            color: "text-amber-600",
+            bg: "bg-amber-50",
+            border: "border-amber-100",
+        },
+        {
+            label: "Dispensed Today",
+            value: dispensed.length,
+            icon: CheckCircle2,
+            color: "text-green-600",
+            bg: "bg-green-50",
+            border: "border-green-100",
+        },
     ];
 
     return (
-        <div className="space-y-10">
-            <div className="flex justify-between items-end">
-                <div>
-                    <h1 className="text-4xl font-black tracking-tight text-foreground">Pharmacy Control</h1>
-                    <p className="text-muted-foreground font-medium">Precision medication dispensing and inventory tracking</p>
-                </div>
+        <div className="space-y-6">
+
+            {/* ── Stats ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {stats.map((s) => {
+                    const Icon = s.icon;
+                    return (
+                        <div
+                            key={s.label}
+                            className={`bg-white rounded-2xl border ${s.border} shadow-sm px-5 py-5 flex items-center gap-4 hover:shadow-md transition-shadow`}
+                        >
+                            <div className={`w-11 h-11 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
+                                <Icon size={19} className={s.color} />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-extrabold text-gray-900 leading-none">{s.value}</p>
+                                <p className="text-xs text-gray-400 font-medium mt-1">{s.label}</p>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {stats.map((s, i) => (
-                    <div key={i} className={`glass-card p-8 flex items-center justify-between group hover:shadow-lg transition-all border-l-4 ${i === 0 ? "border-primary/50" : i === 1 ? "border-amber-500/50" : "border-emerald-500/50"}`}>
-                        <div>
-                            <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1">{s.label}</p>
-                            <p className="text-4xl font-black text-foreground">{s.value}</p>
+            {/* ── Dispensing queue ── */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+
+                {/* Card header */}
+                <div className="flex items-center justify-between px-6 pt-6 pb-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                            <FlaskConical size={16} className="text-blue-600" />
                         </div>
-                        <div className="p-4 bg-white/5 rounded-2xl shadow-sm border border-white/10 transform group-hover:scale-110 transition-transform">
-                            {s.icon}
+                        <div>
+                            <h2 className="text-base font-bold text-gray-800 leading-tight">Dispensing Queue</h2>
+                            <p className="text-xs text-gray-400 mt-0.5">Active prescriptions awaiting dispensing</p>
                         </div>
                     </div>
-                ))}
-            </div>
+                    {active.length > 0 && (
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                            {active.length} pending
+                        </span>
+                    )}
+                </div>
 
-            <div className="glass-card p-8">
-                <h2 className="text-2xl font-bold text-foreground mb-8 flex items-center gap-3">
-                    <Bookmark className="text-primary" /> Dispensing Workflow
-                </h2>
+                <div className="px-6 pt-4 pb-6 space-y-3">
+                    {loading ? (
+                        <LoadingSkeleton rows={4} />
+                    ) : active.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
+                                <CheckCircle2 size={22} className="text-green-500" />
+                            </div>
+                            <div className="text-center">
+                                <p className="text-sm font-semibold text-gray-600">Queue Empty</p>
+                                <p className="text-xs text-gray-400 mt-1">No active prescriptions to dispense</p>
+                            </div>
+                        </div>
+                    ) : (
+                        active.map((order, idx) => {
+                            const initials = order.patient_id?.slice(-2).toUpperCase() ?? "PT";
+                            const medCount = order.medications?.length ?? 0;
+                            const isUnreviewed = !order.pharmacist_id;
 
-                {loading ? <LoadingSkeleton rows={4} /> : (
-                    <div className="grid gap-4">
-                        {active.map(order => (
-                            <Link key={order.id} href={`/pharmacist/dispense/${order.id}`} className="group block p-6 bg-white/5 hover:bg-primary rounded-[2rem] transition-all border border-white/5 hover:border-primary/50">
-                                <div className="flex justify-between items-center">
-                                    <div className="flex gap-4 items-center">
-                                        <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center font-bold text-primary group-hover:text-white transition-colors">
-                                            {order.patient_id?.slice(-2).toUpperCase() || "PT"}
+                            return (
+                                <Link
+                                    key={order.id}
+                                    href={`/pharmacist/dispense/${order.id}`}
+                                    className="group flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-100 hover:shadow-sm transition-all"
+                                >
+                                    {/* Queue number */}
+                                    <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center text-xs font-black shrink-0 transition-colors">
+                                        {idx + 1}
+                                    </div>
+
+                                    {/* Patient avatar */}
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center font-black text-blue-600 text-sm shrink-0">
+                                        {initials}
+                                    </div>
+
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-bold text-gray-800 truncate">
+                                                Patient #{order.patient_id?.slice(-6) ?? "—"}
+                                            </p>
+                                            {isUnreviewed && (
+                                                <span className="shrink-0 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100">
+                                                    Unreviewed
+                                                </span>
+                                            )}
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-foreground group-hover:text-white transition-colors">Patient: {order.patient_id}</h3>
-                                            <p className="text-sm font-medium text-muted-foreground group-hover:text-primary-foreground/80 transition-colors uppercase tracking-widest">{order.medications?.length || 0} Medications</p>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <Package size={11} className="text-gray-400" />
+                                            <p className="text-xs text-gray-400 font-medium">
+                                                {medCount} medication{medCount !== 1 ? "s" : ""}
+                                            </p>
                                         </div>
                                     </div>
-                                    <ChevronRight className="text-muted-foreground group-hover:text-white transition-all transform group-hover:translate-x-2" />
-                                </div>
-                            </Link>
-                        ))}
-                        {active.length === 0 && <EmptyState title="Queue Empty" description="No active prescriptions to dispense" icon="✓" />}
-                    </div>
-                )}
+
+                                    {/* Action */}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <span className="hidden sm:block text-xs font-semibold text-blue-600 group-hover:text-blue-700">
+                                            Dispense
+                                        </span>
+                                        <ChevronRight
+                                            size={16}
+                                            className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all"
+                                        />
+                                    </div>
+                                </Link>
+                            );
+                        })
+                    )}
+                </div>
             </div>
         </div>
     );

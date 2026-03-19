@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FaPills, FaFlask, FaCalendarAlt, FaNotesMedical, } from "react-icons/fa";
-import { Activity } from "lucide-react";
+import { Activity, Pill } from "lucide-react";
 import { MdAssignment, MdCheckCircle, MdOutlineEventNote, MdWarning } from "react-icons/md";
 import ConsultationHistoryTable from "./consultation-history";
 import PrescriptionDetails from "./prescription-details";
@@ -168,84 +168,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         selectedStaffId,
     ]);
 
-    const handleSubmit = useCallback(async () => {
-        setFormError(null);
-        setSuccessMessage(null);
-
-        const missingFields = getMissingFields();
-        if (missingFields.length > 0) {
-            const msg = `Please complete: ${missingFields.join(", ")}.`;
-            setFormError(msg);
-            toast({ variant: "destructive", title: "Missing Fields", description: msg });
-            scrollToFirstError();
-            return;
-        }
-
-        try {
-            consultationDispatch({ type: "SET_LOADING", payload: true });
-
-            if (patientState.status !== patient.status) {
-                const { error: updateError } = await supabase
-                    .from("patients")
-                    .update({ status: patientState.status })
-                    .eq("id", patient.id!);
-                if (updateError) throw updateError;
-            }
-
-            const { error: createError } = await supabase
-                .from("consultations")
-                .insert({
-                    patient_id: patient.id!,
-                    doctor_id: user?.id!,
-                    symptom: consultationState.symptoms,
-                    diagnosis: consultationState.diagnosis,
-                    prescription: consultationState.prescriptions,
-                    recommendation: consultationState.recommendations,
-                    consultation_date: new Date().toISOString(),
-                    created_at: new Date().toISOString(),
-                    referred_to: consultationState.referredTo,
-                    assigned_staff_id: selectedStaffId,
-                });
-
-            if (createError) throw createError;
-
-            setSuccessMessage("Consultation and task successfully assigned.");
-            toast({
-                variant: "default",
-                title: "Consultation Saved",
-                description: "The patient's record has been updated.",
-                duration: 5000,
-            });
-
-            consultationDispatch({ type: "RESET_FORM" });
-            setSelectedStaffId(undefined);
-        } catch (error) {
-            console.error(error);
-            setFormError("Failed to save consultation. Please try again.");
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to save consultation.",
-                duration: 7000,
-            });
-        } finally {
-            consultationDispatch({ type: "SET_LOADING", payload: false });
-        }
-    }, [
-        consultationDispatch,
-        consultationState.diagnosis,
-        consultationState.prescriptions,
-        consultationState.recommendations,
-        consultationState.referredTo,
-        consultationState.symptoms,
-        user?.id,
-        getMissingFields,
-        patient.id,
-        patient.status,
-        patientState.status,
-        scrollToFirstError,
-        selectedStaffId,
-    ]);
+    
 
     const activeTab = TAB_CONFIG.find((t) => t.value === tab);
 
@@ -376,30 +299,62 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                 </Card>
             </TabsContent>
 
-            {/* ── Prescriptions ───────────────────────────────────────────── */}
+            {/* ── Prescriptions ── */}
             <TabsContent value="prescriptions" className="mt-0">
-                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-violet-50 via-violet-50/40 to-transparent border-b border-slate-100 px-6 py-4">
-                        <CardTitle className="flex items-center gap-2.5 text-base font-bold text-slate-800">
-                            <span className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
-                                <FaPills className="text-violet-600 text-sm" />
-                            </span>
-                            Prescriptions
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {user?.role === "Pharmacist" && (
-                                <div className="rounded-xl bg-white border border-violet-100 shadow-sm p-6">
+                <div className="space-y-5">
+
+                    {/* ── Section header ── */}
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                            <Pill size={17} className="text-violet-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-900 leading-tight">Prescriptions</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">Medication records and dispensing history</p>
+                        </div>
+                    </div>
+
+                    {/* ── Content grid ── */}
+                    <div className={`grid gap-5 ${user?.role === "Pharmacist" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
+
+                        {/* Left — create prescription (Pharmacist only) */}
+                        {user?.role === "Pharmacist" && (
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-50">
+                                    <div className="w-1.5 h-4 rounded-full bg-violet-500" />
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">New Prescription</p>
+                                </div>
+                                <div className="p-5">
                                     <PrescriptionDetails />
                                 </div>
-                            )}
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-1">
-                                <PrescriptionHistory />
                             </div>
+                        )}
+
+                        {/* Right — history */}
+                        {patient.id && (
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-50">
+                                    <div className="w-1.5 h-4 rounded-full bg-blue-500" />
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Prescription History</p>
+                                </div>
+                                <div className="p-5">
+                                    <PrescriptionHistory patientId={patient.id} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── No patient fallback ── */}
+                    {!patient.id && (
+                        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
+                            <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-3">
+                                <Pill size={20} className="text-gray-300" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-500">No patient selected</p>
+                            <p className="text-xs text-gray-400 mt-1">Select a patient to view prescriptions</p>
                         </div>
-                    </CardContent>
-                </Card>
+                    )}
+                </div>
             </TabsContent>
 
             {/* ── Lab Results ─────────────────────────────────────────────── */}
