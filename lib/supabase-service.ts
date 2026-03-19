@@ -15,6 +15,7 @@ import {
     Payment,
     PatientStatus,
     UserRole,
+    ConsultationInput,
 } from "@/types/models";
 import { PostgrestResponse } from "@supabase/supabase-js";
 import { Patient } from "@/context/patients/types";
@@ -127,19 +128,27 @@ export async function getAllPatients(): Promise<Patient[]> {
  * CONSULTATION OPERATIONS
  */
 
-export async function createConsultation(consultationData: Omit<Consultation, "$id" | "$createdAt" | "$updatedAt">) {
+export async function createConsultation(data: ConsultationInput) {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data: result, error } = await supabase
         .from("consultations")
-        .insert([consultationData])
+        .insert([{
+            patient_id: data.patientId,
+            doctor_id: data.doctorId,
+            symptoms: data.symptoms,
+            diagnosis: data.diagnosis,
+            prescriptions: data.prescriptions ?? null,
+            recommendations: data.recommendations ?? null,
+            referred_to: data.referredTo ?? null,
+            assigned_staff_id: data.assignedStaffId ?? null,
+            status: data.status ?? 'underConsultation',
+            // consultation_date, created_at, updated_at — let DB default
+        }])
         .select()
         .single();
 
-    if (error) {
-        console.error("Failed to create consultation:", error);
-        throw error;
-    }
-    return data as unknown as Consultation;
+    if (error) { console.error("Failed to create consultation:", error); throw error; }
+    return result;
 }
 
 export async function getConsultationById(consultationId: string): Promise<Consultation | null> {

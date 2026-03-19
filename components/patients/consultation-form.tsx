@@ -22,7 +22,7 @@ interface ConsultationFormProps {
     onSuccess?: () => void;
 }
 
-// ─── Referral options (drives automatic patient status) ───────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const REFERRAL_OPTIONS = [
     {
@@ -58,17 +58,11 @@ const REFERRAL_OPTIONS = [
 ] as const;
 
 const PATIENT_STATUSES = [
-    { value: 'registered', label: 'Registered' },
-    { value: 'awaitingConsultation', label: 'Awaiting Consultation' },
-    { value: 'underConsultation', label: 'Under Consultation' },
     { value: 'sentToNurse', label: 'Sent to Nurse' },
     { value: 'sentToLab', label: 'Sent to Lab' },
     { value: 'sentToPharmacy', label: 'Sent to Pharmacy' },
-    { value: 'awaitingPayment', label: 'Awaiting Payment' },
-    { value: 'admitted', label: 'Admitted' },
     { value: 'underObservation', label: 'Under Observation' },
     { value: 'discharged', label: 'Discharged' },
-    { value: 'noStatus', label: 'No Status' },
 ];
 
 const SECTIONS = [
@@ -112,11 +106,9 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
         routing: !!form.status || !!form.referredTo,
     };
 
-    // Derive next patient status from referral choice (defaults to SentToNurse)
-    const nextStatus = (): PatientStatus => {
-        const match = REFERRAL_OPTIONS.find((r) => r.value === form.referredTo);
-        return match?.patientStatus ?? PatientStatus.SentToNurse;
-    };
+    const nextStatus = (): PatientStatus =>
+        REFERRAL_OPTIONS.find((r) => r.value === form.referredTo)?.patientStatus
+        ?? PatientStatus.SentToNurse;
 
     const nextStatusLabel = () =>
         REFERRAL_OPTIONS.find((r) => r.value === form.referredTo)?.label ?? 'Nurse';
@@ -132,6 +124,7 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
 
         try {
             // Step 1 — Save consultation record
+            // FIX: camelCase only — no `id`, no timestamp fields (DB handles these)
             await createConsultation({
                 patientId,
                 doctorId: user?.$id ?? '',
@@ -144,8 +137,8 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                 status: form.status || 'underConsultation',
             });
 
-            // Step 2 — Automatically update patient status
-            // If doctor selected a manual override, use that; otherwise derive from referral
+            // Step 2 — Update patient status
+            // Manual override takes precedence; otherwise derive from referral card selection
             const resolvedStatus = form.status
                 ? (form.status as unknown as PatientStatus)
                 : nextStatus();
@@ -230,20 +223,40 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                     <form className="flex-1 space-y-5" onSubmit={handleSubmit} autoComplete="off">
 
                         <FieldCard id="symptoms" step={1} icon={<HeartPulse size={18} className="text-red-600" />} label="Symptoms" helper="Describe the patient's presenting complaints in detail." onFocus={() => setActive('symptoms')}>
-                            <Textarea placeholder="e.g. Patient presents with persistent headache, fever of 38.5°C, fatigue for 3 days..." value={form.symptoms} onChange={(e) => set('symptoms')(e.target.value)} className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
+                            <Textarea
+                                placeholder="e.g. Patient presents with persistent headache, fever of 38.5°C, fatigue for 3 days..."
+                                value={form.symptoms}
+                                onChange={(e) => set('symptoms')(e.target.value)}
+                                className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0"
+                            />
                         </FieldCard>
 
                         <FieldCard id="diagnosis" step={2} icon={<ClipboardList size={18} className="text-red-600" />} label="Diagnosis" helper="Enter your primary and differential diagnoses." onFocus={() => setActive('diagnosis')}>
-                            <Textarea placeholder="e.g. Provisional diagnosis: Viral fever. Rule out: Malaria, Typhoid..." value={form.diagnosis} onChange={(e) => set('diagnosis')(e.target.value)} className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
+                            <Textarea
+                                placeholder="e.g. Provisional diagnosis: Viral fever. Rule out: Malaria, Typhoid..."
+                                value={form.diagnosis}
+                                onChange={(e) => set('diagnosis')(e.target.value)}
+                                className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0"
+                            />
                         </FieldCard>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <FieldCard id="prescriptions" step={3} icon={<Pill size={18} className="text-red-600" />} label="Prescriptions" helper="List all medications with dosage and frequency." onFocus={() => setActive('prescriptions')}>
-                                <Textarea placeholder="e.g. Paracetamol 500mg — 8 hourly × 5 days..." value={form.prescriptions} onChange={(e) => set('prescriptions')(e.target.value)} className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
+                                <Textarea
+                                    placeholder="e.g. Paracetamol 500mg — 8 hourly × 5 days..."
+                                    value={form.prescriptions}
+                                    onChange={(e) => set('prescriptions')(e.target.value)}
+                                    className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0"
+                                />
                             </FieldCard>
 
                             <FieldCard id="recommendations" step={4} icon={<UserRound size={18} className="text-red-600" />} label="Recommendations" helper="Add follow-up instructions or lifestyle advice." onFocus={() => setActive('recommendations')}>
-                                <Textarea placeholder="e.g. Rest for 3 days, drink plenty of fluids, return if symptoms worsen..." value={form.recommendations} onChange={(e) => set('recommendations')(e.target.value)} className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
+                                <Textarea
+                                    placeholder="e.g. Rest for 3 days, drink plenty of fluids, return if symptoms worsen..."
+                                    value={form.recommendations}
+                                    onChange={(e) => set('recommendations')(e.target.value)}
+                                    className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0"
+                                />
                             </FieldCard>
                         </div>
 
@@ -262,7 +275,7 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
 
                             <div className="px-6 py-5 space-y-5">
 
-                                {/* Referral destination — visual card picker */}
+                                {/* Referral card picker */}
                                 <div>
                                     <Label className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 block">
                                         Refer To <span className="text-gray-300 normal-case font-normal ml-1">(defaults to Nurse if unset)</span>
@@ -300,11 +313,13 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                                     </div>
                                 </div>
 
-                                {/* Assign staff + manual override */}
+                                {/* Assign staff + status override */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-gray-50">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                                            {form.referredTo ? `Assign ${form.referredTo.charAt(0).toUpperCase() + form.referredTo.slice(1)}` : 'Assign Staff'}
+                                            {form.referredTo
+                                                ? `Assign ${form.referredTo.charAt(0).toUpperCase() + form.referredTo.slice(1)}`
+                                                : 'Assign Staff'}
                                         </Label>
                                         {form.referredTo ? (
                                             availableStaff.length > 0 ? (
@@ -314,7 +329,9 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-white z-30 shadow-xl rounded-xl border-gray-100 max-h-60 overflow-y-auto">
                                                         {availableStaff.map((staff) => (
-                                                            <SelectItem key={staff.$id} value={staff.$id} className="text-sm">{staff.name}</SelectItem>
+                                                            <SelectItem key={staff.$id} value={staff.$id} className="text-sm">
+                                                                {staff.name}
+                                                            </SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
@@ -347,14 +364,16 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                                     </div>
                                 </div>
 
-                                {/* Auto-status preview */}
+                                {/* Auto-status preview banner */}
                                 <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
                                     <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
                                     <p className="text-xs text-blue-700 font-medium">
                                         Patient status will automatically change to{' '}
                                         <span className="font-bold">"{nextStatusLabel()}"</span> on submit
                                         {form.status && (
-                                            <span className="text-blue-500"> (manual override: "{PATIENT_STATUSES.find(s => s.value === form.status)?.label}")</span>
+                                            <span className="text-blue-500">
+                                                {' '}(manual override: "{PATIENT_STATUSES.find(s => s.value === form.status)?.label}")
+                                            </span>
                                         )}
                                     </p>
                                 </div>
@@ -391,13 +410,24 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
 // ─── Field card ───────────────────────────────────────────────────────────────
 
 function FieldCard({ id, step, icon, label, helper, children, onFocus }: {
-    id: string; step: number; icon: React.ReactNode; label: string;
-    helper?: string; children: React.ReactNode; onFocus?: () => void;
+    id: string;
+    step: number;
+    icon: React.ReactNode;
+    label: string;
+    helper?: string;
+    children: React.ReactNode;
+    onFocus?: () => void;
 }) {
     return (
-        <div id={id} onFocus={onFocus} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-red-100 transition-all duration-150 overflow-hidden">
+        <div
+            id={id}
+            onFocus={onFocus}
+            className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-red-100 transition-all duration-150 overflow-hidden"
+        >
             <div className="flex items-center gap-3 px-6 pt-5 pb-3 border-b border-gray-50">
-                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0 group-focus-within:bg-red-100 transition-colors">{icon}</div>
+                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0 group-focus-within:bg-red-100 transition-colors">
+                    {icon}
+                </div>
                 <div>
                     <p className="text-sm font-bold text-gray-800">{label}</p>
                     {helper && <p className="text-xs text-gray-400 mt-0.5">{helper}</p>}

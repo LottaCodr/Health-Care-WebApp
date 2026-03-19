@@ -83,21 +83,38 @@ export interface Staff {
 
 // Consultation entity
 export interface Consultation {
-    id: string;
-    patientId: string;
-    patient_id?: string;
-    doctorId: string;
-    doctor_id?: string;
-    startTime: string;
-    start_time?: string;
-    endTime?: string;
-    end_time?: string;
+    // Identity fields
+    id: string;                  // Unique identifier
+    patient_id: string;          // Patient's ID
+    doctor_id: string;           // Doctor's ID
+
+    // Clinical content
     symptoms: string;
     diagnosis: string;
-    notes: string;
-    status: "Scheduled" | "InProgress" | "Completed" | "Cancelled";
-    created_at?: string;
-    updated_at?: string;
+    prescriptions?: string | null;
+    recommendations?: string | null;
+
+    // Routing
+    referred_to?: string | null;         // Target department or staff role
+    assigned_staff_id?: string | null;   // Assigned staff ID
+    status: string;                      // Consultation status
+
+    // Timestamps
+    consultation_date: string;           // Date of consultation
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ConsultationInput {
+    patientId: string;
+    doctorId: string;
+    symptoms: string;
+    diagnosis: string;
+    prescriptions?: string;
+    recommendations?: string;
+    referredTo?: string;
+    assignedStaffId?: string;
+    status?: string;
 }
 
 // Prescription entity
