@@ -1,429 +1,290 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState, ReactNode } from "react";
+import { useEffect, useCallback, useState, ReactNode } from "react";
 import { usePatientContext } from "@/context/patients/patient-context";
 import { useConsultationContext } from "@/context/consultation/consultation";
 import PatientDetailsSkeleton from "./skeleton";
 import { Patient, PatientStatus } from "@/context/patients/types";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
-
-import { FaUserMd } from "react-icons/fa";
-import {
-  MdEmail,
-  MdPhone,
-  MdLocationOn,
-  MdWork,
-  MdMedicalServices,
-  MdHistory,
-  MdAssignment,
-  MdWarning,
-  MdCheckCircle,
-  MdNote,
-} from "react-icons/md";
-import { BsGenderAmbiguous } from "react-icons/bs";
 import PatientDetailTabs from "./patient-detail-tabs";
-
-// For fast load, avoid any unnecessary suspense or data fetching in initial render.
-// Only show patient profile immediately, then load tabs after.
+import {
+    User, Mail, Phone, MapPin, Briefcase, ShieldAlert, CheckCircle,
+    ClipboardList, Activity, Heart, Building2, CreditCard, Copy,
+    Check, ChevronRight, ArrowLeft, AlertTriangle, Dna, Droplets,
+    Baby, BookUser, Pill, History, Syringe,
+} from "lucide-react";
 
 interface Props {
-  patient: Patient;
+    patient: Patient;
 }
 
-type Field =
-  | {
-      label: string;
-      icon: ReactNode;
-      value: any;
-      render?: (val: any) => ReactNode;
-    }
-  | {
-      label: string;
-      icon: ReactNode;
-      value: any;
-    };
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PatientDetailsComponent({ patient }: Props) {
-  const { state: patientState, dispatch: patientDispatch } = usePatientContext();
-  const { state: consultationState, dispatch: consultationDispatch } = useConsultationContext();
-  const { user } = useAuth();
+    const { state: patientState, dispatch: patientDispatch } = usePatientContext();
+    const { state: consultationState, dispatch: consultationDispatch } = useConsultationContext();
 
-  const [showCopied, setShowCopied] = useState(false);
+    const [showCopied, setShowCopied] = useState(false);
+    const [activeGroup, setActiveGroup] = useState("basic");
 
-  // Setup effect as fast as possible; only set patient state (avoid any unnecessary async)
-  useEffect(() => {
-    if (patient) {
-      patientDispatch({ type: "SET_PATIENT", payload: [patient] });
-      patientDispatch({ type: "UPDATE_NOTES", payload: patient.notes || "" });
-      patientDispatch({ type: "SET_STATUS", payload: (patient.status as PatientStatus) || "no-status" });
-      consultationDispatch({ type: "RESET_FORM" });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patient]);
+    useEffect(() => {
+        if (patient) {
+            patientDispatch({ type: "SET_PATIENT", payload: [patient] });
+            patientDispatch({ type: "UPDATE_NOTES", payload: patient.notes || "" });
+            patientDispatch({ type: "SET_STATUS", payload: (patient.status as PatientStatus) || "no-status" });
+            consultationDispatch({ type: "RESET_FORM" });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [patient]);
 
-  // Copy patient ID to clipboard
-  const handleCopyId = useCallback(async (id: string) => {
-    try {
-      await navigator.clipboard.writeText(id);
-      setShowCopied(true);
-      setTimeout(() => setShowCopied(false), 1500);
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Copy Failed",
-        description: "Could not copy patient ID.",
-      });
-    }
-  }, []);
+    const handleCopyId = useCallback(async (id: string) => {
+        try {
+            await navigator.clipboard.writeText(id);
+            setShowCopied(true);
+            setTimeout(() => setShowCopied(false), 1800);
+        } catch {
+            toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy patient ID." });
+        }
+    }, []);
 
-  const handleBack = useCallback(() => {
-    if (window.history.length > 1) {
-      window.history.back();
-    }
-  }, []);
+    const handleBack = useCallback(() => {
+        if (window.history.length > 1) window.history.back();
+    }, []);
 
-  // Skeleton loads only during a true loading (very fast!)
-  if (consultationState.loading) return <PatientDetailsSkeleton />;
+    if (consultationState.loading) return <PatientDetailsSkeleton />;
 
-  if (!patientState.patient || !patientState.patient.length)
-    return (
-      <ErrorMessage message="Patient not found." actionLabel="Back" onAction={handleBack} />
-    );
-
-  const currentPatient = patientState.patient[0];
-
-  return (
-    <main className="max-w-full px-2 md:px-6 py-10 space-y-10">
-      <div className="w-full">
-        <PatientProfile
-          patient={currentPatient}
-          status={patientState.status}
-          onCopyId={() =>
-            handleCopyId(currentPatient.id || (currentPatient as any).$id || "")
-          }
-          showCopied={showCopied}
-        />
-      </div>
-      {/* Load PatientDetailTabs only client-side, no suspense, for fastest perceived load */}
-      <PatientDetailTabs patient={patient} />
-    </main>
-  );
-}
-
-// -- Improved visual hierarchy for PatientProfile --
-function PatientProfile({
-  patient,
-  status,
-  onCopyId,
-  showCopied,
-}: {
-  patient: Patient;
-  status: string;
-  onCopyId: () => void;
-  showCopied: boolean;
-}) {
-  // Define field groupings for better visual structure
-  const fieldGroups: {
-    title: string;
-    icon: ReactNode;
-    fields: Field[];
-  }[] = [
-    {
-      title: "Basic Information",
-      icon: <FaUserMd className="text-primary" />,
-      fields: [
-        {
-          label: "Patient ID",
-          icon: <MdAssignment className="text-blue-400" />,
-          value: ((patient as any).userId || (patient as any).id || ""),
-          render: (val: string) => (
-            <span className="flex items-center gap-2">
-              <span className="font-mono text-xs">{val}</span>
-              <button
-                className="ml-1 px-1 py-0.5 rounded bg-gray-100 hover:bg-blue-100 text-xs text-blue-700"
-                onClick={onCopyId}
-                title="Copy Patient ID"
-                type="button"
-              >
-                {showCopied ? "Copied!" : "Copy"}
-              </button>
-            </span>
-          ),
-        },
-        {
-          label: "Name",
-          icon: <FaUserMd className="text-blue-700" />,
-          value: patient.name,
-        },
-        {
-          label: "Gender",
-          icon: <BsGenderAmbiguous className="text-pink-500" />,
-          value: patient.gender,
-        },
-        {
-          label: "Birth Date",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: patient.birth_date ? new Date(patient.birth_date).toLocaleDateString() : "Not provided",
-        },
-        {
-          label: "Religion",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: patient.religion,
-        },
-        {
-          label: "Occupation",
-          icon: <MdWork className="text-gray-600" />,
-          value: patient.occupation,
-        },
-        {
-          label: "Address",
-          icon: <MdLocationOn className="text-green-600" />,
-          value: patient.address,
-        },
-        {
-          label: "Email",
-          icon: <MdEmail className="text-blue-500" />,
-          value: patient.email,
-        },
-        {
-          label: "Phone",
-          icon: <MdPhone className="text-red-500" />,
-          value: patient.phone,
-        },
-      ]
-    },
-    {
-      title: "Emergency Contact",
-      icon: <MdWarning className="text-orange-500" />,
-      fields: [
-        {
-          label: "Emergency Contact Name",
-          icon: <FaUserMd className="text-blue-700" />,
-          value: (patient as any).emergencyContactName,
-        },
-        {
-          label: "Emergency Contact Number",
-          icon: <MdPhone className="text-red-500" />,
-          value: (patient as any).emergencyContactNumber,
-        },
-        {
-          label: "Emergency Contact Relationship",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).emergencyContactRelationship,
-        },
-        {
-          label: "Emergency Contact Email",
-          icon: <MdEmail className="text-blue-500" />,
-          value: (patient as any).emergencyContactEmail,
-        },
-        {
-          label: "Emergency Contact Address",
-          icon: <MdLocationOn className="text-green-600" />,
-          value: (patient as any).emergencyContactAddress,
-        },
-      ]
-    },
-    {
-      title: "Medical Details",
-      icon: <MdMedicalServices className="text-red-600" />,
-      fields: [
-        {
-          label: "Allergies",
-          icon: <MdMedicalServices className="text-red-600" />,
-          value: patient.allergies,
-        },
-        {
-          label: "Current Medication",
-          icon: <FaUserMd className="text-blue-700" />,
-          value: (patient as any).currentMedication,
-        },
-        {
-          label: "Significant Medication History",
-          icon: <MdHistory className="text-gray-500" />,
-          value: (patient as any).significantMedicationHistory,
-        },
-        {
-          label: "Long Term Medication",
-          icon: <FaUserMd className="text-blue-700" />,
-          value: (patient as any).longTermMedication,
-        },
-        {
-          label: "Covid Vaccination",
-          icon: <MdCheckCircle className="text-green-600" />,
-          value: (patient as any).covidVaccinationOptions,
-        },
-        {
-          label: "Blood Group",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).bloodGroup,
-        },
-        {
-          label: "Geno Type",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).genoType,
-        },
-      ]
-    },
-    {
-      title: "Insurance / Billing",
-      icon: <MdAssignment className="text-purple-600" />,
-      fields: [
-        {
-          label: "Policy Number",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).policyNumber,
-        },
-        {
-          label: "HMO",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).hmo ? "Yes" : "No",
-        },
-        {
-          label: "HMO Name",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).hmoName,
-        },
-        {
-          label: "Company",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).company ? "Yes" : "No",
-        },
-        {
-          label: "Company Name",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).companyName,
-        },
-        {
-          label: "Private Client",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: (patient as any).privateClient ? "Yes" : "No",
-        },
-      ]
-    },
-    {
-      title: "Status",
-      icon: <MdAssignment className="text-gray-800" />,
-      fields: [
-        {
-          label: "Current Status",
-          icon: <MdAssignment className="text-blue-700" />,
-          value: status,
-        },
-      ]
-    },
-  ];
-
-  return (
-    <section aria-labelledby="patient-profile">
-      <div className="shadow-lg rounded-2xl border bg-white dark:bg-background overflow-hidden">
-        {/* Profile Card Header */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3 px-6 pt-6 pb-4 border-b bg-gradient-to-r from-blue-50 to-blue-100 dark:from-muted dark:to-muted/40">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-blue-200 p-3 flex items-center justify-center">
-              <FaUserMd className="text-blue-700 text-3xl" />
-            </div>
-            <div>
-              <h2
-                id="patient-profile"
-                className="text-2xl md:text-3xl font-extrabold text-blue-900 dark:text-white flex flex-wrap items-center gap-2"
-              >
-                Patient Profile
-              </h2>
-              <span className="block text-sm text-blue-800/80 dark:text-muted-foreground">{patient.name}</span>
-            </div>
-          </div>
-          {/* Optionally display status prominently */}
-          <div className="mt-2 md:mt-0 md:ml-auto">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 font-semibold border text-sm">
-              <MdAssignment className="inline text-blue-600" />
-              {status}
-            </span>
-          </div>
-        </div>
-        <div className="px-4 py-6 space-y-8">
-          {fieldGroups.map((group) => (
-            <div key={group.title}>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="text-lg md:text-xl font-bold flex items-center text-gray-700 dark:text-white">
-                  {group.icon}
-                  <span className="ml-2">{group.title}</span>
+    if (!patientState.patient?.length) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
+                    <AlertTriangle size={28} className="text-red-500" />
                 </div>
-                {/* a divider */}
-                <div className="flex-1 border-t border-dashed border-blue-200 ml-3" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-                {group.fields.map((field) => {
-                  // TypeScript safe access for .render property
-                  const hasRender = typeof (field as any).render === "function";
-                  return (
-                    <InfoItem
-                      key={field.label}
-                      label={field.label}
-                      icon={field.icon}
-                      value={hasRender
-                        ? (field as any).render(field.value)
-                        : (field.value ?? "Not provided")}
-                    />
-                  );
-                })}
-              </div>
+                <p className="text-gray-600 font-semibold">Patient not found.</p>
+                <button
+                    onClick={handleBack}
+                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                >
+                    <ArrowLeft size={15} /> Go back
+                </button>
             </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+        );
+    }
+
+    const currentPatient = patientState.patient[0];
+
+    return (
+        <main className="max-w-full px-2 md:px-6 py-10 space-y-8">
+            <PatientProfile
+                patient={currentPatient}
+                status={patientState.status}
+                onCopyId={() => handleCopyId(currentPatient.id || (currentPatient as any).$id || "")}
+                showCopied={showCopied}
+                activeGroup={activeGroup}
+                setActiveGroup={setActiveGroup}
+            />
+            <PatientDetailTabs patient={patient} />
+        </main>
+    );
 }
 
-// Improved info item for better hierarchy and readability
+// ─── Group definitions ────────────────────────────────────────────────────────
+
+const GROUPS = [
+    { id: "basic",     label: "Personal",   icon: User        },
+    { id: "emergency", label: "Emergency",  icon: ShieldAlert },
+    { id: "medical",   label: "Medical",    icon: Activity    },
+    { id: "insurance", label: "Insurance",  icon: CreditCard  },
+];
+
+// ─── Patient profile ──────────────────────────────────────────────────────────
+
+function PatientProfile({
+    patient, status, onCopyId, showCopied, activeGroup, setActiveGroup,
+}: {
+    patient: Patient;
+    status: string;
+    onCopyId: () => void;
+    showCopied: boolean;
+    activeGroup: string;
+    setActiveGroup: (id: string) => void;
+}) {
+    const p = patient as any;
+
+    const groups: Record<string, { label: string; icon: ReactNode; value: ReactNode }[]> = {
+        basic: [
+            { label: "Full Name",   icon: <User size={14} />,      value: patient.name },
+            { label: "Gender",      icon: <User size={14} />,      value: patient.gender },
+            { label: "Birth Date",  icon: <Baby size={14} />,      value: patient.birth_date ? new Date(patient.birth_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null },
+            { label: "Religion",    icon: <BookUser size={14} />,  value: p.religion },
+            { label: "Occupation",  icon: <Briefcase size={14} />, value: patient.occupation },
+            { label: "Email",       icon: <Mail size={14} />,      value: patient.email },
+            { label: "Phone",       icon: <Phone size={14} />,     value: patient.phone },
+            { label: "Address",     icon: <MapPin size={14} />,    value: patient.address },
+            {
+                label: "Patient ID",
+                icon: <ClipboardList size={14} />,
+                value: (
+                    <span className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-gray-500 truncate max-w-[140px]">
+                            {p.userId || p.id || "—"}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={onCopyId}
+                            className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-semibold transition-colors"
+                        >
+                            {showCopied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                        </button>
+                    </span>
+                ),
+            },
+        ],
+        emergency: [
+            { label: "Name",         icon: <User size={14} />,  value: p.emergencyContactName },
+            { label: "Phone",        icon: <Phone size={14} />, value: p.emergencyContactNumber },
+            { label: "Relationship", icon: <BookUser size={14} />, value: p.emergencyContactRelationship },
+            { label: "Email",        icon: <Mail size={14} />,  value: p.emergencyContactEmail },
+            { label: "Address",      icon: <MapPin size={14} />,value: p.emergencyContactAddress },
+        ],
+        medical: [
+            { label: "Allergies",                    icon: <ShieldAlert size={14} />, value: patient.allergies },
+            { label: "Blood Group",                  icon: <Droplets size={14} />,   value: p.bloodGroup },
+            { label: "Genotype",                     icon: <Dna size={14} />,        value: p.genoType },
+            { label: "Current Medication",           icon: <Pill size={14} />,       value: p.currentMedication },
+            { label: "Long-Term Medication",         icon: <Pill size={14} />,       value: p.longTermMedication },
+            { label: "Significant Med. History",     icon: <History size={14} />,    value: p.significantMedicationHistory },
+            { label: "Covid Vaccination",            icon: <Syringe size={14} />,    value: p.covidVaccinationOptions },
+        ],
+        insurance: [
+            { label: "HMO",           icon: <Building2 size={14} />,   value: p.hmo ? "Yes" : "No" },
+            { label: "HMO Name",      icon: <Building2 size={14} />,   value: p.hmoName },
+            { label: "Policy Number", icon: <CreditCard size={14} />,  value: p.policyNumber },
+            { label: "Company",       icon: <Building2 size={14} />,   value: p.company ? "Yes" : "No" },
+            { label: "Company Name",  icon: <Building2 size={14} />,   value: p.companyName },
+            { label: "Private Client",icon: <CheckCircle size={14} />, value: p.privateClient ? "Yes" : "No" },
+        ],
+    };
+
+    const statusColors: Record<string, string> = {
+        registered:           "bg-gray-100 text-gray-600",
+        awaitingConsultation: "bg-yellow-50 text-yellow-700",
+        underConsultation:    "bg-blue-50 text-blue-700",
+        sentToNurse:          "bg-teal-50 text-teal-700",
+        sentToLab:            "bg-indigo-50 text-indigo-700",
+        sentToPharmacy:       "bg-violet-50 text-violet-700",
+        awaitingPayment:      "bg-orange-50 text-orange-700",
+        admitted:             "bg-red-50 text-red-700",
+        underObservation:     "bg-cyan-50 text-cyan-700",
+        discharged:           "bg-green-50 text-green-700",
+    };
+
+    const statusClass = statusColors[status] || "bg-gray-100 text-gray-600";
+    const activeFields = groups[activeGroup] ?? [];
+
+    return (
+        <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+
+            {/* ── Hero header ── */}
+            <div className="relative px-6 pt-8 pb-6 bg-gradient-to-br from-blue-700 to-blue-900 overflow-hidden">
+                {/* decorative circles */}
+                <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5" />
+                <div className="absolute top-8 -right-4 w-28 h-28 rounded-full bg-white/5" />
+
+                <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+                    {/* Avatar */}
+                    <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 backdrop-blur-sm">
+                        <User size={28} className="text-white" />
+                    </div>
+
+                    {/* Name & meta */}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Patient Profile</p>
+                        <h2 className="text-2xl font-bold text-white truncate">{patient.name}</h2>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                            {patient.gender && (
+                                <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                                    {patient.gender}
+                                </span>
+                            )}
+                            {patient.birth_date && (
+                                <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                                    DOB: {new Date(patient.birth_date).toLocaleDateString()}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Status badge */}
+                    <div className="shrink-0">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${statusClass}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                            {status || "No Status"}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Group tab nav ── */}
+            <div className="flex border-b border-gray-100 px-2 overflow-x-auto scrollbar-hide">
+                {GROUPS.map((g) => {
+                    const Icon = g.icon;
+                    const isActive = activeGroup === g.id;
+                    return (
+                        <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => setActiveGroup(g.id)}
+                            className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all duration-150
+                                ${isActive
+                                    ? "border-blue-700 text-blue-700"
+                                    : "border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-200"
+                                }`}
+                        >
+                            <Icon size={15} />
+                            {g.label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* ── Fields grid ── */}
+            <div className="px-6 py-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {activeFields.map((field) => (
+                        <InfoItem key={field.label} label={field.label} icon={field.icon} value={field.value} />
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+}
+
+// ─── Info item ────────────────────────────────────────────────────────────────
+
 function InfoItem({
-  label,
-  value,
-  icon,
+    label,
+    value,
+    icon,
 }: {
-  label: string;
-  value: string | React.ReactNode;
-  icon: React.ReactNode;
+    label: string;
+    value: ReactNode;
+    icon: ReactNode;
 }) {
-  return (
-    <div className="flex items-start gap-3 bg-white dark:bg-muted/40 border rounded-xl px-3 py-3 shadow-sm min-h-[64px]">
-      <span className="mt-1 text-lg">{icon}</span>
-      <div>
-        <span className="block font-semibold text-gray-900 dark:text-white text-sm mb-0.5">
-          {label}
-        </span>
-        <span className="text-base text-gray-800 dark:text-gray-200 break-words">
-          {value || <span className="italic text-gray-400 dark:text-gray-500">Not provided</span>}
-        </span>
-      </div>
-    </div>
-  );
-}
+    const isEmpty = value === null || value === undefined || value === "";
 
-function ErrorMessage({
-  message,
-  actionLabel,
-  onAction,
-}: {
-  message: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-  return (
-    <div className="flex flex-col bg-white items-center justify-center pt-20">
-      <MdWarning className="text-4xl text-red-500 mb-2" />
-      <p className="text-center text-red-600 text-lg font-medium">{message}</p>
-      {actionLabel && onAction && (
-        <button
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-          onClick={onAction}
-        >
-          {actionLabel}
-        </button>
-      )}
-    </div>
-  );
+    return (
+        <div className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-3.5 hover:border-blue-100 hover:bg-blue-50/30 transition-colors group">
+            <div className="mt-0.5 w-7 h-7 rounded-lg bg-white border border-gray-100 flex items-center justify-center shrink-0 text-gray-400 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shadow-sm">
+                {icon}
+            </div>
+            <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5">{label}</p>
+                {isEmpty
+                    ? <p className="text-sm text-gray-300 italic">Not provided</p>
+                    : <div className="text-sm font-medium text-gray-800 break-words">{value}</div>
+                }
+            </div>
+        </div>
+    );
 }
-
-// End fast-load rewrite

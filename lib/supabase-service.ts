@@ -470,11 +470,27 @@ export async function listPendingPayments(): Promise<Payment[]> {
  * NURSING ACTION OPERATIONS
  */
 
-export async function createNursingAction(actionData: any) {
+export async function createNursingAction(actionData: {
+    patientId: string;
+    actionType: string;
+    description?: string;
+    status: string;
+    assignedNurse?: string;
+    completedBy?: string;
+    completionTime?: string;
+}) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")
-        .insert([actionData])
+        .insert([{
+            patient_id: actionData.patientId,
+            action_type: actionData.actionType,
+            description: actionData.description,
+            status: actionData.status,
+            assigned_nurse: actionData.assignedNurse,
+            completed_by: actionData.completedBy,
+            completion_time: actionData.completionTime,
+        }])
         .select()
         .single();
 
@@ -528,11 +544,24 @@ export async function listNursingActionsByPatient(patientId: string) {
     return data;
 }
 
-export async function updateNursingAction(actionId: string, updates: any) {
+export async function updateNursingAction(actionId: string, updates: {
+    status?: string;
+    description?: string;
+    completedBy?: string;
+    completionTime?: string;
+}) {
     const supabase = await createClient();
+
+    // Map only the fields that were actually provided
+    const mapped: Record<string, any> = {};
+    if (updates.status !== undefined) mapped.status = updates.status;
+    if (updates.description !== undefined) mapped.description = updates.description;
+    if (updates.completedBy !== undefined) mapped.completed_by = updates.completedBy;
+    if (updates.completionTime !== undefined) mapped.completion_time = updates.completionTime;
+
     const { data, error } = await supabase
         .from("nursing_actions")
-        .update(updates)
+        .update(mapped)
         .eq("id", actionId)
         .select()
         .single();

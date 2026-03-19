@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
-import { useLabRequest, useCompleteLabRequest } from "@/hooks/use-emr";
+import { useLabRequest, useCompletedLabRequests } from "@/hooks/use-emr";
 import { getPatientById } from "@/lib/supabase-service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

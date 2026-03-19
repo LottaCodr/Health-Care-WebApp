@@ -15,7 +15,7 @@ export function PatientInfoCard({ patient }: { patient: Patient }) {
                     </div>
                     <div>
                         <h3 className="text-2xl font-black text-gray-900 tracking-tight">{patient.name}</h3>
-                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">ID: {patient.$id.substring(0, 12)}...</p>
+                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">ID: {patient.id.substring(0, 12)}...</p>
                     </div>
                 </div>
                 <StatusBadge status={patient.status} />

@@ -2,14 +2,14 @@
 
 import React, { useState, useMemo, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
-
 import SearchInput from './search-input';
 import PatientsTable from './table';
 import { Patient, SortConfig } from '@/context/patients/types';
-
-import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, Plus, Loader2 } from 'lucide-react';
+import {
+    RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
+    Users, Plus, Loader2, Search, UserX,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-provider';
@@ -22,10 +22,10 @@ interface PatientProps {
 const ITEMS_PER_PAGE = 10;
 
 export default function PatientsComponent({ thePatients }: PatientProps) {
-    const [search, setSearch] = useState('');
-    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [search, setSearch]           = useState('');
+    const [sortConfig, setSortConfig]   = useState<SortConfig | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const { user } = useAuth()
+    const { user } = useAuth();
 
     const { data: patients = [], isPending, isFetching, refetch } = useQuery({
         queryKey: ['patients'],
@@ -35,21 +35,17 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
 
     const filteredPatients = useMemo(() => {
         let filtered = [...patients];
-
         if (search.trim()) {
             filtered = filtered.filter((p) =>
                 p.name?.toLowerCase().includes(search.toLowerCase())
             );
         }
-
         if (sortConfig) {
             const { key, direction } = sortConfig;
             const isAsc = direction === 'asc';
-
             filtered.sort((a, b) => {
                 const aVal = a[key] ?? '';
                 const bVal = b[key] ?? '';
-
                 return typeof aVal === 'number' && typeof bVal === 'number'
                     ? isAsc ? aVal - bVal : bVal - aVal
                     : isAsc
@@ -57,179 +53,217 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
                         : String(bVal).localeCompare(String(aVal));
             });
         }
-
         return filtered;
     }, [patients, search, sortConfig]);
 
     const totalPages = Math.max(1, Math.ceil(filteredPatients.length / ITEMS_PER_PAGE));
+
     const paginatedPatients = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
         return filteredPatients.slice(start, start + ITEMS_PER_PAGE);
     }, [filteredPatients, currentPage]);
 
+    React.useEffect(() => { setCurrentPage(1); }, [search, sortConfig]);
 
-
-    const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
-    const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-    const handleFirst = () => setCurrentPage(1);
-    const handleLast = () => setCurrentPage(totalPages);
-
-    // Improved: Reset to page 1 on search or sort change
-    React.useEffect(() => {
-        setCurrentPage(1);
-    }, [search, sortConfig]);
+    const isFrontdesk = user?.role === 'Frontdesk';
 
     return (
-        <Suspense
-            fallback={
-                <div className="flex justify-center items-center min-h-[300px] w-full">
-                    <Loader2 size={40} className="text-blue-600 animate-spin mx-auto mb-4" />
-                    <span className="sr-only">Loading patients...</span>
-                </div>
-            }
-        >
-            <section className="relative mx-auto w-full px-2 md:px-6 py-10 space-y-8">
+        <Suspense fallback={
+            <div className="flex flex-col items-center justify-center min-h-[300px] gap-3">
+                <Loader2 size={28} className="text-blue-600 animate-spin" />
+                <p className="text-sm text-gray-400">Loading patients...</p>
+            </div>
+        }>
+            <section className="relative w-full space-y-5">
 
-                {/* Animate Top Progress Bar */}
+                {/* ── Top progress bar on background refetch ── */}
                 <AnimatePresence>
                     {isFetching && !isPending && (
                         <motion.div
-                            initial={{ width: '0%' }}
+                            initial={{ width: '0%', opacity: 1 }}
                             animate={{ width: '100%' }}
-                            exit={{ width: '100%', opacity: 0 }}
+                            exit={{ opacity: 0 }}
                             transition={{ duration: 1, ease: 'easeInOut' }}
-                            className="h-1 bg-blue-600 fixed top-0 left-0 z-50"
+                            className="h-0.5 bg-blue-500 fixed top-0 left-0 z-50 rounded-full"
                         />
                     )}
                 </AnimatePresence>
 
-                {/* Animate Full Loading Overlay */}
+                {/* ── Full loading overlay ── */}
                 <AnimatePresence>
                     {isPending && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.3 }}
-                            className="absolute inset-0 bg-background/60 backdrop-blur-sm flex justify-center items-center z-40 rounded-xl"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center z-40 rounded-3xl gap-3"
                         >
-                            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-                                <div className="text-center">
-                                    <Loader2 size={40} className="text-blue-600 animate-spin mx-auto mb-4" />
-                                    <p className="text-slate-600">Loading...</p>
-                                </div>
-                            </div>
+                            <Loader2 size={28} className="text-blue-600 animate-spin" />
+                            <p className="text-sm font-medium text-gray-500">Loading patients...</p>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <span className="inline-flex items-center justify-center rounded-full bg-blue-100 text-blue-700 p-2">
-                            <Users size={22} />
-                        </span>
-                        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                            List of Patients
-                            {isFetching && !isPending && <Spinner size="sm" />}
-                        </h2>
-                        <span className="ml-2 text-muted-foreground text-sm hidden md:inline">
-                            ({patients.length} total)
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                        <div className="flex-1 min-w-0 md:w-64">
-                            <SearchInput value={search} onChange={setSearch} placeholder="Search by name..." />
+                {/* ── Header ── */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm px-6 py-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+                        {/* Left — title */}
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+                                <Users size={18} className="text-blue-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-bold text-gray-900 leading-tight flex items-center gap-2">
+                                    Patient Registry
+                                    {isFetching && !isPending && (
+                                        <Loader2 size={13} className="text-blue-400 animate-spin" />
+                                    )}
+                                </h2>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                    {patients.length} total patients registered
+                                </p>
+                            </div>
                         </div>
 
-                        {/* Add New Patient Button */}
-                        {user?.role === "Frontdesk" ? (<div className="flex flex-1 min-w-0 md:w-64 justify-center mb-2">
-                            <Link href="/front-desk/patient/new" >
-                                <Button className="gap-2 rounded-xl text-white">
-                                    <Plus size={18} />
-                                    Add New Patient
-                                </Button>
-                            </Link>
-                        </div>) : ""}
+                        {/* Right — actions */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Search */}
+                            <div className="w-full sm:w-56">
+                                <SearchInput
+                                    value={search}
+                                    onChange={setSearch}
+                                    placeholder="Search by name..."
+                                />
+                            </div>
 
-                        <Button
-                            variant="ghost"
-                            onClick={() => refetch()}
-                            className="rounded-xl flex items-center gap-2 px-3"
-                            aria-label="Refresh patients"
-                            disabled={isFetching}
-                        >
-                            <RefreshCcw size={18} className={isFetching ? 'animate-spin' : ''} />
-                            <span className="hidden sm:inline">Refresh</span>
-                        </Button>
-                    </div>
-                </header>
+                            {/* Refresh */}
+                            <Button
+                                variant="ghost"
+                                onClick={() => refetch()}
+                                disabled={isFetching}
+                                className="h-9 px-3 rounded-xl border border-gray-100 text-gray-500 hover:text-gray-800 gap-1.5 text-sm"
+                                aria-label="Refresh patients"
+                            >
+                                <RefreshCcw size={15} className={isFetching ? 'animate-spin' : ''} />
+                                <span className="hidden sm:inline font-medium">Refresh</span>
+                            </Button>
 
-                {filteredPatients.length === 0 && !isPending ? (
-                    <div className="overflow-x-auto rounded-2xl border border-border bg-background shadow-md relative">
-                        <div className="flex flex-col items-center justify-center p-10 text-muted-foreground min-h-[200px]">
-                            <Users size={40} className="mb-2 text-blue-200" />
-                            <span className="font-medium text-lg">No patients found.</span>
-                            <span className="text-sm mt-1">Try adjusting your search or filters.</span>
+                            {/* Add patient — Frontdesk only */}
+                            {isFrontdesk && (
+                                <Link href="/front-desk/patient/new">
+                                    <Button className="h-9 gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-200 px-4">
+                                        <Plus size={15} />
+                                        New Patient
+                                    </Button>
+                                </Link>
+                            )}
                         </div>
                     </div>
-                ) : (
+                </div>
 
-                    <PatientsTable patients={paginatedPatients} isPending={isPending} currentPage={currentPage} />
-                )}
+                {/* ── Table card ── */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                    {filteredPatients.length === 0 && !isPending ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-4">
+                            <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+                                {search ? (
+                                    <Search size={22} className="text-gray-300" />
+                                ) : (
+                                    <UserX size={22} className="text-gray-300" />
+                                )}
+                            </div>
+                            <div className="text-center">
+                                <p className="text-sm font-semibold text-gray-600">
+                                    {search ? 'No matching patients' : 'No patients yet'}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    {search
+                                        ? `No results for "${search}". Try a different name.`
+                                        : 'Register your first patient to get started.'}
+                                </p>
+                            </div>
+                            {search && (
+                                <button
+                                    onClick={() => setSearch('')}
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+                                >
+                                    Clear search
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <PatientsTable
+                            patients={paginatedPatients}
+                            isPending={isPending}
+                            currentPage={currentPage}
+                        />
+                    )}
+                </div>
 
+                {/* ── Pagination ── */}
                 {filteredPatients.length > 0 && (
-                    <footer className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
-                        <span className="text-muted-foreground text-sm">
-                            Showing <span className="font-semibold">{paginatedPatients.length}</span> of <span className="font-semibold">{filteredPatients.length}</span> patients
-                        </span>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
+
+                        {/* Count */}
+                        <p className="text-xs text-gray-400">
+                            Showing{' '}
+                            <span className="font-semibold text-gray-600">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredPatients.length)}</span>
+                            {' '}of{' '}
+                            <span className="font-semibold text-gray-600">{filteredPatients.length}</span>
+                            {' '}patients
+                        </p>
+
+                        {/* Page controls */}
                         <div className="flex items-center gap-1">
-                            <Button
-                                onClick={handleFirst}
-                                disabled={currentPage === 1}
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-xl"
-                                aria-label="First page"
-                            >
-                                <ChevronsLeft size={18} />
-                            </Button>
-                            <Button
-                                onClick={handlePrev}
-                                disabled={currentPage === 1}
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-xl"
-                                aria-label="Previous page"
-                            >
-                                <ChevronLeft size={18} />
-                            </Button>
-                            <span className="text-sm text-muted-foreground px-2">
-                                Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                            <PaginationBtn onClick={handleFirst} disabled={currentPage === 1} label="First page">
+                                <ChevronsLeft size={15} />
+                            </PaginationBtn>
+                            <PaginationBtn onClick={handlePrev} disabled={currentPage === 1} label="Previous page">
+                                <ChevronLeft size={15} />
+                            </PaginationBtn>
+
+                            <span className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl min-w-[80px] text-center">
+                                {currentPage} / {totalPages}
                             </span>
-                            <Button
-                                onClick={handleNext}
-                                disabled={currentPage === totalPages}
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-xl"
-                                aria-label="Next page"
-                            >
-                                <ChevronRight size={18} />
-                            </Button>
-                            <Button
-                                onClick={handleLast}
-                                disabled={currentPage === totalPages}
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-xl"
-                                aria-label="Last page"
-                            >
-                                <ChevronsRight size={18} />
-                            </Button>
+
+                            <PaginationBtn onClick={handleNext} disabled={currentPage === totalPages} label="Next page">
+                                <ChevronRight size={15} />
+                            </PaginationBtn>
+                            <PaginationBtn onClick={handleLast} disabled={currentPage === totalPages} label="Last page">
+                                <ChevronsRight size={15} />
+                            </PaginationBtn>
                         </div>
-                    </footer>
+                    </div>
                 )}
             </section>
         </Suspense>
+    );
+
+    function handlePrev()  { setCurrentPage((p) => Math.max(p - 1, 1)); }
+    function handleNext()  { setCurrentPage((p) => Math.min(p + 1, totalPages)); }
+    function handleFirst() { setCurrentPage(1); }
+    function handleLast()  { setCurrentPage(totalPages); }
+}
+
+// ─── Pagination button ────────────────────────────────────────────────────────
+
+function PaginationBtn({
+    onClick, disabled, label, children,
+}: {
+    onClick: () => void;
+    disabled: boolean;
+    label: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={label}
+            className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+            {children}
+        </button>
     );
 }

@@ -44,17 +44,9 @@ import {
     listDispensingByPatient,
     listPendingPrescriptions,
     updatePrescription,
-    logAction,
     getNursingActionById,
     getLabRequestById,
     getAllPatients,
-    // listPrescriptionsByPharmacist,
-    // listLabRequestsForTech,
-    // listNursingActionsForNurse,
-    // completeLabRequest,
-    // completeNursingAction,
-    // dispensePrescription,
-    // routePatientAfterConsultation,
 } from "@/lib/supabase-service";
 
 // Type for hook state management
@@ -68,7 +60,7 @@ interface UseAsyncState<T> {
  * PATIENT HOOKS
  */
 
-export function usePatient(patientId: string) {
+export function usePatient(patientId: string, options?: { enabled?: boolean }) {
     const [state, setState] = useState<UseAsyncState<Patient>>({
         data: null,
         loading: true,
@@ -76,24 +68,29 @@ export function usePatient(patientId: string) {
     });
 
     useEffect(() => {
-        if (!patientId) return;
+        // FIX: respect the enabled option and guard empty patientId
+        if (!patientId || options?.enabled === false) {
+            setState({ data: null, loading: false, error: null });
+            return;
+        }
 
         const fetchPatient = async () => {
             setState({ data: null, loading: true, error: null });
             try {
                 const patient = await getPatientById(patientId);
                 if (patient) {
-                    setState({ data: patient, loading: false, error: null });
+                    setState({ data: patient as unknown as Patient, loading: false, error: null });
                 } else {
                     setState({ data: null, loading: false, error: new Error("Patient not found") });
                 }
-            } catch (error) {
-                setState({ data: null, loading: false, error: error as Error });
+            } catch (err) {
+                // FIX: was referencing imported `error` from "console" instead of the caught error
+                setState({ data: null, loading: false, error: err as Error });
             }
         };
 
         fetchPatient();
-    }, [patientId]);
+    }, [patientId, options?.enabled]);
 
     return state;
 }
@@ -145,7 +142,6 @@ export function useSearchPatients(query: string) {
             }
         };
 
-        // Debounce search
         const timer = setTimeout(fetchPatients, 300);
         return () => clearTimeout(timer);
     }, [query]);
@@ -533,7 +529,7 @@ export function usePendingNursingActions() {
     return state;
 }
 
-export function useNursingActionsByPatient(patientId: string) {
+export function useNursingActionsByPatient(patientId: string, p0: { enabled: boolean; }) {
     const [state, setState] = useState<UseAsyncState<any[]>>({
         data: null,
         loading: true,
@@ -563,7 +559,7 @@ export function useCreateNursingAction() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
-    const mutate = useCallback(async (actionData: any) => {
+    const mutate = useCallback(async (actionData: Parameters<typeof createNursingAction>[0]) => {
         setLoading(true);
         setError(null);
         try {
@@ -585,7 +581,7 @@ export function useUpdateNursingAction() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
-    const mutate = useCallback(async (actionId: string, updates: any) => {
+    const mutate = useCallback(async (actionId: string, updates: Parameters<typeof updateNursingAction>[1]) => {
         setLoading(true);
         setError(null);
         try {
@@ -606,8 +602,6 @@ export function useUpdateNursingAction() {
 /**
  * LAB TECHNICIAN HOOKS
  */
-
-// usePendingLabRequests is defined earlier with a refetch helper and returned there.
 
 export function useCompletedLabRequests() {
     const [state, setState] = useState<UseAsyncState<LabRequest[]>>({
@@ -792,9 +786,6 @@ export function useDispensingRecordsByPatient(patientId: string) {
  * EXTENDED HOOKS FOR COMPLETE WORKFLOW
  */
 
-/**
- * Get all patients (for queue management)
- */
 export function useAllPatients() {
     const [state, setState] = useState<UseAsyncState<Patient[]>>({
         data: [],
@@ -817,221 +808,4 @@ export function useAllPatients() {
     }, []);
 
     return state;
-}
-
-/**
- * Get lab requests for a technician
- */
-export function useLabRequestsForTech(techId: string) {
-    const [state, setState] = useState<UseAsyncState<LabRequest[]>>({
-        data: [],
-        loading: true,
-        error: null,
-    });
-
-    const refetch = useCallback(async () => {
-        setState({ data: [], loading: true, error: null });
-        try {
-            const requests = await listLabRequestsForTech(techId);
-            setState({ data: requests, loading: false, error: null });
-        } catch (error) {
-            setState({ data: [], loading: false, error: error as Error });
-        }
-    }, [techId]);
-
-    useEffect(() => {
-        refetch();
-    }, [refetch]);
-
-    return { ...state, refetch };
-}
-
-/**
- * Get nursing actions for a nurse
- */
-export function useNursingActionsForNurse(nurseId: string) {
-    const [state, setState] = useState<UseAsyncState<any[]>>({
-        data: [],
-        loading: true,
-        error: null,
-    });
-
-    const refetch = useCallback(async () => {
-        setState({ data: [], loading: true, error: null });
-        try {
-            const actions = await listNursingActionsForNurse(nurseId);
-            setState({ data: actions, loading: false, error: null });
-        } catch (error) {
-            setState({ data: [], loading: false, error: error as Error });
-        }
-    }, [nurseId]);
-
-    useEffect(() => {
-        refetch();
-    }, [refetch]);
-
-    return { ...state, refetch };
-}
-
-/**
- * Get prescriptions for a pharmacist
- */
-export function usePrescriptionsForPharmacist(pharmacistId: string) {
-    const [state, setState] = useState<UseAsyncState<Prescription[]>>({
-        data: [],
-        loading: true,
-        error: null,
-    });
-
-    const refetch = useCallback(async () => {
-        setState({ data: [], loading: true, error: null });
-        try {
-            const prescriptions = await listPrescriptionsByPharmacist(pharmacistId);
-            setState({ data: prescriptions, loading: false, error: null });
-        } catch (error) {
-            setState({ data: [], loading: false, error: error as Error });
-        }
-    }, [pharmacistId]);
-
-    useEffect(() => {
-        refetch();
-    }, [refetch]);
-
-    return { ...state, refetch };
-}
-
-/**
- * COMPLETION HOOKS
- */
-
-/**
- * Hook to complete a lab request
- */
-export function useCompleteLabRequest() {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-
-    const mutate = useCallback(
-        async (labRequestId: string, results: string, patientId: string) => {
-            setLoading(true);
-            setError(null);
-            try {
-                const result = await completeLabRequest(labRequestId, results, patientId);
-                setLoading(false);
-                return result;
-            } catch (err) {
-                const error = err as Error;
-                setError(error);
-                setLoading(false);
-                throw error;
-            }
-        },
-        []
-    );
-
-    return { mutate, loading, error };
-}
-
-/**
- * Hook to complete a nursing action
- */
-export function useCompleteNursingAction() {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-
-    const mutate = useCallback(
-        async (actionId: string, patientId: string, completionNotes?: string) => {
-            setLoading(true);
-            setError(null);
-            try {
-                const result = await completeNursingAction(actionId, patientId, completionNotes);
-                setLoading(false);
-                return result;
-            } catch (err) {
-                const error = err as Error;
-                setError(error);
-                setLoading(false);
-                throw error;
-            }
-        },
-        []
-    );
-
-    return { mutate, loading, error };
-}
-
-/**
- * Hook to dispense a prescription
- */
-export function useDispensePrescription() {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-
-    const mutate = useCallback(
-        async (
-            prescriptionId: string,
-            patientId: string,
-            pharmacistId: string,
-            dispensedMedications: any[]
-        ) => {
-            setLoading(true);
-            setError(null);
-            try {
-                const result = await dispensePrescription(
-                    prescriptionId,
-                    patientId,
-                    pharmacistId,
-                    dispensedMedications
-                );
-                setLoading(false);
-                return result;
-            } catch (err) {
-                const error = err as Error;
-                setError(error);
-                setLoading(false);
-                throw error;
-            }
-        },
-        []
-    );
-
-    return { mutate, loading, error };
-}
-
-/**
- * Hook to route a patient after consultation
- */
-export function useRoutePatientAfterConsultation() {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-
-    const mutate = useCallback(
-        async (
-            patientId: string,
-            hasNursingActions: boolean,
-            hasLabRequests: boolean,
-            hasPrescription: boolean
-        ) => {
-            setLoading(true);
-            setError(null);
-            try {
-                const result = await routePatientAfterConsultation(
-                    patientId,
-                    hasNursingActions,
-                    hasLabRequests,
-                    hasPrescription
-                );
-                setLoading(false);
-                return result;
-            } catch (err) {
-                const error = err as Error;
-                setError(error);
-                setLoading(false);
-                throw error;
-            }
-        },
-        []
-    );
-
-    return { mutate, loading, error };
 }

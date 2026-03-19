@@ -15,15 +15,13 @@ import Image from "next/image";
 import { useAuth } from "@/context/auth-provider";
 import { NAV_CONFIG } from "./config";
 import { motion } from "framer-motion";
+import { LogOut, ChevronRight } from "lucide-react";
 
-// Only use tailwindcss standard colors and avoid custom palette shorthands
-// Use "primary" color instead of "blue"
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
     const router = useRouter();
     const { user } = useAuth();
     const userRole = user?.role;
-
     const nav = userRole ? NAV_CONFIG[userRole] : null;
 
     if (!nav) return null;
@@ -32,114 +30,163 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <Sidebar
             variant="inset"
             {...props}
-            className="bg-primary border-r border-primary-900/40"
+            className="bg-[#0f1c3a] border-r border-white/5 flex flex-col"
         >
-            <SidebarHeader className="p-6">
+            {/* ── Logo ── */}
+            <SidebarHeader className="px-5 pt-6 pb-4 shrink-0">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" className="h-auto p-0 hover:bg-transparent">
-                            <div
+                            <button
                                 onClick={() => router.push("/")}
-                                className="flex items-center gap-3 bg-white p-4 rounded-3xl shadow-xl shadow-primary-200 cursor-pointer group transition-all hover:scale-[1.02]"
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/8 transition-all duration-200 group"
                             >
-                                <div className="p-2 bg-primary-100 rounded-2xl group-hover:rotate-12 transition-transform">
+                                <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 ring-2 ring-white/10 group-hover:ring-white/20 transition-all">
                                     <Image
                                         src="/assets/icons/nilelogo.jpeg"
                                         alt="Logo"
-                                        width={40}
-                                        height={40}
-                                        className="rounded-xl"
+                                        width={36}
+                                        height={36}
+                                        className="w-full h-full object-cover"
                                     />
                                 </div>
-                                <div>
-                                    <p className="text-primary font-black text-lg leading-none tracking-tight">Nile Valley Hospital</p>
-                                    <p className="text-primary-400 text-[10px] font-bold uppercase tracking-widest mt-1">EMR</p>
+                                <div className="text-left">
+                                    <p className="text-white font-bold text-sm leading-tight">Nile Valley Hospital</p>
+                                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.15em] mt-0.5">
+                                        EMR System
+                                    </p>
                                 </div>
-                            </div>
+                            </button>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
 
-            <SidebarContent className="px-4 py-8 space-y-8">
-                <div>
-                    <p className="text-[10px] font-black text-primary-200 uppercase tracking-[0.2em] mb-6 px-4">Management</p>
-                    <ul className="space-y-2">
-                        {nav.main.map((item) => {
-                            const isActive = pathname.startsWith(item.url);
-                            return (
-                                <li key={item.url}>
-                                    <button
-                                        onClick={() => router.push(item.url)}
-                                        className={
-                                            `w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all relative group font-bold text-sm tracking-tight
-                                             ${isActive
-                                                ? "bg-white text-primary shadow-[0_2px_8px_0_rgba(59,130,246,0.18)]"
-                                                : "text-primary-100 hover:text-white hover:bg-primary-600/70 hover:shadow-primary-100/20"}
-                                            `
-                                        }
-                                    >
-                                        {isActive && (
-                                            <motion.div
-                                                layoutId="sidebar-hover"
-                                                className="absolute inset-0 bg-white rounded-2xl -z-10 shadow-[0_2px_8px_0_rgba(59,130,246,0.18)]"
-                                            />
-                                        )}
-                                        <item.icon
-                                            size={22}
-                                            className={`${isActive ? "text-primary" : "group-hover:text-white text-primary-200"} transition-colors`}
-                                        />
-                                        <span>{item.title}</span>
-                                    </button>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </div>
+            {/* ── Nav ── */}
+            <SidebarContent className="flex-1 px-4 py-2 overflow-y-auto space-y-6">
 
-                <div>
-                    <p className="text-[10px] font-black text-primary-200 uppercase tracking-[0.2em] mb-6 px-4">Configuration</p>
-                    <ul className="space-y-2">
-                        {nav.secondary.map((item) => {
-                            const isActive = pathname.startsWith(item.url);
-                            return (
-                                <li key={item.url}>
-                                    <button
-                                        onClick={() => router.push(item.url)}
-                                        className={
-                                            `w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-bold text-sm tracking-tight
-                                             ${isActive
-                                                ? "bg-white text-primary shadow-[0_2px_8px_0_rgba(59,130,246,0.18)]"
-                                                : "text-primary-100 hover:text-white hover:bg-primary-600/70 hover:shadow-primary-100/20"}
-                                            `
-                                        }
-                                    >
-                                        <item.icon
-                                            size={22}
-                                            className={`${isActive ? "text-primary" : "text-primary-200 group-hover:text-white"} transition-colors`}
-                                        />
-                                        <span>{item.title}</span>
-                                    </button>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </div>
+                {/* Main nav */}
+                <NavSection label="Navigation">
+                    {nav.main.map((item) => (
+                        <NavItem
+                            key={item.url}
+                            item={item}
+                            isActive={pathname.startsWith(item.url)}
+                            onClick={() => router.push(item.url)}
+                        />
+                    ))}
+                </NavSection>
+
+                {/* Secondary nav */}
+                <NavSection label="Settings">
+                    {nav.secondary.map((item) => (
+                        <NavItem
+                            key={item.url}
+                            item={item}
+                            isActive={pathname.startsWith(item.url)}
+                            onClick={() => router.push(item.url)}
+                        />
+                    ))}
+                </NavSection>
+
             </SidebarContent>
 
-            <SidebarFooter className="p-6 border-t border-primary-900/10 bg-primary-100/20">
-                <div className="bg-primary-900/80 p-4 rounded-2xl border border-primary-900/20 shadow-sm flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-bold text-primary">
-                        {user?.name?.[0]}
+            {/* ── Footer / user card ── */}
+            <SidebarFooter className="px-4 py-5 shrink-0 border-t border-white/5">
+                <div className="flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/5 transition-colors cursor-pointer group">
+                    {/* Avatar */}
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center font-black text-white text-sm shrink-0 shadow-lg shadow-blue-900/40">
+                        {user?.name?.[0]?.toUpperCase()}
                     </div>
+
+                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs font-black text-white truncate">{user?.name}</p>
-                        <p className="text-[10px] font-bold text-primary-200 uppercase tracking-widest">
+                        <p className="text-white text-xs font-bold truncate leading-tight">
+                            {user?.name}
+                        </p>
+                        <p className="text-white/40 text-[10px] font-semibold uppercase tracking-widest mt-0.5 truncate">
                             {user?.role}
                         </p>
                     </div>
+
+                    {/* Log out icon */}
+                    <LogOut
+                        size={14}
+                        className="text-white/20 group-hover:text-white/60 transition-colors shrink-0"
+                    />
                 </div>
             </SidebarFooter>
         </Sidebar>
+    );
+}
+
+// ─── Nav section ──────────────────────────────────────────────────────────────
+
+function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <p className="text-[9px] font-black text-white/25 uppercase tracking-[0.22em] mb-2 px-3">
+                {label}
+            </p>
+            <ul className="space-y-0.5">
+                {children}
+            </ul>
+        </div>
+    );
+}
+
+// ─── Nav item ─────────────────────────────────────────────────────────────────
+
+function NavItem({
+    item,
+    isActive,
+    onClick,
+}: {
+    item: { icon: React.ElementType; title: string; url: string };
+    isActive: boolean;
+    onClick: () => void;
+}) {
+    const Icon = item.icon;
+
+    return (
+        <li>
+            <button
+                onClick={onClick}
+                className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150
+                    ${isActive
+                        ? "text-white"
+                        : "text-white/40 hover:text-white/80 hover:bg-white/5"
+                    }`}
+            >
+                {/* Active background */}
+                {isActive && (
+                    <motion.div
+                        layoutId="sidebar-active"
+                        className="absolute inset-0 bg-white/10 rounded-xl border border-white/10"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                )}
+
+                {/* Active left accent bar */}
+                {isActive && (
+                    <motion.div
+                        layoutId="sidebar-accent"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-full"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                )}
+
+                <Icon
+                    size={17}
+                    className={`relative shrink-0 transition-colors ${isActive ? "text-blue-400" : "text-white/30"}`}
+                />
+
+                <span className="relative flex-1 text-left tracking-tight">{item.title}</span>
+
+                {isActive && (
+                    <ChevronRight size={13} className="relative text-white/30 shrink-0" />
+                )}
+            </button>
+        </li>
     );
 }
