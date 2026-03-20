@@ -146,7 +146,9 @@ export default function PaymentConfirmation() {
                                         ₦{amount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                                     </p>
                                     <p className="text-[10px] text-amber-600 font-bold uppercase tracking-widest mt-0.5">
-                                        {payment.method ?? "Pending"}
+                                        {payment.method
+                                            ? payment.method.charAt(0).toUpperCase() + payment.method.slice(1)
+                                            : "Pending"}
                                     </p>
                                 </div>
 
