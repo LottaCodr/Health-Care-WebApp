@@ -1,6 +1,6 @@
 "use client";
 
-import PaymentSuite from "@/components/front-desk/PaymentSuite";
+import PaymentConfirmation from "@/components/front-desk/PaymentSuite";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -19,7 +19,7 @@ export default function PaymentPage() {
                 </span>
             </div>
 
-            <PaymentSuite />
+            <PaymentConfirmation />
         </div>
     );
 }

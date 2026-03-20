@@ -373,13 +373,13 @@ export function useCreatePrescription() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
-    const mutate = useCallback(async (prescriptionData: Parameters<typeof createPrescription>[0]) => {
+    const mutate = useCallback(async (data: Parameters<typeof createPrescription>[0]) => {
         setLoading(true);
         setError(null);
         try {
-            const prescription = await createPrescription(prescriptionData);
+            const result = await createPrescription(data);
             setLoading(false);
-            return prescription;
+            return result;
         } catch (err) {
             const error = err as Error;
             setError(error);

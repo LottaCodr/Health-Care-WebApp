@@ -247,11 +247,34 @@ export async function listStaffByRole(role: UserRole): Promise<Staff[]> {
  * PRESCRIPTION OPERATIONS
  */
 
-export async function createPrescription(prescriptionData: Omit<Prescription, "$id" | "$createdAt" | "$updatedAt">) {
+// REPLACE the existing createPrescription function with this:
+
+export async function createPrescription(data: {
+    patientId: string;
+    pharmacistId?: string;
+    drugName: string;
+    dosage: string;
+    duration?: string;
+    price: number;
+    notes?: string;
+    dispensed?: boolean;
+}) {
     const supabase = await createClient();
-    const { data, error } = await supabase
+
+    const { data: result, error } = await supabase
         .from("prescriptions")
-        .insert([prescriptionData])
+        .insert([{
+            patient_id: data.patientId,
+            pharmacist_id: data.pharmacistId ?? null,
+            drug_name: data.drugName,       // ← snake_case
+            dosage: data.dosage,
+            duration: data.duration ?? null,
+            price: data.price,
+            notes: data.notes ?? null,
+            status: "Active",
+            dispensed: data.dispensed ?? false,
+            dispensed_at: data.dispensed ? new Date().toISOString() : null,
+        }])
         .select()
         .single();
 
@@ -259,7 +282,7 @@ export async function createPrescription(prescriptionData: Omit<Prescription, "$
         console.error("Failed to create prescription:", error);
         throw error;
     }
-    return data as unknown as Prescription;
+    return result;
 }
 
 export async function getPrescriptionById(prescriptionId: string): Promise<Prescription | null> {
@@ -432,6 +455,22 @@ export async function createPayment(paymentData: Omit<Payment, "$id" | "$created
     return data as unknown as Payment;
 }
 
+export async function confirmPayment(paymentId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("payments")
+        .update({
+            status: "Paid",
+            paid_at: new Date().toISOString(),
+        })
+        .eq("id", paymentId)
+        .select()
+        .single();
+
+    if (error) { console.error("Failed to confirm payment:", error); throw error; }
+    return data;
+}
+
 export async function getPaymentById(paymentId: string): Promise<Payment | null> {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -461,18 +500,17 @@ export async function listPaymentsByPatient(patientId: string): Promise<Payment[
     return data as unknown as Payment[];
 }
 
-export async function listPendingPayments(): Promise<Payment[]> {
+export async function listPendingPayments() {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("payments")
-        .select()
-        .eq("status", "Pending");
+        .select("*")
+        .eq("status", "Pending")
+        .eq("reference_type", "prescription")  // only prescription payments
+        .order("created_at", { ascending: false });
 
-    if (error) {
-        console.error("Failed to list pending payments:", error);
-        return [];
-    }
-    return data as unknown as Payment[];
+    if (error) { console.error("Failed to list pending payments:", error); return []; }
+    return data;
 }
 
 /**

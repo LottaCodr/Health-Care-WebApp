@@ -325,7 +325,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                                     <p className="text-xs font-bold uppercase tracking-widest text-gray-400">New Prescription</p>
                                 </div>
                                 <div className="p-5">
-                                    <PrescriptionDetails />
+                                    <PrescriptionDetails patientId={patient.id} />
                                 </div>
                             </div>
                         )}
