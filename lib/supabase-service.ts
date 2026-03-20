@@ -460,7 +460,7 @@ export async function confirmPayment(paymentId: string) {
     const { data, error } = await supabase
         .from("payments")
         .update({
-            status: "Paid",
+            status: "paid",
             paid_at: new Date().toISOString(),
         })
         .eq("id", paymentId)
@@ -505,7 +505,7 @@ export async function listPendingPayments() {
     const { data, error } = await supabase
         .from("payments")
         .select("*")
-        .eq("status", "Pending")
+        .eq("status", "pending")
         .eq("reference_type", "prescription")  // only prescription payments
         .order("created_at", { ascending: false });
 

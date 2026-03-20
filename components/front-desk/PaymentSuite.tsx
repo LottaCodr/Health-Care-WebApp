@@ -113,7 +113,7 @@ export default function PaymentConfirmation() {
                 <div className="divide-y divide-gray-50">
                     {payments.map((payment: any) => {
                         const isConfirming = confirmingId === payment.id;
-                        const shortRef = payment.visit_id?.slice(-6) ?? "—";
+                        const shortRef = payment.patient_id?.slice(-6) ?? "—";
                         const amount = Number(payment.amount ?? 0);
 
                         return (
@@ -128,7 +128,7 @@ export default function PaymentConfirmation() {
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-gray-800">Visit #{shortRef}</p>
+                                    <p className="text-sm font-bold text-gray-800">Patient #{shortRef}</p>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                         <Clock size={10} className="text-gray-300" />
                                         <p className="text-xs text-gray-400 truncate">
