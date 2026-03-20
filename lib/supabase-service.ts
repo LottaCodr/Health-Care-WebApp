@@ -468,6 +468,15 @@ export async function confirmPayment(paymentId: string) {
         .single();
 
     if (error) { console.error("Failed to confirm payment:", error); throw error; }
+
+    // Discharge the patient
+    if (data?.patient_id) {
+        await supabase
+            .from("patients")
+            .update({ status: "discharged" })
+            .eq("id", data.patient_id);
+    }
+
     return data;
 }
 
@@ -510,7 +519,23 @@ export async function listPendingPayments() {
         .order("created_at", { ascending: false });
 
     if (error) { console.error("Failed to list pending payments:", error); return []; }
-    return data;
+    if (!data?.length) return [];
+
+    // Fetch patient names separately for each unique patient_id
+    const patientIds = [...new Set(data.map((p) => p.patient_id).filter(Boolean))];
+    const { data: patients } = await supabase
+        .from("patients")
+        .select("id, name, phone")
+        .in("id", patientIds);
+
+    const patientMap = Object.fromEntries((patients ?? []).map((p) => [p.id, p]));
+
+    // Attach patient data to each payment row
+    return data.map((payment) => ({
+        ...payment,
+        patients: patientMap[payment.patient_id] ?? null,
+    }));
+
 }
 
 /**
