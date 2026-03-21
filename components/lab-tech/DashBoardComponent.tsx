@@ -45,19 +45,17 @@ export default function LabTechDashboard() {
 
     if (!authorized) return null;
 
-    const pending = requests?.filter((r) => r.status === "Pending") ?? [];
-    const inprog = requests?.filter((r) => r.status === "InProgress") ?? [];
-    const completed = requests?.filter((r) => r.status === "Completed") ?? [];
+    const pending = requests?.filter((r) => r.status === "pending") ?? [];
+    const completed = requests?.filter((r) => r.status === "completed") ?? [];
 
     const stats = [
         { label: "Pending", value: pending.length, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-        { label: "In Progress", value: inprog.length, icon: Activity, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
         { label: "Completed", value: completed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
     ];
 
     const handleStartTest = async (requestId: string) => {
         try {
-            await updateLabRequest(requestId, { status: "InProgress" });
+            await updateLabRequest(requestId, { status: "pending" });
             toast.success("Test marked as in progress.");
             refetch();
         } catch {
@@ -72,7 +70,7 @@ export default function LabTechDashboard() {
         setSubmittingId(requestId);
         try {
             await updateLabRequest(requestId, {
-                status: "Completed",
+                status: "completed",
                 result,
                 completed_by: user?.$id,
                 completed_at: new Date().toISOString(),
@@ -132,7 +130,7 @@ export default function LabTechDashboard() {
                 <div className="px-6 py-5 space-y-3">
                     {loading ? (
                         <LoadingSkeleton rows={4} />
-                    ) : (!pending.length && !inprog.length) ? (
+                    ) : (!pending.length && !completed.length) ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
                                 <CheckCircle2 size={22} className="text-green-500" />
@@ -143,7 +141,7 @@ export default function LabTechDashboard() {
                             </div>
                         </div>
                     ) : (
-                        [...inprog, ...pending].map((req: any) => {
+                        [...completed, ...pending].map((req: any) => {
                             const isExpanded = activeId === req.id;
                             const isInProg = req.status === "InProgress";
 

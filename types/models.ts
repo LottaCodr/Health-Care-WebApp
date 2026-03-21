@@ -160,7 +160,7 @@ export interface LabRequest {
     test_type?: string;
     testDescription: string;
     test_description?: string;
-    status: "Pending" | "InProgress" | "Completed" | "Cancelled";
+    status: "pending" | "completed" ;
     priority: "Normal" | "Urgent";
     requestDate: string;
     request_date?: string;

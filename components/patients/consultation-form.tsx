@@ -128,7 +128,7 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                     testType: form.labTestType,
                     priority: form.labPriority,
                     notes: form.labNotes || undefined,
-                    status: 'Pending',
+                    status: 'pending',
                 });
             }
 

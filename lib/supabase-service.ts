@@ -365,7 +365,7 @@ export async function createLabRequest(data: {
             test_type: data.testType ?? null,
             priority: data.priority ?? 'routine',
             notes: data.notes ?? null,
-            status: data.status ?? 'Pending',
+            status: data.status ?? 'pending',
         }])
         .select()
         .single();
@@ -408,7 +408,7 @@ export async function listPendingLabRequests(): Promise<LabRequest[]> {
     const { data, error } = await supabase
         .from("lab_requests")
         .select()
-        .eq("status", "Pending");
+        .eq("status", "pending");
 
     if (error) {
         console.error("Failed to list pending lab requests:", error);
@@ -422,7 +422,7 @@ export async function listCompletedLabRequests(): Promise<LabRequest[]> {
     const { data, error } = await supabase
         .from("lab_requests")
         .select()
-        .eq("status", "Completed");
+        .eq("status", "completed");
 
     if (error) {
         console.error("Failed to list completed lab requests:", error);
