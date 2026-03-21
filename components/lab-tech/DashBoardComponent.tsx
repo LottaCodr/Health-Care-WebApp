@@ -71,7 +71,7 @@ export default function LabTechDashboard() {
         try {
             await updateLabRequest(requestId, {
                 status: "completed",
-                results: result,
+                result: result,
                 completed_by: user?.$id,
                 completed_at: new Date().toISOString(),
             });
