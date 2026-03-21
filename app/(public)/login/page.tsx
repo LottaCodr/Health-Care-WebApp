@@ -1,23 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, ArrowRight } from "lucide-react";
 import Image from "next/image";
 
-const LoginScreen: React.FC = () => {
+// Extract the logic that uses useSearchParams into a child component
+function LoginFormWithSearchParams(props: {
+    email: string;
+    setEmail: (v: string) => void;
+    password: string;
+    setPassword: (v: string) => void;
+    showPassword: boolean;
+    setShowPassword: (v: boolean) => void;
+    loading: boolean;
+    setLoading: (v: boolean) => void;
+    error: string | null;
+    setError: (v: string | null) => void;
+    login: any;
+    currentYear: number;
+    authLoading: boolean;
+}) {
+    const {
+        email, setEmail, password, setPassword,
+        showPassword, setShowPassword, loading, setLoading,
+        error, setError, login, currentYear, authLoading
+    } = props;
+
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, login, isLoading: authLoading } = useAuth();
-
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-
-    const currentYear = new Date().getFullYear();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -247,6 +259,50 @@ const LoginScreen: React.FC = () => {
                 </div>
             </div>
         </div>
+    );
+}
+
+const LoginScreen: React.FC = () => {
+    const { user, login, isLoading: authLoading } = useAuth();
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+
+    const currentYear = new Date().getFullYear();
+
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[#0f1c3a]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="relative w-14 h-14">
+                        <div className="absolute inset-0 rounded-2xl border-2 border-white/10 border-t-blue-400 animate-spin" />
+                        <div className="absolute inset-2 rounded-xl bg-white/5 flex items-center justify-center">
+                            <Image src="/assets/icons/nilelogo.jpeg" alt="Logo" width={28} height={28} className="rounded-lg" />
+                        </div>
+                    </div>
+                    <p className="text-white/50 text-sm font-medium">Loading...</p>
+                </div>
+            </div>
+        }>
+            <LoginFormWithSearchParams
+                email={email}
+                setEmail={setEmail}
+                password={password}
+                setPassword={setPassword}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                loading={loading}
+                setLoading={setLoading}
+                error={error}
+                setError={setError}
+                login={login}
+                currentYear={currentYear}
+                authLoading={authLoading}
+            />
+        </Suspense>
     );
 };
 
