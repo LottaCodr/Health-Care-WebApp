@@ -274,7 +274,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                                 {formError && <AlertBanner type="error" message={formError} />}
                                 {successMessage && <AlertBanner type="success" message={successMessage} />}
                                 <ConsultationForm
-                                    patientId={patient.id}
+                                    patientId={patient?.id!}
                                     // selectedStaffId={selectedStaffId}
                                     availableStaff={availableStaff}
                                     // onStaffSelect={setSelectedStaffId}
@@ -325,7 +325,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                                     <p className="text-xs font-bold uppercase tracking-widest text-gray-400">New Prescription</p>
                                 </div>
                                 <div className="p-5">
-                                    <PrescriptionDetails patientId={patient.id} />
+                                    <PrescriptionDetails patientId={patient?.id!} />
                                 </div>
                             </div>
                         )}
