@@ -123,8 +123,8 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
             // Step 2 — Create lab request if referring to lab tech
             if (isLabReferral) {
                 await createLabRequest({
-                    patientId,
-                    doctorId: user?.$id ?? '',
+                    patientId: patientId,
+                    requestedBy: user?.$id,
                     testType: form.labTestType,
                     priority: form.labPriority,
                     notes: form.labNotes || undefined,

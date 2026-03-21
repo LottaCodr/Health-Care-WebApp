@@ -349,21 +349,27 @@ export async function listPendingPrescriptions(): Promise<Prescription[]> {
  */
 
 export async function createLabRequest(data: {
-    patientId: string; doctorId?: string; testType?: string;
-    priority?: string; notes?: string; status?: string;
+    patientId: string;
+    requestedBy?: string;
+    testType?: string;
+    priority?: string;
+    notes?: string;
+    status?: string;
 }) {
     const supabase = await createClient();
     const { data: result, error } = await supabase
         .from("lab_requests")
         .insert([{
-            patient_id: data.patientId,
-            doctor_id: data.doctorId ?? null,
+            visit_id: data.patientId,
+            requested_by: data.requestedBy ?? null,
             test_type: data.testType ?? null,
             priority: data.priority ?? 'routine',
             notes: data.notes ?? null,
             status: data.status ?? 'Pending',
         }])
-        .select().single();
+        .select()
+        .single();
+
     if (error) { console.error(error); throw error; }
     return result;
 }
