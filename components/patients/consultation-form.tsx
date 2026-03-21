@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Staff } from '@/actions/staff/types';
-import { useCreateConsultation, useUpdatePatientStatus } from '@/hooks/use-emr';
+import { useCreateConsultation, useUpdatePatientStatus, useCreateLabRequest } from '@/hooks/use-emr';
 import { useAuth } from '@/context/auth-provider';
 import { PatientStatus } from '@/types/models';
 import { toast } from 'sonner';
@@ -14,47 +14,16 @@ import {
     ChevronRight, FlaskConical, UserCog,
 } from "lucide-react";
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface ConsultationFormProps {
     patientId: string;
     availableStaff: Staff[];
     onSuccess?: () => void;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const REFERRAL_OPTIONS = [
-    {
-        value: "nurse",
-        label: "Nurse",
-        description: "Post-consultation nursing care",
-        icon: UserCog,
-        patientStatus: PatientStatus.SentToNurse,
-        color: "text-teal-600",
-        bg: "bg-teal-50",
-        activeBorder: "border-teal-400",
-    },
-    {
-        value: "lab-tech",
-        label: "Lab Technician",
-        description: "Request laboratory investigations",
-        icon: FlaskConical,
-        patientStatus: PatientStatus.SentToLab,
-        color: "text-indigo-600",
-        bg: "bg-indigo-50",
-        activeBorder: "border-indigo-400",
-    },
-    {
-        value: "pharmacist",
-        label: "Pharmacist",
-        description: "Dispense prescribed medications",
-        icon: Pill,
-        patientStatus: PatientStatus.SentToPharmacy,
-        color: "text-pink-600",
-        bg: "bg-pink-50",
-        activeBorder: "border-pink-400",
-    },
+    { value: "nurse", label: "Nurse", description: "Post-consultation nursing care", icon: UserCog, patientStatus: PatientStatus.SentToNurse, color: "text-teal-600", bg: "bg-teal-50", activeBorder: "border-teal-400" },
+    { value: "lab-tech", label: "Lab Technician", description: "Request laboratory investigations", icon: FlaskConical, patientStatus: PatientStatus.SentToLab, color: "text-indigo-600", bg: "bg-indigo-50", activeBorder: "border-indigo-400" },
+    { value: "pharmacist", label: "Pharmacist", description: "Dispense prescribed medications", icon: Pill, patientStatus: PatientStatus.SentToPharmacy, color: "text-pink-600", bg: "bg-pink-50", activeBorder: "border-pink-400" },
 ] as const;
 
 const PATIENT_STATUSES = [
@@ -73,27 +42,41 @@ const SECTIONS = [
     { id: 'routing', label: 'Routing', icon: ArrowRight },
 ];
 
-const INITIAL_FORM = {
-    symptoms: '',
-    diagnosis: '',
-    prescriptions: '',
-    recommendations: '',
-    referredTo: '',
-    status: '',
-    selectedStaffId: '',
-};
+const LAB_TEST_TYPES = [
+    { value: "Full Blood Count", label: "Full Blood Count (FBC)" },
+    { value: "Malaria Parasite Test", label: "Malaria Parasite Test" },
+    { value: "Urinalysis", label: "Urinalysis" },
+    { value: "Blood Sugar Fasting", label: "Blood Sugar (Fasting)" },
+    { value: "Blood Sugar Random", label: "Blood Sugar (Random)" },
+    { value: "Liver Function Test", label: "Liver Function Test (LFT)" },
+    { value: "Kidney Function Test", label: "Kidney Function Test (KFT)" },
+    { value: "Widal Test", label: "Widal Test (Typhoid)" },
+    { value: "HIV Screening", label: "HIV Screening" },
+    { value: "Hepatitis B Surface Ag", label: "Hepatitis B Surface Ag" },
+    { value: "Chest X-Ray", label: "Chest X-Ray" },
+    { value: "ECG", label: "ECG (Electrocardiogram)" },
+    { value: "Stool Analysis", label: "Stool Analysis" },
+    { value: "Pregnancy Test", label: "Pregnancy Test" },
+    { value: "Other", label: "Other (specify in notes)" },
+];
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const INITIAL_FORM = {
+    symptoms: '', diagnosis: '', prescriptions: '', recommendations: '',
+    referredTo: '', status: '', selectedStaffId: '',
+    labTestType: '', labPriority: 'routine', labNotes: '',
+};
 
 export default function ConsultationForm({ patientId, availableStaff, onSuccess }: ConsultationFormProps) {
     const { user } = useAuth();
     const { mutate: createConsultation, loading: consultationLoading } = useCreateConsultation();
     const { mutate: updatePatientStatus, loading: statusLoading } = useUpdatePatientStatus();
+    const { mutate: createLabRequest, loading: labLoading } = useCreateLabRequest();
 
     const [form, setForm] = useState(INITIAL_FORM);
     const [activeSection, setActive] = useState('symptoms');
 
-    const loading = consultationLoading || statusLoading;
+    const loading = consultationLoading || statusLoading || labLoading;
+    const isLabReferral = form.referredTo === 'lab-tech';
 
     const set = (key: keyof typeof INITIAL_FORM) => (val: string) =>
         setForm((prev) => ({ ...prev, [key]: val }));
@@ -107,24 +90,24 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
     };
 
     const nextStatus = (): PatientStatus =>
-        REFERRAL_OPTIONS.find((r) => r.value === form.referredTo)?.patientStatus
-        ?? PatientStatus.SentToNurse;
+        REFERRAL_OPTIONS.find((r) => r.value === form.referredTo)?.patientStatus ?? PatientStatus.SentToNurse;
 
     const nextStatusLabel = () =>
         REFERRAL_OPTIONS.find((r) => r.value === form.referredTo)?.label ?? 'Nurse';
 
-    // ── Submit ────────────────────────────────────────────────────────────────
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
         if (!form.symptoms.trim()) { toast.error("Please enter the patient's symptoms."); return; }
         if (!form.diagnosis.trim()) { toast.error('Please enter a diagnosis.'); return; }
         if (!patientId) { toast.error('No patient ID. Cannot submit.'); return; }
+        if (isLabReferral && !form.labTestType) {
+            toast.error('Please select a lab test type.');
+            setActive('routing');
+            return;
+        }
 
         try {
-            // Step 1 — Save consultation record
-            // FIX: camelCase only — no `id`, no timestamp fields (DB handles these)
+            // Step 1 — Save consultation
             await createConsultation({
                 patientId,
                 doctorId: user?.$id ?? '',
@@ -137,15 +120,25 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                 status: form.status || 'underConsultation',
             });
 
-            // Step 2 — Update patient status
-            // Manual override takes precedence; otherwise derive from referral card selection
+            // Step 2 — Create lab request if referring to lab tech
+            if (isLabReferral) {
+                await createLabRequest({
+                    patientId,
+                    doctorId: user?.$id ?? '',
+                    testType: form.labTestType,
+                    priority: form.labPriority,
+                    notes: form.labNotes || undefined,
+                    status: 'Pending',
+                });
+            }
+
+            // Step 3 — Update patient status
             const resolvedStatus = form.status
                 ? (form.status as unknown as PatientStatus)
                 : nextStatus();
-
             await updatePatientStatus(patientId, resolvedStatus);
 
-            toast.success(`Consultation saved. Patient routed to ${nextStatusLabel()}.`);
+            toast.success(`Consultation saved. Patient routed to ${nextStatusLabel()}.${isLabReferral ? ' Lab request created.' : ''}`);
             setForm(INITIAL_FORM);
             onSuccess?.();
         } catch (err: any) {
@@ -154,13 +147,10 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
         }
     };
 
-    // ── Render ────────────────────────────────────────────────────────────────
-
     return (
         <div className="min-h-screen bg-gray-50/60">
             <div className="max-w-6xl mx-auto px-4 py-10">
 
-                {/* ── Page header ── */}
                 <div className="mb-8 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-red-700 flex items-center justify-center shadow-lg shadow-red-200">
                         <Stethoscope size={22} className="text-white" />
@@ -173,109 +163,75 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
 
                 <div className="flex gap-6 items-start">
 
-                    {/* ── Sidebar ── */}
+                    {/* Sidebar */}
                     <aside className="hidden lg:flex flex-col w-52 shrink-0 sticky top-8 gap-1">
                         {SECTIONS.map((section, i) => {
                             const Icon = section.icon;
                             const isActive = activeSection === section.id;
                             const isFilled = filled[section.id];
-
                             return (
-                                <button
-                                    key={section.id}
-                                    type="button"
-                                    onClick={() => {
-                                        setActive(section.id);
-                                        document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    }}
+                                <button key={section.id} type="button"
+                                    onClick={() => { setActive(section.id); document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
                                     className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-150
-                                        ${isActive
-                                            ? 'bg-red-700 text-white shadow-md shadow-red-200'
-                                            : 'text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm'
-                                        }`}
+                                        ${isActive ? 'bg-red-700 text-white shadow-md shadow-red-200' : 'text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm'}`}
                                 >
                                     <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold
-                                        ${isActive
-                                            ? 'bg-white/20 text-white'
-                                            : 'bg-gray-100 text-gray-400 group-hover:bg-red-50 group-hover:text-red-600'
-                                        }`}>
-                                        {isFilled && !isActive
-                                            ? <CheckCircle2 size={14} className="text-green-500" />
-                                            : <span>{i + 1}</span>
-                                        }
+                                        ${isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-red-50 group-hover:text-red-600'}`}>
+                                        {isFilled && !isActive ? <CheckCircle2 size={14} className="text-green-500" /> : <span>{i + 1}</span>}
                                     </div>
                                     <span className="text-sm font-semibold">{section.label}</span>
                                     {isActive && <ChevronRight size={14} className="ml-auto opacity-70" />}
                                 </button>
                             );
                         })}
-
-                        {/* Live routing preview */}
                         <div className="mt-4 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">On Submit</p>
-                            <p className="text-xs font-bold text-blue-700">
-                                Patient → {nextStatusLabel()}
-                            </p>
+                            <p className="text-xs font-bold text-blue-700">Patient → {nextStatusLabel()}</p>
+                            {isLabReferral && <p className="text-[10px] text-indigo-600 font-semibold mt-1">+ Lab request created</p>}
                         </div>
                     </aside>
 
-                    {/* ── Form ── */}
+                    {/* Form */}
                     <form className="flex-1 space-y-5" onSubmit={handleSubmit} autoComplete="off">
 
                         <FieldCard id="symptoms" step={1} icon={<HeartPulse size={18} className="text-red-600" />} label="Symptoms" helper="Describe the patient's presenting complaints in detail." onFocus={() => setActive('symptoms')}>
-                            <Textarea
-                                placeholder="e.g. Patient presents with persistent headache, fever of 38.5°C, fatigue for 3 days..."
-                                value={form.symptoms}
-                                onChange={(e) => set('symptoms')(e.target.value)}
-                                className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0"
-                            />
+                            <Textarea placeholder="e.g. Patient presents with persistent headache, fever of 38.5°C, fatigue for 3 days..."
+                                value={form.symptoms} onChange={(e) => set('symptoms')(e.target.value)}
+                                className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
                         </FieldCard>
 
                         <FieldCard id="diagnosis" step={2} icon={<ClipboardList size={18} className="text-red-600" />} label="Diagnosis" helper="Enter your primary and differential diagnoses." onFocus={() => setActive('diagnosis')}>
-                            <Textarea
-                                placeholder="e.g. Provisional diagnosis: Viral fever. Rule out: Malaria, Typhoid..."
-                                value={form.diagnosis}
-                                onChange={(e) => set('diagnosis')(e.target.value)}
-                                className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0"
-                            />
+                            <Textarea placeholder="e.g. Provisional diagnosis: Viral fever. Rule out: Malaria, Typhoid..."
+                                value={form.diagnosis} onChange={(e) => set('diagnosis')(e.target.value)}
+                                className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
                         </FieldCard>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <FieldCard id="prescriptions" step={3} icon={<Pill size={18} className="text-red-600" />} label="Prescriptions" helper="List all medications with dosage and frequency." onFocus={() => setActive('prescriptions')}>
-                                <Textarea
-                                    placeholder="e.g. Paracetamol 500mg — 8 hourly × 5 days..."
-                                    value={form.prescriptions}
-                                    onChange={(e) => set('prescriptions')(e.target.value)}
-                                    className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0"
-                                />
+                                <Textarea placeholder="e.g. Paracetamol 500mg — 8 hourly × 5 days..."
+                                    value={form.prescriptions} onChange={(e) => set('prescriptions')(e.target.value)}
+                                    className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
                             </FieldCard>
-
                             <FieldCard id="recommendations" step={4} icon={<UserRound size={18} className="text-red-600" />} label="Recommendations" helper="Add follow-up instructions or lifestyle advice." onFocus={() => setActive('recommendations')}>
-                                <Textarea
-                                    placeholder="e.g. Rest for 3 days, drink plenty of fluids, return if symptoms worsen..."
-                                    value={form.recommendations}
-                                    onChange={(e) => set('recommendations')(e.target.value)}
-                                    className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0"
-                                />
+                                <Textarea placeholder="e.g. Rest for 3 days, drink plenty of fluids, return if symptoms worsen..."
+                                    value={form.recommendations} onChange={(e) => set('recommendations')(e.target.value)}
+                                    className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
                             </FieldCard>
                         </div>
 
-                        {/* ── Routing ── */}
+                        {/* Routing */}
                         <div id="routing" onFocus={() => setActive('routing')} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                             <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-50">
-                                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
-                                    <ArrowRight size={16} className="text-red-600" />
-                                </div>
+                                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center"><ArrowRight size={16} className="text-red-600" /></div>
                                 <div>
                                     <p className="text-sm font-bold text-gray-800">Patient Routing</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">Patient status updates automatically on submit based on your selection</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">Patient status updates automatically on submit</p>
                                 </div>
                                 <span className="ml-auto text-xs font-bold text-gray-300 tracking-widest">05</span>
                             </div>
 
                             <div className="px-6 py-5 space-y-5">
-
-                                {/* Referral card picker */}
+                                {/* Referral cards */}
                                 <div>
                                     <Label className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 block">
                                         Refer To <span className="text-gray-300 normal-case font-normal ml-1">(defaults to Nurse if unset)</span>
@@ -284,20 +240,11 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                                         {REFERRAL_OPTIONS.map((option) => {
                                             const Icon = option.icon;
                                             const isSelected = form.referredTo === option.value;
-
                                             return (
-                                                <button
-                                                    key={option.value}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        set('referredTo')(option.value);
-                                                        set('selectedStaffId')('');
-                                                    }}
+                                                <button key={option.value} type="button"
+                                                    onClick={() => { set('referredTo')(option.value); set('selectedStaffId')(''); }}
                                                     className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all duration-150
-                                                        ${isSelected
-                                                            ? `${option.activeBorder} ${option.bg}`
-                                                            : 'border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white'
-                                                        }`}
+                                                        ${isSelected ? `${option.activeBorder} ${option.bg}` : 'border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white'}`}
                                                 >
                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? option.bg : 'bg-white border border-gray-100'}`}>
                                                         <Icon size={15} className={isSelected ? option.color : 'text-gray-400'} />
@@ -313,13 +260,59 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                                     </div>
                                 </div>
 
-                                {/* Assign staff + status override */}
+                                {/* Lab request details — shown only when lab-tech selected */}
+                                {isLabReferral && (
+                                    <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/40 p-5 space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <FlaskConical size={14} className="text-indigo-600" />
+                                            <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Lab Request Details</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                                                    Test Type <span className="text-red-500">*</span>
+                                                </Label>
+                                                <Select onValueChange={set('labTestType')} value={form.labTestType}>
+                                                    <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400">
+                                                        <SelectValue placeholder="Select test type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white z-30 shadow-xl rounded-xl border-gray-100 max-h-60 overflow-y-auto">
+                                                        {LAB_TEST_TYPES.map((t) => (
+                                                            <SelectItem key={t.value} value={t.value} className="text-sm">{t.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">Priority</Label>
+                                                <Select onValueChange={set('labPriority')} value={form.labPriority}>
+                                                    <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white z-30 shadow-xl rounded-xl border-gray-100">
+                                                        <SelectItem value="routine" className="text-sm">Routine</SelectItem>
+                                                        <SelectItem value="urgent" className="text-sm">Urgent</SelectItem>
+                                                        <SelectItem value="stat" className="text-sm">STAT (Immediate)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                                                Notes for Lab Tech <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                                            </Label>
+                                            <Textarea placeholder="e.g. Patient is fasting. Collect sample before medication..."
+                                                value={form.labNotes} onChange={(e) => set('labNotes')(e.target.value)} rows={2}
+                                                className="text-sm bg-white border-gray-200 rounded-xl resize-none focus:border-indigo-400 placeholder:text-gray-300" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Assign staff + override */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-gray-50">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                                            {form.referredTo
-                                                ? `Assign ${form.referredTo.charAt(0).toUpperCase() + form.referredTo.slice(1)}`
-                                                : 'Assign Staff'}
+                                            {form.referredTo ? `Assign ${form.referredTo.charAt(0).toUpperCase() + form.referredTo.slice(1)}` : 'Assign Staff'}
                                         </Label>
                                         {form.referredTo ? (
                                             availableStaff.length > 0 ? (
@@ -329,24 +322,17 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-white z-30 shadow-xl rounded-xl border-gray-100 max-h-60 overflow-y-auto">
                                                         {availableStaff.map((staff) => (
-                                                            <SelectItem key={staff.$id} value={staff.$id} className="text-sm">
-                                                                {staff.name}
-                                                            </SelectItem>
+                                                            <SelectItem key={staff.$id} value={staff.$id} className="text-sm">{staff.name}</SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
                                             ) : (
-                                                <div className="h-10 flex items-center px-3 text-xs text-gray-400 italic bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                                    No {form.referredTo} available
-                                                </div>
+                                                <div className="h-10 flex items-center px-3 text-xs text-gray-400 italic bg-gray-50 rounded-xl border border-dashed border-gray-200">No {form.referredTo} available</div>
                                             )
                                         ) : (
-                                            <div className="h-10 flex items-center px-3 text-xs text-gray-400 italic bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                                Select a referral type first
-                                            </div>
+                                            <div className="h-10 flex items-center px-3 text-xs text-gray-400 italic bg-gray-50 rounded-xl border border-dashed border-gray-200">Select a referral type first</div>
                                         )}
                                     </div>
-
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
                                             Override Status <span className="text-gray-300 normal-case font-normal">(optional)</span>
@@ -364,39 +350,29 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                                     </div>
                                 </div>
 
-                                {/* Auto-status preview banner */}
+                                {/* Status preview */}
                                 <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
                                     <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
                                     <p className="text-xs text-blue-700 font-medium">
-                                        Patient status will automatically change to{' '}
-                                        <span className="font-bold">"{nextStatusLabel()}"</span> on submit
-                                        {form.status && (
-                                            <span className="text-blue-500">
-                                                {' '}(manual override: "{PATIENT_STATUSES.find(s => s.value === form.status)?.label}")
-                                            </span>
-                                        )}
+                                        Patient → <span className="font-bold">"{nextStatusLabel()}"</span> on submit
+                                        {isLabReferral && <span className="text-indigo-600 font-semibold"> + lab request will be created</span>}
+                                        {form.status && <span className="text-blue-500"> (override: "{PATIENT_STATUSES.find(s => s.value === form.status)?.label}")</span>}
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* ── Submit ── */}
+                        {/* Submit */}
                         <div className="pt-2 pb-6">
-                            <Button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full h-14 bg-red-700 hover:bg-red-800 text-white font-bold text-base rounded-2xl shadow-lg shadow-red-200 transition-all duration-150 tracking-wide"
-                            >
+                            <Button type="submit" disabled={loading}
+                                className="w-full h-14 bg-red-700 hover:bg-red-800 text-white font-bold text-base rounded-2xl shadow-lg shadow-red-200 transition-all duration-150 tracking-wide">
                                 {loading ? (
                                     <span className="flex items-center gap-2">
                                         <Loader2 size={18} className="animate-spin" />
-                                        {statusLoading ? 'Updating patient status...' : 'Saving consultation...'}
+                                        {labLoading ? 'Creating lab request...' : statusLoading ? 'Updating status...' : 'Saving consultation...'}
                                     </span>
                                 ) : (
-                                    <span className="flex items-center gap-2">
-                                        Submit & Route Patient
-                                        <ArrowRight size={18} />
-                                    </span>
+                                    <span className="flex items-center gap-2">Submit & Route Patient <ArrowRight size={18} /></span>
                                 )}
                             </Button>
                         </div>
@@ -407,27 +383,14 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
     );
 }
 
-// ─── Field card ───────────────────────────────────────────────────────────────
-
 function FieldCard({ id, step, icon, label, helper, children, onFocus }: {
-    id: string;
-    step: number;
-    icon: React.ReactNode;
-    label: string;
-    helper?: string;
-    children: React.ReactNode;
-    onFocus?: () => void;
+    id: string; step: number; icon: React.ReactNode; label: string;
+    helper?: string; children: React.ReactNode; onFocus?: () => void;
 }) {
     return (
-        <div
-            id={id}
-            onFocus={onFocus}
-            className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-red-100 transition-all duration-150 overflow-hidden"
-        >
+        <div id={id} onFocus={onFocus} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-red-100 transition-all duration-150 overflow-hidden">
             <div className="flex items-center gap-3 px-6 pt-5 pb-3 border-b border-gray-50">
-                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0 group-focus-within:bg-red-100 transition-colors">
-                    {icon}
-                </div>
+                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0 group-focus-within:bg-red-100 transition-colors">{icon}</div>
                 <div>
                     <p className="text-sm font-bold text-gray-800">{label}</p>
                     {helper && <p className="text-xs text-gray-400 mt-0.5">{helper}</p>}

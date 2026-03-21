@@ -21,17 +21,17 @@ interface PatientsTableProps {
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> = {
-    'registered':            { bg: 'bg-gray-100',    text: 'text-gray-600',   dot: 'bg-gray-400'   },
-    'awaiting-consultation': { bg: 'bg-yellow-50',   text: 'text-yellow-700', dot: 'bg-yellow-400' },
-    'under-consultation':    { bg: 'bg-purple-50',   text: 'text-purple-700', dot: 'bg-purple-500' },
-    'sent-to-nurse':         { bg: 'bg-teal-50',     text: 'text-teal-700',   dot: 'bg-teal-500'   },
-    'sent-to-lab':           { bg: 'bg-indigo-50',   text: 'text-indigo-700', dot: 'bg-indigo-500' },
-    'sent-to-pharmacy':      { bg: 'bg-pink-50',     text: 'text-pink-700',   dot: 'bg-pink-500'   },
-    'awaiting-payment':      { bg: 'bg-orange-50',   text: 'text-orange-700', dot: 'bg-orange-500' },
-    'admitted':              { bg: 'bg-blue-50',     text: 'text-blue-700',   dot: 'bg-blue-500'   },
-    'under-observation':     { bg: 'bg-amber-50',    text: 'text-amber-700',  dot: 'bg-amber-400'  },
-    'discharged':            { bg: 'bg-green-50',    text: 'text-green-700',  dot: 'bg-green-500'  },
-    'no-status':             { bg: 'bg-red-50',      text: 'text-red-600',    dot: 'bg-red-400'    },
+    'registered': { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400' },
+    'awaiting-consultation': { bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-400' },
+    'under-consultation': { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
+    'sent-to-nurse': { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
+    'sent-to-lab': { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+    'sent-to-pharmacy': { bg: 'bg-pink-50', text: 'text-pink-700', dot: 'bg-pink-500' },
+    'awaiting-payment': { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
+    'admitted': { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+    'under-observation': { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' },
+    'discharged': { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+    'no-status': { bg: 'bg-red-50', text: 'text-red-600', dot: 'bg-red-400' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -55,15 +55,15 @@ const containerVariants = {
 const cardVariants = {
     hidden: { opacity: 0, y: 16 },
     visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100, damping: 20 } },
-    exit:   { opacity: 0, y: 8,  transition: { duration: 0.15 } },
+    exit: { opacity: 0, y: 8, transition: { duration: 0.15 } },
 };
 
 // ─── Role → route map ─────────────────────────────────────────────────────────
 
 const ROLE_ROUTES: Record<string, (id: string) => string> = {
-    Doctor:     (id) => `/doctor/patients/${id}`,
-    Nurse:      (id) => `/nurse/queue/patient/${id}`,
-    Labtech:    (id) => `/labtech/patients/${id}`,
+    Doctor: (id) => `/doctor/patients/${id}`,
+    Nurse: (id) => `/nurse/queue/patient/${id}`,
+    LabTechnician: (id) => `/lab-tech/requests/patient/${id}`,
     Pharmacist: (id) => `/pharmacist/queue/patient/${id}`,
 };
 
@@ -113,8 +113,8 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
             <AnimatePresence>
                 {patients.map((patient) => {
                     const patientId = patient.id!;
-                    const gender    = (patient.gender ?? '').toLowerCase();
-                    const isFemale  = gender === 'female';
+                    const gender = (patient.gender ?? '').toLowerCase();
+                    const isFemale = gender === 'female';
 
                     return (
                         <motion.div

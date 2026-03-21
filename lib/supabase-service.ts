@@ -348,19 +348,24 @@ export async function listPendingPrescriptions(): Promise<Prescription[]> {
  * LAB REQUEST OPERATIONS
  */
 
-export async function createLabRequest(labRequestData: Omit<LabRequest, "$id" | "$createdAt" | "$updatedAt">) {
+export async function createLabRequest(data: {
+    patientId: string; doctorId?: string; testType?: string;
+    priority?: string; notes?: string; status?: string;
+}) {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data: result, error } = await supabase
         .from("lab_requests")
-        .insert([labRequestData])
-        .select()
-        .single();
-
-    if (error) {
-        console.error("Failed to create lab request:", error);
-        throw error;
-    }
-    return data as unknown as LabRequest;
+        .insert([{
+            patient_id: data.patientId,
+            doctor_id: data.doctorId ?? null,
+            test_type: data.testType ?? null,
+            priority: data.priority ?? 'routine',
+            notes: data.notes ?? null,
+            status: data.status ?? 'Pending',
+        }])
+        .select().single();
+    if (error) { console.error(error); throw error; }
+    return result;
 }
 
 export async function getLabRequestById(labRequestId: string): Promise<LabRequest | null> {
