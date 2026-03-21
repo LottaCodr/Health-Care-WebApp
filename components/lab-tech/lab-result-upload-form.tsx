@@ -129,7 +129,7 @@ export function LabResultUploadForm({
         try {
             await updateLabRequest(labRequestId, {
                 status: "completed",
-                result: combinedResult,
+                result: combinedResult,   // singular, not 'results'
                 completed_by: user?.$id,
                 completed_at: new Date().toISOString(),
             });

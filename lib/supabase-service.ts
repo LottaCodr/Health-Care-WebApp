@@ -394,26 +394,9 @@ export async function listLabRequestsByPatient(patientId: string): Promise<LabRe
     const { data, error } = await supabase
         .from("lab_requests")
         .select()
-        .eq("patient_id", patientId);
+        .eq("visit_id", patientId);   // ← was patient_id
 
-    if (error) {
-        console.error("Failed to list lab requests:", error);
-        return [];
-    }
-    return data as unknown as LabRequest[];
-}
-
-export async function listPendingLabRequests(): Promise<LabRequest[]> {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from("lab_requests")
-        .select()
-        .eq("status", "pending");
-
-    if (error) {
-        console.error("Failed to list pending lab requests:", error);
-        return [];
-    }
+    if (error) { console.error("Failed to list lab requests:", error); return []; }
     return data as unknown as LabRequest[];
 }
 
@@ -431,19 +414,41 @@ export async function listCompletedLabRequests(): Promise<LabRequest[]> {
     return data as unknown as LabRequest[];
 }
 
-export async function updateLabRequest(labRequestId: string, updates: Partial<LabRequest>) {
+export async function listPendingLabRequests(): Promise<LabRequest[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
+        .from("lab_requests").select().eq("status", "pending");
+    if (error) { console.error(error); return []; }
+    return data as unknown as LabRequest[];
+}
+
+export async function updateLabRequest(labRequestId: string, updates: {
+    status?: string;
+    result?: string;
+    completed_by?: string;
+    completed_at?: string;
+    priority?: string;
+    notes?: string;
+}) {
+    const supabase = await createClient();
+
+    // Only map fields that were actually provided
+    const mapped: Record<string, any> = {};
+    if (updates.status !== undefined) mapped.status = updates.status;
+    if (updates.result !== undefined) mapped.result = updates.result;
+    if (updates.completed_by !== undefined) mapped.completed_by = updates.completed_by;
+    if (updates.completed_at !== undefined) mapped.completed_at = updates.completed_at;
+    if (updates.priority !== undefined) mapped.priority = updates.priority;
+    if (updates.notes !== undefined) mapped.notes = updates.notes;
+
+    const { data, error } = await supabase
         .from("lab_requests")
-        .update(updates)
+        .update(mapped)
         .eq("id", labRequestId)
         .select()
         .single();
 
-    if (error) {
-        console.error("Failed to update lab request:", error);
-        throw error;
-    }
+    if (error) { console.error("Failed to update lab request:", error); throw error; }
     return data as unknown as LabRequest;
 }
 

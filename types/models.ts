@@ -150,25 +150,18 @@ export interface PrescriptionMedication {
 // Lab Request entity
 export interface LabRequest {
     id: string;
-    patientId: string;
+    visit_id?: string;   // DB column (stores patient_id)
     patient_id?: string;
-    consultationId: string;
-    consultation_id?: string;
-    doctorId: string;
-    doctor_id?: string;
-    testType: string;
+    requested_by?: string;
     test_type?: string;
-    testDescription: string;
-    test_description?: string;
-    status: "pending" | "completed" ;
-    priority: "Normal" | "Urgent";
-    requestDate: string;
-    request_date?: string;
-    completionDate?: string;
-    completion_date?: string;
-    results?: string;
+    testType?: string;
+    status: "pending" | "completed";
+    priority?: string;
+    notes?: string;
+    result?: string;   // singular, matches DB
+    completed_by?: string;   // add this
+    completed_at?: string;   // add this
     created_at?: string;
-    updated_at?: string;
 }
 
 // Payment entity
