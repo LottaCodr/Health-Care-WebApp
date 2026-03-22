@@ -20,6 +20,7 @@ import { Staff } from "@/actions/staff/types";
 import { LabResultUploadForm } from "../lab-tech/lab-result-upload-form";
 import VitalsCheckinAdvancedComponent from "../nurse/VitalsSuite";
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
+import LabTab from "../lab-tech/components/lab-tab";
 
 const TAB_CONFIG = [
     {
@@ -356,32 +357,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
             {/* ── Lab Results ─────────────────────────────────────────────── */}
             <TabsContent value="lab" className="mt-0">
-                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-sky-50 via-sky-50/40 to-transparent border-b border-slate-100 px-6 py-4">
-                        <CardTitle className="flex items-center gap-2.5 text-base font-bold text-slate-800">
-                            <span className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center">
-                                <FaFlask className="text-sky-600 text-sm" />
-                            </span>
-                            Lab Results
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {user?.role === "LabTechnician" && (
-                                <div className="rounded-xl bg-white border border-sky-100 shadow-sm p-6">
-                                    <LabResultUploadForm
-                                        labRequestId={""}
-                                        patientId={patient?.id ?? ""}
-                                        testType={""}
-                                    />
-                                </div>
-                            )}
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-1">
-                                <EmptyState label="No lab results recorded yet." />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <LabTab patient={patient} userRole={user?.role} />
             </TabsContent>
         </Tabs>
     );

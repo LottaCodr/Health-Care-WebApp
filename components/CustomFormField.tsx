@@ -3,32 +3,25 @@
 import React, { useId, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+  FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from './ui/form';
 import { FormFieldType } from './forms/PatientForm';
-
 import DatePicker from 'react-datepicker';
-import {
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
+import { Select, SelectContent, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { Checkbox } from './ui/checkbox';
-
 import 'react-phone-number-input/style.css';
 import 'react-datepicker/dist/react-datepicker.css';
-
-// Import react-icons
 import { MdPerson, MdEmail, MdPhone, MdCalendarToday, MdWork, MdHome } from 'react-icons/md';
-import { FaPrayingHands } from "react-icons/fa";
-
+import { FaPrayingHands } from 'react-icons/fa';
+import { AlertCircle } from 'lucide-react';
 import { IconType } from 'react-icons';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+
+// ─── Icon map ─────────────────────────────────────────────────────────────────
 
 const ICON_MAP: Record<string, IconType> = {
   '/assets/icons/user.svg': MdPerson,
@@ -40,48 +33,33 @@ const ICON_MAP: Record<string, IconType> = {
   '/assets/icons/home.svg': MdHome,
 };
 
-const COMMON_CLASS =
-  [
-    'w-full',
-    'rounded-xl',
-    // 'dark:from-gray-900 dark:via-gray-950 dark:to-gray-900',
-    'border border-gray-300 dark:border-gray-700',
-    'px-5 py-3',
-    'text-base',
-    'focus:outline-none',
-    'focus:ring-2 focus:ring-primary-600 focus:border-primary-600',
-    'hover:border-primary-500',
-    'active:ring-2 active:ring-primary-400',
-    'focus:shadow-lg',
-    'placeholder-gray-400 dark:placeholder-gray-500',
-    'disabled:bg-gray-100 dark:disabled:bg-gray-800',
-    'disabled:cursor-not-allowed',
-  ].join(' ')
+// ─── Style constants ──────────────────────────────────────────────────────────
 
-const LABEL_CLASS =
-  'text-[16px] font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1 mb-2 tracking-wide';
+// Base input — clean white, rounded-xl, consistent height, subtle border
+const INPUT_BASE = [
+  'w-full h-11 rounded-xl',
+  'bg-gray-50 border border-gray-200',
+  'text-sm text-gray-800 font-medium',
+  'placeholder:text-gray-300',
+  'transition-all duration-150',
+  'focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400 focus:bg-white',
+  'hover:border-gray-300 hover:bg-white',
+  'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100',
+].join(' ');
 
-const ERROR_CLASS =
-  'text-xs text-red-600 mt-1 font-semibold';
+const INPUT_ERROR = 'border-red-300 bg-red-50 focus:ring-red-400/30 focus:border-red-400';
 
-const ICON_CLASS =
-  'text-primary-400 dark:text-primary-300 ';
+const LABEL_BASE = 'text-xs font-bold uppercase tracking-widest text-gray-400 mb-1.5 flex items-center gap-1';
 
-const FOCUS_RING =
-  'focus:ring-2 focus:ring-primary-600 focus:border-primary-600';
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const HOVER_RING =
-  'hover:border-primary-500';
+const getIcon = (iconSrc?: string) => {
+  if (!iconSrc) return null;
+  const Icon = ICON_MAP[iconSrc];
+  return Icon ? <Icon size={16} className="text-gray-400" aria-hidden="true" /> : null;
+};
 
-const ACTIVE_RING =
-  'active:ring-2 active:ring-primary-400';
-
-const DISABLED_CLASS =
-  'opacity-50 pointer-events-none';
-
-const FIELD_SHADOW =
-  // 'shadow focus:shadow-lg transition-shadow'
-  '';
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface CustomProps {
   control: any;
@@ -101,37 +79,31 @@ interface CustomProps {
   required?: boolean;
 }
 
-const getIconComponent = (iconSrc?: string) => {
-  if (!iconSrc) return null;
-  const Icon = ICON_MAP[iconSrc];
-  if (Icon) return <Icon size={22} className={ICON_CLASS + " opacity-80"} aria-hidden="true" />;
-  return null;
-};
+// ─── Field renderer ───────────────────────────────────────────────────────────
 
-const renderField = (field: any, props: CustomProps, inputId: string, fieldState: any, inputRef: any) => {
+const renderField = (
+  field: any,
+  props: CustomProps,
+  inputId: string,
+  fieldState: any,
+  inputRef: any,
+) => {
   const {
-    fieldType,
-    placeholder,
-    iconSrc,
-    iconAlt,
-    disabled,
-    children,
-    showTimeSelected,
-    dateFormat,
-    renderSkeleton,
-    autoFocus,
-    required,
+    fieldType, placeholder, iconSrc, disabled,
+    children, showTimeSelected, dateFormat,
+    renderSkeleton, autoFocus, required,
   } = props;
 
-  const error = fieldState?.error;
+  const hasError = !!fieldState?.error;
 
   switch (fieldType) {
+
     case FormFieldType.INPUT:
       return (
-        <div className="relative flex items-center group">
+        <div className="relative flex items-center">
           {iconSrc && (
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              {getIconComponent(iconSrc)}
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              {getIcon(iconSrc)}
             </span>
           )}
           <FormControl>
@@ -142,23 +114,14 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
               placeholder={placeholder}
               disabled={disabled}
               required={required}
-              className={
-                [
-                  COMMON_CLASS,
-                  iconSrc ? 'pl-14' : '',
-                  FOCUS_RING,
-                  HOVER_RING,
-                  ACTIVE_RING,
-                  FIELD_SHADOW,
-                  error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : '',
-                  disabled ? DISABLED_CLASS : '',
-                  'transition-all',
-                ].join(' ')
-              }
               autoComplete="off"
-              aria-describedby={props.description ? `${inputId}-desc` : undefined}
-              aria-invalid={!!error}
+              aria-invalid={hasError}
               aria-required={required}
+              className={[
+                INPUT_BASE,
+                iconSrc ? 'pl-10' : 'px-4',
+                hasError ? INPUT_ERROR : '',
+              ].join(' ')}
             />
           </FormControl>
         </div>
@@ -167,35 +130,27 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
     case FormFieldType.PHONE_INPUT:
       return (
         <FormControl>
-          <div className="relative flex items-center group">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              {getIconComponent('/assets/icons/phone.svg')}
+          <div className="relative flex items-center">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <MdPhone size={16} className="text-gray-400" />
             </span>
             <Input
               {...field}
               id={inputId}
               ref={inputRef}
+              type="tel"
               placeholder={placeholder}
               disabled={disabled}
               required={required}
-              className={[
-                COMMON_CLASS,
-                'pl-14',
-                FOCUS_RING,
-                HOVER_RING,
-                ACTIVE_RING,
-                FIELD_SHADOW,
-                error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : '',
-                disabled ? DISABLED_CLASS : '',
-                'transition-all',
-              ].join(' ')}
               autoComplete="off"
-              aria-label={props.label}
-              aria-describedby={props.description ? `${inputId}-desc` : undefined}
-              aria-invalid={!!error}
+              aria-invalid={hasError}
               aria-required={required}
               autoFocus={autoFocus}
-              type="tel"
+              className={[
+                INPUT_BASE,
+                'pl-10',
+                hasError ? INPUT_ERROR : '',
+              ].join(' ')}
             />
           </div>
         </FormControl>
@@ -204,31 +159,20 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
     case FormFieldType.SELECT:
       return (
         <FormControl>
-          <Select
-            onValueChange={field.onChange}
-            defaultValue={field.value}
-            disabled={disabled}
-          >
+          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={disabled}>
             <SelectTrigger
-              className={[
-                COMMON_CLASS,
-                'cursor-pointer',
-                FOCUS_RING,
-                HOVER_RING,
-                ACTIVE_RING,
-                FIELD_SHADOW,
-                error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : '',
-                disabled ? DISABLED_CLASS : '',
-                'transition-all',
-              ].join(' ')}
               id={inputId}
-              aria-label={props.label}
-              aria-invalid={!!error}
+              aria-invalid={hasError}
               aria-required={required}
+              className={[
+                INPUT_BASE,
+                'px-4 cursor-pointer',
+                hasError ? INPUT_ERROR : '',
+              ].join(' ')}
             >
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border border-gray-200 max-h-64 overflow-y-auto">
+            <SelectContent className="rounded-2xl shadow-xl bg-white border border-gray-100 max-h-60 overflow-y-auto">
               {children}
             </SelectContent>
           </Select>
@@ -245,21 +189,20 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
             placeholder={placeholder}
             disabled={disabled}
             required={required}
-            className={[
-              COMMON_CLASS,
-              'resize-none min-h-[120px] rounded-2xl',
-              FOCUS_RING,
-              HOVER_RING,
-              ACTIVE_RING,
-              FIELD_SHADOW,
-              error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : '',
-              disabled ? DISABLED_CLASS : '',
-              'transition-all',
-            ].join(' ')}
-            aria-describedby={props.description ? `${inputId}-desc` : undefined}
             autoComplete="off"
-            aria-invalid={!!error}
+            aria-invalid={hasError}
             aria-required={required}
+            className={[
+              'w-full rounded-xl min-h-[110px] resize-none',
+              'bg-gray-50 border border-gray-200',
+              'text-sm text-gray-800 font-medium px-4 py-3',
+              'placeholder:text-gray-300',
+              'transition-all duration-150',
+              'focus:outline-none focus:ring-2 focus:ring-blue-400/30 focus:border-blue-400 focus:bg-white',
+              'hover:border-gray-300 hover:bg-white',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              hasError ? INPUT_ERROR : '',
+            ].join(' ')}
           />
         </FormControl>
       );
@@ -272,24 +215,16 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
               id={inputId}
               checked={!!field.value}
               onCheckedChange={field.onChange}
-              aria-checked={!!field.value}
               disabled={disabled}
-              className={[
-                'rounded border-gray-400 bg-white shadow-sm',
-                FOCUS_RING,
-                HOVER_RING,
-                ACTIVE_RING,
-                error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : '',
-                disabled ? DISABLED_CLASS : '',
-                'transition',
-              ].join(' ')}
-              aria-invalid={!!error}
+              aria-invalid={hasError}
               aria-required={required}
+              className={[
+                'w-5 h-5 rounded-lg border-gray-300 transition-colors',
+                'data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600',
+                hasError ? 'border-red-400' : '',
+              ].join(' ')}
             />
-            <label
-              htmlFor={inputId}
-              className={LABEL_CLASS + " cursor-pointer"}
-            >
+            <label htmlFor={inputId} className="text-sm font-semibold text-gray-700 cursor-pointer select-none leading-tight">
               {props.label}
               {required && <span className="ml-1 text-red-500">*</span>}
             </label>
@@ -299,53 +234,46 @@ const renderField = (field: any, props: CustomProps, inputId: string, fieldState
 
     case FormFieldType.DATE_PICKER:
       return (
-        <div className="relative flex items-center">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-            {getIconComponent('/assets/icons/calendar.svg')}
-          </span>
-          <FormControl>
-            <DatePicker
-              id={inputId}
+        <Popover>
+          <PopoverTrigger asChild>
+            <FormControl>
+              <button type="button" className={[
+                INPUT_BASE, 'px-4 flex items-center gap-3 text-left',
+                !field.value ? 'text-gray-300' : 'text-gray-800',
+                hasError ? INPUT_ERROR : '',
+              ].join(' ')}>
+                <CalendarIcon size={15} className="text-gray-400 shrink-0" />
+                {field.value ? format(field.value, 'dd MMM yyyy') : <span>{placeholder ?? 'Pick a date'}</span>}
+              </button>
+            </FormControl>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl border border-gray-100" align="start">
+            <Calendar
+              mode="single"
               selected={field.value}
-              onChange={(date) => field.onChange(date)}
-              dateFormat={dateFormat || 'MM/dd/yyyy'}
-              showTimeSelect={showTimeSelected}
-              className={[
-                COMMON_CLASS,
-                'pl-14',
-                FOCUS_RING,
-                HOVER_RING,
-                ACTIVE_RING,
-                FIELD_SHADOW,
-                error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : '',
-                disabled ? DISABLED_CLASS : '',
-                'transition-all',
-              ].join(' ')}
-              placeholderText={placeholder}
+              onSelect={field.onChange}
               disabled={disabled}
-              aria-label={props.label}
-              aria-describedby={props.description ? `${inputId}-desc` : undefined}
-              autoComplete="off"
-              aria-invalid={!!error}
-              aria-required={required}
+              initialFocus
             />
-          </FormControl>
-        </div>
+          </PopoverContent>
+        </Popover>
       );
 
     case FormFieldType.SKELETON:
       return renderSkeleton ? renderSkeleton(field) : null;
+
     default:
       return null;
   }
 };
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const CustomFormField: React.FC<CustomProps> = (props) => {
   const { control, name, label, fieldType, description, autoFocus, required, disabled } = props;
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Auto-focus on mount if requested
   useEffect(() => {
     if (autoFocus && inputRef.current && !disabled) {
       inputRef.current.focus();
@@ -356,26 +284,40 @@ const CustomFormField: React.FC<CustomProps> = (props) => {
     <FormField
       control={control}
       name={name}
-      render={({ field, fieldState }) => (
-        <FormItem className="w-full space-y-2">
-          {fieldType !== FormFieldType.CHECKBOX && label && (
-            <FormLabel htmlFor={inputId} className={LABEL_CLASS}>
-              {label}
-              {required && <span className="ml-1 text-red-500">*</span>}
-              {disabled && (
-                <span className="ml-2 text-xs text-gray-400 font-normal">(disabled)</span>
-              )}
-            </FormLabel>
-          )}
-          {description && (
-            <div id={`${inputId}-desc`} className="text-xs text-gray-500 mb-1.5">
-              {description}
-            </div>
-          )}
-          {renderField(field, props, inputId, fieldState, inputRef)}
-          <FormMessage className={ERROR_CLASS + " px-1"} />
-        </FormItem>
-      )}
+      render={({ field, fieldState }) => {
+        const hasError = !!fieldState?.error;
+        return (
+          <FormItem className="w-full space-y-0">
+
+            {/* Label — skip for checkbox (it renders its own) */}
+            {fieldType !== FormFieldType.CHECKBOX && label && (
+              <FormLabel htmlFor={inputId} className={LABEL_BASE}>
+                {label}
+                {required && <span className="text-red-500">*</span>}
+                {disabled && <span className="text-gray-300 normal-case font-normal tracking-normal">(disabled)</span>}
+              </FormLabel>
+            )}
+
+            {/* Description */}
+            {description && (
+              <p id={`${inputId}-desc`} className="text-[10px] text-gray-400 mb-2">
+                {description}
+              </p>
+            )}
+
+            {/* Input */}
+            {renderField(field, props, inputId, fieldState, inputRef)}
+
+            {/* Error */}
+            {hasError && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <AlertCircle size={10} className="text-red-500 shrink-0" />
+                <FormMessage className="text-[10px] text-red-500 font-semibold" />
+              </div>
+            )}
+          </FormItem>
+        );
+      }}
     />
   );
 };

@@ -119,7 +119,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                     return (
                         <motion.div
                             key={patientId}
-                            variants={cardVariants}
+                            variants={cardVariants as any}
                             initial="hidden"
                             animate="visible"
                             exit="exit"
