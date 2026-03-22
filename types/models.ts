@@ -294,3 +294,16 @@ export interface AuditLog {
     created_at?: string;
     updated_at?: string;
 }
+
+
+export interface Notification {
+    id: string;
+    recipient_id: string;
+    role?: string;
+    title: string;
+    message: string;
+    type: "info" | "alert" | "success" | "warning";
+    read: boolean;
+    link?: string;
+    created_at: string;
+}

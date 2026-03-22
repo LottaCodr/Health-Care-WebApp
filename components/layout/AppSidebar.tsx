@@ -1,28 +1,40 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
-    Sidebar,
-    SidebarContent,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarFooter,
+    Sidebar, SidebarContent, SidebarHeader,
+    SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter,
 } from "@/components/ui/sidebar";
 import Image from "next/image";
 import { useAuth } from "@/context/auth-provider";
 import { NAV_CONFIG } from "./config";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, ChevronRight } from "lucide-react";
+import { useNotifications } from "@/hooks/use-notifications";
+
+// ─── Role config ──────────────────────────────────────────────────────────────
+
+const ROLE_CONFIG: Record<string, { accent: string; gradient: string; label: string }> = {
+    Doctor: { accent: "text-red-400", gradient: "from-red-500    to-red-700", label: "Doctor" },
+    Nurse: { accent: "text-teal-400", gradient: "from-teal-500   to-teal-700", label: "Nurse" },
+    Pharmacist: { accent: "text-violet-400", gradient: "from-violet-500 to-violet-700", label: "Pharmacist" },
+    LabTechnician: { accent: "text-indigo-400", gradient: "from-indigo-500 to-indigo-700", label: "Lab Technician" },
+    Frontdesk: { accent: "text-blue-400", gradient: "from-blue-500   to-blue-700", label: "Front Desk" },
+    Admin: { accent: "text-amber-400", gradient: "from-amber-500  to-amber-700", label: "Administrator" },
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const userRole = user?.role;
     const nav = userRole ? NAV_CONFIG[userRole] : null;
+    const roleCfg = ROLE_CONFIG[userRole ?? ""] ?? ROLE_CONFIG.Admin;
+    const { unreadCount } = useNotifications();
+    const [showLogout, setShowLogout] = useState(false);
 
     if (!nav) return null;
 
@@ -30,91 +42,117 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <Sidebar
             variant="inset"
             {...props}
-            className="bg-[#0f1c3a] border-r border-white/5 flex flex-col"
+            className="bg-[#0a1628] border-r border-white/5 flex flex-col"
         >
             {/* ── Logo ── */}
-            <SidebarHeader className="px-5 pt-6 pb-4 shrink-0">
+            <SidebarHeader className="px-4 pt-5 pb-2 shrink-0">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" className="h-auto p-0 hover:bg-transparent">
                             <button
                                 onClick={() => router.push("/")}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/8 transition-all duration-200 group"
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all duration-200 group"
                             >
-                                <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 ring-2 ring-white/10 group-hover:ring-white/20 transition-all">
-                                    <Image
-                                        src="/assets/icons/nilelogo.jpeg"
-                                        alt="Logo"
-                                        width={36}
-                                        height={36}
-                                        className="w-full h-full object-cover"
-                                    />
+                                <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/10 group-hover:ring-white/20 transition-all">
+                                    <Image src="/assets/icons/nilelogo.jpeg" alt="Logo" width={36} height={36} className="w-full h-full object-cover" />
                                 </div>
-                                <div className="text-left">
-                                    <p className="text-white font-bold text-sm leading-tight">Nile Valley Hospital</p>
-                                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.15em] mt-0.5">
-                                        EMR System
-                                    </p>
+                                <div className="text-left flex-1 min-w-0">
+                                    <p className="text-white font-bold text-sm leading-tight">Nile Valley</p>
+                                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.18em] mt-0.5">Hospital EMR</p>
                                 </div>
                             </button>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+
+                {/* Role + notification badge */}
+                <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/4 border border-white/5">
+                    <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-br ${roleCfg.gradient} shrink-0`} />
+                    <p className={`text-[10px] font-black uppercase tracking-widest flex-1 ${roleCfg.accent}`}>
+                        {roleCfg.label}
+                    </p>
+                    {unreadCount > 0 && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/20">
+                            {unreadCount} new
+                        </span>
+                    )}
+                </div>
             </SidebarHeader>
 
+            {/* ── Divider ── */}
+            <div className="px-4 py-2">
+                <div className="h-px bg-white/5" />
+            </div>
+
             {/* ── Nav ── */}
-            <SidebarContent className="flex-1 px-4 py-2 overflow-y-auto space-y-6">
-
-                {/* Main nav */}
-                <NavSection label="Navigation">
+            <SidebarContent className="flex-1 px-3 overflow-y-auto space-y-5 pb-4">
+                <NavSection label="Main Menu">
                     {nav.main.map((item) => (
-                        <NavItem
-                            key={item.url}
-                            item={item}
+                        <NavItem key={item.url} item={item}
                             isActive={pathname.startsWith(item.url)}
-                            onClick={() => router.push(item.url)}
-                        />
+                            onClick={() => router.push(item.url)} />
                     ))}
                 </NavSection>
 
-                {/* Secondary nav */}
-                <NavSection label="Settings">
+                <NavSection label="Preferences">
                     {nav.secondary.map((item) => (
-                        <NavItem
-                            key={item.url}
-                            item={item}
+                        <NavItem key={item.url} item={item}
                             isActive={pathname.startsWith(item.url)}
-                            onClick={() => router.push(item.url)}
-                        />
+                            onClick={() => router.push(item.url)} />
                     ))}
                 </NavSection>
-
             </SidebarContent>
 
-            {/* ── Footer / user card ── */}
-            <SidebarFooter className="px-4 py-5 shrink-0 border-t border-white/5">
-                <div className="flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/5 transition-colors cursor-pointer group">
-                    {/* Avatar */}
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center font-black text-white text-sm shrink-0 shadow-lg shadow-blue-900/40">
+            {/* ── Footer ── */}
+            <SidebarFooter className="px-3 py-4 shrink-0">
+                <div className="h-px bg-white/5 mb-3" />
+
+                {/* User card */}
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/5 border border-white/5">
+                    <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${roleCfg.gradient} flex items-center justify-center font-black text-white text-sm shrink-0`}>
                         {user?.name?.[0]?.toUpperCase()}
                     </div>
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                        <p className="text-white text-xs font-bold truncate leading-tight">
-                            {user?.name}
-                        </p>
-                        <p className="text-white/40 text-[10px] font-semibold uppercase tracking-widest mt-0.5 truncate">
-                            {user?.role}
-                        </p>
+                        <p className="text-white text-xs font-bold truncate leading-tight">{user?.name ?? "Staff"}</p>
+                        <p className="text-white/30 text-[9px] font-medium truncate mt-0.5">{user?.email}</p>
                     </div>
-
-                    {/* Log out icon */}
-                    <LogOut
-                        size={14}
-                        className="text-white/20 group-hover:text-white/60 transition-colors shrink-0"
-                    />
+                    <button
+                        onClick={() => setShowLogout(true)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                        aria-label="Log out"
+                    >
+                        <LogOut size={13} />
+                    </button>
                 </div>
+
+                {/* Logout confirmation popover */}
+                <AnimatePresence>
+                    {showLogout && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                            transition={{ duration: 0.15 }}
+                            className="mt-2 px-3 py-3 rounded-2xl bg-[#0f1c3a] border border-white/10 space-y-2.5"
+                        >
+                            <p className="text-xs text-white/50 font-medium text-center">Sign out of EMR?</p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowLogout(false)}
+                                    className="flex-1 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 text-xs font-semibold transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => { logout?.(); setShowLogout(false); }}
+                                    className="flex-1 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-all border border-red-500/20"
+                                >
+                                    Sign Out
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </SidebarFooter>
         </Sidebar>
     );
@@ -125,12 +163,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div>
-            <p className="text-[9px] font-black text-white/25 uppercase tracking-[0.22em] mb-2 px-3">
-                {label}
-            </p>
-            <ul className="space-y-0.5">
-                {children}
-            </ul>
+            <p className="text-[9px] font-black text-white/18 uppercase tracking-[0.22em] mb-1.5 px-3">{label}</p>
+            <ul className="space-y-0.5">{children}</ul>
         </div>
     );
 }
@@ -138,54 +172,49 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
 // ─── Nav item ─────────────────────────────────────────────────────────────────
 
 function NavItem({
-    item,
-    isActive,
-    onClick,
+    item, isActive, onClick,
 }: {
-    item: { icon: React.ElementType; title: string; url: string };
+    item: { icon: React.ElementType; title: string; url: string; badge?: number };
     isActive: boolean;
     onClick: () => void;
 }) {
     const Icon = item.icon;
-
     return (
         <li>
             <button
                 onClick={onClick}
-                className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150
-                    ${isActive
-                        ? "text-white"
-                        : "text-white/40 hover:text-white/80 hover:bg-white/5"
-                    }`}
+                className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150
+                    ${isActive ? "text-white" : "text-white/35 hover:text-white/65 hover:bg-white/4"}`}
             >
                 {/* Active background */}
                 {isActive && (
                     <motion.div
-                        layoutId="sidebar-active"
-                        className="absolute inset-0 bg-white/10 rounded-xl border border-white/10"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        layoutId="sidebar-active-bg"
+                        className="absolute inset-0 bg-white/8 rounded-xl border border-white/8"
+                        transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     />
                 )}
 
-                {/* Active left accent bar */}
+                {/* Active left accent */}
                 {isActive && (
                     <motion.div
-                        layoutId="sidebar-accent"
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-full"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        layoutId="sidebar-accent-bar"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-blue-400 rounded-full"
+                        transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     />
                 )}
 
-                <Icon
-                    size={17}
-                    className={`relative shrink-0 transition-colors ${isActive ? "text-blue-400" : "text-white/30"}`}
-                />
+                <Icon size={16} className={`relative shrink-0 transition-colors ${isActive ? "text-blue-400" : "text-white/25"}`} />
 
                 <span className="relative flex-1 text-left tracking-tight">{item.title}</span>
 
-                {isActive && (
-                    <ChevronRight size={13} className="relative text-white/30 shrink-0" />
+                {item.badge && item.badge > 0 && (
+                    <span className="relative text-[9px] font-black px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/20 shrink-0">
+                        {item.badge}
+                    </span>
                 )}
+
+                {isActive && <ChevronRight size={12} className="relative text-white/20 shrink-0" />}
             </button>
         </li>
     );
