@@ -13,14 +13,11 @@ import { useAuth } from "@/context/auth-provider";
 import ConsultationForm from "./consultation-form";
 import { useConsultationContext } from "@/context/consultation/consultation";
 import { usePatientContext } from "@/context/patients/patient-context";
-import { ConsultationReferred } from "@/actions/consultations/types";
 import { Patient, PatientStatus } from "@/context/patients/types";
-import { toast } from "@/hooks/use-toast";
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { useQuery } from "@tanstack/react-query";
 import { Staff } from "@/actions/staff/types";
 import { LabResultUploadForm } from "../lab-tech/lab-result-upload-form";
-import supabase from "@/utils/supabase/client";
 import VitalsCheckinAdvancedComponent from "../nurse/VitalsSuite";
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
 

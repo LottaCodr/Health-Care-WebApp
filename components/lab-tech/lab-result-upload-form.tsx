@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
-import { useUpdateLabRequest } from "@/hooks/use-emr";
+import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/use-emr";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,6 +77,7 @@ export function LabResultUploadForm({
     const router = useRouter();
     const { user } = useAuth();
     const { mutate: updateLabRequest, loading: completing } = useUpdateLabRequest();
+    const labRequest = useLabRequestsByPatient(patientId)
 
     const [form, setForm] = useState({
         results: "",
@@ -159,7 +160,7 @@ export function LabResultUploadForm({
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Test Information</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <InfoItem label="Test Type" value={testType} />
+                    <InfoItem label="Test Type" value={labRequest?.data!} />
                     <InfoItem label="Priority"
                         value={
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${priorityCfg.bg} ${priorityCfg.color}`}>
