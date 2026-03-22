@@ -13,7 +13,7 @@ import { useAuth } from "@/context/auth-provider";
 import ConsultationForm from "./consultation-form";
 import { useConsultationContext } from "@/context/consultation/consultation";
 import { usePatientContext } from "@/context/patients/patient-context";
-import { Patient, PatientStatus } from "@/context/patients/types";
+import {  PatientStatus } from "@/context/patients/types";
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { useQuery } from "@tanstack/react-query";
 import { Staff } from "@/actions/staff/types";
@@ -21,6 +21,7 @@ import { LabResultUploadForm } from "../lab-tech/lab-result-upload-form";
 import VitalsCheckinAdvancedComponent from "../nurse/VitalsSuite";
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
 import LabTab from "../lab-tech/components/lab-tab";
+import { Patient } from "@/types/models";
 
 const TAB_CONFIG = [
     {

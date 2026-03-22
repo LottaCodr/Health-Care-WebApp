@@ -4,7 +4,7 @@ import React, { useState, useMemo, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import SearchInput from './search-input';
 import PatientsTable from './table';
-import { Patient, SortConfig } from '@/context/patients/types';
+import {  SortConfig } from '@/context/patients/types';
 import { Button } from '@/components/ui/button';
 import {
     RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-provider';
 import { getAllPatients } from '@/actions/front-desk/get.patients';
+import { Patient } from '@/types/models';
 
 interface PatientProps {
     thePatients: Patient[];

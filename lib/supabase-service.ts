@@ -16,9 +16,10 @@ import {
     PatientStatus,
     UserRole,
     ConsultationInput,
+    Patient,
 } from "@/types/models";
 import { PostgrestResponse } from "@supabase/supabase-js";
-import { Patient } from "@/context/patients/types";
+// import { Patient } from "@/context/patients/types";
 
 /**
  * Helper to handle Supabase responses and errors

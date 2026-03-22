@@ -3,11 +3,12 @@
 import React from "react";
 import { useLabRequestsByPatient } from "@/hooks/use-emr";
 import { LabResultUploadForm } from "@/components/lab-tech/lab-result-upload-form";
-import { Patient } from "@/context/patients/types";
+// import { Patient } from "@/context/patients/types";
 import {
     FlaskConical, ClipboardList, CheckCircle2,
     Clock, Loader2, AlertTriangle,
 } from "lucide-react";
+import { Patient } from "@/types/models";
 
 // ─── Priority badge ───────────────────────────────────────────────────────────
 
