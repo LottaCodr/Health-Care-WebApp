@@ -59,7 +59,7 @@ export default function RecentPatients() {
                                 (patient.name?.[0] || "") + (patient.name?.[0] || "");
                             return (
                                 <li
-                                    key={patient.$id}
+                                    key={patient.id}
                                     className="flex items-center justify-between rounded px-3 py-2 border-l-4 border-gray-700"
                                 >
                                     <div className="flex items-center gap-3">

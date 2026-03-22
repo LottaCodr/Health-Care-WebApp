@@ -1,4 +1,4 @@
-import PatientQueueComponent from '@/components/pharmacy/component/patient-queue'
+import PatientQueueComponent from '@/components/pharmacist/patient-queue'
 import React from 'react'
 
 

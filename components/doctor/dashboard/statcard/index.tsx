@@ -1,15 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MdLocalHospital, MdPeople, MdExitToApp, MdAssignment } from 'react-icons/md';
 import StatCard from './stat-card';
-
-/**
- * Statistics Cards Section Component
- * 
- * Displays key hospital metrics in a grid layout with static data.
- * Shows admitted patients, lab reports, waiting patients, and discharged patients.
- */
+import { getAllPatients } from '@/actions/front-desk/patients';
 
 interface StatCardStyle {
     border: string;
@@ -26,44 +20,60 @@ interface StatCardData {
     comparison: string;
 }
 
-export default function StatCardsSection() {
-    // Static data for hospital statistics
-    const statistics = {
-        admittedPatients: 20,
-        labReports: 8,
-        waitingPatients: 12,
-        dischargedPatients: 35,
-    };
+interface Stats {
+    admitted: number;
+    labReports: number;
+    waiting: number;
+    discharged: number;
+}
 
-    // Card styling configuration
+export default function StatCardsSection() {
+    const [stats, setStats] = useState<Stats>({
+        admitted: 0,
+        labReports: 0,
+        waiting: 0,
+        discharged: 0,
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadStats() {
+            try {
+                const patients = await getAllPatients();
+                // PatientStatus in Supabase uses kebab-case values
+                setStats({
+                    admitted: patients.filter((p) => {
+                        const s = p.status as string;
+                        return (
+                            s === 'awaiting-consultation' ||
+                            s === 'under-consultation' ||
+                            s === 'sent-to-nurse' ||
+                            s === 'sent-to-lab' ||
+                            s === 'sent-to-pharmacy' ||
+                            s === 'admitted' ||
+                            s === 'under-observation'
+                        );
+                    }).length,
+                    labReports: patients.filter((p) => (p.status as string) === 'sent-to-lab').length,
+                    waiting: patients.filter((p) => (p.status as string) === 'awaiting-consultation').length,
+                    discharged: patients.filter((p) => (p.status as string) === 'discharged').length,
+                });
+            } catch (err) {
+                console.error('Failed to load patient stats:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadStats();
+    }, []);
+
     const cardStyles: StatCardStyle[] = [
-        {
-            border: "border-primary",
-            bg: "bg-white dark:bg-red-900/30",
-            ring: "focus-visible:ring-primary",
-            iconBg: "bg-red-100",
-        },
-        {
-            border: "border-primary",
-            bg: "bg-white dark:bg-red-900/20",
-            ring: "focus-visible:ring-primary",
-            iconBg: "bg-red-100",
-        },
-        {
-            border: "border-primary",
-            bg: "bg-white dark:bg-primary/10",
-            ring: "focus-visible:ring-primary",
-            iconBg: "bg-red-100",
-        },
-        {
-            border: "border-primary",
-            bg: "bg-white dark:bg-primary/10",
-            ring: "focus-visible:ring-primary",
-            iconBg: "bg-red-100",
-        },
+        { border: 'border-primary', bg: 'bg-white dark:bg-red-900/30', ring: 'focus-visible:ring-primary', iconBg: 'bg-red-100' },
+        { border: 'border-primary', bg: 'bg-white dark:bg-red-900/20', ring: 'focus-visible:ring-primary', iconBg: 'bg-red-100' },
+        { border: 'border-primary', bg: 'bg-white dark:bg-primary/10', ring: 'focus-visible:ring-primary', iconBg: 'bg-red-100' },
+        { border: 'border-primary', bg: 'bg-white dark:bg-primary/10', ring: 'focus-visible:ring-primary', iconBg: 'bg-red-100' },
     ];
 
-    // Statistics cards data
     const statCards: StatCardData[] = [
         {
             type: 'admitted',
@@ -73,8 +83,8 @@ export default function StatCardsSection() {
                 </span>
             ),
             label: 'Admitted Patients',
-            count: statistics.admittedPatients,
-            comparison: 'Currently receiving care',
+            count: stats.admitted,
+            comparison: loading ? 'Loading...' : 'Currently active in care',
         },
         {
             type: 'staff',
@@ -83,11 +93,13 @@ export default function StatCardsSection() {
                     <MdAssignment className="text-2xl text-primary" aria-hidden="true" />
                 </span>
             ),
-            label: 'Lab Reports',
-            count: statistics.labReports,
-            comparison: statistics.labReports > 0
-                ? 'Lab results awaiting review'
-                : 'No lab results available',
+            label: 'Awaiting Lab Results',
+            count: stats.labReports,
+            comparison: loading
+                ? 'Loading...'
+                : stats.labReports > 0
+                    ? 'Lab results awaiting review'
+                    : 'No pending lab requests',
         },
         {
             type: 'waiting',
@@ -96,9 +108,9 @@ export default function StatCardsSection() {
                     <MdPeople className="text-2xl text-primary" aria-hidden="true" />
                 </span>
             ),
-            label: 'Waiting Patients',
-            count: statistics.waitingPatients,
-            comparison: 'Patients requiring attention',
+            label: 'Waiting for Consultation',
+            count: stats.waiting,
+            comparison: loading ? 'Loading...' : 'Patients in queue',
         },
         {
             type: 'discharged',
@@ -108,8 +120,8 @@ export default function StatCardsSection() {
                 </span>
             ),
             label: 'Discharged Patients',
-            count: statistics.dischargedPatients,
-            comparison: 'Successfully treated this week',
+            count: stats.discharged,
+            comparison: loading ? 'Loading...' : 'Successfully treated',
         },
     ];
 

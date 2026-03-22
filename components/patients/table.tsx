@@ -4,12 +4,13 @@ import React from 'react';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
 import { Patient, PatientStatus } from '@/context/patients/types';
-import { Spinner } from '@/components/ui/spinner';
 import { calculateAge, formatDate } from '@/lib/utils';
-import { FaUserMd, FaHeartbeat, FaNotesMedical, FaPills, FaExclamationCircle, FaUserNurse, FaUser } from 'react-icons/fa';
-import { MdOutlineMedication, MdWarning } from 'react-icons/md';
 import { useAuth } from '@/context/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+    User, Droplets, AlertTriangle, Pill,
+    Calendar, ChevronRight, HeartPulse,
+} from 'lucide-react';
 
 interface PatientsTableProps {
     patients: Patient[];
@@ -17,249 +18,219 @@ interface PatientsTableProps {
     currentPage: number;
 }
 
-const statusColorMap: Record<PatientStatus, string> = {
-    'registered': 'bg-gray-400',
-    'awaiting-consultation': 'bg-yellow-300',
-    'under-consultation': 'bg-purple-500',
-    'sent-to-nurse': 'bg-teal-500',
-    'sent-to-lab': 'bg-indigo-500',
-    'sent-to-pharmacy': 'bg-pink-500',
-    'awaiting-payment': 'bg-orange-500',
-    'admitted': 'bg-blue-600',
-    'under-observation': 'bg-yellow-500',
-    'discharged': 'bg-green-700',
-    'no-status': 'bg-red-500',
+// ─── Status config ────────────────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> = {
+    'registered': { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400' },
+    'awaiting-consultation': { bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-400' },
+    'under-consultation': { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
+    'sent-to-nurse': { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
+    'sent-to-lab': { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+    'sent-to-pharmacy': { bg: 'bg-pink-50', text: 'text-pink-700', dot: 'bg-pink-500' },
+    'awaiting-payment': { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
+    'admitted': { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+    'under-observation': { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' },
+    'discharged': { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+    'no-status': { bg: 'bg-red-50', text: 'text-red-600', dot: 'bg-red-400' },
 };
 
-const genderColorMap: Record<string, string> = {
-    'male': 'text-blue-600',
-    'female': 'text-pink-500',
-    'other': 'text-purple-500',
-};
-
-function StatusBadge({ status }: { status: PatientStatus | string }) {
-    const color = statusColorMap[status as PatientStatus] || 'bg-gray-500';
+function StatusBadge({ status }: { status: string }) {
+    const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG['no-status'];
+    const label = status.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
     return (
-        <span
-            className={clsx(
-                'inline-flex items-center gap-1 rounded-full px-4 py-1 text-base md:text-lg font-bold text-white shadow-sm transition',
-                color
-            )}
-        >
-            <FaExclamationCircle className="text-white/80 text-base md:text-lg" />
-            {typeof status === 'string'
-                ? status.replace(/-/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase())
-                : 'No Status'}
+        <span className={clsx('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold', cfg.bg, cfg.text)}>
+            <span className={clsx('w-1.5 h-1.5 rounded-full shrink-0', cfg.dot)} />
+            {label}
         </span>
     );
 }
 
-// Animation variants
+// ─── Animation variants ───────────────────────────────────────────────────────
+
 const containerVariants = {
     hidden: {},
-    visible: {
-        transition: {
-            staggerChildren: 0.08,
-        }
-    },
+    visible: { transition: { staggerChildren: 0.05 } },
 };
 
 const cardVariants = {
-    hidden: { opacity: 0, y: 24 },
-    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 18 } },
-    exit: { opacity: 0, y: 24, transition: { duration: 0.16 } }
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100, damping: 20 } },
+    exit: { opacity: 0, y: 8, transition: { duration: 0.15 } },
 };
 
-const loadingContainerVariants = {
-    hidden: { opacity: 0, scale: 0.9 },
-    visible: {
-        opacity: 1,
-        scale: 1,
-        transition: {
-            duration: 0.32,
-            when: "beforeChildren",
-            staggerChildren: 0.05
-        }
-    },
-    exit: { opacity: 0, scale: 0.92, transition: { duration: 0.2 } }
+// ─── Role → route map ─────────────────────────────────────────────────────────
+
+const ROLE_ROUTES: Record<string, (id: string) => string> = {
+    Doctor: (id) => `/doctor/patients/${id}`,
+    Nurse: (id) => `/nurse/queue/patient/${id}`,
+    LabTechnician: (id) => `/lab-tech/requests/patient/${id}`,
+    Pharmacist: (id) => `/pharmacist/queue/patient/${id}`,
 };
 
-const spinnerPulse = {
-    animate: {
-        scale: [1, 1.08, 0.98, 1],
-        opacity: [0.7, 1, 0.8, 1],
-        transition: {
-            duration: 1.2,
-            repeat: Infinity,
-            ease: "easeInOut"
-        }
-    }
-};
+// ─── Component ────────────────────────────────────────────────────────────────
 
-// BIGGER TEXTS, MORE RESPONSIVE LAYOUT
 const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) => {
     const router = useRouter();
     const { user } = useAuth();
 
-    const handleClickOnPatient = (userId: string) => {
-        if (user?.role === 'Doctor') {
-            router.push(`/doctor/patients/${userId}`);
-        }
-        if (user?.role === "Nurse") {
-            router.push(`/nurse/queue/patient/${userId}`);
-        }
-        if (user?.role === "Labtech") {
-            router.push(`/labtech/patients/${userId}`);
-        }
-        if (user?.role === 'Pharmacist') {
-            router.push(`/pharmacist/queue/patient/${userId}`);
-        }
+    const handleClick = (id: string) => {
+        const route = user?.role ? ROLE_ROUTES[user.role]?.(id) : null;
+        if (route) router.push(route);
     };
 
-    // Loading State Animation
-    if (patients.length === 0 && isPending) {
+    // ── Loading ──
+    if (isPending && patients.length === 0) {
         return (
-            <AnimatePresence>
-                <motion.div
-                    className="w-full flex justify-center items-center min-h-[300px]"
-                    variants={loadingContainerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    key="loader"
-                >
-                    <motion.div className="flex flex-col gap-6 items-center">
-                        <motion.div variants={spinnerPulse} animate="animate">
-                            <Spinner />
-                        </motion.div>
-                        <motion.span
-                            className="text-2xl md:text-3xl text-blue-700 font-bold"
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0, transition: { delay: 0.2, duration: 0.44 } }}
-                            exit={{ opacity: 0, y: 4, transition: { duration: 0.18 } }}
-                        >
-                            Getting your patients...
-                        </motion.span>
-                    </motion.div>
-                </motion.div>
-            </AnimatePresence>
-        );
-    }
-
-    // Empty State Animation
-    if (patients.length === 0 && !isPending) {
-        return (
-            <AnimatePresence>
-                <motion.div
-                    className="w-full flex justify-center items-center min-h-[300px]"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0, transition: { duration: 0.28 } }}
-                    exit={{ opacity: 0, y: 8, transition: { duration: 0.17 } }}
-                >
-                    <div className="flex flex-col gap-3 items-center">
-                        <MdWarning className="mx-auto text-4xl md:text-5xl text-red-400 mb-2" />
-                        <span className="block text-xl md:text-2xl font-bold">No patients found.</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="rounded-2xl border border-gray-100 bg-gray-50 p-5 animate-pulse space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gray-200" />
+                            <div className="space-y-2 flex-1">
+                                <div className="h-3 bg-gray-200 rounded-full w-3/4" />
+                                <div className="h-2.5 bg-gray-200 rounded-full w-1/2" />
+                            </div>
+                        </div>
+                        <div className="space-y-2 pt-1">
+                            <div className="h-2.5 bg-gray-200 rounded-full w-full" />
+                            <div className="h-2.5 bg-gray-200 rounded-full w-5/6" />
+                            <div className="h-2.5 bg-gray-200 rounded-full w-4/6" />
+                        </div>
                     </div>
-                </motion.div>
-            </AnimatePresence>
+                ))}
+            </div>
         );
     }
 
-    // The patient grid with entry/exit/transition animations
+    // ── Grid ──
     return (
         <motion.div
-            className={clsx(
-                // Responsive: 1 col on xs, 2 col sm, 3 col md, 4 col lg, 5 col xl+
-                "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-6 md:gap-8 py-4 w-full px-2 md:px-0"
-            )}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
         >
             <AnimatePresence>
-                {patients.map((patient) => (
-                    <motion.div
-                        key={patient.id}
-                        tabIndex={0}
-                        role="button"
-                        aria-label={`View details for patient ${patient.name}`}
-                        onClick={() => handleClickOnPatient(patient?.id!)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                handleClickOnPatient(patient?.id!);
-                            }
-                        }}
-                        className={clsx(
-                            "group relative flex flex-col rounded-2xl border hover:border-primary shadow-sm bg-white dark:bg-muted/60 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8 cursor-pointer hover:shadow-lg outline-none transition ring-blue-400 focus:ring-2",
-                            "min-h-[222px] sm:min-h-[212px] md:min-h-[220px]"
-                        )}
-                        style={{}}
-                        variants={cardVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        layout
-                        whileHover={{
-                            scale: 1.03,
-                            boxShadow: '0 6px 32px 5px rgba(60,72,175,0.10)'
-                        }}
-                        whileTap={{ scale: 0.97 }}
-                    >
-                        <div className="flex items-center gap-4 w-full">
-                            <div className="rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center h-16 w-16 md:h-20 md:w-20">
-                                {patient.gender?.toLowerCase() === 'female' ? (
-                                    <FaUser className="text-pink-600 text-3xl md:text-4xl" />
-                                ) : (
-                                    <FaUser className="text-blue-700 text-3xl md:text-4xl" />
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="font-bold text-lg md:text-2xl text-gray-900 dark:text-white truncate max-w-[180px] md:max-w-[220px]" title={patient?.name ?? 'N/A'}>
-                                    {patient?.name ?? <span className="italic text-gray-400">N/A</span>}
-                                </div>
-                                <div className="flex flex-wrap gap-3 items-center mt-2">
-                                    <span className={clsx(
-                                        "flex items-center gap-1 font-semibold text-base md:text-lg",
-                                        genderColorMap[(patient.gender || "").toLowerCase()] || 'text-gray-400'
+                {patients.map((patient) => {
+                    const patientId = patient.id!;
+                    const gender = (patient.gender ?? '').toLowerCase();
+                    const isFemale = gender === 'female';
+
+                    return (
+                        <motion.div
+                            key={patientId}
+                            variants={cardVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            layout
+                            tabIndex={0}
+                            role="button"
+                            aria-label={`View details for ${patient.name}`}
+                            onClick={() => handleClick(patientId)}
+                            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClick(patientId)}
+                            whileHover={{ y: -2 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="group relative flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all duration-150 overflow-hidden"
+                        >
+                            {/* Coloured top strip based on gender */}
+                            <div className={clsx(
+                                'h-1 w-full',
+                                isFemale ? 'bg-pink-400' : 'bg-blue-500'
+                            )} />
+
+                            <div className="p-5 flex flex-col gap-4 flex-1">
+
+                                {/* ── Top row: avatar + name + status ── */}
+                                <div className="flex items-start gap-3">
+                                    {/* Avatar */}
+                                    <div className={clsx(
+                                        'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                                        isFemale ? 'bg-pink-50' : 'bg-blue-50'
                                     )}>
-                                        <FaHeartbeat className="text-xl md:text-2xl" /> {patient.gender ?? <span className="italic text-gray-400">N/A</span>}
-                                    </span>
-                                    {patient?.birth_date && (
-                                        <span className="text-gray-700 dark:text-gray-300 font-semibold text-base md:text-lg ml-3">
-                                            {calculateAge(patient.birth_date)} yrs
+                                        <User size={18} className={isFemale ? 'text-pink-500' : 'text-blue-600'} />
+                                    </div>
+
+                                    {/* Name + meta */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-sm text-gray-900 truncate leading-tight" title={patient.name ?? ''}>
+                                            {patient.name ?? <span className="italic text-gray-400">Unknown</span>}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                            {patient.gender && (
+                                                <span className={clsx(
+                                                    'text-xs font-semibold',
+                                                    isFemale ? 'text-pink-500' : 'text-blue-500'
+                                                )}>
+                                                    {patient.gender}
+                                                </span>
+                                            )}
+                                            {patient.birth_date && (
+                                                <span className="text-xs text-gray-400 font-medium">
+                                                    {calculateAge(patient.birth_date)} yrs
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Chevron */}
+                                    <ChevronRight
+                                        size={15}
+                                        className="text-gray-200 group-hover:text-blue-400 transition-colors shrink-0 mt-0.5"
+                                    />
+                                </div>
+
+                                {/* ── Divider ── */}
+                                <div className="border-t border-gray-50" />
+
+                                {/* ── Info rows ── */}
+                                <div className="space-y-2.5">
+                                    <InfoRow icon={<Calendar size={13} className="text-gray-400" />}>
+                                        {patient.created_at
+                                            ? formatDate(patient.created_at)
+                                            : <span className="italic text-gray-300">No date</span>}
+                                    </InfoRow>
+                                    <InfoRow icon={<Droplets size={13} className="text-red-400" />} label="Blood">
+                                        {patient.bloodGroup
+                                            ?? <span className="italic text-gray-300">N/A</span>}
+                                    </InfoRow>
+                                    <InfoRow icon={<Pill size={13} className="text-pink-400" />} label="Allergies">
+                                        <span className="truncate max-w-[140px] block" title={patient.allergies ?? ''}>
+                                            {patient.allergies
+                                                ?? <span className="italic text-gray-300">None listed</span>}
                                         </span>
-                                    )}
+                                    </InfoRow>
+                                </div>
+
+                                {/* ── Status badge ── */}
+                                <div className="mt-auto pt-1">
+                                    <StatusBadge status={patient.status ?? 'no-status'} />
                                 </div>
                             </div>
-                        </div>
-                        <div className="flex flex-col gap-3 mt-8 md:mt-10">
-                            <div className="flex items-center gap-3 text-gray-700 dark:text-gray-200 text-base md:text-lg font-semibold">
-                                <FaNotesMedical className="text-green-600 text-lg md:text-xl" />
-                                <span>
-                                    {patient?.created_at ? formatDate(patient.created_at) : <span className="italic text-gray-400">N/A</span>}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3 text-base md:text-lg font-semibold">
-                                <MdOutlineMedication className="text-purple-600 text-lg md:text-xl" />
-                                <span className="truncate max-w-[120px] md:max-w-[180px]" title={patient.longTermMedication ?? 'N/A'}>
-                                    {patient.bloodGroup ?? <span className="italic text-gray-400">N/A</span>}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3 text-base md:text-lg font-semibold">
-                                <FaPills className="text-pink-500 text-lg md:text-xl" />
-                                <span className="truncate max-w-[120px] md:max-w-[180px]" title={patient.allergies ?? 'N/A'}>
-                                    {patient.allergies ?? <span className="italic text-gray-400">N/A</span>}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="absolute top-4 right-4 md:top-6 md:right-6">
-                            <StatusBadge status={patient.status} />
-                        </div>
-                    </motion.div>
-                ))}
+                        </motion.div>
+                    );
+                })}
             </AnimatePresence>
         </motion.div>
     );
 };
+
+// ─── Info row ─────────────────────────────────────────────────────────────────
+
+function InfoRow({
+    icon, label, children,
+}: {
+    icon: React.ReactNode;
+    label?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="flex items-center gap-2 text-xs text-gray-600">
+            <span className="shrink-0">{icon}</span>
+            {label && <span className="text-gray-400 font-medium shrink-0">{label}:</span>}
+            <span className="font-medium">{children}</span>
+        </div>
+    );
+}
 
 export default PatientsTable;

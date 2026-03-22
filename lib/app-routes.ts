@@ -14,42 +14,41 @@ export const APP_ROUTES = {
   // Front Desk Routes
   FRONT_DESK: {
     DASHBOARD: "/front-desk/dashboard",
-    PATIENT_REGISTRATION: "/front-desk/patient-registration",
-    PATIENT_QUEUE: "/front-desk/patient-queue",
-    PAYMENT_CHECKOUT: "/front-desk/payment-checkout",
+    PATIENT_REGISTRATION: "/front-desk/patient/new",
+    PATIENT_QUEUE: "/front-desk/queue",
+    PAYMENT_CHECKOUT: "/front-desk/payment",
   },
 
   // Doctor Routes
   DOCTOR: {
     DASHBOARD: "/doctor/dashboard",
-    PATIENT_CONSULTATION: "/doctor/patient-consultation",
-    DIAGNOSIS: "/doctor/diagnosis",
-    PRESCRIPTION: "/doctor/prescription",
-    LAB_TEST_REQUEST: "/doctor/lab-test-request",
+    PATIENT_CONSULTATION: "/doctor/patients",
+    PATIENT_RECORDS: "/doctor/records",
+    SETTINGS: "/doctor/settings",
   },
 
   // Nurse Routes
   NURSE: {
     DASHBOARD: "/nurse/dashboard",
-    ASSIGNED_PATIENTS: "/nurse/assigned-patients",
-    PATIENT_VITALS: "/nurse/patient-vitals-entry",
-    NURSING_ACTIONS: "/nurse/treatment-nursing-actions",
+    PATIENT_QUEUE: "/nurse/queue",
+    NURSING_TASKS: "/nurse/tasks",
+    SETTINGS: "/nurse/settings",
   },
 
   // Lab Technician Routes
   LAB_TECH: {
     DASHBOARD: "/lab-tech/dashboard",
-    PENDING_TESTS: "/lab-tech/pending-test-requests",
-    TEST_RESULT_UPLOAD: "/lab-tech/test-result-upload",
-    COMPLETED_TESTS: "/lab-tech/completed-tests-history",
+    TEST_REQUESTS: "/lab-tech/requests",
+    LAB_REPORTS: "/lab-tech/reports",
+    SETTINGS: "/lab-tech/settings",
   },
 
   // Pharmacist Routes
-  PHARMACY: {
-    DASHBOARD: "/pharmacy/dashboard",
-    PRESCRIPTION_QUEUE: "/pharmacy/prescription-queue",
-    DRUG_DISPENSING: "/pharmacy/drug-dispensing",
-    DISPENSED_HISTORY: "/pharmacy/dispensed-history",
+  PHARMACIST: {
+    DASHBOARD: "/pharmacist/dashboard",
+    PRESCRIPTION_QUEUE: "/pharmacist/queue",
+    DRUG_INVENTORY: "/pharmacist/inventory",
+    SETTINGS: "/pharmacist/settings",
   },
 
   // Admin Routes
@@ -65,7 +64,7 @@ export const ROLE_PRIMARY_ROUTES: Record<UserRole, string> = {
   [UserRole.Doctor]: APP_ROUTES.DOCTOR.DASHBOARD,
   [UserRole.Nurse]: APP_ROUTES.NURSE.DASHBOARD,
   [UserRole.LabTechnician]: APP_ROUTES.LAB_TECH.DASHBOARD,
-  [UserRole.Pharmacist]: APP_ROUTES.PHARMACY.DASHBOARD,
+  [UserRole.Pharmacist]: APP_ROUTES.PHARMACIST.DASHBOARD,
   [UserRole.Admin]: APP_ROUTES.ADMIN.DASHBOARD,
 };
 
@@ -108,9 +107,9 @@ export const SIDEBAR_MENU: Record<UserRole, SidebarMenuItem[]> = {
       href: APP_ROUTES.DOCTOR.PATIENT_CONSULTATION,
     },
     {
-      title: "My Patients",
+      title: "Records",
       icon: "👥",
-      href: APP_ROUTES.DOCTOR.DASHBOARD,
+      href: APP_ROUTES.DOCTOR.PATIENT_RECORDS,
     },
   ],
 
@@ -122,19 +121,19 @@ export const SIDEBAR_MENU: Record<UserRole, SidebarMenuItem[]> = {
       active: true,
     },
     {
-      title: "Assigned Patients",
+      title: "Patient Queue",
       icon: "👥",
-      href: APP_ROUTES.NURSE.ASSIGNED_PATIENTS,
+      href: APP_ROUTES.NURSE.PATIENT_QUEUE,
     },
     {
-      title: "Vitals Entry",
+      title: "Nursing Tasks",
       icon: "❤️",
-      href: APP_ROUTES.NURSE.PATIENT_VITALS,
+      href: APP_ROUTES.NURSE.NURSING_TASKS,
     },
     {
-      title: "Nursing Actions",
-      icon: "⚕️",
-      href: APP_ROUTES.NURSE.NURSING_ACTIONS,
+      title: "Settings",
+      icon: "⚙️",
+      href: APP_ROUTES.NURSE.SETTINGS,
     },
   ],
 
@@ -146,43 +145,37 @@ export const SIDEBAR_MENU: Record<UserRole, SidebarMenuItem[]> = {
       active: true,
     },
     {
-      title: "Pending Tests",
+      title: "Test Requests",
       icon: "📝",
-      href: APP_ROUTES.LAB_TECH.PENDING_TESTS,
+      href: APP_ROUTES.LAB_TECH.TEST_REQUESTS,
     },
     {
-      title: "Upload Results",
+      title: "Lab Reports",
       icon: "📤",
-      href: APP_ROUTES.LAB_TECH.TEST_RESULT_UPLOAD,
+      href: APP_ROUTES.LAB_TECH.LAB_REPORTS,
     },
     {
-      title: "History",
-      icon: "📊",
-      href: APP_ROUTES.LAB_TECH.COMPLETED_TESTS,
+      title: "Settings",
+      icon: "⚙️",
+      href: APP_ROUTES.LAB_TECH.SETTINGS,
     },
   ],
 
   [UserRole.Pharmacist]: [
     {
-      title: "Dashboard",
-      icon: "💊",
-      href: APP_ROUTES.PHARMACY.DASHBOARD,
-      active: true,
-    },
-    {
       title: "Prescription Queue",
       icon: "📋",
-      href: APP_ROUTES.PHARMACY.PRESCRIPTION_QUEUE,
+      href: APP_ROUTES.PHARMACIST.PRESCRIPTION_QUEUE,
     },
     {
-      title: "Drug Dispensing",
+      title: "Inventory",
       icon: "💉",
-      href: APP_ROUTES.PHARMACY.DRUG_DISPENSING,
+      href: APP_ROUTES.PHARMACIST.DRUG_INVENTORY,
     },
     {
-      title: "Dispensed History",
-      icon: "📊",
-      href: APP_ROUTES.PHARMACY.DISPENSED_HISTORY,
+      title: "Settings",
+      icon: "⚙️",
+      href: APP_ROUTES.PHARMACIST.SETTINGS,
     },
   ],
 
@@ -212,7 +205,7 @@ export const ROUTE_ACCESS_CONTROL: Record<string, UserRole[]> = {
   "/doctor": [UserRole.Doctor, UserRole.Admin],
   "/nurse": [UserRole.Nurse, UserRole.Admin],
   "/lab-tech": [UserRole.LabTechnician, UserRole.Admin],
-  "/pharmacy": [UserRole.Pharmacist, UserRole.Admin],
+  "/pharmacist": [UserRole.Pharmacist, UserRole.Admin],
   "/admin": [UserRole.Admin],
 };
 

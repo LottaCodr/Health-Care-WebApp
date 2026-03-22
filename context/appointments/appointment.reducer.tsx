@@ -74,7 +74,7 @@ export const AppointmentProvider = ({ children }: { children: React.ReactNode })
                 id: a.id,
                 patientId: a.patient?.$id || '',
                 doctor: a.patient?.primaryPhysician || '',
-                doctorId: a.patient?.$id ?? "",
+                doctorId: a.patient?.$izd ?? "",
                 doctorName: a.patient?.primaryPhysician || '',
                 patientName: a.patient?.name || "Unknown Patient",
                 patient: a.patient,

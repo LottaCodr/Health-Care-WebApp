@@ -5,7 +5,7 @@
 
 "use client";
 
-import { logAction } from "@/lib/appwrite-service";
+import { logAction } from "@/lib/supabase-service";
 import { useCallback } from "react";
 
 export interface AuditableAction {

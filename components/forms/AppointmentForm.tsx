@@ -15,8 +15,9 @@ import { SelectItem } from "../ui/select";
 import { Doctors } from "@/constants";
 import { createAppointment, updateAppointment } from "@/actions/appointments/appointment.action";
 import { getAppointmentSchema } from "@/lib/validation";
-import { Appointment } from "@/types/appwrite.types";
 import { FormFieldType } from "./PatientForm";
+import { Appointment } from "@/actions/appointments/types";
+import { Status } from "@/types";
 
 interface AppointmentFormProps {
   userId: string;
@@ -42,11 +43,11 @@ const AppointmentForm = ({
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
-      primaryPhysician: appointment?.primaryPhysician || "",
-      schedule: appointment?.schedule ? new Date(appointment.schedule) : new Date(),
+      primaryPhysician: appointment?.doctor || "",
+      schedule: appointment?.date ? new Date(appointment.date) : new Date(),
       reason: appointment?.reason || "",
-      note: appointment?.note || "",
-      cancellationReason: appointment?.cancellationReason || "",
+      note: appointment?.notes || "",
+      cancellationReason: appointment?.reason || "",
     },
   });
 
@@ -64,12 +65,12 @@ const AppointmentForm = ({
     try {
       if (type === "create") {
         const newAppointment = await createAppointment({
-          userId,
+          
           patient: patientId,
-          primaryPhysician: values.primaryPhysician,
-          schedule: new Date(values.schedule),
+          doctorName: values.primaryPhysician,
+          date: new Date(values.schedule).toString(),
           reason: values.reason!,
-          note: values.note,
+          notes: values.note,
           status,
           cancellationReason: values.cancellationReason,
         });
@@ -78,10 +79,10 @@ const AppointmentForm = ({
           form.reset();
           router.push(`/patients/${userId}/new-appointment/success?appointmentId=${newAppointment.$id}`);
         }
-      } else if (appointment?.$id) {
-        await updateAppointment({
+      } else if (appointment?.id) {
+        await updateAppointment( {
           userId,
-          appointmentId: appointment.$id,
+          appointmentId: appointment.id,
           type,
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           appointment: {
@@ -90,7 +91,7 @@ const AppointmentForm = ({
             status,
             cancellationReason: values.cancellationReason,
           },
-        });
+        }, );
 
         form.reset();
         setOpen(false);

@@ -1,64 +1,264 @@
-import React from 'react';
-import StatCardsSection from './dashboard/statcard';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import PendingTasks from './components/tasks';
-import RecentPrescriptions from './components/recent-prescription';
-import RecentPatients from './components/recent-patients';
+import React, { useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/context/auth-provider";
+import { useRoleProtection } from "@/lib/role-utils";
+import { UserRole, PatientStatus } from "@/types/models";
+import { usePatientsByStatus, useConsultationsByDoctor } from "@/hooks/use-emr";
+import { PatientInfoCard, ConsultationCard, LoadingSkeleton, EmptyState, ErrorAlert } from "@/components/emr-ui";
+import {
+    Clock, ClipboardList, CheckCircle2, Users,
+    ChevronRight, Stethoscope, ArrowRight, Activity,
+} from "lucide-react";
 
+// ─── Stat card ────────────────────────────────────────────────────────────────
 
+function StatCard({
+    label, value, icon: Icon, color, bg, border,
+}: {
+    label: string;
+    value: number;
+    icon: React.ElementType;
+    color: string;
+    bg: string;
+    border: string;
+}) {
+    return (
+        <div className={`bg-white rounded-2xl border ${border} px-5 py-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow`}>
+            <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                <Icon size={19} className={color} />
+            </div>
+            <div>
+                <p className="text-2xl font-extrabold text-gray-900 leading-none">{value}</p>
+                <p className="text-xs text-gray-400 font-medium mt-1 leading-tight">{label}</p>
+            </div>
+        </div>
+    );
+}
+
+// ─── Tab navigation ───────────────────────────────────────────────────────────
+
+function TabNavigation({
+    tabs, activeTab, onChange,
+}: {
+    tabs: { id: string; label: string; badge?: number }[];
+    activeTab: string;
+    onChange: (tab: string) => void;
+}) {
+    return (
+        <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide -mx-6 px-6">
+            {tabs.map((tab) => (
+                <button
+                    key={tab.id}
+                    onClick={() => onChange(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-all duration-150
+                        ${activeTab === tab.id
+                            ? "border-blue-600 text-blue-700"
+                            : "border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-200"
+                        }`}
+                >
+                    {tab.label}
+                    {tab.badge !== undefined && tab.badge > 0 && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full
+                            ${activeTab === tab.id
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-gray-100 text-gray-500"
+                            }`}>
+                            {tab.badge}
+                        </span>
+                    )}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+// ─── Queue patient row ────────────────────────────────────────────────────────
+
+function QueueRow({
+    patient, index,
+}: {
+    patient: any;
+    index: number;
+}) {
+    return (
+        <div className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-100 hover:shadow-sm transition-all group">
+            {/* Position number */}
+            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black text-sm shrink-0">
+                {index + 1}
+            </div>
+
+            {/* Patient info */}
+            <div className="flex-1 min-w-0">
+                <PatientInfoCard patient={patient} />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 shrink-0">
+                <Link
+                    href={`/patient-timeline/${patient.id || patient.$id}`}
+                    className="px-3 py-2 text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:text-gray-700 transition-colors"
+                >
+                    Timeline
+                </Link>
+                <Link
+                    href={`/doctor/consultation/${patient.id || patient.$id}`}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm shadow-blue-200"
+                >
+                    <Stethoscope size={13} />
+                    Consult
+                    <ChevronRight size={13} />
+                </Link>
+            </div>
+        </div>
+    );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 const DashBoardComponent = () => {
+    const { user } = useAuth();
+    const { authorized, loading: protectionLoading } = useRoleProtection([UserRole.Doctor, UserRole.Admin]);
+    const [activeTab, setActiveTab] = useState("queue");
+    const [dismissedErrors, setDismissedErrors] = useState<string[]>([]);
+
+    const awaitingConsultationPatients = usePatientsByStatus(PatientStatus.AwaitingConsultation);
+    const myConsultations = useConsultationsByDoctor(user?.$id || "");
+
+    if (protectionLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[40vh]">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+                    <Activity size={20} className="text-blue-600 animate-pulse" />
+                </div>
+            </div>
+        );
+    }
+
+    if (!authorized) return null;
+
+    const completedCount  = myConsultations.data?.filter((c) => c.status === "Completed").length ?? 0;
+    const inProgressCount = myConsultations.data?.filter((c) => c.status === "InProgress").length ?? 0;
+    const queueCount      = awaitingConsultationPatients.data?.length ?? 0;
+    const totalCount      = myConsultations.data?.length ?? 0;
+
+    const stats = [
+        { label: "Awaiting Consultation", value: queueCount,      icon: Clock,         color: "text-amber-600",  bg: "bg-amber-50",   border: "border-amber-100"  },
+        { label: "In Progress",           value: inProgressCount, icon: Stethoscope,   color: "text-blue-600",   bg: "bg-blue-50",    border: "border-blue-100"   },
+        { label: "Completed Today",       value: completedCount,  icon: CheckCircle2,  color: "text-green-600",  bg: "bg-green-50",   border: "border-green-100"  },
+        { label: "Total Patients Seen",   value: totalCount,      icon: Users,         color: "text-violet-600", bg: "bg-violet-50",  border: "border-violet-100" },
+    ];
+
+    const tabs = [
+        { id: "queue",            label: "Consultation Queue", badge: queueCount      },
+        { id: "my-consultations", label: "In Progress",        badge: inProgressCount },
+        { id: "completed",        label: "Completed",          badge: completedCount  },
+    ];
+
     return (
-        <main className="">
+        <div className="space-y-6">
 
+            {/* ── Stats row ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {stats.map((s) => (
+                    <StatCard key={s.label} {...s} />
+                ))}
+            </div>
 
+            {/* ── Main content card ── */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
 
-            <StatCardsSection />
-
-           
-
-            <section className="mt-8">
-                <Tabs defaultValue="patients" className="w-full">
-                    <TabsList className="bg-transparent border-gray-700 rounded-none px-0">
-
-                        <TabsTrigger
-                            value="patients"
-                            className="px-4 py-2 text-sm font-medium data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary border-b-2 border-transparent text-gray-300"
-                        >
-                            Patients
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="tasks"
-                            className="px-4 py-2 text-sm font-medium data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary border-b-2 border-transparent text-gray-300"
-                        >
-                            Tasks
-                        </TabsTrigger>
-
-                    </TabsList>
-                    {/* Example Tab Content */}
-                    <TabsContent value="schedule">
-                        {/* Replace with actual content */}
-                        <div className="py-4 text-gray-400">Schedule content goes here.</div>
-                    </TabsContent>
-                    <TabsContent value="patients">
-                        {/* <div className="py-4 text-gray-400">Patients content goes here.</div> */}
-
-                        <RecentPatients />
-                    </TabsContent>
-                    <TabsContent value="tasks">
-                        <div className="py-4  w-full items-start">
-
-                            < PendingTasks />
-                            <RecentPrescriptions />
-
+                {/* Card header */}
+                <div className="flex items-center justify-between px-6 pt-6 pb-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                            <ClipboardList size={16} className="text-blue-600" />
                         </div>
-                    </TabsContent>
+                        <h2 className="text-base font-bold text-gray-800">Patient Management</h2>
+                    </div>
+                </div>
 
-                </Tabs>
-            </section>
+                <div className="px-6 pt-4 pb-6">
+                    <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
+                    <div className="mt-5 space-y-3">
 
-        </main>
+                        {/* ── Queue tab ── */}
+                        {activeTab === "queue" && (
+                            <>
+                                {awaitingConsultationPatients.loading && <LoadingSkeleton rows={4} />}
+                                {awaitingConsultationPatients.error && !dismissedErrors.includes("queue") && (
+                                    <ErrorAlert
+                                        error={awaitingConsultationPatients.error}
+                                        onDismiss={() => setDismissedErrors((p) => [...p, "queue"])}
+                                    />
+                                )}
+                                {!awaitingConsultationPatients.loading && queueCount === 0 && (
+                                    <EmptyState
+                                        title="Queue is clear"
+                                        description="No patients are currently waiting for consultation"
+                                        icon="✓"
+                                    />
+                                )}
+                                {awaitingConsultationPatients.data?.map((patient, i) => (
+                                    <QueueRow key={patient.$id} patient={patient} index={i} />
+                                ))}
+                            </>
+                        )}
+
+                        {/* ── In progress tab ── */}
+                        {activeTab === "my-consultations" && (
+                            <>
+                                {myConsultations.loading && <LoadingSkeleton rows={4} />}
+                                {myConsultations.error && !dismissedErrors.includes("my-consultations") && (
+                                    <ErrorAlert
+                                        error={myConsultations.error}
+                                        onDismiss={() => setDismissedErrors((p) => [...p, "my-consultations"])}
+                                    />
+                                )}
+                                {!myConsultations.loading && inProgressCount === 0 && (
+                                    <EmptyState
+                                        title="No active consultations"
+                                        description="Consultations you start will appear here"
+                                        icon="📋"
+                                    />
+                                )}
+                                <div className="space-y-3">
+                                    {myConsultations.data
+                                        ?.filter((c) => c.status !== "Completed")
+                                        .map((c) => <ConsultationCard key={c.$id} consultation={c} />)}
+                                </div>
+                            </>
+                        )}
+
+                        {/* ── Completed tab ── */}
+                        {activeTab === "completed" && (
+                            <>
+                                {myConsultations.loading && <LoadingSkeleton rows={4} />}
+                                {myConsultations.error && !dismissedErrors.includes("completed") && (
+                                    <ErrorAlert
+                                        error={myConsultations.error}
+                                        onDismiss={() => setDismissedErrors((p) => [...p, "completed"])}
+                                    />
+                                )}
+                                {!myConsultations.loading && completedCount === 0 && (
+                                    <EmptyState
+                                        title="No completed consultations"
+                                        description="Completed consultations will appear here"
+                                        icon="✓"
+                                    />
+                                )}
+                                <div className="space-y-3">
+                                    {myConsultations.data
+                                        ?.filter((c) => c.status === "Completed")
+                                        .map((c) => <ConsultationCard key={c.$id} consultation={c} />)}
+                                </div>
+                            </>
+                        )}
+
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };
 

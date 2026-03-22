@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const r = String(role).toLowerCase();
         if (r.includes("front")) return "FrontDesk";
         if (r.includes("doc")) return "Doctor";
-        if (r.includes("nurs")) return "Nurse";
+        if (r.includes("nurse")) return "Nurse";
         if (r.includes("lab")) return "LabTechnician";
         if (r.includes("pharm")) return "Pharmacist";
         return role;
@@ -99,10 +99,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data?.user) {
-                const staff = await fetchStaffProfile(data.user.id);
-                const profile = buildProfile(data.user, staff?.profile);
+                const staffResult = await fetchStaffProfile(data.user.id);
+
+                // Ensure we have a valid staff profile with a role before treating
+                // the user as authenticated. This keeps post-login redirects reliable.
+                if (!staffResult.success || !staffResult.profile?.role) {
+                    setUser(null);
+                    setIsLoading(false);
+                    return {
+                        success: false,
+                        message:
+                            staffResult.message ||
+                            "No staff profile or role found. Please contact an administrator.",
+                    };
+                }
+
+                const profile = buildProfile(data.user, staffResult.profile);
                 setUser(profile);
                 setIsLoading(false);
+
+                console.log("staff detail", staffResult, profile);
 
                 return {
                     success: true,

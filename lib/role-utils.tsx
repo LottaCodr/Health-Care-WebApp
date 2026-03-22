@@ -15,7 +15,7 @@ export const ROLE_ROUTES: Record<UserRole, string> = {
     [UserRole.Doctor]: "/doctor/dashboard",
     [UserRole.Nurse]: "/nurse/dashboard",
     [UserRole.LabTechnician]: "/lab-tech/dashboard",
-    [UserRole.Pharmacist]: "/pharmacy/dashboard",
+    [UserRole.Pharmacist]: "/pharmacist/dashboard",
     [UserRole.Admin]: "/admin/dashboard",
 };
 
@@ -25,7 +25,7 @@ export const PROTECTED_ROUTES: Record<string, UserRole[]> = {
     "/doctor": [UserRole.Doctor, UserRole.Admin],
     "/nurse": [UserRole.Nurse, UserRole.Admin],
     "/lab-tech": [UserRole.LabTechnician, UserRole.Admin],
-    "/pharmacy": [UserRole.Pharmacist, UserRole.Admin],
+    "/pharmacist": [UserRole.Pharmacist, UserRole.Admin],
     "/admin": [UserRole.Admin],
 };
 

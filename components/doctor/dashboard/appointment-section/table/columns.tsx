@@ -1,12 +1,12 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Appointment } from "@/types/appwrite.types";
 import StatusBadge from "../../../../StatusBadge";
 import { formatDateTime } from "@/app/lib/utils";
 import { Doctors } from "@/constants";
 import Image from "next/image";
 import AppointmentModal from "../../../../AppointmentModal";
+import { Appointment } from "@/actions/appointments/types";
 
 
 
@@ -34,7 +34,7 @@ export const columns: ColumnDef<Appointment>[] = [
     header: "Schedule",
     cell: ({ row }) => (
       <p className="text-14-regular min-w-[100px]">
-        {formatDateTime(row.original.schedule).dateTime}
+        {formatDateTime(row.original.doctor).dateTime}
       </p>
     )
   },
@@ -42,7 +42,7 @@ export const columns: ColumnDef<Appointment>[] = [
     accessorKey: "primaryPhysician",
     header: "Doctor",
     cell: ({ row }) => {
-      const doctor = Doctors.find((doc) => doc.name === row.original.primaryPhysician)
+      const doctor = Doctors.find((doc) => doc.name === row.original.doctor)
 
       return (
         <div className="flex items-center gap-3">
@@ -70,13 +70,13 @@ export const columns: ColumnDef<Appointment>[] = [
         <div className="flex gap-1">
           <AppointmentModal type='schedule'
             patientId={data.patient.$id}
-            userId={data.userId}
+            userId={data.id}
             appointment={data}
           />
 
           <AppointmentModal type='cancel'
             patientId={data.patient.$id}
-            userId={data.userId}
+            userId={data.id}
             appointment={data}
           />
 

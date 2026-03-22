@@ -1,5 +1,5 @@
 
-import AnalyticsComponent from '@/components/doctor/analytics'
+import AnalyticsComponent from '@/components/analytics'
 import React from 'react'
 
 

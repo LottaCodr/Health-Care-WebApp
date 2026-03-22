@@ -6,8 +6,7 @@
 "use server";
 
 import { UserRole, PatientStatus } from "@/types/models";
-import { databases } from "@/lib/appwrite.config";
-import { Query } from "node-appwrite";
+import { createClient } from "@/utils/supabase/server";
 
 const DB_ID = process.env.NEXT_PUBLIC_DATABASE_ID!;
 
@@ -101,19 +100,16 @@ export async function enforceDocumentAccess(
 
     // Get document to check ownership/relevance
     try {
+        const supabase = await createClient();
         let document: any = null;
 
-        if (collectionName === "patients") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.PATIENTS, documentId);
-        } else if (collectionName === "consultations") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.CONSULTATIONS, documentId);
-        } else if (collectionName === "prescriptions") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.PRESCRIPTIONS, documentId);
-        } else if (collectionName === "lab_requests") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.LAB_REQUESTS, documentId);
-        } else if (collectionName === "nursing_actions") {
-            document = await databases.getDocument(DB_ID, COLLECTIONS.NURSING_ACTIONS, documentId);
-        }
+        const { data, error } = await supabase
+            .from(collectionName)
+            .select()
+            .eq("id", documentId)
+            .single();
+
+        document = data;
 
         if (!document) {
             return { allowed: false, reason: "Document not found" };
@@ -123,20 +119,20 @@ export async function enforceDocumentAccess(
         switch (context.role) {
             case UserRole.Doctor:
                 // Doctors can only access their own consultations and related prescriptions/labs
-                if (collectionName === "consultations" && document.doctorId !== context.userId) {
+                if (collectionName === "consultations" && document.doctor_id !== context.userId) {
                     return { allowed: false, reason: "Can only access own consultations" };
                 }
-                if (collectionName === "prescriptions" && document.doctorId !== context.userId) {
+                if (collectionName === "prescriptions" && document.doctor_id !== context.userId) {
                     return { allowed: false, reason: "Can only access own prescriptions" };
                 }
-                if (collectionName === "lab_requests" && document.doctorId !== context.userId) {
+                if (collectionName === "lab_requests" && document.doctor_id !== context.userId) {
                     return { allowed: false, reason: "Can only access own lab requests" };
                 }
                 break;
 
             case UserRole.Nurse:
                 // Nurses can access patients assigned to them (nursing actions)
-                if (collectionName === "nursing_actions" && document.assignedNurse !== context.userId) {
+                if (collectionName === "nursing_actions" && document.assigned_nurse !== context.userId) {
                     return { allowed: false, reason: "Can only access assigned nursing actions" };
                 }
                 break;
@@ -157,7 +153,7 @@ export async function enforceDocumentAccess(
 
             case UserRole.FrontDesk:
                 // Front desk can only update patient payments
-                if (collectionName === "payments" && document.processedBy !== context.userId) {
+                if (collectionName === "payments" && document.processed_by !== context.userId) {
                     return { allowed: false, reason: "Can only manage own payment records" };
                 }
                 break;
@@ -181,31 +177,31 @@ export function getRowLevelSecurityFilter(context: AccessContext, collectionName
     switch (context.role) {
         case UserRole.Doctor:
             if (collectionName === "consultations") {
-                filters.push(Query.equal("doctorId", context.userId));
+                filters.push({ column: "doctor_id", value: context.userId });
             }
             if (collectionName === "prescriptions") {
-                filters.push(Query.equal("doctorId", context.userId));
+                filters.push({ column: "doctor_id", value: context.userId });
             }
             if (collectionName === "lab_requests") {
-                filters.push(Query.equal("doctorId", context.userId));
+                filters.push({ column: "doctor_id", value: context.userId });
             }
             break;
 
         case UserRole.Nurse:
             if (collectionName === "nursing_actions") {
-                filters.push(Query.equal("assignedNurse", context.userId));
+                filters.push({ column: "assigned_nurse", value: context.userId });
             }
             break;
 
         case UserRole.Pharmacist:
             if (collectionName === "prescriptions") {
-                filters.push(Query.equal("status", "Active"));
+                filters.push({ column: "status", value: "Active" });
             }
             break;
 
         case UserRole.LabTechnician:
             if (collectionName === "lab_requests") {
-                filters.push(Query.equal("status", "Pending"));
+                filters.push({ column: "status", value: "Pending" });
             }
             break;
 

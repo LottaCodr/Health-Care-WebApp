@@ -9,9 +9,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Lock } from "lucide-react";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { account } from "@/lib/appwrite.config";
 import { useState } from "react";
-
+// NEW: Import supabase client
+import supabase from "@/utils/supabase/client";
 
 const schema = z
     .object({
@@ -26,7 +26,8 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-
+// You may have to adjust this function for your authentication setup.
+// This example assumes use of Supabase Auth and email/password login.
 export default function SecuritySettings() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
@@ -43,7 +44,36 @@ export default function SecuritySettings() {
     const onSubmit = async (values: FormData) => {
         setLoading(true);
         try {
-            await account.updatePassword(values.newPassword, values.currentPassword);
+            // REPLACEMENT: Manual "reauth" then update user's password via Supabase
+            // 1. Get session user
+            const {
+                data: { user },
+                error: userError,                       
+            } = await supabase.auth.getUser();
+
+            if (userError || !user?.email) {
+                throw new Error("Could not determine current user.");
+            }
+
+            // 2. Re-authenticate by sign-in with the current password
+            let { error: signInError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: values.currentPassword,
+            });
+
+            if (signInError) {
+                throw new Error("Current password is incorrect.");
+            }
+
+            // 3. Update the password
+            const { error: updateError } = await supabase.auth.updateUser({
+                password: values.newPassword,
+            });
+
+            if (updateError) {
+                throw new Error(updateError.message || "Failed to update password.");
+            }
+
             toast({
                 title: "Password Updated",
                 description: "Your password has been changed successfully.",

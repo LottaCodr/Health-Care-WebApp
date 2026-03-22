@@ -24,9 +24,9 @@ const EmployeeRow = React.memo(
         onView: () => void;
     }) => {
         const formattedDate = useMemo(() => {
-            const date = new Date(employee?.$createdAt);
+            const date = new Date(employee?.created_at);
             return isNaN(date.getTime()) ? "N/A" : format(date, "MMM dd, yyyy");
-        }, [employee?.$createdAt]);
+        }, [employee?.created_at]);
 
         return (
             <tr className="hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group">
@@ -39,12 +39,13 @@ const EmployeeRow = React.memo(
                         {field === "dateOfHire"
                             ? formattedDate
                             : field === "name"
-                                ? employee.full_name
+                                ? employee.name
                                 : field === "position"
                                     ? employee.role
                                     : field === "status"
                                         ? <StatusBadge status={employee?.status || "active"} />
-                                        : (employee as Staff)[field]}
+                                        : ''}
+                                        {/* : (employee as Staff)[field]} */}
                     </td>
                 ))}
                 <td className="px-4 py-3 border-b text-sm text-gray-700 dark:text-gray-200 space-x-2 whitespace-nowrap">
@@ -88,8 +89,8 @@ export default function EmployeesComponent() {
 
     //remove appwrite system fields
     function cleanStaffUpdate(data: Staff): Partial<Staff> {
-        const { full_name, email, phone_number, role, department, status } = data;
-        return { full_name, email, phone_number, role, department, status };
+        const { name, email, phone_number, role, department, status } = data;
+        return { name, email, phone_number, role, department, status };
     }
 
     const departments = useMemo(() => [...new Set(employees.map((e) => e.department))], [employees]);
@@ -97,7 +98,7 @@ export default function EmployeesComponent() {
     const filteredEmployees = useMemo(() => {
         return employees
             .filter((e: Staff) =>
-                e.full_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                e.name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
                 e.email?.toLowerCase().includes(debouncedSearch.toLowerCase())
             )
             .filter((e) => (departmentFilter ? e.department === departmentFilter : true))
