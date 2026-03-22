@@ -78,6 +78,7 @@ export function LabResultUploadForm({
     const { user } = useAuth();
     const { mutate: updateLabRequest, loading: completing } = useUpdateLabRequest();
     const labRequest = useLabRequestsByPatient(patientId)
+    console.log("lab request call:", labRequest)
 
     const [form, setForm] = useState({
         results: "",
@@ -88,7 +89,7 @@ export function LabResultUploadForm({
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const priorityCfg = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.routine;
+    const priorityCfg = PRIORITY_CONFIG[labRequest?.data[0]?.priority ?? ""] ?? PRIORITY_CONFIG.routine;
 
     const update = (field: string, val: string) => {
         setForm((prev) => ({ ...prev, [field]: val }));
@@ -160,7 +161,7 @@ export function LabResultUploadForm({
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Test Information</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <InfoItem label="Test Type" value={labRequest?.data!} />
+                    <InfoItem label="Test Type" value={labRequest?.data[0]?.test_type!} />
                     <InfoItem label="Priority"
                         value={
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${priorityCfg.bg} ${priorityCfg.color}`}>
@@ -170,7 +171,7 @@ export function LabResultUploadForm({
                         }
                     />
                     <InfoItem label="Patient ID" value={<span className="font-mono text-xs">{patientId.slice(-8)}</span>} />
-                    <InfoItem label="Request Date" value={requestDate ? new Date(requestDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
+                    <InfoItem label="Request Date" value={requestDate ? new Date(labRequest?.data[0]?.completed_at!).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
                 </div>
             </div>
 
