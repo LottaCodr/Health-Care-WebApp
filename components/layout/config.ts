@@ -1,97 +1,109 @@
 import { UserRole } from "@/types/models";
 import {
-    MdDashboard,
-    MdPeople,
-    MdFormatListBulleted,
-    MdSettings,
-    MdScience,
-    MdMedicalServices,
-    MdPayments,
-    MdHistory,
-    MdHealthAndSafety
-} from "react-icons/md";
-import {
-    FaUserPlus,
-    FaUserClock,
-    FaUserCheck,
-    FaFlask,
-    FaPills,
-    FaClipboardList
-} from "react-icons/fa";
+    LayoutDashboard,
+    Users,
+    UserPlus,
+    Clock,
+    CreditCard,
+    Stethoscope,
+    ClipboardList,
+    FlaskConical,
+    Microscope,
+    Pill,
+    Package,
+    ShieldCheck,
+    ListChecks,
+    HeartPulse,
+    Settings,
+    UsersRound,
+    ScrollText,
+    LucideIcon,
+} from "lucide-react";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface NavItem {
     title: string;
     url: string;
-    icon: any;
-    badge?: string;
+    icon: LucideIcon;
+    badge?: number;
 }
 
-export interface NavSection {
-    title: string;
-    items: NavItem[];
+export interface NavConfig {
+    main: NavItem[];
+    secondary: NavItem[];
 }
 
-export const NAV_CONFIG: Record<UserRole | string, { main: NavItem[]; secondary: NavItem[] }> = {
+// ─── Nav config ───────────────────────────────────────────────────────────────
+
+export const NAV_CONFIG: Record<string, NavConfig> = {
+
     [UserRole.FrontDesk]: {
         main: [
-            { title: "Dashboard", url: "/front-desk/dashboard", icon: MdDashboard },
-            { title: "Registration", url: "/front-desk/patient/new", icon: FaUserPlus },
-            { title: "All Patients", url: "/front-desk/patient", icon: MdPeople },
-            { title: "Queue Mgmt", url: "/front-desk/queue", icon: FaUserClock },
-            { title: "Payments", url: "/front-desk/payment", icon: MdPayments },
+            { title: "Dashboard", url: "/front-desk/dashboard", icon: LayoutDashboard },
+            { title: "Register", url: "/front-desk/patient/new", icon: UserPlus },
+            { title: "Patients", url: "/front-desk/patient", icon: Users },
+            { title: "Queue", url: "/front-desk/queue", icon: Clock },
+            { title: "Payments", url: "/front-desk/payment", icon: CreditCard },
         ],
         secondary: [
-            { title: "Settings", url: "/front-desk/settings", icon: MdSettings },
-        ]
+            { title: "Settings", url: "/front-desk/settings", icon: Settings },
+        ],
     },
+
     [UserRole.Doctor]: {
         main: [
-            { title: "Dashboard", url: "/doctor/dashboard", icon: MdDashboard },
-            { title: "Consultations", url: "/doctor/patients", icon: MdMedicalServices },
-            { title: "Patient Records", url: "/doctor/records", icon: MdPeople },
+            { title: "Dashboard", url: "/doctor/dashboard", icon: LayoutDashboard },
+            { title: "Patients", url: "/doctor/patients", icon: Stethoscope },
+            { title: "Records", url: "/doctor/health-records", icon: ClipboardList },
         ],
         secondary: [
-            { title: "Settings", url: "/doctor/settings", icon: MdSettings },
-        ]
+            { title: "Settings", url: "/doctor/settings", icon: Settings },
+        ],
     },
+
     [UserRole.Nurse]: {
         main: [
-            { title: "Dashboard", url: "/nurse/dashboard", icon: MdDashboard },
-            { title: "Triaging", url: "/nurse/queue", icon: MdHealthAndSafety },
-            { title: "Nursing Tasks", url: "/nurse/tasks", icon: FaClipboardList },
+            { title: "Dashboard", url: "/nurse/dashboard", icon: LayoutDashboard },
+            { title: "Triaging", url: "/nurse/queue", icon: HeartPulse },
+            { title: "Tasks", url: "/nurse/task", icon: ListChecks },
         ],
         secondary: [
-            { title: "Settings", url: "/nurse/settings", icon: MdSettings },
-        ]
+            { title: "Settings", url: "/nurse/settings", icon: Settings },
+        ],
     },
+
+    // Note: DB uses "Labtech" — keep key consistent with UserRole enum value
     [UserRole.LabTechnician]: {
         main: [
-            { title: "Dashboard", url: "/lab-tech/dashboard", icon: MdDashboard },
-            { title: "Test Requests", url: "/lab-tech/requests", icon: FaFlask },
-            { title: "Lab Reports", url: "/lab-tech/reports", icon: MdScience },
+            { title: "Dashboard", url: "/lab-tech/dashboard", icon: LayoutDashboard },
+            { title: "Requests", url: "/lab-tech/requests", icon: FlaskConical },
+            { title: "Reports", url: "/lab-tech/reports", icon: Microscope },
         ],
         secondary: [
-            { title: "Settings", url: "/lab-tech/settings", icon: MdSettings },
-        ]
+            { title: "Settings", url: "/lab-tech/settings", icon: Settings },
+        ],
     },
+
     [UserRole.Pharmacist]: {
         main: [
-            { title: "Dashboard", url: "/pharmacist/dashboard", icon: MdDashboard },
-            { title: "Dispensing", url: "/pharmacist/queue", icon: FaPills },
-            { title: "Drug Inventory", url: "/pharmacist/inventory", icon: MdFormatListBulleted },
+            { title: "Dashboard", url: "/pharmacist/dashboard", icon: LayoutDashboard },
+            { title: "Dispensing", url: "/pharmacist/queue", icon: Pill },
+            { title: "Inventory", url: "/pharmacist/inventory", icon: Package },
         ],
         secondary: [
-            { title: "Settings", url: "/pharmacist/settings", icon: MdSettings },
-        ]
+            { title: "Settings", url: "/pharmacist/settings", icon: Settings },
+        ],
     },
+
     [UserRole.Admin]: {
         main: [
-            { title: "Admin Console", url: "/admin/dashboard", icon: MdDashboard },
-            { title: "Staff Mgmt", url: "/admin/staff", icon: MdPeople },
-            { title: "System Audit", url: "/admin/audit", icon: MdHistory },
+            { title: "Console", url: "/admin/dashboard", icon: LayoutDashboard },
+            { title: "Staff", url: "/admin/staff", icon: UsersRound },
+            { title: "Audit Log", url: "/admin/audit", icon: ScrollText },
         ],
         secondary: [
-            { title: "Configuration", url: "/admin/settings", icon: MdSettings },
-        ]
-    }
+            { title: "Configuration", url: "/admin/settings", icon: Settings },
+        ],
+    },
 };

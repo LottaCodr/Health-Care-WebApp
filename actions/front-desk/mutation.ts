@@ -1,4 +1,4 @@
-import { Patient, PatientAction } from "@/context/patients/types";
+import {  PatientAction } from "@/context/patients/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dispatch } from "react";
 import { toast } from "@/hooks/use-toast";
@@ -6,6 +6,7 @@ import { registerPatient, startVisit, updatePatient } from "./get.patients";
 import { parseStringify } from "@/app/lib/utils";
 import { RegisterUserParams } from "@/types";
 import { useRouter } from "next/navigation";
+import { Patient } from "@/types/models";
 
 export const usePatientMutations = (dispatch: Dispatch<PatientAction>) => {
     const queryClient = useQueryClient();

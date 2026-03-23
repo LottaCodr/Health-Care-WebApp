@@ -38,20 +38,33 @@ export interface Patient {
     dateOfBirth: string;
     date_of_birth?: string;
     address: string;
+    occupation?: string;
     city: string;
     state: string;
     bloodGroup: string;
     blood_group?: string;
-    genotype: string;
+    geno_type: string;
     allergies: string;
     medicalHistory: string;
     medical_history?: string;
     emergencyContactName: string;
     emergency_contact_name?: string;
+    emergency_contact_email?: string;
+    emergency_contact_address?: string;
     emergencyContactPhone: string;
     emergency_contact_phone?: string;
     emergencyContactRelationship: string;
     emergency_contact_relationship?: string;
+    current_medication?: string;
+    long_term_medication?: string;
+    significant_medication_history?: string;
+    covid_vaccination_options?: boolean;
+    hmo?: boolean;
+    hmo_name?: string;
+    policy_number?: string;
+    company?: boolean;
+    company_name?: string;
+    private_client?: boolean;
     status: PatientStatus;
     registrationDate: string;
     registration_date?: string;
@@ -279,6 +292,27 @@ export interface DispensedMedication {
     batch_number?: string;
 }
 
+export interface DrugInventoryItem {
+    id: string;
+    drug_name: string;
+    generic_name?: string;
+    category?: string;
+    unit: string;
+    quantity: number;
+    reorder_level: number;
+    unit_price: number;
+    supplier?: string;
+    expiry_date?: string;
+    batch_number?: string;
+    location?: string;
+    notes?: string;
+    is_active: boolean;
+    created_by?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+
 // Audit Log for tracking user actions
 export interface AuditLog {
     id: string;
@@ -293,4 +327,17 @@ export interface AuditLog {
     timestamp: string;
     created_at?: string;
     updated_at?: string;
+}
+
+
+export interface Notification {
+    id: string;
+    recipient_id: string;
+    role?: string;
+    title: string;
+    message: string;
+    type: "info" | "alert" | "success" | "warning";
+    read: boolean;
+    link?: string;
+    created_at: string;
 }

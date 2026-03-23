@@ -3,7 +3,7 @@
 import React from 'react';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
-import { Patient, PatientStatus } from '@/context/patients/types';
+import {  PatientStatus } from '@/context/patients/types';
 import { calculateAge, formatDate } from '@/lib/utils';
 import { useAuth } from '@/context/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,7 @@ import {
     User, Droplets, AlertTriangle, Pill,
     Calendar, ChevronRight, HeartPulse,
 } from 'lucide-react';
+import { Patient } from '@/types/models';
 
 interface PatientsTableProps {
     patients: Patient[];
@@ -119,7 +120,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                     return (
                         <motion.div
                             key={patientId}
-                            variants={cardVariants}
+                            variants={cardVariants as any}
                             initial="hidden"
                             animate="visible"
                             exit="exit"
@@ -165,9 +166,9 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                                                     {patient.gender}
                                                 </span>
                                             )}
-                                            {patient.birth_date && (
+                                            {patient.date_of_birth && (
                                                 <span className="text-xs text-gray-400 font-medium">
-                                                    {calculateAge(patient.birth_date)} yrs
+                                                    {calculateAge(patient.date_of_birth)} yrs
                                                 </span>
                                             )}
                                         </div>
@@ -191,7 +192,7 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                                             : <span className="italic text-gray-300">No date</span>}
                                     </InfoRow>
                                     <InfoRow icon={<Droplets size={13} className="text-red-400" />} label="Blood">
-                                        {patient.bloodGroup
+                                        {patient.blood_group
                                             ?? <span className="italic text-gray-300">N/A</span>}
                                     </InfoRow>
                                     <InfoRow icon={<Pill size={13} className="text-pink-400" />} label="Allergies">

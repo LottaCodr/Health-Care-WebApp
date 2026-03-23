@@ -14,6 +14,7 @@ import {
     Payment,
     PatientStatus,
     UserRole,
+    DrugInventoryItem,
 } from "@/types/models";
 import {
     getPatientById,
@@ -47,6 +48,9 @@ import {
     getNursingActionById,
     getLabRequestById,
     getAllPatients,
+    listDrugInventory,
+    updateDrugInventoryItem,
+    createDrugInventoryItem,
 } from "@/lib/supabase-service";
 
 // Type for hook state management
@@ -809,6 +813,43 @@ export function useDispensingRecordsByPatient(patientId: string) {
     }, [patientId]);
 
     return state;
+}
+
+export function useDrugInventory() {
+    const [state, setState] = useState<UseAsyncState<DrugInventoryItem[]>>({
+        data: null, loading: true, error: null,
+    });
+    const fetchData = useCallback(async () => {
+        setState({ data: null, loading: true, error: null });
+        try {
+            const data = await listDrugInventory();
+            setState({ data, loading: false, error: null });
+        } catch (err) {
+            setState({ data: null, loading: false, error: err as Error });
+        }
+    }, []);
+    useEffect(() => { fetchData(); }, [fetchData]);
+    return { ...state, refetch: fetchData };
+}
+
+export function useCreateDrugInventoryItem() {
+    const [loading, setLoading] = useState(false);
+    const mutate = useCallback(async (data: Parameters<typeof createDrugInventoryItem>[0]) => {
+        setLoading(true);
+        try { return await createDrugInventoryItem(data); }
+        finally { setLoading(false); }
+    }, []);
+    return { mutate, loading };
+}
+
+export function useUpdateDrugInventoryItem() {
+    const [loading, setLoading] = useState(false);
+    const mutate = useCallback(async (id: string, updates: Parameters<typeof updateDrugInventoryItem>[1]) => {
+        setLoading(true);
+        try { return await updateDrugInventoryItem(id, updates); }
+        finally { setLoading(false); }
+    }, []);
+    return { mutate, loading };
 }
 
 /**

@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./auth-provider";
 import { PatientProvider } from "./patients/patient-context";
-import { AppointmentProvider } from "./appointments/appointment.reducer";
+// import { AppointmentProvider } from "./appointments/appointment.reducer";
 import { EmployeeProvider } from "./employees/context";
 import { ConsultationProvider } from "./consultation/consultation";
 // import { ErrorBoundary } from "@/components/error-boundary";
@@ -45,9 +45,9 @@ export function Providers({ children }: ProvidersProps) {
         <ConsultationProvider>
           <EmployeeProvider>
             <PatientProvider>
-              <AppointmentProvider>
+              {/* <AppointmentProvider> */}
                 {children}
-              </AppointmentProvider>
+              {/* </AppointmentProvider> */}
             </PatientProvider>
           </EmployeeProvider>
         </ConsultationProvider>
