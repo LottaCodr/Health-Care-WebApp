@@ -13,11 +13,16 @@ import {
     UserRound, ArrowRight, Loader2, CheckCircle2,
     ChevronRight, FlaskConical, UserCog,
 } from "lucide-react";
+import AIClinicalAssistant from '../ai/AIClinicalAssistant';
 
 interface ConsultationFormProps {
     patientId: string;
     availableStaff: Staff[];
     onSuccess?: () => void;
+    patientAge?: number;
+    patientMedicalHistory?: string;
+    patientAllergies?: string;
+    patientGender?: string;
 }
 
 const REFERRAL_OPTIONS = [
@@ -66,7 +71,7 @@ const INITIAL_FORM = {
     labTestType: '', labPriority: 'routine', labNotes: '',
 };
 
-export default function ConsultationForm({ patientId, availableStaff, onSuccess }: ConsultationFormProps) {
+export default function ConsultationForm({ patientId, availableStaff, onSuccess, patientAge, patientGender, patientMedicalHistory, patientAllergies }: ConsultationFormProps) {
     const { user } = useAuth();
     const { mutate: createConsultation, loading: consultationLoading } = useCreateConsultation();
     const { mutate: updatePatientStatus, loading: statusLoading } = useUpdatePatientStatus();
@@ -205,6 +210,15 @@ export default function ConsultationForm({ patientId, availableStaff, onSuccess 
                                 value={form.diagnosis} onChange={(e) => set('diagnosis')(e.target.value)}
                                 className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
                         </FieldCard>
+
+                        <AIClinicalAssistant
+                            symptoms={form.symptoms}
+                            diagnosis={form.diagnosis}
+                            patientAge={patientAge}
+                            patientGender={patientGender}
+                            medicalHistory={patientMedicalHistory}
+                            allergies={patientAllergies}
+                        />
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <FieldCard id="prescriptions" step={3} icon={<Pill size={18} className="text-red-600" />} label="Prescriptions" helper="List all medications with dosage and frequency." onFocus={() => setActive('prescriptions')}>

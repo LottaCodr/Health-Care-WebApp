@@ -13,7 +13,7 @@ import { useAuth } from "@/context/auth-provider";
 import ConsultationForm from "./consultation-form";
 import { useConsultationContext } from "@/context/consultation/consultation";
 import { usePatientContext } from "@/context/patients/patient-context";
-import {  PatientStatus } from "@/context/patients/types";
+import { PatientStatus } from "@/context/patients/types";
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { useQuery } from "@tanstack/react-query";
 import { Staff } from "@/actions/staff/types";
@@ -22,6 +22,7 @@ import VitalsCheckinAdvancedComponent from "../nurse/VitalsSuite";
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
 import LabTab from "../lab-tech/components/lab-tab";
 import { Patient } from "@/types/models";
+import { calculateAge } from "@/utils/export";
 
 const TAB_CONFIG = [
     {
@@ -75,7 +76,7 @@ function AlertBanner({
         <div
             className={`mb-5 flex items-start gap-3 px-4 py-3 rounded-xl border text-sm font-medium
                 ${isError
-                    ? "bg-red-50 border-red-200 text-red-700"
+                    ? "bg-red-50 border-red-00 text-red-700"
                     : "bg-emerald-50 border-emerald-200 text-emerald-700"
                 }`}
         >
@@ -115,6 +116,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     );
 
     const [selectedStaffId, setSelectedStaffId] = useState<string | undefined>(undefined);
+    const age = calculateAge(patient?.date_of_birth!)
 
     useEffect(() => {
         if (patient) {
@@ -167,7 +169,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         selectedStaffId,
     ]);
 
-    
+
 
     const activeTab = TAB_CONFIG.find((t) => t.value === tab);
 
@@ -197,64 +199,64 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
             </TabsList>
 
             {/* ── Vitals Recording ────────────────────────────────────────── */}
-           {/* Vitals Recording Tab */}
-<TabsContent value="vitals-recording" className="mt-0">
-    <div className="space-y-5">
+            {/* Vitals Recording Tab */}
+            <TabsContent value="vitals-recording" className="mt-0">
+                <div className="space-y-5">
 
-        {/* ── Section header ── */}
-        <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                <Activity size={17} className="text-blue-600" />
-            </div>
-            <div>
-                <h3 className="text-sm font-bold text-gray-900 leading-tight">Vitals Recording</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Patient measurements and clinical observations</p>
-            </div>
-        </div>
-
-        {/* ── Content grid ── */}
-        <div className={`grid gap-5 ${user?.role === "Nurse" && patient.id ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
-
-            {/* Left — vitals display */}
-            {patient.id && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-50">
-                        <div className="w-1.5 h-4 rounded-full bg-blue-500" />
-                        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Latest Record</p>
+                    {/* ── Section header ── */}
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                            <Activity size={17} className="text-blue-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-900 leading-tight">Vitals Recording</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">Patient measurements and clinical observations</p>
+                        </div>
                     </div>
-                    <div className="p-5">
-                        <VitalsRecordDisplay patientId={patient.id} />
+
+                    {/* ── Content grid ── */}
+                    <div className={`grid gap-5 ${user?.role === "Nurse" && patient.id ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
+
+                        {/* Left — vitals display */}
+                        {patient.id && (
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-50">
+                                    <div className="w-1.5 h-4 rounded-full bg-blue-500" />
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Latest Record</p>
+                                </div>
+                                <div className="p-5">
+                                    <VitalsRecordDisplay patientId={patient.id} />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Right — vitals form (nurse only) */}
+                        {user?.role === "Nurse" && patient.id && (
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-50">
+                                    <div className="w-1.5 h-4 rounded-full bg-green-500" />
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Record New Vitals</p>
+                                </div>
+                                <div className="p-5">
+                                    <VitalsCheckinAdvancedComponent patientId={patient.id} />
+                                </div>
+                            </div>
+                        )}
+
                     </div>
+
+                    {/* ── No patient fallback ── */}
+                    {!patient.id && (
+                        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
+                            <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-3">
+                                <Activity size={20} className="text-gray-300" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-500">No patient selected</p>
+                            <p className="text-xs text-gray-400 mt-1">Select a patient to view or record vitals</p>
+                        </div>
+                    )}
                 </div>
-            )}
-
-            {/* Right — vitals form (nurse only) */}
-            {user?.role === "Nurse" && patient.id && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-50">
-                        <div className="w-1.5 h-4 rounded-full bg-green-500" />
-                        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Record New Vitals</p>
-                    </div>
-                    <div className="p-5">
-                        <VitalsCheckinAdvancedComponent patientId={patient.id} />
-                    </div>
-                </div>
-            )}
-
-        </div>
-
-        {/* ── No patient fallback ── */}
-        {!patient.id && (
-            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
-                <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-3">
-                    <Activity size={20} className="text-gray-300" />
-                </div>
-                <p className="text-sm font-semibold text-gray-500">No patient selected</p>
-                <p className="text-xs text-gray-400 mt-1">Select a patient to view or record vitals</p>
-            </div>
-        )}
-    </div>
-</TabsContent>
+            </TabsContent>
 
             {/* ── Consultations ───────────────────────────────────────────── */}
             <TabsContent value="consultations" className="mt-0">
@@ -276,7 +278,10 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                                     patientId={patient?.id!}
                                     // selectedStaffId={selectedStaffId}
                                     availableStaff={availableStaff}
-                                    // onStaffSelect={setSelectedStaffId}
+                                    patientAge={age}
+                                    patientMedicalHistory={patient?.significant_medication_history!}
+                                    patientGender={patient?.gender}
+                                // onStaffSelect={setSelectedStaffId}
                                 />
                             </CardContent>
                         </>
@@ -324,7 +329,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                                     <p className="text-xs font-bold uppercase tracking-widest text-gray-400">New Prescription</p>
                                 </div>
                                 <div className="p-5">
-                                    <PrescriptionDetails patientId={patient?.id!} />
+                                    <PrescriptionDetails patientId={patient?.id!} patient={patient} />
                                 </div>
                             </div>
                         )}

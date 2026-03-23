@@ -12,7 +12,11 @@ const MODEL = "claude-sonnet-4-20250514";
 async function callClaude(systemPrompt: string, userMessage: string, maxTokens = 1024) {
     const res = await fetch(ANTHROPIC_API, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            "x-api-key": process.env.ANTHROPIC_API_KEY!,   // ← add this
+            "anthropic-version": "2023-06-01",                      // ← add this
+        },
         body: JSON.stringify({
             model: MODEL,
             max_tokens: maxTokens,

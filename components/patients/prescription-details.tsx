@@ -7,6 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Plus, Trash2, Pill, AlertCircle, FlaskConical, BadgeDollarSign } from "lucide-react";
 import { toast } from "sonner";
+import { Patient } from "@/types/models";
+import { AIPrescriptionCheck } from "../ai/AIComponents";
+
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +25,7 @@ interface MedicationInput {
 interface Props {
     patientId: string;
     onSuccess?: () => void;
+    patient: Patient
 }
 
 const BLANK: MedicationInput = {
@@ -29,7 +34,7 @@ const BLANK: MedicationInput = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function PrescriptionDetails({ patientId, onSuccess }: Props) {
+export default function PrescriptionDetails({ patientId, onSuccess, patient }: Props) {
     const { user } = useAuth();
     const { mutate: createPrescription, loading: creating } = useCreatePrescription();
 
@@ -156,6 +161,15 @@ export default function PrescriptionDetails({ patientId, onSuccess }: Props) {
                                 <FieldInput label="Notes" placeholder="e.g. Take after meals"
                                     value={med.notes} disabled={busy}
                                     onChange={(v) => update(idx, "notes", v)} />
+                            </div>
+                            {/* AI prescription check per medication card */}
+                            <div className="mt-2">
+                                <AIPrescriptionCheck
+                                    drugName={med.drugName}
+                                    dosage={med.dosage}
+                                    allergies={patient?.allergies}
+                                    currentMeds={patient?.long_term_medication}
+                                />
                             </div>
                         </div>
                     </div>

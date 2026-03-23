@@ -335,13 +335,11 @@ export async function listPendingPrescriptions(): Promise<Prescription[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("prescriptions")
-        .select()
-        .eq("status", "Active");
+        .select("*, patients(name, phone, gender)")
+        .eq("status", "Active")
+        .order("created_at", { ascending: false });
 
-    if (error) {
-        console.error("Failed to list pending prescriptions:", error);
-        return [];
-    }
+    if (error) { console.error("Failed to list pending prescriptions:", error); return []; }
     return data as unknown as Prescription[];
 }
 

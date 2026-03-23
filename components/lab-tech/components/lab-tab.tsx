@@ -9,6 +9,8 @@ import {
     Clock, Loader2, AlertTriangle,
 } from "lucide-react";
 import { Patient } from "@/types/models";
+import { AILabInterpretation } from "@/components/ai/AIComponents";
+import { calculateAge } from "@/utils/export";
 
 // ─── Priority badge ───────────────────────────────────────────────────────────
 
@@ -30,7 +32,9 @@ function PriorityBadge({ priority }: { priority?: string }) {
 
 // ─── Completed result card ────────────────────────────────────────────────────
 
-function LabResultCard({ req }: { req: any }) {
+function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
+
+    const age = calculateAge(patient?.date_of_birth!)
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
@@ -69,6 +73,10 @@ function LabResultCard({ req }: { req: any }) {
                         <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 rounded-xl border border-gray-100 px-4 py-3">
                             {req.result}
                         </pre>
+
+                        <AILabInterpretation testType={req.test_type} result={req.result}
+                            patientAge={age}
+                            patientGender={patient?.gender} />
                     </>
                 ) : (
                     <p className="text-xs text-gray-400 italic">No result text recorded.</p>
@@ -224,7 +232,7 @@ export default function LabTab({ patient, userRole }: Props) {
                         <CheckCircle2 size={12} className="text-green-500" />
                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Completed Results</p>
                     </div>
-                    {completedRequests.map((req: any) => <LabResultCard key={req.id} req={req} />)}
+                    {completedRequests.map((req: any) => <LabResultCard key={req.id} req={req} patient={patient} />)}
                 </div>
             )}
         </div>

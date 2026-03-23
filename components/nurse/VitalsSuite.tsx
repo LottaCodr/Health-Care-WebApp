@@ -13,6 +13,8 @@ import { Activity, Thermometer, HeartPulse } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { UserRole } from "@/types/models";
+import { AITriageScore } from "../ai/AIComponents";
+import { calculateAge } from "@/utils/export";
 
 const FIELD_CONFIG = [
     { key: "bloodPressure", label: "Blood Pressure (mmHg)", placeholder: "120/80", leftIcon: <Activity size={16} className="text-blue-600" />, required: true, type: "text" },
@@ -60,6 +62,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     const createActionMutation = useCreateNursingAction();
     const updateActionMutation = useUpdateNursingAction();
     const updatePatientStatusMutation = useUpdatePatientStatus();
+    const age = calculateAge(patient?.date_of_birth!)
 
     // Auto-calculate BMI
     useEffect(() => {
@@ -229,6 +232,9 @@ export default function VitalsCheckinAdvancedComponent(props: {
                     {submitting ? "Finalizing Documentation..." : "Complete & Finalize Vitals"}
                 </Button>
             </form>
+
+            <AITriageScore bloodPressure={form.bloodPressure} temperature={form.temperature}
+    pulse={form.pulse} patientAge={age} patientGender={patient?.gender} />
         </div>
     );
 }
