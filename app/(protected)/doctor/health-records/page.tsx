@@ -13,7 +13,7 @@ export default async function DoctorRecordsPage() {
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 space-y-2.5">
                     {patients.map((p) => (
-                        <Link key={p.id} href={`/doctor/records/${p.id}`}
+                        <Link key={p.id} href={`/doctor/health-records/${p.id}`}
                             className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-red-100 hover:shadow-sm transition-all group">
                             <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
                                 {p.name?.[0]?.toUpperCase()}
