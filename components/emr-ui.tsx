@@ -91,7 +91,7 @@ export function PatientInfoCard({ patient }: { patient: Patient | any }) {
         <InfoItem icon={Mail} label="Email" value={patient.email} />
         <InfoItem icon={Phone} label="Phone" value={patient.phone} />
         <InfoItem icon={User} label="Gender" value={patient.gender} />
-        <InfoItem icon={Droplets} label="Blood Group" value={patient.blood_group ?? patient.bloodGroup} />
+        <InfoItem icon={Droplets} label="Blood Group" value={patient.blood_group ?? patient.blood_group} />
         {(patient.address) && (
           <div className="sm:col-span-2">
             <InfoItem icon={MapPin} label="Address" value={patient.address} />
@@ -119,7 +119,6 @@ const CONSULTATION_STATUS_CONFIG: Record<string, { color: string; bg: string; bo
 };
 
 export function ConsultationCard({ consultation }: { consultation: Consultation | any }) {
-  // Support both Supabase (id, created_at) and Appwrite ($id, startTime)
   const displayId = consultation.id ?? consultation.$id ?? "—";
   const displayDate = consultation.created_at ?? consultation.consultation_date ?? consultation.startTime;
   const statusCfg = CONSULTATION_STATUS_CONFIG[consultation.status ?? ""] ?? { color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200" };

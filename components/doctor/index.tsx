@@ -10,6 +10,7 @@ import { PatientInfoCard, ConsultationCard, LoadingSkeleton, EmptyState, ErrorAl
 import {
     Clock, ClipboardList, CheckCircle2, Users,
     ChevronRight, Stethoscope, Activity,
+    FileText,
 } from "lucide-react";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -76,6 +77,11 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
                 <Link href={`/doctor/patients/${patient.id ?? patient.$id}`}
                     className="flex items-center gap-1.5 px-4 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-xl transition-colors shadow-sm shadow-red-200">
                     <Stethoscope size={13} /> Consult <ChevronRight size={12} />
+                </Link>
+
+                <Link href={`/doctor/health-records/${patient.id ?? patient.$id}`}
+                    className="px-3 py-2 text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:text-gray-700 transition-colors">
+                    <FileText size={13} />
                 </Link>
             </div>
         </div>
