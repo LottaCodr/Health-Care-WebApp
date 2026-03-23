@@ -45,7 +45,7 @@ function DrugAutocomplete({
     value: string;
     onChange: (v: string) => void;
     onSelect: (item: DrugInventoryItem) => void;
-    inventory: DrugInventoryItem[];
+    inventory: DrugInventoryItem[] | null;
     disabled?: boolean;
     error?: string;
 }) {
@@ -67,9 +67,10 @@ function DrugAutocomplete({
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
+    const safeInventory = inventory ?? [];
     const filtered = query.trim().length < 1
-        ? inventory.slice(0, 8)
-        : inventory.filter((d) =>
+        ? safeInventory.slice(0, 8)
+        : safeInventory.filter((d) =>
             d.drug_name.toLowerCase().includes(query.toLowerCase()) ||
             (d.generic_name ?? "").toLowerCase().includes(query.toLowerCase())
         ).slice(0, 10);
