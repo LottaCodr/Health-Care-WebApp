@@ -75,7 +75,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                                         Nile Valley
                                     </p>
                                     <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">
-                                        Mother & Child · EMR
+                                        Mother & Child · Hospital EMR
                                     </p>
                                 </div>
 
