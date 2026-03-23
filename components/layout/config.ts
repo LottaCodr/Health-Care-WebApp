@@ -55,7 +55,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
         main: [
             { title: "Dashboard", url: "/doctor/dashboard", icon: LayoutDashboard },
             { title: "Patients", url: "/doctor/patients", icon: Stethoscope },
-            { title: "Records", url: "/doctor/records", icon: ClipboardList },
+            { title: "Records", url: "/doctor/health-records", icon: ClipboardList },
         ],
         secondary: [
             { title: "Settings", url: "/doctor/settings", icon: Settings },

@@ -48,11 +48,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             <SidebarHeader className="px-4 pt-5 pb-2 shrink-0">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" className="h-auto p-0 hover:bg-transparent">
-                            <button
-                                onClick={() => router.push("/")}
-                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all duration-200 group"
-                            >
+                        <SidebarMenuButton size="lg" className="h-auto p-0 hover:bg-transparent" onClick={() => router.push("/")}>
+                            <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all duration-200 group">
                                 <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/10 group-hover:ring-white/20 transition-all">
                                     <Image src="/assets/icons/nilelogo.jpeg" alt="Logo" width={36} height={36} className="w-full h-full object-cover" />
                                 </div>
@@ -60,7 +57,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                                     <p className="text-white font-bold text-sm leading-tight">Nile Valley</p>
                                     <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.18em] mt-0.5">Hospital EMR</p>
                                 </div>
-                            </button>
+                            </div>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>

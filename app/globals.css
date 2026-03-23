@@ -399,3 +399,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  .print-only {
+    display: block !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
