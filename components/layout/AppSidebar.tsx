@@ -48,15 +48,50 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             <SidebarHeader className="px-4 pt-5 pb-2 shrink-0">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" className="h-auto p-0 hover:bg-transparent" onClick={() => router.push("/")}>
-                            <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-white/5 transition-all duration-200 group">
-                                <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/10 group-hover:ring-white/20 transition-all">
-                                    <Image src="/assets/icons/nilelogo.jpeg" alt="Logo" width={36} height={36} className="w-full h-full object-cover" />
+                        <SidebarMenuButton
+                            size="lg"
+                            className="h-auto p-0 hover:bg-transparent"
+                            onClick={() => router.push("/")}
+                        >
+                            <div className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/5 active:bg-white/8 transition-all duration-200 group cursor-pointer">
+
+                                {/* Logo mark with online indicator */}
+                                <div className="relative shrink-0">
+                                    <div className="w-9 h-9 rounded-xl overflow-hidden ring-1 ring-white/10 group-hover:ring-white/25 transition-all duration-200 shadow-lg shadow-black/20">
+                                        <Image
+                                            src="/assets/icons/nilelogo.jpeg"
+                                            alt="Nile Valley Hospital"
+                                            width={36}
+                                            height={36}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-[#0a1628]" />
                                 </div>
-                                <div className="text-left flex-1 min-w-0">
-                                    <p className="text-white font-bold text-sm leading-tight">Nile Valley</p>
-                                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.18em] mt-0.5">Hospital EMR</p>
+
+                                {/* Text */}
+                                <div className="flex-1 min-w-0 text-left">
+                                    <p className="text-white font-bold text-[13px] leading-tight tracking-tight truncate">
+                                        Nile Valley
+                                    </p>
+                                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">
+                                        Mother & Child · EMR
+                                    </p>
                                 </div>
+
+                                {/* Hover arrow */}
+                                <svg
+                                    width="12" height="12" viewBox="0 0 12 12" fill="none"
+                                    className="shrink-0 text-white/15 group-hover:text-white/35 transition-colors duration-200"
+                                >
+                                    <path
+                                        d="M2 6h8M6 2l4 4-4 4"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </svg>
                             </div>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
