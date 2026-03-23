@@ -292,6 +292,27 @@ export interface DispensedMedication {
     batch_number?: string;
 }
 
+export interface DrugInventoryItem {
+    id: string;
+    drug_name: string;
+    generic_name?: string;
+    category?: string;
+    unit: string;
+    quantity: number;
+    reorder_level: number;
+    unit_price: number;
+    supplier?: string;
+    expiry_date?: string;
+    batch_number?: string;
+    location?: string;
+    notes?: string;
+    is_active: boolean;
+    created_by?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+
 // Audit Log for tracking user actions
 export interface AuditLog {
     id: string;

@@ -17,6 +17,7 @@ import {
     UserRole,
     ConsultationInput,
     Patient,
+    DrugInventoryItem,
 } from "@/types/models";
 import { PostgrestResponse } from "@supabase/supabase-js";
 // import { Patient } from "@/context/patients/types";
@@ -692,6 +693,108 @@ export async function listDispensingByPatient(patientId: string) {
     }
     return data;
 }
+
+
+export async function listDrugInventory(): Promise<DrugInventoryItem[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("drug_inventory")
+        .select("*")
+        .eq("is_active", true)
+        .order("drug_name", { ascending: true });
+    if (error) { console.error(error); return []; }
+    return data as DrugInventoryItem[];
+}
+
+export async function createDrugInventoryItem(item: {
+    drugName: string;
+    genericName?: string;
+    category?: string;
+    unit: string;
+    quantity: number;
+    reorderLevel: number;
+    unitPrice: number;
+    supplier?: string;
+    expiryDate?: string;
+    batchNumber?: string;
+    location?: string;
+    notes?: string;
+    createdBy?: string;
+}) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("drug_inventory")
+        .insert([{
+            drug_name: item.drugName,
+            generic_name: item.genericName ?? null,
+            category: item.category ?? null,
+            unit: item.unit,
+            quantity: item.quantity,
+            reorder_level: item.reorderLevel,
+            unit_price: item.unitPrice,
+            supplier: item.supplier ?? null,
+            expiry_date: item.expiryDate ?? null,
+            batch_number: item.batchNumber ?? null,
+            location: item.location ?? null,
+            notes: item.notes ?? null,
+            created_by: item.createdBy ?? null,
+        }])
+        .select()
+        .single();
+    if (error) { console.error(error); throw error; }
+    return data;
+}
+
+export async function updateDrugInventoryItem(id: string, updates: {
+    quantity?: number;
+    reorderLevel?: number;
+    unitPrice?: number;
+    supplier?: string;
+    expiryDate?: string;
+    batchNumber?: string;
+    location?: string;
+    notes?: string;
+    isActive?: boolean;
+}) {
+    const supabase = await createClient();
+    const mapped: Record<string, any> = {};
+    if (updates.quantity !== undefined) mapped.quantity = updates.quantity;
+    if (updates.reorderLevel !== undefined) mapped.reorder_level = updates.reorderLevel;
+    if (updates.unitPrice !== undefined) mapped.unit_price = updates.unitPrice;
+    if (updates.supplier !== undefined) mapped.supplier = updates.supplier;
+    if (updates.expiryDate !== undefined) mapped.expiry_date = updates.expiryDate;
+    if (updates.batchNumber !== undefined) mapped.batch_number = updates.batchNumber;
+    if (updates.location !== undefined) mapped.location = updates.location;
+    if (updates.notes !== undefined) mapped.notes = updates.notes;
+    if (updates.isActive !== undefined) mapped.is_active = updates.isActive;
+
+    const { data, error } = await supabase
+        .from("drug_inventory")
+        .update(mapped)
+        .eq("id", id)
+        .select()
+        .single();
+    if (error) { console.error(error); throw error; }
+    return data;
+}
+
+export async function restockDrug(id: string, addQuantity: number) {
+    const supabase = await createClient();
+    // Use RPC to safely increment quantity
+    const { data, error } = await supabase.rpc("increment_drug_quantity", {
+        drug_id: id,
+        add_qty: addQuantity,
+    });
+    if (error) {
+        // Fallback: fetch then update
+        const { data: current } = await supabase
+            .from("drug_inventory").select("quantity").eq("id", id).single();
+        const newQty = (current?.quantity ?? 0) + addQuantity;
+        return updateDrugInventoryItem(id, { quantity: newQty });
+    }
+    return data;
+}
+
 
 /**
  * AUDIT LOGGING
