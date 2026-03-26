@@ -23,13 +23,13 @@ interface Staff {
     created_at: string;
 }
 
-const ROLES = ["Doctor", "Nurse", "Pharmacist", "Labtech", "Frontdesk", "Admin"];
+const ROLES = ["Doctor", "Nurse", "Pharmacist", "Labtechnician", "Frontdesk", "Admin"];
 
 const ROLE_CONFIG: Record<string, { color: string; bg: string; dot: string }> = {
     Doctor: { color: "text-red-700", bg: "bg-red-50", dot: "bg-red-500" },
     Nurse: { color: "text-teal-700", bg: "bg-teal-50", dot: "bg-teal-500" },
     Pharmacist: { color: "text-violet-700", bg: "bg-violet-50", dot: "bg-violet-500" },
-    Labtech: { color: "text-indigo-700", bg: "bg-indigo-50", dot: "bg-indigo-500" },
+    Labtechnician: { color: "text-indigo-700", bg: "bg-indigo-50", dot: "bg-indigo-500" },
     Frontdesk: { color: "text-blue-700", bg: "bg-blue-50", dot: "bg-blue-500" },
     Admin: { color: "text-amber-700", bg: "bg-amber-50", dot: "bg-amber-500" },
 };
@@ -215,8 +215,12 @@ export default function AdminStaffPage() {
             .select("*")
             .order("created_at", { ascending: false });
         if (!error) setStaff(data ?? []);
+
+        // const theStaffs = await fetchStaff()
+        console.log('fetching staffs:', data)
         setLoading(false);
     };
+    
 
     useEffect(() => { fetchStaff(); }, []);
 
@@ -229,6 +233,9 @@ export default function AdminStaffPage() {
     }), [staff, search, roleFilter]);
 
     if (!authorized) return null;
+
+    // const theStaffs = await fetchStaff()
+    console.log('fetching staffs:', filtered)
 
     return (
         <div className="space-y-6">
