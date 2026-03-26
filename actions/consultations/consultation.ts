@@ -24,18 +24,15 @@ export async function createConsultation(consultationData: Omit<Consultation, "$
  * Fetch all consultations for a given patientId, ordered by consultationDate descending.
  * @param patientId The ID of the patient.
  */
-export async function getPatientConsultations(patientId: string): Promise<Consultation[]> {
+export async function getPatientConsultations(patientId: string) {
+    // const supabase = await createClient();
     const { data, error } = await supabase
         .from("consultations")
-        .select()
-        .eq("patient_id", patientId)
-        .order("consultation_date", { ascending: false });
-
-    if (error) {
-        console.error("Error fetching consultations:", error);
-        return [];
-    }
-    return data as unknown as Consultation[];
+        .select("*")
+        .eq("patient_id", patientId)      // ← snake_case
+        .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
 }
 
 /**

@@ -6,6 +6,8 @@ import { useAuth } from "@/context/auth-provider";
 import { Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, ArrowRight, Stethoscope } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import confetti from "canvas-confetti";
+
 
 // ─── Features list ────────────────────────────────────────────────────────────
 
@@ -35,6 +37,15 @@ function LoginForm(props: {
 
     const searchParams = useSearchParams();
 
+    // create confetti when user logs in
+    const fireConfetti = () => {
+        // Left burst
+        confetti({ particleCount: 80, angle: 60, spread: 70, origin: { x: 0, y: 0.7 }, colors: ["#3b82f6", "#ffffff", "#10b981"] });
+        // Right burst
+        confetti({ particleCount: 80, angle: 120, spread: 70, origin: { x: 1, y: 0.7 }, colors: ["#6366f1", "#f59e0b", "#ffffff"] });
+
+    };
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email.trim() || !password.trim()) {
@@ -50,6 +61,9 @@ function LoginForm(props: {
                 setLoading(false);
                 return;
             }
+
+            fireConfetti();                           // ← fire before redirect
+            await new Promise((r) => setTimeout(r, 1200));
             const next = searchParams.get("next") || "/";
             window.location.href = next;
         } catch (err) {
