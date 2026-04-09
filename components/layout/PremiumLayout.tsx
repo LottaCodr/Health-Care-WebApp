@@ -8,6 +8,7 @@ import { useAuth } from "@/context/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import { Stethoscope } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import { useRoleRealtime } from "@/hooks/use-realtime";
 
 // ─── Role config ──────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ const ROLE_CONFIG: Record<string, { label: string; dot: string }> = {
 export function PremiumLayout({ children }: { children: React.ReactNode }) {
     const { isLoading, user } = useAuth();
     const roleCfg = ROLE_CONFIG[user?.role ?? ""] ?? { label: "Console", dot: "bg-gray-400" };
+    useRoleRealtime(user?.role); 
 
     // ── Loading ──
     if (isLoading) {
