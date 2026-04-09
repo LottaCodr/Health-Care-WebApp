@@ -46,7 +46,7 @@ export function RadiologyTab({ patient, userRole }: { patient: Patient; userRole
     const pending   = requests.filter((r: any) => r.status === "pending");
     const completed = requests.filter((r: any) => r.status === "completed");
  
-    const isRadiologist = userRole === "Admin"; // Expand to "Radiologist" when role added
+    const isRadiologist = userRole === "Admin" || "Radiologist"; 
  
     if (loading) return (
         <div className="flex items-center justify-center py-16 gap-3">
