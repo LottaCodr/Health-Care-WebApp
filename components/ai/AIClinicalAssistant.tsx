@@ -45,7 +45,8 @@ export default function AIClinicalAssistant({ symptoms, diagnosis, patientAge, p
             setResult(res);
             setExpanded(true);
         } catch (e: any) {
-            setError(e.message ?? "AI analysis failed. Please try again.");
+            setError(e.error.message ?? "AI analysis failed. Please try again.");
+            console.log("The CLaude error:", e.error.message);
         } finally {
             setLoading(false);
         }
