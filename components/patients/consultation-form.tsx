@@ -1,418 +1,632 @@
-import React, { useState } from 'react';
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Staff } from '@/actions/staff/types';
-import { useCreateConsultation, useUpdatePatientStatus, useCreateLabRequest } from '@/hooks/use-emr';
-import { useAuth } from '@/context/auth-provider';
-import { PatientStatus } from '@/types/models';
-import { toast } from 'sonner';
-import {
-    Stethoscope, HeartPulse, ClipboardList, Pill,
-    UserRound, ArrowRight, Loader2, CheckCircle2,
-    ChevronRight, FlaskConical, UserCog,
-} from "lucide-react";
-import AIClinicalAssistant from '../ai/AIClinicalAssistant';
+"use client";
 
-interface ConsultationFormProps {
-    patientId: string;
-    availableStaff: Staff[];
-    onSuccess?: () => void;
-    patientAge?: number;
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/context/auth-provider";
+import { useCreateConsultation, useCreateLabRequest } from "@/hooks/use-emr";
+import { updatePatientStatus } from "@/lib/supabase-service";
+import { PatientStatus } from "@/types/models";
+import { Staff } from "@/actions/staff/types";
+import { toast } from "sonner";
+import {
+    Stethoscope, FlaskConical, Pill, ChevronDown, ChevronRight,
+    Loader2, CheckCircle2, AlertCircle, Baby, User, Heart,
+    Activity, Brain, Microscope, ClipboardList, BookOpen,
+    Syringe, Users, FileText, List, Zap, Radio,
+} from "lucide-react";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Props {
+    patientId:            string;
+    patientAge?:          number;
+    patientGender?:       string;
     patientMedicalHistory?: string;
-    patientAllergies?: string;
-    patientGender?: string;
+    availableStaff:       Staff[];
 }
 
-const REFERRAL_OPTIONS = [
-    { value: "nurse", label: "Nurse", description: "Post-consultation nursing care", icon: UserCog, patientStatus: PatientStatus.SentToNurse, color: "text-teal-600", bg: "bg-teal-50", activeBorder: "border-teal-400" },
-    { value: "lab-tech", label: "Lab Technician", description: "Request laboratory investigations", icon: FlaskConical, patientStatus: PatientStatus.SentToLab, color: "text-indigo-600", bg: "bg-indigo-50", activeBorder: "border-indigo-400" },
-    { value: "pharmacist", label: "Pharmacist", description: "Dispense prescribed medications", icon: Pill, patientStatus: PatientStatus.SentToPharmacy, color: "text-pink-600", bg: "bg-pink-50", activeBorder: "border-pink-400" },
-] as const;
+type ReferralTarget = "nurse" | "lab-tech" | "pharmacist" | "radiology" | "";
 
-const PATIENT_STATUSES = [
-    { value: 'sent-to-nurse', label: 'Sent to Nurse' },
-    { value: 'sent-to-lab', label: 'Sent to Lab' },
-    { value: 'sent-to-pharmacy', label: 'Sent to Pharmacy' },
-    { value: 'under-observation', label: 'Under Observation' },
-    { value: 'discharged', label: 'Discharged' },
+const LAB_TESTS = [
+    "Full Blood Count (FBC)", "Malaria Parasite (MP)", "Blood Culture & Sensitivity",
+    "Urinalysis", "Liver Function Test (LFT)", "Kidney Function Test (KFT)",
+    "Fasting Blood Sugar (FBS)", "HBA1c", "Thyroid Function Test (TFT)",
+    "HIV Screening", "Hepatitis B Surface Antigen", "Widal Test",
+    "Electrolytes & Urea", "Lipid Profile", "Pregnancy Test (Urine/Serum)",
+    "Stool Microscopy", "Sputum AFB", "Genotype", "Blood Group & Crossmatch",
 ];
 
-const SECTIONS = [
-    { id: 'symptoms', label: 'Symptoms', icon: HeartPulse },
-    { id: 'diagnosis', label: 'Diagnosis', icon: ClipboardList },
-    { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
-    { id: 'recommendations', label: 'Recommendations', icon: UserRound },
-    { id: 'routing', label: 'Routing', icon: ArrowRight },
+const RADIOLOGY_TESTS = [
+    "Chest X-Ray (PA View)", "Abdominal X-Ray", "Skull X-Ray",
+    "Spine X-Ray (Cervical/Thoracic/Lumbar)", "Pelvic X-Ray",
+    "Limbs X-Ray", "Ultrasound Scan (Abdomen/Pelvis)",
+    "Obstetric Ultrasound", "Breast Ultrasound", "Cranial Ultrasound",
+    "CT Scan (Brain)", "CT Scan (Chest)", "CT Scan (Abdomen/Pelvis)",
+    "MRI Brain", "MRI Spine", "Echocardiogram",
+    "Doppler Studies", "Fluoroscopy",
 ];
 
-const LAB_TEST_TYPES = [
-    { value: "Full Blood Count", label: "Full Blood Count (FBC)" },
-    { value: "Malaria Parasite Test", label: "Malaria Parasite Test" },
-    { value: "Urinalysis", label: "Urinalysis" },
-    { value: "Blood Sugar Fasting", label: "Blood Sugar (Fasting)" },
-    { value: "Blood Sugar Random", label: "Blood Sugar (Random)" },
-    { value: "Liver Function Test", label: "Liver Function Test (LFT)" },
-    { value: "Kidney Function Test", label: "Kidney Function Test (KFT)" },
-    { value: "Widal Test", label: "Widal Test (Typhoid)" },
-    { value: "HIV Screening", label: "HIV Screening" },
-    { value: "Hepatitis B Surface Ag", label: "Hepatitis B Surface Ag" },
-    { value: "Chest X-Ray", label: "Chest X-Ray" },
-    { value: "ECG", label: "ECG (Electrocardiogram)" },
-    { value: "Stool Analysis", label: "Stool Analysis" },
-    { value: "Pregnancy Test", label: "Pregnancy Test" },
-    { value: "Other", label: "Other (specify in notes)" },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const INITIAL_FORM = {
-    symptoms: '', diagnosis: '', prescriptions: '', recommendations: '',
-    referredTo: '', status: '', selectedStaffId: '',
-    labTestType: '', labPriority: 'routine', labNotes: '',
-};
+const isPaediatric = (age?: number) => age !== undefined && age <= 12;
+const isFemale     = (gender?: string) => gender?.toLowerCase() === "female" || gender?.toLowerCase() === "f";
 
-export default function ConsultationForm({ patientId, availableStaff, onSuccess, patientAge, patientGender, patientMedicalHistory, patientAllergies }: ConsultationFormProps) {
-    const { user } = useAuth();
-    const { mutate: createConsultation, loading: consultationLoading } = useCreateConsultation();
-    const { mutate: updatePatientStatus, loading: statusLoading } = useUpdatePatientStatus();
-    const { mutate: createLabRequest, loading: labLoading } = useCreateLabRequest();
+// ─── Field components ─────────────────────────────────────────────────────────
 
-    const [form, setForm] = useState(INITIAL_FORM);
-    const [activeSection, setActive] = useState('symptoms');
+const Label = ({ children, required }: { children: React.ReactNode; required?: boolean }) => (
+    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+        {children}{required && <span className="text-red-500 ml-0.5">*</span>}
+    </p>
+);
 
-    const loading = consultationLoading || statusLoading || labLoading;
-    const isLabReferral = form.referredTo === 'lab-tech';
+const Field = ({ children }: { children: React.ReactNode }) => (
+    <div className="space-y-0">{children}</div>
+);
 
-    const set = (key: keyof typeof INITIAL_FORM) => (val: string) =>
-        setForm((prev) => ({ ...prev, [key]: val }));
+const textareaClass = "w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 font-medium placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 focus:bg-white resize-none transition-all";
+const inputClass    = "w-full h-10 px-4 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 font-medium placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 focus:bg-white transition-all";
+const selectClass   = "w-full h-10 px-4 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 focus:bg-white appearance-none transition-all";
 
-    const filled: Record<string, boolean> = {
-        symptoms: !!form.symptoms.trim(),
-        diagnosis: !!form.diagnosis.trim(),
-        prescriptions: !!form.prescriptions.trim(),
-        recommendations: !!form.recommendations.trim(),
-        routing: !!form.status || !!form.referredTo,
-    };
+// ─── Section accordion ────────────────────────────────────────────────────────
 
-    const nextStatus = (): PatientStatus =>
-        REFERRAL_OPTIONS.find((r) => r.value === form.referredTo)?.patientStatus ?? PatientStatus.SentToNurse;
-
-    const nextStatusLabel = () =>
-        REFERRAL_OPTIONS.find((r) => r.value === form.referredTo)?.label ?? 'Nurse';
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!form.symptoms.trim()) { toast.error("Please enter the patient's symptoms."); return; }
-        if (!form.diagnosis.trim()) { toast.error('Please enter a diagnosis.'); return; }
-        if (!patientId) { toast.error('No patient ID. Cannot submit.'); return; }
-        if (isLabReferral && !form.labTestType) {
-            toast.error('Please select a lab test type.');
-            setActive('routing');
-            return;
-        }
-
-        try {
-            // Step 1 — Save consultation
-            await createConsultation({
-                patientId,
-                doctorId: user?.$id ?? '',
-                symptoms: form.symptoms,
-                diagnosis: form.diagnosis,
-                prescriptions: form.prescriptions || undefined,
-                recommendations: form.recommendations || undefined,
-                referredTo: form.referredTo || undefined,
-                assignedStaffId: form.selectedStaffId || undefined,
-                status: form.status || 'underConsultation',
-            });
-
-            // Step 2 — Create lab request if referring to lab tech
-            if (isLabReferral) {
-                await createLabRequest({
-                    patientId: patientId,
-                    requestedBy: user?.$id,
-                    testType: form.labTestType,
-                    priority: form.labPriority,
-                    notes: form.labNotes || undefined,
-                    status: 'pending',
-                });
-            }
-
-            // Step 3 — Update patient status
-            const resolvedStatus = form.status
-                ? (form.status as unknown as PatientStatus)
-                : nextStatus();
-            await updatePatientStatus(patientId, resolvedStatus);
-
-            toast.success(`Consultation saved. Patient routed to ${nextStatusLabel()}.${isLabReferral ? ' Lab request created.' : ''}`);
-            setForm(INITIAL_FORM);
-            onSuccess?.();
-        } catch (err: any) {
-            console.error(err);
-            toast.error(err?.message ?? 'Failed to submit. Please try again.');
-        }
-    };
-
+function Section({
+    id, icon: Icon, title, badge, color = "text-red-600", bg = "bg-red-50",
+    defaultOpen = false, children,
+}: {
+    id: string; icon: React.ElementType; title: string; badge?: string;
+    color?: string; bg?: string; defaultOpen?: boolean; children: React.ReactNode;
+}) {
+    const [open, setOpen] = useState(defaultOpen);
     return (
-        <div className="min-h-screen bg-gray-50/60">
-            <div className="max-w-6xl mx-auto px-4 py-10">
-
-                <div className="mb-8 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-red-700 flex items-center justify-center shadow-lg shadow-red-200">
-                        <Stethoscope size={22} className="text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Doctor's Consultation</h1>
-                        <p className="text-sm text-gray-500 mt-0.5">Record clinical findings and route the patient</p>
-                    </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <button type="button" onClick={() => setOpen((v) => !v)}
+                className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50/60 transition-colors text-left">
+                <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                    <Icon size={15} className={color} />
                 </div>
-
-                <div className="flex gap-6 items-start">
-
-                    {/* Sidebar */}
-                    <aside className="hidden lg:flex flex-col w-52 shrink-0 sticky top-8 gap-1">
-                        {SECTIONS.map((section, i) => {
-                            const Icon = section.icon;
-                            const isActive = activeSection === section.id;
-                            const isFilled = filled[section.id];
-                            return (
-                                <button key={section.id} type="button"
-                                    onClick={() => { setActive(section.id); document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
-                                    className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-150
-                                        ${isActive ? 'bg-red-700 text-white shadow-md shadow-red-200' : 'text-gray-500 hover:bg-white hover:text-gray-800 hover:shadow-sm'}`}
-                                >
-                                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold
-                                        ${isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-red-50 group-hover:text-red-600'}`}>
-                                        {isFilled && !isActive ? <CheckCircle2 size={14} className="text-green-500" /> : <span>{i + 1}</span>}
-                                    </div>
-                                    <span className="text-sm font-semibold">{section.label}</span>
-                                    {isActive && <ChevronRight size={14} className="ml-auto opacity-70" />}
-                                </button>
-                            );
-                        })}
-                        <div className="mt-4 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">On Submit</p>
-                            <p className="text-xs font-bold text-blue-700">Patient → {nextStatusLabel()}</p>
-                            {isLabReferral && <p className="text-[10px] text-indigo-600 font-semibold mt-1">+ Lab request created</p>}
-                        </div>
-                    </aside>
-
-                    {/* Form */}
-                    <form className="flex-1 space-y-5" onSubmit={handleSubmit} autoComplete="off">
-
-                        <FieldCard id="symptoms" step={1} icon={<HeartPulse size={18} className="text-red-600" />} label="Symptoms" helper="Describe the patient's presenting complaints in detail." onFocus={() => setActive('symptoms')}>
-                            <Textarea placeholder="e.g. Patient presents with persistent headache, fever of 38.5°C, fatigue for 3 days..."
-                                value={form.symptoms} onChange={(e) => set('symptoms')(e.target.value)}
-                                className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
-                        </FieldCard>
-
-                        <FieldCard id="diagnosis" step={2} icon={<ClipboardList size={18} className="text-red-600" />} label="Diagnosis" helper="Enter your primary and differential diagnoses." onFocus={() => setActive('diagnosis')}>
-                            <Textarea placeholder="e.g. Provisional diagnosis: Viral fever. Rule out: Malaria, Typhoid..."
-                                value={form.diagnosis} onChange={(e) => set('diagnosis')(e.target.value)}
-                                className="min-h-[120px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
-                        </FieldCard>
-
-                        <AIClinicalAssistant
-                            symptoms={form.symptoms}
-                            diagnosis={form.diagnosis}
-                            patientAge={patientAge}
-                            patientGender={patientGender}
-                            medicalHistory={patientMedicalHistory}
-                            allergies={patientAllergies}
-                        />
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <FieldCard id="prescriptions" step={3} icon={<Pill size={18} className="text-red-600" />} label="Prescriptions" helper="List all medications with dosage and frequency." onFocus={() => setActive('prescriptions')}>
-                                <Textarea placeholder="e.g. Paracetamol 500mg — 8 hourly × 5 days..."
-                                    value={form.prescriptions} onChange={(e) => set('prescriptions')(e.target.value)}
-                                    className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
-                            </FieldCard>
-                            <FieldCard id="recommendations" step={4} icon={<UserRound size={18} className="text-red-600" />} label="Recommendations" helper="Add follow-up instructions or lifestyle advice." onFocus={() => setActive('recommendations')}>
-                                <Textarea placeholder="e.g. Rest for 3 days, drink plenty of fluids, return if symptoms worsen..."
-                                    value={form.recommendations} onChange={(e) => set('recommendations')(e.target.value)}
-                                    className="min-h-[140px] text-sm text-gray-800 border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0" />
-                            </FieldCard>
-                        </div>
-
-                        {/* Routing */}
-                        <div id="routing" onFocus={() => setActive('routing')} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                            <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-50">
-                                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center"><ArrowRight size={16} className="text-red-600" /></div>
-                                <div>
-                                    <p className="text-sm font-bold text-gray-800">Patient Routing</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">Patient status updates automatically on submit</p>
-                                </div>
-                                <span className="ml-auto text-xs font-bold text-gray-300 tracking-widest">05</span>
-                            </div>
-
-                            <div className="px-6 py-5 space-y-5">
-                                {/* Referral cards */}
-                                <div>
-                                    <Label className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 block">
-                                        Refer To <span className="text-gray-300 normal-case font-normal ml-1">(defaults to Nurse if unset)</span>
-                                    </Label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                        {REFERRAL_OPTIONS.map((option) => {
-                                            const Icon = option.icon;
-                                            const isSelected = form.referredTo === option.value;
-                                            return (
-                                                <button key={option.value} type="button"
-                                                    onClick={() => { set('referredTo')(option.value); set('selectedStaffId')(''); }}
-                                                    className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all duration-150
-                                                        ${isSelected ? `${option.activeBorder} ${option.bg}` : 'border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white'}`}
-                                                >
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? option.bg : 'bg-white border border-gray-100'}`}>
-                                                        <Icon size={15} className={isSelected ? option.color : 'text-gray-400'} />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className={`text-xs font-bold ${isSelected ? 'text-gray-900' : 'text-gray-600'}`}>{option.label}</p>
-                                                        <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{option.description}</p>
-                                                    </div>
-                                                    {isSelected && <CheckCircle2 size={14} className={`shrink-0 mt-0.5 ${option.color}`} />}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Lab request details — shown only when lab-tech selected */}
-                                {isLabReferral && (
-                                    <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/40 p-5 space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <FlaskConical size={14} className="text-indigo-600" />
-                                            <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Lab Request Details</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="space-y-1.5">
-                                                <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                                                    Test Type <span className="text-red-500">*</span>
-                                                </Label>
-                                                <Select onValueChange={set('labTestType')} value={form.labTestType}>
-                                                    <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400">
-                                                        <SelectValue placeholder="Select test type" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-white z-30 shadow-xl rounded-xl border-gray-100 max-h-60 overflow-y-auto">
-                                                        {LAB_TEST_TYPES.map((t) => (
-                                                            <SelectItem key={t.value} value={t.value} className="text-sm">{t.label}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">Priority</Label>
-                                                <Select onValueChange={set('labPriority')} value={form.labPriority}>
-                                                    <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-white z-30 shadow-xl rounded-xl border-gray-100">
-                                                        <SelectItem value="routine" className="text-sm">Routine</SelectItem>
-                                                        <SelectItem value="urgent" className="text-sm">Urgent</SelectItem>
-                                                        <SelectItem value="stat" className="text-sm">STAT (Immediate)</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                                                Notes for Lab Tech <span className="text-gray-300 font-normal normal-case">(optional)</span>
-                                            </Label>
-                                            <Textarea placeholder="e.g. Patient is fasting. Collect sample before medication..."
-                                                value={form.labNotes} onChange={(e) => set('labNotes')(e.target.value)} rows={2}
-                                                className="text-sm bg-white border-gray-200 rounded-xl resize-none focus:border-indigo-400 placeholder:text-gray-300" />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Assign staff + override */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-gray-50">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                                            {form.referredTo ? `Assign ${form.referredTo.charAt(0).toUpperCase() + form.referredTo.slice(1)}` : 'Assign Staff'}
-                                        </Label>
-                                        {form.referredTo ? (
-                                            availableStaff.length > 0 ? (
-                                                <Select onValueChange={set('selectedStaffId')} value={form.selectedStaffId || undefined}>
-                                                    <SelectTrigger className="h-10 text-sm bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-300 focus:border-red-400">
-                                                        <SelectValue placeholder={`Select ${form.referredTo}`} />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-white z-30 shadow-xl rounded-xl border-gray-100 max-h-60 overflow-y-auto">
-                                                        {availableStaff.map((staff) => (
-                                                            <SelectItem key={staff.$id} value={staff.$id} className="text-sm">{staff.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            ) : (
-                                                <div className="h-10 flex items-center px-3 text-xs text-gray-400 italic bg-gray-50 rounded-xl border border-dashed border-gray-200">No {form.referredTo} available</div>
-                                            )
-                                        ) : (
-                                            <div className="h-10 flex items-center px-3 text-xs text-gray-400 italic bg-gray-50 rounded-xl border border-dashed border-gray-200">Select a referral type first</div>
-                                        )}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                                            Override Status <span className="text-gray-300 normal-case font-normal">(optional)</span>
-                                        </Label>
-                                        <Select onValueChange={set('status')} value={form.status}>
-                                            <SelectTrigger className="h-10 text-sm bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-300 focus:border-red-400">
-                                                <SelectValue placeholder="Auto (based on referral)" />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-white z-30 shadow-xl rounded-xl border-gray-100">
-                                                {PATIENT_STATUSES.map((s) => (
-                                                    <SelectItem key={s.value} value={s.value} className="text-sm">{s.label}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                {/* Status preview */}
-                                <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
-                                    <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
-                                    <p className="text-xs text-blue-700 font-medium">
-                                        Patient → <span className="font-bold">"{nextStatusLabel()}"</span> on submit
-                                        {isLabReferral && <span className="text-indigo-600 font-semibold"> + lab request will be created</span>}
-                                        {form.status && <span className="text-blue-500"> (override: "{PATIENT_STATUSES.find(s => s.value === form.status)?.label}")</span>}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Submit */}
-                        <div className="pt-2 pb-6">
-                            <Button type="submit" disabled={loading}
-                                className="w-full h-14 bg-red-700 hover:bg-red-800 text-white font-bold text-base rounded-2xl shadow-lg shadow-red-200 transition-all duration-150 tracking-wide">
-                                {loading ? (
-                                    <span className="flex items-center gap-2">
-                                        <Loader2 size={18} className="animate-spin" />
-                                        {labLoading ? 'Creating lab request...' : statusLoading ? 'Updating status...' : 'Saving consultation...'}
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-2">Submit & Route Patient <ArrowRight size={18} /></span>
-                                )}
-                            </Button>
-                        </div>
-                    </form>
+                <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-900">{title}</p>
+                    {badge && <p className="text-[10px] text-gray-400 mt-0.5 uppercase tracking-widest font-bold">{badge}</p>}
                 </div>
-            </div>
+                {open ? <ChevronDown size={14} className="text-gray-400 shrink-0" /> : <ChevronRight size={14} className="text-gray-400 shrink-0" />}
+            </button>
+            {open && <div className="px-5 pb-5 space-y-4 border-t border-gray-50">{children}</div>}
         </div>
     );
 }
 
-function FieldCard({ id, step, icon, label, helper, children, onFocus }: {
-    id: string; step: number; icon: React.ReactNode; label: string;
-    helper?: string; children: React.ReactNode; onFocus?: () => void;
-}) {
+// ─── Patient type banner ──────────────────────────────────────────────────────
+
+function PatientTypeBanner({ isChild, isFem }: { isChild: boolean; isFem: boolean }) {
     return (
-        <div id={id} onFocus={onFocus} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-red-100 transition-all duration-150 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 pt-5 pb-3 border-b border-gray-50">
-                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0 group-focus-within:bg-red-100 transition-colors">{icon}</div>
-                <div>
-                    <p className="text-sm font-bold text-gray-800">{label}</p>
-                    {helper && <p className="text-xs text-gray-400 mt-0.5">{helper}</p>}
-                </div>
-                <span className="ml-auto text-xs font-bold text-gray-200 tracking-widest">0{step}</span>
+        <div className="flex items-center gap-3 flex-wrap">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold
+                ${isChild ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-gray-50 border-gray-200 text-gray-600"}`}>
+                {isChild ? <Baby size={13} /> : <User size={13} />}
+                {isChild ? "Paediatric Patient" : "Adult Patient"}
             </div>
-            <div className="px-6 py-4">{children}</div>
-            <div className="h-0.5 w-0 group-focus-within:w-full bg-red-600 transition-all duration-300 ease-out" />
+            {isFem && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-pink-50 border-pink-200 text-pink-700 text-xs font-bold">
+                    <Heart size={13} />
+                    Female — Obstetric Fields Enabled
+                </div>
+            )}
         </div>
+    );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function ConsultationForm({
+    patientId, patientAge, patientGender, patientMedicalHistory, availableStaff,
+}: Props) {
+    const { user }                              = useAuth();
+    const { mutate: createConsultation, loading: creating } = useCreateConsultation();
+    const { mutate: createLabRequest }          = useCreateLabRequest();
+
+    const isChild = isPaediatric(patientAge);
+    const isFem   = isFemale(patientGender);
+
+    // ── Section A: History ──
+    const [presentingComplaint,         setPresentingComplaint]         = useState("");
+    const [symptomsAnalysis,            setSymptomsAnalysis]            = useState("");
+    const [aetiology,                   setAetiology]                   = useState("");
+    const [historyComplications,        setHistoryComplications]        = useState("");
+    const [historyTreatment,            setHistoryTreatment]            = useState("");
+    // Paediatric only
+    const [antenatalHistory,            setAntenatalHistory]            = useState("");
+    const [nutritionalHistory,          setNutritionalHistory]          = useState("");
+    const [developmentalMilestones,     setDevelopmentalMilestones]     = useState("");
+    const [immunisationHistory,         setImmunisationHistory]         = useState("");
+    // Shared
+    const [pastMedicalHistory,          setPastMedicalHistory]          = useState(patientMedicalHistory ?? "");
+    const [drugHistory,                 setDrugHistory]                 = useState("");
+    const [familySocialHistory,         setFamilySocialHistory]         = useState("");
+    // Female obstetric
+    const [imp,                         setImp]                         = useState("");  // Impression
+    const [lmp,                         setLmp]                         = useState("");  // Last Menstrual Period
+    const [ega,                         setEga]                         = useState("");  // Estimated Gestational Age
+    const [eod,                         setEod]                         = useState("");  // Expected Date of Delivery
+    const [gravidity,                   setGravidity]                   = useState("");
+    const [parity,                      setParity]                      = useState("");
+
+    // ── Section B & C: Examination ──
+    const [generalExamination,          setGeneralExamination]          = useState("");
+    const [respiratorySystem,           setRespiratorySystem]           = useState("");
+    const [cardiovascularSystem,        setCardiovascularSystem]        = useState("");
+    const [gastrointestinalSystem,      setGastrointestinalSystem]      = useState("");
+
+    // ── Section D–F ──
+    const [summary,                     setSummary]                     = useState("");
+    const [assessment,                  setAssessment]                  = useState("");
+    const [investigations,              setInvestigations]              = useState("");
+    const [treatment,                   setTreatment]                   = useState("");
+
+    // ── Referral ──
+    const [referredTo,                  setReferredTo]                  = useState<ReferralTarget>("");
+    const [labTestType,                 setLabTestType]                 = useState("");
+    const [labPriority,                 setLabPriority]                 = useState("routine");
+    const [labNotes,                    setLabNotes]                    = useState("");
+    const [radiologyTestType,           setRadiologyTestType]           = useState("");
+    const [radiologyPriority,           setRadiologyPriority]           = useState("routine");
+    const [radiologyNotes,              setRadiologyNotes]              = useState("");
+
+    // ── Status ──
+    const [submitting, setSubmitting] = useState(false);
+
+    // ─── Build concatenated consultation fields ────────────────────────────────
+
+    const buildSymptoms = () => {
+        const parts = [
+            `Presenting Complaint: ${presentingComplaint}`,
+            symptomsAnalysis      ? `Analysis of Symptoms: ${symptomsAnalysis}`      : "",
+            aetiology             ? `Aetiology/Cause: ${aetiology}`                  : "",
+            historyComplications  ? `History of Complications: ${historyComplications}` : "",
+            historyTreatment      ? `History of Treatment: ${historyTreatment}`      : "",
+            isChild && antenatalHistory        ? `Antenatal/Delivery History: ${antenatalHistory}`  : "",
+            isChild && nutritionalHistory      ? `Nutritional History: ${nutritionalHistory}`        : "",
+            isChild && developmentalMilestones ? `Developmental Milestones: ${developmentalMilestones}` : "",
+            isChild && immunisationHistory     ? `Immunisation History: ${immunisationHistory}`     : "",
+            pastMedicalHistory    ? `Past Medical & Surgical History: ${pastMedicalHistory}` : "",
+            drugHistory           ? `Drug History: ${drugHistory}`                   : "",
+            familySocialHistory   ? `Family & Social History: ${familySocialHistory}` : "",
+            isFem && imp          ? `IMP (Impression): ${imp}`                       : "",
+            isFem && lmp          ? `LMP: ${lmp}`                                    : "",
+            isFem && ega          ? `EGA (Estimated Gestational Age): ${ega} weeks`  : "",
+            isFem && eod          ? `EOD (Expected Date of Delivery): ${eod}`        : "",
+            isFem && gravidity    ? `Gravidity: ${gravidity}`                        : "",
+            isFem && parity       ? `Parity: ${parity}`                              : "",
+        ].filter(Boolean).join("\n\n");
+        return parts;
+    };
+
+    const buildDiagnosis = () => {
+        const parts = [
+            `General Examination: ${generalExamination}`,
+            respiratorySystem      ? `Respiratory System: ${respiratorySystem}`      : "",
+            cardiovascularSystem   ? `Cardiovascular System: ${cardiovascularSystem}` : "",
+            gastrointestinalSystem ? `Gastrointestinal System: ${gastrointestinalSystem}` : "",
+            summary                ? `Summary: ${summary}`                           : "",
+        ].filter(Boolean).join("\n\n");
+        return parts;
+    };
+
+    const buildRecommendations = () => {
+        const parts = [
+            assessment    ? `Assessment: ${assessment}`       : "",
+            investigations? `Investigations: ${investigations}`: "",
+            treatment     ? `Treatment: ${treatment}`         : "",
+        ].filter(Boolean).join("\n\n");
+        return parts;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!presentingComplaint.trim()) {
+            toast.error("Presenting complaint is required."); return;
+        }
+        if (!generalExamination.trim()) {
+            toast.error("General examination is required."); return;
+        }
+        if (!assessment.trim()) {
+            toast.error("Assessment is required."); return;
+        }
+
+        setSubmitting(true);
+        try {
+            // Map referral → patient status
+            const statusMap: Record<string, PatientStatus> = {
+                "nurse":      PatientStatus.SentToNurse,
+                "lab-tech":   PatientStatus.SentToLab,
+                "pharmacist": PatientStatus.SentToPharmacy,
+                "radiology":  PatientStatus.SentToLab, // treated same as lab routing
+            };
+
+            await createConsultation({
+                patientId,
+                doctorId:        user?.$id ?? user?.id ?? "",
+                symptoms:        buildSymptoms(),
+                diagnosis:       buildDiagnosis(),
+                prescriptions:   treatment,
+                recommendations: buildRecommendations(),
+                referredTo:      referredTo || undefined,
+                assignedStaffId: undefined,
+                status:          "underConsultation",
+            });
+
+            // Create lab request
+            if (referredTo === "lab-tech" && labTestType) {
+                await createLabRequest({
+                    patientId,
+                    requestedBy: user?.$id ?? user?.id ?? "",
+                    testType:    labTestType,
+                    priority:    labPriority,
+                    notes:       labNotes || undefined,
+                    status:      "pending",
+                });
+            }
+
+            // Create radiology request (stored as lab request with "radiology" prefix)
+            if (referredTo === "radiology" && radiologyTestType) {
+                await createLabRequest({
+                    patientId,
+                    requestedBy: user?.$id ?? user?.id ?? "",
+                    testType:    `[RADIOLOGY] ${radiologyTestType}`,
+                    priority:    radiologyPriority,
+                    notes:       radiologyNotes || undefined,
+                    status:      "pending",
+                });
+            }
+
+            // Update patient status
+            if (referredTo && statusMap[referredTo]) {
+                await updatePatientStatus(patientId, statusMap[referredTo]);
+            }
+
+            toast.success("Consultation saved successfully.");
+
+        } catch (err: any) {
+            toast.error(err?.message ?? "Failed to save consultation.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Patient type banner */}
+            <PatientTypeBanner isChild={isChild} isFem={isFem} />
+
+            {/* ════════════════════════════════════════════════════════
+                SECTION A — HISTORY
+            ═══════════════════════════════════════════════════════════ */}
+
+            {/* A1: Presenting Complaint */}
+            <Section id="pc" icon={ClipboardList} title="A. History" badge="Section A" defaultOpen color="text-red-600" bg="bg-red-50">
+
+                <div className="pt-4 space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-400">A1 · Presenting Complaint *</p>
+                    <Field>
+                        <textarea rows={3} value={presentingComplaint} onChange={(e) => setPresentingComplaint(e.target.value)}
+                            placeholder="Chief complaint — what brings the patient in today?"
+                            className={textareaClass} />
+                    </Field>
+                </div>
+
+                {/* A2: History of Presenting Complaints */}
+                <div className="space-y-3 pt-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-400">A2 · History of Presenting Complaints</p>
+                    <div className="pl-3 border-l-2 border-red-100 space-y-4">
+                        <Field>
+                            <Label>Analysis of Symptoms</Label>
+                            <textarea rows={3} value={symptomsAnalysis} onChange={(e) => setSymptomsAnalysis(e.target.value)}
+                                placeholder="Onset, duration, character, radiation, aggravating/relieving factors..."
+                                className={textareaClass} />
+                        </Field>
+                        <Field>
+                            <Label>Aetiology / Cause</Label>
+                            <textarea rows={2} value={aetiology} onChange={(e) => setAetiology(e.target.value)}
+                                placeholder="Possible cause or aetiology of presenting complaint..."
+                                className={textareaClass} />
+                        </Field>
+                        <Field>
+                            <Label>History of Complications</Label>
+                            <textarea rows={2} value={historyComplications} onChange={(e) => setHistoryComplications(e.target.value)}
+                                placeholder="Any complications related to this condition..."
+                                className={textareaClass} />
+                        </Field>
+                        <Field>
+                            <Label>History of Treatment</Label>
+                            <textarea rows={2} value={historyTreatment} onChange={(e) => setHistoryTreatment(e.target.value)}
+                                placeholder="Previous treatments tried for this complaint..."
+                                className={textareaClass} />
+                        </Field>
+                    </div>
+                </div>
+
+                {/* A3–A6: Paediatric only */}
+                {isChild && (
+                    <div className="space-y-4 pt-2">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl">
+                            <Baby size={13} className="text-blue-600" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">A3–A6 · Paediatric History</p>
+                        </div>
+                        <div className="pl-3 border-l-2 border-blue-100 space-y-4">
+                            <Field>
+                                <Label>A3 · Antenatal / Delivery History</Label>
+                                <textarea rows={3} value={antenatalHistory} onChange={(e) => setAntenatalHistory(e.target.value)}
+                                    placeholder="Pregnancy complications, mode of delivery, birth weight, APGAR score..."
+                                    className={textareaClass} />
+                            </Field>
+                            <Field>
+                                <Label>A4 · Nutritional History</Label>
+                                <textarea rows={2} value={nutritionalHistory} onChange={(e) => setNutritionalHistory(e.target.value)}
+                                    placeholder="Breastfeeding history, weaning, current diet, nutritional status..."
+                                    className={textareaClass} />
+                            </Field>
+                            <Field>
+                                <Label>A5 · Developmental Milestones</Label>
+                                <textarea rows={3} value={developmentalMilestones} onChange={(e) => setDevelopmentalMilestones(e.target.value)}
+                                    placeholder="Motor, language, social milestones — age achieved or any delays..."
+                                    className={textareaClass} />
+                            </Field>
+                            <Field>
+                                <Label>A6 · Immunisation History</Label>
+                                <textarea rows={2} value={immunisationHistory} onChange={(e) => setImmunisationHistory(e.target.value)}
+                                    placeholder="Vaccines received — BCG, OPV, DPT, Hepatitis B, Measles, etc..."
+                                    className={textareaClass} />
+                            </Field>
+                        </div>
+                    </div>
+                )}
+
+                {/* A7–A9: Shared */}
+                <div className="space-y-4 pt-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-400">A7–A9 · General History</p>
+                    <div className="pl-3 border-l-2 border-red-100 space-y-4">
+                        <Field>
+                            <Label>A7 · Past Medical & Surgical History</Label>
+                            <textarea rows={3} value={pastMedicalHistory} onChange={(e) => setPastMedicalHistory(e.target.value)}
+                                placeholder="Previous illnesses, hospitalisations, surgeries and outcomes..."
+                                className={textareaClass} />
+                        </Field>
+                        <Field>
+                            <Label>A8 · Drug History</Label>
+                            <textarea rows={2} value={drugHistory} onChange={(e) => setDrugHistory(e.target.value)}
+                                placeholder="Current medications, dosages, allergies to drugs..."
+                                className={textareaClass} />
+                        </Field>
+                        <Field>
+                            <Label>A9 · Family & Social History</Label>
+                            <textarea rows={3} value={familySocialHistory} onChange={(e) => setFamilySocialHistory(e.target.value)}
+                                placeholder="Family illnesses, smoking, alcohol, occupation, living conditions..."
+                                className={textareaClass} />
+                        </Field>
+                    </div>
+                </div>
+
+                {/* Female Obstetric Fields */}
+                {isFem && (
+                    <div className="space-y-4 pt-2">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-pink-50 border border-pink-100 rounded-xl">
+                            <Heart size={13} className="text-pink-600" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-pink-600">Obstetric History — Female Patient</p>
+                        </div>
+                        <div className="pl-3 border-l-2 border-pink-100">
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                <Field>
+                                    <Label>IMP (Impression / Working Diagnosis)</Label>
+                                    <input type="text" value={imp} onChange={(e) => setImp(e.target.value)}
+                                        placeholder="e.g. G3P2 at 32 weeks" className={inputClass} />
+                                </Field>
+                                <Field>
+                                    <Label>LMP (Last Menstrual Period)</Label>
+                                    <input type="date" value={lmp} onChange={(e) => setLmp(e.target.value)} className={inputClass} />
+                                </Field>
+                                <Field>
+                                    <Label>EGA (Estimated Gestational Age)</Label>
+                                    <input type="text" value={ega} onChange={(e) => setEga(e.target.value)}
+                                        placeholder="e.g. 32 weeks + 4 days" className={inputClass} />
+                                </Field>
+                                <Field>
+                                    <Label>EOD (Expected/Estimated Date of Delivery)</Label>
+                                    <input type="date" value={eod} onChange={(e) => setEod(e.target.value)} className={inputClass} />
+                                </Field>
+                                <Field>
+                                    <Label>Gravidity (G)</Label>
+                                    <input type="number" min="0" value={gravidity} onChange={(e) => setGravidity(e.target.value)}
+                                        placeholder="Total pregnancies" className={inputClass} />
+                                </Field>
+                                <Field>
+                                    <Label>Parity (P)</Label>
+                                    <input type="text" value={parity} onChange={(e) => setParity(e.target.value)}
+                                        placeholder="e.g. P2+0 or P1011" className={inputClass} />
+                                </Field>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Section>
+
+            {/* ════════════════════════════════════════════════════════
+                SECTION B — GENERAL EXAMINATION
+            ═══════════════════════════════════════════════════════════ */}
+            <Section id="exam" icon={Activity} title="B. General Examination" badge="Section B" color="text-blue-600" bg="bg-blue-50">
+                <div className="pt-4">
+                    <textarea rows={4} value={generalExamination} onChange={(e) => setGeneralExamination(e.target.value)}
+                        placeholder="General appearance, consciousness, orientation, vital signs review, pallor, jaundice, cyanosis, clubbing, lymphadenopathy, oedema..."
+                        className={textareaClass} />
+                </div>
+            </Section>
+
+            {/* ════════════════════════════════════════════════════════
+                SECTION C — SYSTEMIC EXAMINATION
+            ═══════════════════════════════════════════════════════════ */}
+            <Section id="systemic" icon={Stethoscope} title="C. Systemic Examination" badge="Section C" color="text-teal-600" bg="bg-teal-50">
+                <div className="pt-4 space-y-4">
+                    {[
+                        { label: "I. Respiratory System",       value: respiratorySystem,      onChange: setRespiratorySystem,      placeholder: "Inspection, palpation, percussion, auscultation of chest..." },
+                        { label: "II. Cardiovascular System",   value: cardiovascularSystem,   onChange: setCardiovascularSystem,   placeholder: "Heart sounds, murmurs, peripheral pulses, JVP, apex beat..." },
+                        { label: "III. Gastrointestinal System",value: gastrointestinalSystem, onChange: setGastrointestinalSystem, placeholder: "Abdomen inspection, bowel sounds, organomegaly, tenderness, ascites..." },
+                    ].map(({ label, value, onChange, placeholder }) => (
+                        <div key={label} className="pl-3 border-l-2 border-teal-100 space-y-1.5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">{label}</p>
+                            <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)}
+                                placeholder={placeholder} className={textareaClass} />
+                        </div>
+                    ))}
+                </div>
+            </Section>
+
+            {/* ════════════════════════════════════════════════════════
+                SECTION D — SUMMARY
+            ═══════════════════════════════════════════════════════════ */}
+            <Section id="summary" icon={FileText} title="D. Summary" badge="Section D" color="text-violet-600" bg="bg-violet-50">
+                <div className="pt-4">
+                    <textarea rows={4} value={summary} onChange={(e) => setSummary(e.target.value)}
+                        placeholder="Brief clinical summary — key findings and their significance..."
+                        className={textareaClass} />
+                </div>
+            </Section>
+
+            {/* ════════════════════════════════════════════════════════
+                SECTION E — ASSESSMENT
+            ═══════════════════════════════════════════════════════════ */}
+            <Section id="assessment" icon={Brain} title="E. Assessment / Diagnosis" badge="Section E" color="text-amber-600" bg="bg-amber-50">
+                <div className="pt-4">
+                    <textarea rows={3} value={assessment} onChange={(e) => setAssessment(e.target.value)}
+                        placeholder="Diagnosis or differential diagnoses with reasoning..."
+                        className={textareaClass} />
+                </div>
+            </Section>
+
+            {/* ════════════════════════════════════════════════════════
+                SECTION F — MANAGEMENT
+            ═══════════════════════════════════════════════════════════ */}
+            <Section id="management" icon={Zap} title="F. Management" badge="Section F" color="text-green-600" bg="bg-green-50">
+                <div className="pt-4 space-y-4">
+                    <div className="pl-3 border-l-2 border-green-100 space-y-1.5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-green-600">I. Investigations Planned</p>
+                        <textarea rows={2} value={investigations} onChange={(e) => setInvestigations(e.target.value)}
+                            placeholder="Planned investigations — lab, imaging, other..."
+                            className={textareaClass} />
+                    </div>
+                    <div className="pl-3 border-l-2 border-green-100 space-y-1.5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-green-600">II. Treatment Plan</p>
+                        <textarea rows={3} value={treatment} onChange={(e) => setTreatment(e.target.value)}
+                            placeholder="Medications, dosages, duration, non-pharmacological interventions..."
+                            className={textareaClass} />
+                    </div>
+                </div>
+            </Section>
+
+            {/* ════════════════════════════════════════════════════════
+                REFERRAL
+            ═══════════════════════════════════════════════════════════ */}
+            <Section id="referral" icon={ChevronRight} title="Referral & Routing" badge="Where to send patient next" color="text-indigo-600" bg="bg-indigo-50">
+                <div className="pt-4 space-y-4">
+                    <Field>
+                        <Label>Refer Patient To</Label>
+                        <div className="relative">
+                            <select value={referredTo} onChange={(e) => setReferredTo(e.target.value as ReferralTarget)}
+                                className={selectClass}>
+                                <option value="">— No referral —</option>
+                                <option value="nurse">Nurse</option>
+                                <option value="lab-tech">Lab Technician</option>
+                                <option value="radiology">Radiology</option>
+                                <option value="pharmacist">Pharmacist</option>
+                            </select>
+                            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        </div>
+                    </Field>
+
+                    {/* Lab request fields */}
+                    {referredTo === "lab-tech" && (
+                        <div className="space-y-3 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                            <div className="flex items-center gap-2">
+                                <FlaskConical size={13} className="text-indigo-600" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Lab Request Details</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Field>
+                                    <Label required>Test Type</Label>
+                                    <div className="relative">
+                                        <select value={labTestType} onChange={(e) => setLabTestType(e.target.value)} className={selectClass}>
+                                            <option value="">Select test...</option>
+                                            {LAB_TESTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </Field>
+                                <Field>
+                                    <Label>Priority</Label>
+                                    <div className="relative">
+                                        <select value={labPriority} onChange={(e) => setLabPriority(e.target.value)} className={selectClass}>
+                                            <option value="routine">Routine</option>
+                                            <option value="urgent">Urgent</option>
+                                            <option value="stat">STAT</option>
+                                        </select>
+                                        <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </Field>
+                            </div>
+                            <Field>
+                                <Label>Clinical Notes for Lab</Label>
+                                <textarea rows={2} value={labNotes} onChange={(e) => setLabNotes(e.target.value)}
+                                    placeholder="Any notes for the lab technician..." className={textareaClass} />
+                            </Field>
+                        </div>
+                    )}
+
+                    {/* Radiology request fields */}
+                    {referredTo === "radiology" && (
+                        <div className="space-y-3 p-4 bg-cyan-50 border border-cyan-100 rounded-2xl">
+                            <div className="flex items-center gap-2">
+                                <Radio size={13} className="text-cyan-600" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600">Radiology Request Details</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Field>
+                                    <Label required>Investigation Type</Label>
+                                    <div className="relative">
+                                        <select value={radiologyTestType} onChange={(e) => setRadiologyTestType(e.target.value)} className={selectClass}>
+                                            <option value="">Select investigation...</option>
+                                            {RADIOLOGY_TESTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </Field>
+                                <Field>
+                                    <Label>Priority</Label>
+                                    <div className="relative">
+                                        <select value={radiologyPriority} onChange={(e) => setRadiologyPriority(e.target.value)} className={selectClass}>
+                                            <option value="routine">Routine</option>
+                                            <option value="urgent">Urgent</option>
+                                            <option value="stat">STAT</option>
+                                        </select>
+                                        <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </Field>
+                            </div>
+                            <Field>
+                                <Label>Clinical Notes for Radiologist</Label>
+                                <textarea rows={2} value={radiologyNotes} onChange={(e) => setRadiologyNotes(e.target.value)}
+                                    placeholder="Clinical indication, relevant history for radiologist..." className={textareaClass} />
+                            </Field>
+                        </div>
+                    )}
+                </div>
+            </Section>
+
+            {/* Submit */}
+            <button type="submit" disabled={submitting || creating}
+                className="w-full h-12 flex items-center justify-center gap-2.5 bg-red-700 hover:bg-red-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                {submitting || creating
+                    ? <><Loader2 size={16} className="animate-spin" /> Saving Consultation...</>
+                    : <><CheckCircle2 size={16} /> Save Consultation</>
+                }
+            </button>
+        </form>
     );
 }
