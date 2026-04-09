@@ -16,6 +16,7 @@ export enum PatientStatus {
     UnderObservation = "under-observation",
     Discharged = "discharged",
     NoStatus = "no-status",
+    SentToRadiology = "sent-to-radiology",
 }
 
 // User Roles
@@ -25,6 +26,7 @@ export enum UserRole {
     Nurse = "Nurse",
     LabTechnician = "LabTechnician",
     Pharmacist = "Pharmacist",
+    Radiologist = "Radiologist",
     Admin = "Admin",
 }
 

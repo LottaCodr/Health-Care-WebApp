@@ -23,6 +23,9 @@ import LabTab from "../lab-tech/components/lab-tab";
 import { Patient } from "@/types/models";
 import { calculateAge } from "@/utils/export";
 
+import { Radio } from "lucide-react";
+import { RadiologyTab } from "../radiology/RadiologyTab";
+
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
 const TAB_CONFIG = [
@@ -30,6 +33,7 @@ const TAB_CONFIG = [
     { value: "consultations", label: "Consultations", icon: Stethoscope, accent: "text-red-600", activeBar: "bg-red-500" },
     { value: "prescriptions", label: "Prescriptions", icon: Pill, accent: "text-violet-600", activeBar: "bg-violet-500" },
     { value: "lab", label: "Lab Results", icon: FlaskConical, accent: "text-indigo-600", activeBar: "bg-indigo-500" },
+    { value: "radiology", label: "Radiology", icon: Radio, accent: "text-cyan-600", activeBar: "bg-cyan-500" },
 ];
 
 // ─── Alert banner ─────────────────────────────────────────────────────────────
@@ -240,6 +244,12 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
             <TabsContent value="lab" className="mt-0">
                 <LabTab patient={patient} userRole={user?.role} />
             </TabsContent>
+
+            {/* Radiology Tab */}
+            <TabsContent value="radiology" className="mt-0">
+     <RadiologyTab patient={patient} userRole={user?.role} />
+ </TabsContent>
+ 
         </Tabs>
     );
 }
