@@ -13,6 +13,7 @@ function normalizeRole(role: any): string {
     if (r.includes("nurse")) return "Nurse";
     if (r.includes("lab")) return "LabTechnician";
     if (r.includes("pharm")) return "Pharmacist";
+    if (r.includes("radio")) return "Radiology";
     if (r.includes("admin")) return "Admin";
     return role;
 }
@@ -24,6 +25,7 @@ const ROLE_DASHBOARD: Record<string, string> = {
     Pharmacist: "/pharmacist/dashboard",
     LabTechnician: "/lab-tech/dashboard",
     FrontDesk: "/front-desk/dashboard",
+    Radiolo: "/radiology/dashboard",
     Admin: "/admin/dashboard",
 };
 
@@ -34,6 +36,7 @@ const ROLE_PREFIXES: Record<string, string> = {
     Pharmacist: "/pharmacist",
     LabTechnician: "/lab-tech",
     FrontDesk: "/front-desk",
+    Radiologist: "/radiology",
     Admin: "/admin",
 };
 
