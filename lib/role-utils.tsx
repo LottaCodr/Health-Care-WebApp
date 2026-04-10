@@ -8,17 +8,14 @@ import { UserRole } from "@/types/models";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { ReactNode } from "react";
+import {
+    ROLE_DASHBOARD_MAP as SHARED_ROLE_DASHBOARD_MAP,
+    getDashboardRoute,
+} from "@/lib/role-dashboard";
 
 // Route configuration by role
-export const ROLE_ROUTES: Record<UserRole, string> = {
-    [UserRole.FrontDesk]: "/front-desk/dashboard",
-    [UserRole.Doctor]: "/doctor/dashboard",
-    [UserRole.Nurse]: "/nurse/dashboard",
-    [UserRole.LabTechnician]: "/lab-tech/dashboard",
-    [UserRole.Pharmacist]: "/pharmacist/dashboard",
-    [UserRole.Radiologist]: "/radiology/dashboard",
-    [UserRole.Admin]: "/admin/dashboard",
-};
+export const ROLE_ROUTES: Record<UserRole, string> = SHARED_ROLE_DASHBOARD_MAP;
+export { getDashboardRoute };
 
 // Protected routes that require specific roles
 export const PROTECTED_ROUTES: Record<string, UserRole[]> = {
@@ -83,13 +80,6 @@ export function withRoleProtection(
 }
 
 /**
- * Get dashboard route for a specific role
- */
-export function getDashboardRoute(role: UserRole): string {
-    return ROLE_ROUTES[role] || "/login";
-}
-
-/**
  * Check if a route is accessible by a role
  */
 export function isRouteAccessible(pathname: string, role: UserRole): boolean {
@@ -109,6 +99,5 @@ export function useRedirectAfterLogin() {
 
     if (!user) return "/login";
 
-    const role = user.role as UserRole;
-    return ROLE_ROUTES[role] || "/login";
+    return getDashboardRoute(user.role);
 }

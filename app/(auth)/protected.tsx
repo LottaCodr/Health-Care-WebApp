@@ -3,30 +3,13 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import supabase from "@/utils/supabase/client";
+import { getDashboardRoute } from "@/lib/role-dashboard";
 
 /**
  * Public routes that do not require authentication.
  * `/login` is the single source of truth for unauthenticated access.
  */
 const PUBLIC_ROUTES = ["/login"] as const;
-
-/**
- * Role → dashboard mapping (aligned with app-wide routing)
- */
-const ROLE_DASHBOARD_MAP: Record<string, string> = {
-  Doctor: "/doctor/dashboard",
-  Nurse: "/nurse/dashboard",
-  Pharmacist: "/pharmacist/dashboard",
-  LabTechnician: "/lab-tech/dashboard",
-  FrontDesk: "/front-desk/dashboard",
-  Radiologist: "/radiology/dashboard",
-  Admin: "/admin/dashboard",
-};
-
-function getDashboardRoute(role?: string): string {
-  if (!role) return "/login";
-  return ROLE_DASHBOARD_MAP[role] || "/login";
-}
 
 function isPublicRoute(path: string): boolean {
   return PUBLIC_ROUTES.includes(path as (typeof PUBLIC_ROUTES)[number]);
