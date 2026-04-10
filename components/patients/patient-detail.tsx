@@ -1,13 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useCallback, useState, ReactNode } from "react";
 import { usePatientContext } from "@/context/patients/patient-context";
 import { useConsultationContext } from "@/context/consultation/consultation";
 import PatientDetailsSkeleton from "./skeleton";
 import {  PatientStatus } from "@/context/patients/types";
 import { toast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/auth-provider";
-import PatientDetailTabs from "./patient-detail-tabs";
 import {
     User, Mail, Phone, MapPin, Briefcase, ShieldAlert, CheckCircle,
     ClipboardList, Activity, Heart, Building2, CreditCard, Copy,
@@ -15,6 +14,15 @@ import {
     Baby, BookUser, Pill, History, Syringe,
 } from "lucide-react";
 import { Patient } from "@/types/models";
+
+const PatientDetailTabs = dynamic(() => import("./patient-detail-tabs"), {
+  loading: () => (
+    <div
+      className="animate-pulse rounded-2xl border border-gray-100 bg-white h-52 w-full"
+      aria-hidden
+    />
+  ),
+});
 
 interface Props {
     patient: Patient;

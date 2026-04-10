@@ -15,7 +15,8 @@ function useStableQueryClient() {
   const [client] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 60 * 1000, //data fresh for 1 min - no refresh on ta focus
+        gcTime: 5 * 60 * 1000, // keep in memmory 5 mins
         retry: 1,
         refetchOnWindowFocus: false,
       },

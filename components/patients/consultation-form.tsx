@@ -1,6 +1,7 @@
 "use client";
  
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/context/auth-provider";
 import { useCreateConsultation, useUpdatePatientStatus, useCreateLabRequest } from "@/hooks/use-emr";
 import { PatientStatus } from "@/types/models";
@@ -9,7 +10,11 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import AIClinicalAssistant from "@/components/ai/AIClinicalAssistant";
+
+const AIClinicalAssistant = dynamic(
+    () => import("@/components/ai/AIClinicalAssistant"),
+    { loading: () => <div className="animate-pulse h-32 bg-gray-50 rounded-2xl" /> }
+);
 import {
     Stethoscope, HeartPulse, ClipboardList, Pill,
     UserRound, ArrowRight, Loader2, CheckCircle2,

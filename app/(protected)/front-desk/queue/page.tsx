@@ -1,6 +1,12 @@
 "use client";
 
-import QueueSuite from "@/components/front-desk/QueueSuite";
+import dynamic from "next/dynamic";
+
+const QueueSuite = dynamic(() => import("@/components/front-desk/QueueSuite"), {
+  loading: () => (
+    <div className="animate-pulse space-y-4 rounded-2xl border border-gray-100 bg-white p-6 min-h-[240px]" />
+  ),
+});
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ListOrdered } from "lucide-react";
 import { useRouter } from "next/navigation";

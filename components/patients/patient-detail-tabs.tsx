@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Activity,
@@ -23,14 +24,40 @@ import { Staff } from "@/actions/staff/types";
 import { Patient } from "@/types/models";
 import { calculateAge } from "@/utils/export";
 
-import ConsultationForm from "./consultation-form";
-import ConsultationHistoryTable from "./consultation-history";
-import PrescriptionDetails from "./prescription-details";
-import PrescriptionHistory from "./prescription-history";
-import VitalsCheckinAdvancedComponent from "../nurse/VitalsSuite";
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
-import LabTab from "../lab-tech/components/lab-tab";
-import { RadiologyTab } from "../radiology/RadiologyTab";
+
+function TabChunkSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-24 bg-gray-50 rounded-2xl border border-gray-100" />
+      <div className="h-40 bg-gray-50 rounded-2xl border border-gray-100" />
+    </div>
+  );
+}
+
+const ConsultationForm = dynamic(() => import("./consultation-form"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const ConsultationHistoryTable = dynamic(() => import("./consultation-history"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const PrescriptionDetails = dynamic(() => import("./prescription-details"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const PrescriptionHistory = dynamic(() => import("./prescription-history"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const VitalsCheckinAdvancedComponent = dynamic(
+  () => import("../nurse/VitalsSuite"),
+  { loading: () => <TabChunkSkeleton /> }
+);
+const LabTab = dynamic(() => import("../lab-tech/components/lab-tab"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const RadiologyTab = dynamic(
+  () => import("../radiology/RadiologyTab").then((m) => m.RadiologyTab),
+  { loading: () => <TabChunkSkeleton /> }
+);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tab configuration
