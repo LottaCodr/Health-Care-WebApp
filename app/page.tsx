@@ -22,9 +22,9 @@ export default function Home() {
           Radiologist: "/radiology/dashboard",
           Admin: "/admin/dashboard",
         };
-        router.push(roleRoutes[user.role] || "/login");
+        router.replace(roleRoutes[user.role] || "/login");
       } else {
-        router.push("/login");
+        router.replace("/login");
       }
     }
   }, [user, isLoading, router]);

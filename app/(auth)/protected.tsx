@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import supabase from "@/utils/supabase/client";
 
@@ -19,7 +19,7 @@ const ROLE_DASHBOARD_MAP: Record<string, string> = {
   Pharmacist: "/pharmacist/dashboard",
   LabTechnician: "/lab-tech/dashboard",
   FrontDesk: "/front-desk/dashboard",
-  Radiologist: "radiology/dashboard",
+  Radiologist: "/radiology/dashboard",
   Admin: "/admin/dashboard",
 };
 
@@ -39,32 +39,33 @@ export default function ProtectedRedirect({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const hasRedirected = useRef(false);
 
   useEffect(() => {
     async function checkAuthAndRedirect() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (user) {
-        // Prefer role stored in user_metadata if available
-        const role = (user.user_metadata as any)?.role as string | undefined;
+        if (user) {
+          // Prefer role stored in user_metadata if available
+          const role = (user.user_metadata as any)?.role as string | undefined;
 
-        // If on a public route, redirect authenticated user to their dashboard
-        if (isPublicRoute(pathname)) {
-          const dashboardRoute = getDashboardRoute(role);
-          if (pathname !== dashboardRoute && !hasRedirected.current) {
-            hasRedirected.current = true;
-            router.replace(dashboardRoute);
+          // If on a public route, redirect authenticated user to their dashboard
+          if (isPublicRoute(pathname)) {
+            const dashboardRoute = getDashboardRoute(role);
+            if (pathname !== dashboardRoute) {
+              router.replace(dashboardRoute);
+            }
+          }
+        } else {
+          // Not authenticated and on a protected route → redirect to /login
+          if (!isPublicRoute(pathname) && pathname !== "/login") {
+            router.replace("/login");
           }
         }
-      } else {
-        // Not authenticated and on a protected route → redirect to /login
-        if (!isPublicRoute(pathname) && !hasRedirected.current) {
-          hasRedirected.current = true;
-          router.replace("/login");
-        }
+      } catch {
+        // Swallow transient auth/network errors in dev. Navigation can retry on the next render.
       }
     }
 
