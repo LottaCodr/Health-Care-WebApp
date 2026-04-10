@@ -7,7 +7,7 @@
 import { UserRole } from "@/types/models";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import {
     ROLE_DASHBOARD_MAP as SHARED_ROLE_DASHBOARD_MAP,
     getDashboardRoute,
@@ -35,18 +35,28 @@ export const PROTECTED_ROUTES: Record<string, UserRole[]> = {
 export function useRoleProtection(allowedRoles: UserRole[]) {
     const router = useRouter();
     const { user, isLoading } = useAuth();
+    const userRole = user?.role as UserRole | undefined;
+
+    useEffect(() => {
+        if (isLoading) return;
+
+        if (!user) {
+            router.replace("/login");
+            return;
+        }
+
+        if (userRole && !allowedRoles.includes(userRole)) {
+            router.replace("/unauthorized");
+        }
+    }, [isLoading, user, userRole, allowedRoles, router]);
 
     if (isLoading) return { authorized: false, loading: true };
 
     if (!user) {
-        router.push("/login");
         return { authorized: false, loading: false };
     }
 
-    const userRole = user.role as UserRole;
-
     if (!allowedRoles.includes(userRole)) {
-        router.push("/unauthorized");
         return { authorized: false, loading: false };
     }
 

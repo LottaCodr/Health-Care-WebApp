@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getDashboardRoute } from "@/lib/role-dashboard";
 
 // ─── Public routes (no auth needed) ────────────────────────────────────────
-const PUBLIC_PATHS = ["/", "/unauthorized", "/login"];
+const PUBLIC_PATHS = ["/unauthorized", "/login"];
 
 // ─── Role normalization (mirror logic from auth-provider) ──────────────────
 function normalizeRole(role: any): string {
@@ -13,21 +14,10 @@ function normalizeRole(role: any): string {
     if (r.includes("nurse")) return "Nurse";
     if (r.includes("lab")) return "LabTechnician";
     if (r.includes("pharm")) return "Pharmacist";
-    if (r.includes("radio")) return "Radiology";
+    if (r.includes("radio")) return "Radiologist";
     if (r.includes("admin")) return "Admin";
     return role;
 }
-
-// ─── Role → dashboard route map (values use normalized roles) ──────────────
-const ROLE_DASHBOARD: Record<string, string> = {
-    Doctor: "/doctor/dashboard",
-    Nurse: "/nurse/dashboard",
-    Pharmacist: "/pharmacist/dashboard",
-    LabTechnician: "/lab-tech/dashboard",
-    FrontDesk: "/front-desk/dashboard",
-    Radiolo: "/radiology/dashboard",
-    Admin: "/admin/dashboard",
-};
 
 // ─── Role → route prefix map (used to guard wrong-role access) ─────────────
 const ROLE_PREFIXES: Record<string, string> = {
@@ -104,7 +94,7 @@ export async function proxy(request: NextRequest) {
                 .single();
 
             const normalizedRole = normalizeRole(staffRow?.role);
-            const dashboard = ROLE_DASHBOARD[normalizedRole] ?? "/login";
+            const dashboard = getDashboardRoute(normalizedRole);
 
             return NextResponse.redirect(new URL(dashboard, request.url));
         }
@@ -122,7 +112,7 @@ export async function proxy(request: NextRequest) {
             .eq("id", user.id)
             .single();
         const normalizedRole = normalizeRole(staffRow?.role);
-        const dashboard = ROLE_DASHBOARD[normalizedRole] ?? "/login";
+        const dashboard = getDashboardRoute(normalizedRole);
         return NextResponse.redirect(new URL(dashboard, request.url));
     }
 
@@ -147,7 +137,7 @@ export async function proxy(request: NextRequest) {
         if (pathname.startsWith(prefix)) {
             if (userRole !== role) {
                 // User is on the wrong role's area → redirect to their dashboard
-                const correctDash = ROLE_DASHBOARD[userRole] ?? "/login";
+                const correctDash = getDashboardRoute(userRole);
                 return NextResponse.redirect(new URL(correctDash, request.url));
             }
             break;
