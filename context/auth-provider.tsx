@@ -46,11 +46,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     };
 
+    // Supabase can transiently throw lock contention in dev when multiple
+    // auth reads race. Retry once, then fall back to session user.
+    const getAuthUserSafely = async () => {
+        try {
+            const { data } = await supabase.auth.getUser();
+            return data.user ?? null;
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            const isLockContention =
+                msg.toLowerCase().includes("lock") &&
+                msg.toLowerCase().includes("stole");
+
+            if (!isLockContention) throw error;
+
+            await new Promise((resolve) => setTimeout(resolve, 80));
+            try {
+                const { data } = await supabase.auth.getUser();
+                return data.user ?? null;
+            } catch {
+                const { data } = await supabase.auth.getSession();
+                return data.session?.user ?? null;
+            }
+        }
+    };
+
     useEffect(() => {
         const initSession = async () => {
             setIsLoading(true);
             try {
-                const { data: { user: authUser } } = await supabase.auth.getUser();
+                const authUser = await getAuthUserSafely();
 
                 if (authUser) {
                     const staff = await fetchStaffProfile(authUser.id);
