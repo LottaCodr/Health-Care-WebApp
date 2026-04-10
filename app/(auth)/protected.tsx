@@ -8,7 +8,7 @@ import supabase from "@/utils/supabase/client";
  * Public routes that do not require authentication.
  * `/login` is the single source of truth for unauthenticated access.
  */
-const PUBLIC_ROUTES = ["/", "/login"] as const;
+const PUBLIC_ROUTES = ["/login"] as const;
 
 /**
  * Role → dashboard mapping (aligned with app-wide routing)
