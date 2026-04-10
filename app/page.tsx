@@ -19,6 +19,7 @@ export default function Home() {
           Pharmacist: "/pharmacist/dashboard",
           LabTechnician: "/lab-tech/dashboard",
           FrontDesk: "/front-desk/dashboard",
+          Radiologist: "/radiology/dashboard",
           Admin: "/admin/dashboard",
         };
         router.push(roleRoutes[user.role] || "/login");

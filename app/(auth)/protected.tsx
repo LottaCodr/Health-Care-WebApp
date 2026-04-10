@@ -19,6 +19,7 @@ const ROLE_DASHBOARD_MAP: Record<string, string> = {
   Pharmacist: "/pharmacist/dashboard",
   LabTechnician: "/lab-tech/dashboard",
   FrontDesk: "/front-desk/dashboard",
+  Radiologist: "radiology/dashboard",
   Admin: "/admin/dashboard",
 };
 

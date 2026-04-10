@@ -73,8 +73,6 @@ const ROLE_ROUTES: Record<string, (id: string) => string> = {
 const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) => {
     const router = useRouter();
     const { user } = useAuth();
-    const queryClient = useQueryClient();
-
 
     const handleClick = (id: string) => {
         const route = user?.role ? ROLE_ROUTES[user.role]?.(id) : null;
@@ -118,18 +116,9 @@ const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) =>
                     const patientId = patient.id!;
                     const gender = (patient.gender ?? '').toLowerCase();
                     const isFemale = gender === 'female';
-                    
-    const prefetch = () => {
-        queryClient.prefetchQuery({
-            queryKey: ["patient", patient.id],
-            queryFn: () => getPatientId(patient.id),
-            staleTime: 30_000,
-        })
-    }
 
                     return (
                         <motion.div
-                        onMouseEnter={prefetch}
                             key={patientId}
                             variants={cardVariants as any}
                             initial="hidden"
