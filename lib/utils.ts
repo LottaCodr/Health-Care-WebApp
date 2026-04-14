@@ -123,3 +123,25 @@ export function calculateAge(dob: string | Date): number {
 
   return age;
 }
+
+export function fmtDate(iso?: string): string {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+export function fmtTime(iso?: string): string {
+    if (!iso) return "";
+    return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+export function fmtFull(iso?: string): string {
+    if (!iso) return "—";
+    return `${fmtDate(iso)} · ${fmtTime(iso)}`;
+}
+
+export function calcAge(dob?: string): string {
+    if (!dob) return "";
+    const d   = new Date(dob);
+    const now = new Date();
+    let   yrs = now.getFullYear() - d.getFullYear();
+    if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) yrs--;
+    return yrs < 2 ? `${yrs * 12 + now.getMonth() - d.getMonth()} months` : `${yrs} years`;
+}

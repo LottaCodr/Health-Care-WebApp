@@ -1,291 +1,371 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { useAuth } from "@/context/auth-provider";
-import { useRoleProtection } from "@/lib/role-utils";
-import { UserRole } from "@/types/models";
-import {
-    usePatient,
-    useConsultationsByPatient,
-    useLabRequestsByPatient,
-    useNursingActionsByPatient,
-    useDispensingRecordsByPatient,
-    usePaymentsByPatient,
-} from "@/hooks/use-emr";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoadingSkeleton, ErrorAlert, EmptyState } from "@/components/emr-ui";
-import { ArrowLeft, Calendar, Pill, Beaker, Heart, DollarSign } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { PremiumLayout } from "@/components/layout/PremiumLayout";
+import {
+    useConsultationsByPatient, useLabRequestsByPatient,
+    useNursingActionsByPatient, usePaymentsByPatient,
+} from "@/hooks/use-emr";
+import { getPatientById } from "@/actions/front-desk/get.patients";
+import {
+    ArrowLeft, Calendar, Stethoscope, FlaskConical, HeartPulse,
+    CreditCard, CheckCircle2, Clock, AlertCircle, Loader2,
+    User, Activity, Radio, Pill, ClipboardList, RefreshCcw,
+    TrendingUp,
+} from "lucide-react";
+import { fmtFull, calcAge } from "@/lib/utils";
 
-export default function PatientTimelinePage() {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface TimelineEvent {
+    id:          string;
+    type:        "registration" | "consultation" | "lab" | "radiology" | "nursing" | "pharmacy" | "payment";
+    title:       string;
+    description: string;
+    timestamp:   string;
+    status?:     string;
+    meta?:       string;
+}
+
+// ─── Event config ─────────────────────────────────────────────────────────────
+
+const EVENT_CONFIG: Record<string, {
+    icon:  React.ElementType;
+    color: string;
+    bg:    string;
+    border:string;
+    label: string;
+    line:  string;
+}> = {
+    registration:  { icon: User,         color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-200",   label: "Registration",   line: "bg-blue-200"   },
+    consultation:  { icon: Stethoscope,  color: "text-red-600",    bg: "bg-red-50",    border: "border-red-200",    label: "Consultation",   line: "bg-red-200"    },
+    lab:           { icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200", label: "Lab",            line: "bg-indigo-200" },
+    radiology:     { icon: Radio,        color: "text-cyan-600",   bg: "bg-cyan-50",   border: "border-cyan-200",   label: "Radiology",      line: "bg-cyan-200"   },
+    nursing:       { icon: HeartPulse,   color: "text-teal-600",   bg: "bg-teal-50",   border: "border-teal-200",   label: "Nursing",        line: "bg-teal-200"   },
+    pharmacy:      { icon: Pill,         color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200", label: "Pharmacy",       line: "bg-violet-200" },
+    payment:       { icon: CreditCard,   color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-200",  label: "Payment",        line: "bg-amber-200"  },
+};
+
+const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: React.ElementType }> = {
+    completed:    { color: "text-green-700",  bg: "bg-green-50 border-green-200",   icon: CheckCircle2  },
+    pending:      { color: "text-amber-700",  bg: "bg-amber-50 border-amber-200",   icon: Clock         },
+    active:       { color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",     icon: Activity      },
+    inprogress:   { color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",     icon: Activity      },
+    failed:       { color: "text-red-700",    bg: "bg-red-50 border-red-200",       icon: AlertCircle   },
+    cancelled:    { color: "text-gray-600",   bg: "bg-gray-100 border-gray-200",    icon: AlertCircle   },
+};
+
+
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status?: string }) {
+    const key = (status ?? "").toLowerCase();
+    const cfg = STATUS_CONFIG[key] ?? { color: "text-gray-600", bg: "bg-gray-100 border-gray-200", icon: Clock };
+    const Icon = cfg.icon;
     return (
-        <PremiumLayout>
-            <PatientTimeline />
-        </PremiumLayout>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${cfg.bg} ${cfg.color}`}>
+            <Icon size={10} />
+            {status}
+        </span>
     );
 }
 
-function PatientTimeline() {
-    const params = useParams();
-    const patientId = params.id as string;
+// ─── Timeline event card ──────────────────────────────────────────────────────
 
-    const { authorized, loading: roleLoading } = useRoleProtection([
-        UserRole.Doctor,
-        UserRole.Nurse,
-        UserRole.LabTechnician,
-        UserRole.Pharmacist,
-        UserRole.Admin,
-    ]);
-
-    const { data: patient, loading: patientLoading } = usePatient(patientId);
-    const { data: consultations, loading: consultLoading } = useConsultationsByPatient(patientId);
-    const { data: labRequests, loading: labLoading } = useLabRequestsByPatient(patientId);
-    const { data: nursingActions, loading: nursingLoading } = useNursingActionsByPatient(patientId);
-    const { data: dispensingRecords, loading: dispensingLoading } = useDispensingRecordsByPatient(patientId);
-    const { data: payments, loading: paymentLoading } = usePaymentsByPatient(patientId);
-
-    const [timeline, setTimeline] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (
-            !patientLoading &&
-            !consultLoading &&
-            !labLoading &&
-            !nursingLoading &&
-            !dispensingLoading &&
-            !paymentLoading
-        ) {
-            const events: any[] = [];
-
-            // Registration event
-            if (patient) {
-                events.push({
-                    id: patient.id || patient.$id,
-                    type: "registration",
-                    title: "Patient Registered",
-                    description: `${patient.name} registered in the system`,
-                    timestamp: patient.created_at || patient.$createdAt,
-                    status: "Completed",
-                    icon: <Calendar className="h-5 w-5" />,
-                });
-            }
-
-            // Consultation events
-            if (consultations) {
-                consultations.forEach((consultation: any) => {
-                    events.push({
-                        id: consultation.id || consultation.$id,
-                        type: "consultation",
-                        title: "Consultation",
-                        description: `Symptoms: ${consultation.symptoms}. Diagnosis: ${consultation.diagnosis}`,
-                        timestamp: consultation.created_at || consultation.$createdAt,
-                        status: consultation.status,
-                        icon: <Heart className="h-5 w-5" />,
-                    });
-                });
-            }
-
-            // Lab request events
-            if (labRequests) {
-                labRequests.forEach((labRequest: any) => {
-                    events.push({
-                        id: labRequest.id || labRequest.$id,
-                        type: "lab",
-                        title: `Lab Test: ${labRequest.testType}`,
-                        description: labRequest.testDescription,
-                        timestamp: labRequest.created_at || labRequest.$createdAt,
-                        status: labRequest.status,
-                        icon: <Beaker className="h-5 w-5" />,
-                    });
-                });
-            }
-
-            // Nursing action events
-            if (nursingActions) {
-                nursingActions.forEach((action: any) => {
-                    events.push({
-                        id: action.id || action.$id,
-                        type: "nursing",
-                        title: `Nursing: ${action.actionType}`,
-                        description: action.description,
-                        timestamp: action.created_at || action.$createdAt,
-                        status: action.status,
-                        icon: <Heart className="h-5 w-5" />,
-                    });
-                });
-            }
-
-            // Pharmacy dispensing events
-            if (dispensingRecords) {
-                dispensingRecords.forEach((record: any) => {
-                    events.push({
-                        id: record.id || record.$id,
-                        type: "pharmacy",
-                        title: "Medication Dispensed",
-                        description: `${record.dispensedMedications?.length || 0} medications dispensed`,
-                        timestamp: record.created_at || record.$createdAt,
-                        status: "Completed",
-                        icon: <Pill className="h-5 w-5" />,
-                    });
-                });
-            }
-
-            // Payment events
-            if (payments) {
-                payments.forEach((payment: any) => {
-                    events.push({
-                        id: payment.id || payment.$id,
-                        type: "payment",
-                        title: "Payment Processed",
-                        description: `₦${payment.amount} via ${payment.paymentMethod}`,
-                        timestamp: payment.created_at || payment.$createdAt,
-                        status: payment.status,
-                        icon: <DollarSign className="h-5 w-5" />,
-                    });
-                });
-            }
-
-            // Sort by timestamp (newest first)
-            events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-            setTimeline(events);
-            setLoading(false);
-        }
-    }, [
-        patient,
-        consultations,
-        labRequests,
-        nursingActions,
-        dispensingRecords,
-        payments,
-        patientLoading,
-        consultLoading,
-        labLoading,
-        nursingLoading,
-        dispensingLoading,
-        paymentLoading,
-    ]);
-
-    if (roleLoading || loading) return <LoadingSkeleton />;
-
-    if (!authorized) {
-        return <ErrorAlert message="Unauthorized access." />;
-    }
-
-    if (!patient) {
-        return <ErrorAlert message="Patient not found" />;
-    }
-
-    const getStatusColor = (status: string) => {
-        switch (status?.toLowerCase()) {
-            case "completed":
-                return "text-green-600";
-            case "pending":
-            case "scheduled":
-                return "text-yellow-600";
-            case "inprogress":
-                return "text-blue-600";
-            case "failed":
-            case "cancelled":
-                return "text-red-600";
-            default:
-                return "text-gray-600";
-        }
-    };
-
-    const getStatusBgColor = (status: string) => {
-        switch (status?.toLowerCase()) {
-            case "completed":
-                return "bg-green-100";
-            case "pending":
-            case "scheduled":
-                return "bg-yellow-100";
-            case "inprogress":
-                return "bg-blue-100";
-            case "failed":
-            case "cancelled":
-                return "bg-red-100";
-            default:
-                return "bg-gray-100";
-        }
-    };
+function EventCard({ event, isLast }: { event: TimelineEvent; isLast: boolean }) {
+    const cfg = EVENT_CONFIG[event.type] ?? EVENT_CONFIG.registration;
+    const Icon = cfg.icon;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex items-center gap-6">
-                <Link href="/doctor/dashboard">
-                    <button className="p-3 hover:bg-white/10 rounded-2xl glass-card transition-all group">
-                        <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform" />
-                    </button>
-                </Link>
-                <div>
-                    <h1 className="text-4xl font-black tracking-tight">Patient Timeline</h1>
-                    <p className="text-muted-foreground font-medium text-lg">{patient.name}</p>
+        <div className="flex gap-4">
+            {/* Left: icon + connecting line */}
+            <div className="flex flex-col items-center shrink-0">
+                <div className={`w-10 h-10 rounded-2xl ${cfg.bg} border ${cfg.border} flex items-center justify-center z-10`}>
+                    <Icon size={16} className={cfg.color} />
                 </div>
+                {!isLast && <div className={`w-0.5 flex-1 mt-2 rounded-full ${cfg.line} opacity-50 min-h-[24px]`} />}
             </div>
 
-            {/* Patient Summary */}
-            <div className="glass-card p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-1">
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Name</p>
-                    <p className="text-xl font-bold">{patient.name}</p>
-                </div>
-                <div className="space-y-1">
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Contact</p>
-                    <p className="text-xl font-bold">{patient.phone}</p>
-                </div>
-                <div className="space-y-1">
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Current Status</p>
-                    <div className="pt-1">
-                        <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-primary/20 text-primary border border-primary/20">
-                            {patient.status}
-                        </span>
+            {/* Right: card content */}
+            <div className="flex-1 pb-6 min-w-0">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-gray-200 transition-all">
+                    {/* Header strip */}
+                    <div className={`h-0.5 w-full ${cfg.line}`} />
+                    <div className="p-4 space-y-2.5">
+                        {/* Top row */}
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                            <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-sm font-bold text-gray-900">{event.title}</p>
+                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
+                                        {cfg.label}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <Calendar size={10} className="text-gray-400" />
+                                    <p className="text-[11px] font-medium text-gray-400">{fmtFull(event.timestamp)}</p>
+                                </div>
+                            </div>
+                            {event.status && <StatusBadge status={event.status} />}
+                        </div>
+
+                        {/* Description */}
+                        {event.description && (
+                            <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{event.description}</p>
+                        )}
+
+                        {/* Meta */}
+                        {event.meta && (
+                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${cfg.bg} border ${cfg.border}`}>
+                                <p className={`text-[10px] font-bold ${cfg.color}`}>{event.meta}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
 
-            {/* Timeline */}
-            <div className="glass-card p-10">
-                <h2 className="text-2xl font-bold mb-12">Medical History & Timeline</h2>
-                {timeline.length === 0 ? (
-                    <EmptyState title="No events" description="No medical events recorded yet" />
-                ) : (
-                    <div className="relative space-y-12">
-                        {/* Vertical Line */}
-                        <div className="absolute left-6 top-2 bottom-2 w-px bg-gradient-to-b from-primary/50 via-border to-transparent" />
+// ─── Filter button ────────────────────────────────────────────────────────────
 
-                        {timeline.map((event, index) => (
-                            <div key={event.id} className="relative flex gap-10 items-start group">
-                                {/* Timeline marker */}
-                                <div className={`relative z-10 p-3.5 rounded-2xl glass-card ring-4 ring-background transition-all group-hover:scale-110 ${getStatusColor(event.status)}`}>
-                                    {event.icon}
-                                </div>
+function FilterChip({ label, active, onClick, color, bg }: {
+    label: string; active: boolean; onClick: () => void; color: string; bg: string;
+}) {
+    return (
+        <button onClick={onClick}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all
+                ${active ? `${bg} ${color} border-current/20` : "bg-white text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600"}`}>
+            {label}
+        </button>
+    );
+}
 
-                                {/* Event details */}
-                                <div className="flex-1">
-                                    <div className="glass-card p-6 border-white/5 hover:border-primary/30 transition-all hover:bg-white/5">
-                                        <div className="flex items-start justify-between mb-2">
-                                            <div>
-                                                <h3 className="text-lg font-bold">{event.title}</h3>
-                                                <p className="text-muted-foreground font-medium mt-1 leading-relaxed">
-                                                    {event.description}
-                                                </p>
-                                            </div>
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusBgColor(event.status)} ${getStatusColor(event.status)} border-current/20`}>
-                                                {event.status}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-4 text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                            <Calendar className="h-3 w-3" />
-                                            {new Date(event.timestamp).toLocaleString()}
-                                        </div>
-                                    </div>
-                                </div>
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+export default function PatientTimelinePage() {
+    const params    = useParams();
+    const router    = useRouter();
+    const patientId = (params?.id ?? params?.patientId ?? params?.userId) as string;
+
+    const { data: patient, isLoading: pLoading } = useQuery({
+        queryKey: ["patient", patientId],
+        queryFn:  () => getPatientById(patientId),
+        enabled:  !!patientId,
+    });
+
+    const { data: consultations } = useConsultationsByPatient(patientId);
+    const { data: labRequests   } = useLabRequestsByPatient(patientId);
+    const { data: nursing       } = useNursingActionsByPatient(patientId);
+    const { data: payments      } = usePaymentsByPatient(patientId);
+
+    const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+    const allEvents = useMemo<TimelineEvent[]>(() => {
+        const events: TimelineEvent[] = [];
+
+        // Registration
+        if (patient) {
+            events.push({
+                id:          `reg-${patient.id}`,
+                type:        "registration",
+                title:       "Patient Registered",
+                description: `${patient.name} was registered at Nile Valley Hospital. Blood Group: ${patient.blood_group ?? "—"} · Genotype: ${patient.geno_type ?? "—"}`,
+                timestamp:   patient.created_at ?? patient.$createdAt ?? new Date().toISOString(),
+                status:      "Completed",
+            });
+        }
+
+        // Consultations
+        consultations?.forEach((c: any) => {
+            const desc = [
+                c.symptoms  ? `Symptoms: ${c.symptoms.slice(0, 120)}${c.symptoms.length > 120 ? "…" : ""}` : null,
+                c.diagnosis ? `Assessment: ${c.diagnosis.slice(0, 80)}${c.diagnosis.length > 80 ? "…" : ""}` : null,
+            ].filter(Boolean).join(" · ");
+            events.push({
+                id:          c.id ?? c.$id,
+                type:        "consultation",
+                title:       "Doctor Consultation",
+                description: desc || "Consultation recorded.",
+                timestamp:   c.created_at ?? c.consultationDate,
+                status:      c.status,
+                meta:        c.referred_to ? `Referred → ${c.referred_to.replace(/-/g, " ")}` : undefined,
+            });
+        });
+
+        // Lab requests (excluding radiology)
+        labRequests
+            ?.filter((r: any) => !String(r.test_type ?? "").startsWith("[RADIOLOGY]"))
+            .forEach((r: any) => {
+                events.push({
+                    id:          r.id ?? r.$id,
+                    type:        "lab",
+                    title:       r.test_type ?? "Lab Test",
+                    description: r.notes ? `Clinical indication: ${r.notes}` : r.result ? `Result: ${r.result.slice(0, 100)}` : "Lab investigation requested.",
+                    timestamp:   r.created_at,
+                    status:      r.status,
+                    meta:        r.status === "completed" && r.completed_at ? `Completed: ${fmtFull(r.completed_at)}` : `Priority: ${r.priority ?? "routine"}`,
+                });
+            });
+
+        // Radiology
+        labRequests
+            ?.filter((r: any) => String(r.test_type ?? "").startsWith("[RADIOLOGY]"))
+            .forEach((r: any) => {
+                const clean = r.test_type.replace(/^\[RADIOLOGY\]\s*/, "");
+                events.push({
+                    id:          `rad-${r.id}`,
+                    type:        "radiology",
+                    title:       clean,
+                    description: r.notes ? `Clinical indication: ${r.notes}` : r.result ? r.result.slice(0, 150) : "Radiology investigation requested.",
+                    timestamp:   r.created_at,
+                    status:      r.status,
+                    meta:        r.status === "completed" ? "Report filed" : `Priority: ${r.priority ?? "routine"}`,
+                });
+            });
+
+        // Nursing
+        nursing?.forEach((a: any) => {
+            events.push({
+                id:          a.id ?? a.$id,
+                type:        "nursing",
+                title:       `Nursing: ${a.action_type ?? "Care"}`,
+                description: a.description ?? "Nursing action performed.",
+                timestamp:   a.created_at,
+                status:      a.status,
+                meta:        a.completion_time ? `Completed: ${fmtFull(a.completion_time)}` : undefined,
+            });
+        });
+
+        // Payments
+        payments?.forEach((p: any) => {
+            events.push({
+                id:          p.id ?? p.$id,
+                type:        "payment",
+                title:       "Payment",
+                description: `₦${Number(p.amount ?? 0).toLocaleString("en-NG")} — ${p.payment_method ?? p.paymentMethod ?? "—"}`,
+                timestamp:   p.created_at,
+                status:      p.status,
+            });
+        });
+
+        return events.sort((a, b) =>
+            new Date(b.timestamp ?? 0).getTime() - new Date(a.timestamp ?? 0).getTime()
+        );
+    }, [patient, consultations, labRequests, nursing, payments]);
+
+    const filtered = useMemo(() =>
+        activeFilter ? allEvents.filter(e => e.type === activeFilter) : allEvents
+    , [allEvents, activeFilter]);
+
+    const typeCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        allEvents.forEach(e => { counts[e.type] = (counts[e.type] ?? 0) + 1; });
+        return counts;
+    }, [allEvents]);
+
+    if (pLoading) return (
+        <div className="min-h-screen bg-gray-50/60 flex items-center justify-center gap-3">
+            <Loader2 size={20} className="text-red-500 animate-spin" />
+            <p className="text-sm font-medium text-gray-500">Loading timeline...</p>
+        </div>
+    );
+
+    if (!patient) return (
+        <div className="min-h-screen bg-gray-50/60 flex flex-col items-center justify-center gap-4">
+            <AlertCircle size={28} className="text-amber-500" />
+            <p className="text-sm font-semibold text-gray-600">Patient not found</p>
+            <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-600 hover:border-gray-300 transition-all">
+                <ArrowLeft size={14} /> Go Back
+            </button>
+        </div>
+    );
+
+    return (
+        <div className="min-h-screen bg-gray-50/60">
+            <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+                {/* ── Back + title ── */}
+                <div className="flex items-center gap-3">
+                    <button onClick={() => router.back()}
+                        className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all shadow-sm shrink-0">
+                        <ArrowLeft size={15} />
+                    </button>
+                    <div>
+                        <h1 className="text-lg font-black text-gray-900">Patient Timeline</h1>
+                        <p className="text-xs text-gray-400 mt-0.5">Chronological medical history</p>
+                    </div>
+                </div>
+
+                {/* ── Patient summary card ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center text-white font-black text-lg shadow-md shadow-red-200 shrink-0">
+                            {patient.name?.[0]?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-base font-black text-gray-900">{patient.name}</p>
+                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                {patient.gender    && <span className="text-xs text-gray-500 font-medium capitalize">{patient.gender}</span>}
+                                {patient.date_of_birth && <span className="text-xs text-gray-500 font-medium">{calcAge(patient.date_of_birth)}</span>}
+                                {patient.blood_group   && (
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">
+                                        {patient.blood_group}
+                                    </span>
+                                )}
                             </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="text-2xl font-black text-gray-900">{allEvents.length}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-0.5">Events</p>
+                        </div>
+                    </div>
+
+                    {/* Event type summary */}
+                    <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-gray-50">
+                        {(["consultation", "lab", "nursing", "payment"] as const).map(type => {
+                            const cfg = EVENT_CONFIG[type];
+                            const Icon = cfg.icon;
+                            return (
+                                <div key={type} className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl ${cfg.bg} border ${cfg.border}`}>
+                                    <Icon size={14} className={cfg.color} />
+                                    <p className={`text-sm font-black ${cfg.color}`}>{typeCounts[type] ?? 0}</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{cfg.label}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* ── Filter chips ── */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">Filter:</p>
+                    <FilterChip label="All" active={!activeFilter} onClick={() => setActiveFilter(null)} color="text-gray-700" bg="bg-gray-100" />
+                    {Object.entries(EVENT_CONFIG).filter(([, cfg]) => typeCounts[cfg.label.toLowerCase()] ?? typeCounts[Object.keys(EVENT_CONFIG).find(k => EVENT_CONFIG[k] === cfg) ?? ""] ?? 0).map(([type, cfg]) =>
+                        (typeCounts[type] ?? 0) > 0 ? (
+                            <FilterChip key={type}
+                                label={`${cfg.label} (${typeCounts[type]})`}
+                                active={activeFilter === type}
+                                onClick={() => setActiveFilter(activeFilter === type ? null : type)}
+                                color={cfg.color} bg={cfg.bg} />
+                        ) : null
+                    )}
+                </div>
+
+                {/* ── Timeline ── */}
+                {filtered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-2xl border border-gray-100">
+                        <TrendingUp size={22} className="text-gray-300" />
+                        <p className="text-sm font-semibold text-gray-500">No events recorded yet</p>
+                        <p className="text-xs text-gray-400">Medical events will appear here as the patient progresses through care.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-0">
+                        {filtered.map((event, idx) => (
+                            <EventCard key={event.id} event={event} isLast={idx === filtered.length - 1} />
                         ))}
                     </div>
                 )}
