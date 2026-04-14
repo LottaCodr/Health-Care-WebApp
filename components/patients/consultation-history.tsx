@@ -132,14 +132,7 @@ export default function ConsultationHistoryTable({ patientId }: Props) {
                         : "The doctor hasn't added any consultations for this patient yet."}
                 </p>
             </div>
-            {user?.role === "Doctor" && (
-                <button
-                    onClick={() => document.getElementById("doctor-consultation")?.scrollIntoView({ behavior: "smooth" })}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white text-sm font-bold shadow-sm shadow-red-200 transition-colors"
-                >
-                    <Stethoscope size={14} /> Add First Consultation
-                </button>
-            )}
+            
         </div>
     );
 
