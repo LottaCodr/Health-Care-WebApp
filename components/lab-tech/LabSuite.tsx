@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
-import { useLabRequest, useUpdateLabRequest, useUpdatePatientStatus } from "@/hooks/use-emr";
+import { useLabRequestsByPatient, useUpdateLabRequest, useUpdatePatientStatus } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton, ErrorAlert, SuccessAlert, PatientInfoCard } from "@/components/emr";
 import { Button } from "@/components/ui/button";
 import { Beaker, FileText, CheckCircle } from "lucide-react";
@@ -17,7 +17,7 @@ interface LabSuiteProps {
 export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
     const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
-    const { data: request, loading: requestLoading } = useLabRequest(requestId);
+    const { data: request, loading: requestLoading } = useLabRequestsByPatient(requestId);
 
     const [results, setResults] = useState("");
     const [submitting, setSubmitting] = useState(false);

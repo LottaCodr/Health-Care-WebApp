@@ -4,13 +4,13 @@ import React, { useState, useMemo } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { usePendingNursingActions, useUpdateNursingAction } from "@/hooks/use-emr";
+import { usePendingNursingActions, useUpdateNursingAction } from "@/hooks/emr/use-nursing";
 import {
     HeartPulse, CheckCircle2, Clock, AlertCircle,
     RefreshCcw, Loader2, AlertTriangle, User,
     ClipboardList, ChevronDown, Search, X,
     CheckCheck, Play,
-} from "lucide-react";
+} from "lucide-react";  
 import { toast } from "sonner";
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ function TaskCard({ task, onStatusChange, updating }: {
             <div className="flex items-center gap-4 p-4">
                 {/* Status indicator */}
                 <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isCompleted ? "bg-green-400" :
-                        isInProgress ? "bg-blue-500 animate-pulse" : "bg-amber-400"
+                    isInProgress ? "bg-blue-500 animate-pulse" : "bg-amber-400"
                     }`} />
 
                 {/* Avatar */}

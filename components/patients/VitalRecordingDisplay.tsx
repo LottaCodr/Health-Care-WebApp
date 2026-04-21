@@ -1,6 +1,6 @@
 "use client";
 
-import { useNursingActionsByPatient } from "@/hooks/use-emr";
+import { useNursingActionsByPatient } from "@/hooks/emr/use-emr";
 import {
     Activity, Thermometer, HeartPulse, Wind,
     Droplets, Weight, Ruler, Calculator,

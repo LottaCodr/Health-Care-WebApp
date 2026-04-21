@@ -99,5 +99,5 @@ export async function getAllPatients(
         .range(page * limit, (page + 1) * limit - 1);
 
     if (error) { console.error("[patient] getAllPatients:", error); return []; }
-    return data as unknown as Patient[];
+    return data as Patient[];
 }

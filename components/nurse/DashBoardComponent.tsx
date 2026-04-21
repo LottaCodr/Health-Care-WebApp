@@ -1,16 +1,15 @@
 "use client";
 
-import React from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { usePendingNursingActions } from "@/hooks/use-emr";
 import { LoadingSkeleton } from "@/components/emr";
 import {
     HeartPulse, Clock, CheckCircle2, AlertCircle,
     ChevronRight, RefreshCcw, Activity,
 } from "lucide-react";
 import Link from "next/link";
+import { usePendingNursingActions } from "@/hooks/emr/use-nursing";
 
 export default function NurseDashboard() {
     const { user }       = useAuth();

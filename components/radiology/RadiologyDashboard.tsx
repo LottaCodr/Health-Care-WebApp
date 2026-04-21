@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/use-emr";
 import { useAuth } from "@/context/auth-provider";
 import { LoadingSkeleton } from "@/components/emr";
 import {
@@ -11,6 +10,7 @@ import {
     FileText, Loader2, AlertTriangle, Image, Activity,
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/emr/use-lab";
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
     routine: { label: "Routine", color: "text-gray-600",  bg: "bg-gray-100",  dot: "bg-gray-400"  },

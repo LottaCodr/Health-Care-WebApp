@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrescriptionsByPatient } from "@/hooks/use-emr"; // adjust if hook name differs
+import { usePrescriptionsByPatient } from "@/hooks/emr/use-emr";
 import {
   Pill, Eye, DownloadCloud, ClipboardList,
   Clock, CheckCircle2, XCircle, Loader2,

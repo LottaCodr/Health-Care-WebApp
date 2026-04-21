@@ -4,7 +4,7 @@ import React, { useState, useMemo, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import SearchInput from './search-input';
 import PatientsTable from './table';
-import {  SortConfig } from '@/context/patients/types';
+import { SortConfig } from '@/context/patients/types';
 import { Button } from '@/components/ui/button';
 import {
     RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
@@ -13,26 +13,20 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-provider';
-import { getAllPatients } from '@/actions/front-desk/get.patients';
 import { Patient } from '@/types/models';
+import { useAllPatients } from '@/hooks/emr/use-patients';
 
-interface PatientProps {
-    thePatients: Patient[];
-}
 
-const ITEMS_PER_PAGE = 10;
 
-export default function PatientsComponent({ thePatients }: PatientProps) {
-    const [search, setSearch]           = useState('');
-    const [sortConfig, setSortConfig]   = useState<SortConfig | null>(null);
+const ITEMS_PER_PAGE = 100;
+
+export default function PatientsComponent() {
+    const [search, setSearch] = useState('');
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const { user } = useAuth();
 
-    const { data: patients = [], isPending, isFetching, refetch } = useQuery({
-        queryKey: ['patients'],
-        queryFn: getAllPatients,
-        initialData: thePatients,
-    });
+    const { data: patients = [], isPending, refetch, isFetching } = useAllPatients();
 
     const filteredPatients = useMemo(() => {
         let filtered = [...patients];
@@ -241,10 +235,10 @@ export default function PatientsComponent({ thePatients }: PatientProps) {
         </Suspense>
     );
 
-    function handlePrev()  { setCurrentPage((p) => Math.max(p - 1, 1)); }
-    function handleNext()  { setCurrentPage((p) => Math.min(p + 1, totalPages)); }
+    function handlePrev() { setCurrentPage((p) => Math.max(p - 1, 1)); }
+    function handleNext() { setCurrentPage((p) => Math.min(p + 1, totalPages)); }
     function handleFirst() { setCurrentPage(1); }
-    function handleLast()  { setCurrentPage(totalPages); }
+    function handleLast() { setCurrentPage(totalPages); }
 }
 
 // ─── Pagination button ────────────────────────────────────────────────────────

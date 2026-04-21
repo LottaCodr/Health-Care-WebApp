@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/use-emr";
+import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton } from "@/components/emr";
 import {
     FlaskConical, CheckCircle2, Clock,
@@ -13,9 +13,9 @@ import {
 import { toast } from "sonner";
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-    routine: { label: "Routine", color: "text-gray-600",  bg: "bg-gray-100",  dot: "bg-gray-400"  },
-    urgent:  { label: "Urgent",  color: "text-amber-700", bg: "bg-amber-50",  dot: "bg-amber-500" },
-    stat:    { label: "STAT",    color: "text-red-700",   bg: "bg-red-50",    dot: "bg-red-500"   },
+    routine: { label: "Routine", color: "text-gray-600", bg: "bg-gray-100", dot: "bg-gray-400" },
+    urgent: { label: "Urgent", color: "text-amber-700", bg: "bg-amber-50", dot: "bg-amber-500" },
+    stat: { label: "STAT", color: "text-red-700", bg: "bg-red-50", dot: "bg-red-500" },
 };
 
 function PriorityBadge({ priority }: { priority?: string }) {
@@ -28,18 +28,18 @@ function PriorityBadge({ priority }: { priority?: string }) {
 }
 
 export default function LabTechDashboard() {
-    const { user }       = useAuth();
+    const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
     const { data: requests, loading, refetch } = usePendingLabRequests();
-    const { mutate: updateLabRequest }         = useUpdateLabRequest();
+    const { mutate: updateLabRequest } = useUpdateLabRequest();
 
-    const [activeId,     setActiveId]     = useState<string | null>(null);
-    const [resultText,   setResultText]   = useState<Record<string, string>>({});
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [resultText, setResultText] = useState<Record<string, string>>({});
     const [submittingId, setSubmittingId] = useState<string | null>(null);
 
     if (!authorized) return null;
 
-    const pending   = requests?.filter((r: any) => r.status === "pending")   ?? [];
+    const pending = requests?.filter((r: any) => r.status === "pending") ?? [];
     const completed = requests?.filter((r: any) => r.status === "completed") ?? [];
 
     const handleSubmitResult = async (reqId: string) => {
@@ -66,8 +66,8 @@ export default function LabTechDashboard() {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4">
                 {[
-                    { label: "Pending Tests", value: pending.length,   icon: Clock,        color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-                    { label: "Completed",     value: completed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
+                    { label: "Pending Tests", value: pending.length, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+                    { label: "Completed", value: completed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
                 ].map((s) => {
                     const Icon = s.icon;
                     return (

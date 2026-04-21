@@ -1,7 +1,7 @@
-import { Patient } from "@/context/patients/types";
+import { Patient } from "@/types/models";
 
 
-export type StaffRole = "doctor" | "nurse" | "frontdesk" | "pharmacist" | "labtech" | "user";
+export type StaffRole = "doctor" | "nurse" | "frontdesk" | "pharmacist" | "labtech"  | "radiologist" | "admin" | "user";
 
 export interface Staff {
     $id: string;

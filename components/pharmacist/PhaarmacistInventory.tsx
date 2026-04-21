@@ -1,15 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import {
-    useDrugInventory,             // existing hook — for inventory/stock view
-    useCreateDrugInventoryItem,   // existing hook
-    useUpdateDrugInventoryItem,   // existing hook
-    useDrugCatalog,               // new hook — full catalog with pricing
-    useUpsertDrug,                // new hook
-    useDeleteDrug,                // new hook
-    useToggleDrugActive,          // new hook
-} from "@/hooks/use-emr";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
 import { toast } from "sonner";
@@ -19,6 +10,7 @@ import {
     AlertTriangle, TrendingDown, ShieldAlert,
     ToggleLeft, ToggleRight, ArrowUpCircle, Filter,
 } from "lucide-react";
+import { useDrugCatalog, useToggleDrugActive } from "@/hooks/emr/use-pharmacy";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -325,7 +317,7 @@ export default function DrugManagementPage() {
 
     const filtered = useMemo(() => {
         if (!drugs) return [];
-        return (drugs as Drug[]).filter(d => {
+        return (drugs as unknown as Drug[]).filter(d => {
             const matchSearch = !search ||
                 d.drug_name.toLowerCase().includes(search.toLowerCase()) ||
                 (d.generic_name ?? "").toLowerCase().includes(search.toLowerCase()) ||
@@ -352,9 +344,9 @@ export default function DrugManagementPage() {
 
     if (!authorized) return null;
 
-    const totalValue = (drugs as Drug[] ?? []).reduce((s, d) => s + (d.price * d.quantity), 0);
-    const lowStock = (drugs as Drug[] ?? []).filter(d => d.quantity <= (d.reorder_level ?? 10) && d.quantity > 0).length;
-    const outOfStock = (drugs as Drug[] ?? []).filter(d => d.quantity === 0).length;
+    const totalValue = (drugs as unknown as Drug[] ?? []).reduce((s, d) => s + (d.price * d.quantity), 0);
+    const lowStock = (drugs as unknown as Drug[] ?? []).filter(d => d.quantity <= (d.reorder_level ?? 10) && d.quantity > 0).length;
+    const outOfStock = (drugs as unknown as Drug[] ?? []).filter(d => d.quantity === 0).length;
 
     const selCls = "h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer";
 
@@ -569,4 +561,18 @@ export default function DrugManagementPage() {
             {deleteTarget && <DeleteModal drug={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={refetch} />}
         </div>
     );
+}
+
+function useUpsertDrug(): { mutate: any; loading: any; } {
+    throw new Error("Function not implemented.");
+}
+
+
+function useUpdateDrugInventoryItem(): { mutate: any; } {
+    throw new Error("Function not implemented.");
+}
+
+
+function useDeleteDrug(): { mutate: any; loading: any; } {
+    throw new Error("Function not implemented.");
 }

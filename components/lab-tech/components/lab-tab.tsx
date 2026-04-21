@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useLabRequestsByPatient } from "@/hooks/use-emr";
+import { useLabRequestsByPatient } from "@/hooks/emr/use-emr";
 import { LabResultUploadForm } from "@/components/lab-tech/lab-result-upload-form";
 // import { Patient } from "@/context/patients/types";
 import {

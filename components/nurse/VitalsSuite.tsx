@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
-import { usePatient, useCreateNursingAction, useUpdateNursingAction, useUpdatePatientStatus } from "@/hooks/use-emr";
+import { usePatient, useCreateNursingAction, useUpdateNursingAction, useUpdatePatientStatus } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton, SuccessAlert, PatientInfoCard } from "@/components/emr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

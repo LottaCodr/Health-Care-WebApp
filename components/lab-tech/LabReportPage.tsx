@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { useCompletedLabRequests } from "@/hooks/use-emr";
+import { useCompletedLabRequests } from "@/hooks/emr/use-lab";
 import {
     FlaskConical, Search, RefreshCcw, CheckCircle2,
     Clock, Calendar, User, X, ChevronDown,

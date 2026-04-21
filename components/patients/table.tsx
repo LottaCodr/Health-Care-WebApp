@@ -4,13 +4,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
-import {  PatientStatus } from '@/context/patients/types';
 import { calculateAge, formatDate } from '@/lib/utils';
 import { useAuth } from '@/context/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    User, Droplets, AlertTriangle, Pill,
-    Calendar, ChevronRight, HeartPulse,
+    User, Droplets,  Pill,
+    Calendar, ChevronRight, 
 } from 'lucide-react';
 import { Patient } from '@/types/models';
 

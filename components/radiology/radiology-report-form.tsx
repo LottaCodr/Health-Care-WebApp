@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useAuth } from "@/context/auth-provider";
-import { usePendingLabRequests, useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/use-emr";
+import { useUpdateLabRequest } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton } from "@/components/emr";
 import {
     Radio, CheckCircle2, 

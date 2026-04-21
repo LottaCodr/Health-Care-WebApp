@@ -4,21 +4,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { Patient, PatientStatus } from "@/types/models";
 import * as PatientService from "@/lib/services/patient.service";
+import { useQuery } from '@tanstack/react-query';
+
+
 
 interface S<T> { data: T; loading: boolean; error: Error | null; }
 
 export function usePatient(id: string, opts?: { enabled?: boolean }) {
-    const [s, set] = useState<S<Patient | null>>({ data: null, loading: true, error: null });
+    const { data, isPending, error, refetch, isFetching } = useQuery({
+        queryKey: ["patient", id],
+        queryFn: () => PatientService.getPatientById(id),
+        enabled: !!id && (opts?.enabled ?? true),
+    });
 
-    useEffect(() => {
-        if (!id || opts?.enabled === false) { set({ data: null, loading: false, error: null }); return; }
-        set({ data: null, loading: true, error: null });
-        PatientService.getPatientById(id)
-            .then(d => set({ data: d, loading: false, error: d ? null : new Error("Not found") }))
-            .catch(e => set({ data: null, loading: false, error: e }));
-    }, [id, opts?.enabled]);
-
-    return s;
+    return { data, isPending, error, refetch, isFetching };
 }
 
 export function usePatientsByStatus(status: PatientStatus) {
@@ -52,15 +51,13 @@ export function useSearchPatients(query: string) {
 }
 
 export function useAllPatients() {
-    const [s, set] = useState<S<Patient[]>>({ data: [], loading: true, error: null });
-    const refetch = useCallback(() => {
-        set({ data: [], loading: true, error: null });
-        PatientService.getAllPatients()
-            .then(d => set({ data: d, loading: false, error: null }))
-            .catch(e => set({ data: [], loading: false, error: e }));
-    }, []);
-    useEffect(() => { refetch(); }, [refetch]);
-    return { ...s, refetch };
+    const { data, isPending, error, refetch, isFetching } = useQuery({
+        queryKey: ["patients"],
+        queryFn: () => PatientService.getAllPatients(),
+        initialData: [],
+
+    });
+    return { data, isPending, isFetching, error, refetch };
 }
 
 export function useUpdatePatientStatus() {

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/auth-provider";
-import { useCreatePrescription, useDrugInventory } from "@/hooks/use-emr";
+import { useCreatePrescription, useDrugInventory } from "@/hooks/emr/use-emr";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {

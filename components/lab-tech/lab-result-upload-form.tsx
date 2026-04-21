@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
-import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/use-emr";
+import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/emr/use-emr";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
