@@ -45,7 +45,7 @@ export const PatientFormDefaultValues: Patient = {
   privateClient: false,
 
   // Other required fields
-  status: "active" as PatientStatus, // ⚡ adjust depending on your PatientStatus enum
+  status: "active" as PatientStatus, // adjust depending on your PatientStatus enum
   userId: "",
 
   // Optional fields

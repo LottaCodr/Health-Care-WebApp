@@ -19,6 +19,7 @@ const ROLE_CONFIG: Record<string, { label: string; dot: string }> = {
     Labtech: { label: "Lab Console", dot: "bg-indigo-400" },
     Frontdesk: { label: "Front Desk Console", dot: "bg-blue-400" },
     Admin: { label: "Admin Console", dot: "bg-amber-400" },
+    Radiologist: { label: "Radiology Console", dot: "bg-amber-400" },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────

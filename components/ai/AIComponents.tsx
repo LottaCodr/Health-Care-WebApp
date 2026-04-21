@@ -10,7 +10,7 @@
  */
 
 import React, { useState } from "react";
-import { getAITriageScore, getAILabInterpretation, getAIPrescriptionSafetyCheck, getAIPatientSummary } from "@/lib/ai-service";
+import { getAITriageScore, getAILabInterpretation, getAIPrescriptionSafetyCheck, getAIPatientSummary } from "@/lib/services/ai-service";
 import {
     Sparkles, Loader2, AlertTriangle, CheckCircle2,
     ShieldAlert, Activity, ChevronDown, ChevronUp,
@@ -48,28 +48,28 @@ function AIDisclaimer() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const RISK_CONFIG = {
-    Critical: { color: "text-red-700",    bg: "bg-red-600",    light: "bg-red-50",    border: "border-red-200",   label: "CRITICAL"  },
-    High:     { color: "text-orange-700", bg: "bg-orange-500", light: "bg-orange-50", border: "border-orange-200", label: "HIGH"      },
-    Medium:   { color: "text-amber-700",  bg: "bg-amber-500",  light: "bg-amber-50",  border: "border-amber-200",  label: "MEDIUM"    },
-    Low:      { color: "text-green-700",  bg: "bg-green-500",  light: "bg-green-50",  border: "border-green-200",  label: "LOW"       },
+    Critical: { color: "text-red-700", bg: "bg-red-600", light: "bg-red-50", border: "border-red-200", label: "CRITICAL" },
+    High: { color: "text-orange-700", bg: "bg-orange-500", light: "bg-orange-50", border: "border-orange-200", label: "HIGH" },
+    Medium: { color: "text-amber-700", bg: "bg-amber-500", light: "bg-amber-50", border: "border-amber-200", label: "MEDIUM" },
+    Low: { color: "text-green-700", bg: "bg-green-500", light: "bg-green-50", border: "border-green-200", label: "LOW" },
 };
 
 interface TriageProps {
-    bloodPressure?:    string;
-    temperature?:      string;
-    pulse?:            string;
-    respiratoryRate?:  string;
+    bloodPressure?: string;
+    temperature?: string;
+    pulse?: string;
+    respiratoryRate?: string;
     oxygenSaturation?: string;
-    bmi?:              string;
-    patientAge?:       number;
-    patientGender?:    string;
-    chiefComplaint?:   string;
+    bmi?: string;
+    patientAge?: number;
+    patientGender?: string;
+    chiefComplaint?: string;
 }
 
 export function AITriageScore(props: TriageProps) {
-    const [result,  setResult]  = useState<Awaited<ReturnType<typeof getAITriageScore>> | null>(null);
+    const [result, setResult] = useState<Awaited<ReturnType<typeof getAITriageScore>> | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const analyse = async () => {
         setLoading(true); setError(null);
@@ -187,32 +187,32 @@ export function AITriageScore(props: TriageProps) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const FLAG_CONFIG = {
-    Critical: { color: "text-red-700",   bg: "bg-red-50",   border: "border-red-200"   },
-    High:     { color: "text-orange-700",bg: "bg-orange-50",border: "border-orange-200" },
-    Low:      { color: "text-blue-700",  bg: "bg-blue-50",  border: "border-blue-200"  },
-    Normal:   { color: "text-green-700", bg: "bg-green-50", border: "border-green-100" },
+    Critical: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
+    High: { color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
+    Low: { color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200" },
+    Normal: { color: "text-green-700", bg: "bg-green-50", border: "border-green-100" },
 };
 
 const URGENCY_CONFIG = {
-    Immediate: { color: "text-red-700",   bg: "bg-red-50",   border: "border-red-200"   },
-    Urgent:    { color: "text-orange-700",bg: "bg-orange-50",border: "border-orange-100" },
-    Soon:      { color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100" },
-    Routine:   { color: "text-green-700", bg: "bg-green-50", border: "border-green-100" },
+    Immediate: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
+    Urgent: { color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-100" },
+    Soon: { color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100" },
+    Routine: { color: "text-green-700", bg: "bg-green-50", border: "border-green-100" },
 };
 
 interface LabProps {
-    testType:        string;
-    result:          string;
-    patientAge?:     number;
-    patientGender?:  string;
+    testType: string;
+    result: string;
+    patientAge?: number;
+    patientGender?: string;
     medicalHistory?: string;
-    currentMeds?:    string;
+    currentMeds?: string;
 }
 
 export function AILabInterpretation(props: LabProps) {
-    const [result,  setResult]  = useState<Awaited<ReturnType<typeof getAILabInterpretation>> | null>(null);
+    const [result, setResult] = useState<Awaited<ReturnType<typeof getAILabInterpretation>> | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const analyse = async () => {
         setLoading(true); setError(null);
@@ -317,30 +317,30 @@ export function AILabInterpretation(props: LabProps) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const RISK_BADGE = {
-    Safe:    { color: "text-green-700",  bg: "bg-green-50",  border: "border-green-200"  },
-    Caution: { color: "text-amber-700",  bg: "bg-amber-50",  border: "border-amber-200"  },
+    Safe: { color: "text-green-700", bg: "bg-green-50", border: "border-green-200" },
+    Caution: { color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
     Warning: { color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
-    Danger:  { color: "text-red-700",    bg: "bg-red-50",    border: "border-red-200"    },
+    Danger: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
 };
 
 const SEVERITY_COLOR = { Mild: "text-amber-600", Moderate: "text-orange-600", Severe: "text-red-600" };
 
 interface RxProps {
-    drugName:        string;
-    dosage:          string;
-    duration?:       string;
-    patientAge?:     number;
-    patientWeight?:  number;
-    patientGender?:  string;
-    allergies?:      string;
-    currentMeds?:    string;
+    drugName: string;
+    dosage: string;
+    duration?: string;
+    patientAge?: number;
+    patientWeight?: number;
+    patientGender?: string;
+    allergies?: string;
+    currentMeds?: string;
     medicalHistory?: string;
 }
 
 export function AIPrescriptionCheck(props: RxProps) {
-    const [result,  setResult]  = useState<Awaited<ReturnType<typeof getAIPrescriptionSafetyCheck>> | null>(null);
+    const [result, setResult] = useState<Awaited<ReturnType<typeof getAIPrescriptionSafetyCheck>> | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const analyse = async () => {
         setLoading(true); setError(null);
@@ -450,15 +450,15 @@ interface SummaryProps {
     };
     consultations?: { symptoms: string; diagnosis: string; date: string }[];
     prescriptions?: { drugName: string; dosage: string; date: string; status: string }[];
-    labResults?:    { testType: string; result: string; date: string; status: string }[];
-    vitals?:        { bloodPressure?: string; temperature?: string; pulse?: string; date: string };
-    viewerRole?:    string;
+    labResults?: { testType: string; result: string; date: string; status: string }[];
+    vitals?: { bloodPressure?: string; temperature?: string; pulse?: string; date: string };
+    viewerRole?: string;
 }
 
 export function AIPatientSummary(props: SummaryProps) {
-    const [result,   setResult]   = useState<Awaited<ReturnType<typeof getAIPatientSummary>> | null>(null);
-    const [loading,  setLoading]  = useState(false);
-    const [error,    setError]    = useState<string | null>(null);
+    const [result, setResult] = useState<Awaited<ReturnType<typeof getAIPatientSummary>> | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [expanded, setExpanded] = useState(true);
 
     const generate = async () => {

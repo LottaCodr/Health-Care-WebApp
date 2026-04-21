@@ -56,7 +56,7 @@ export function useRoleProtection(allowedRoles: UserRole[]) {
         return { authorized: false, loading: false };
     }
 
-    if (!allowedRoles.includes(userRole)) {
+    if (!allowedRoles.includes(userRole!)) {
         return { authorized: false, loading: false };
     }
 

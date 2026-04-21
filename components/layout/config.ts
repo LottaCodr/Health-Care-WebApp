@@ -80,6 +80,8 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Dashboard", url: "/lab-tech/dashboard", icon: LayoutDashboard },
             { title: "Requests", url: "/lab-tech/requests", icon: FlaskConical },
             { title: "Reports", url: "/lab-tech/reports", icon: Microscope },
+            { title: "Test Catalog", url: "/lab-tech/catalog", icon: Microscope }
+
         ],
         secondary: [
             { title: "Settings", url: "/lab-tech/settings", icon: Settings },
@@ -99,6 +101,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
     [UserRole.Radiologist]: {
         main: [
             { title: "Dashboard", url: "/radiology/dashboard", icon: LayoutDashboard },
+            { title: "Requests", url: "/radiology/requests", icon: FlaskConical },
             { title: "Reports", url: "/radiology/reports", icon: Radio },
         ],
         secondary: [

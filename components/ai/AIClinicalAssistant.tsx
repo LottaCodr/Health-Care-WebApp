@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { getAIClinicalAssistance } from "@/lib/ai-service";
+import { getAIClinicalAssistance } from "@/lib/services/ai-service";
 import {
     Sparkles, Loader2, ChevronDown, ChevronUp,
     AlertTriangle, FlaskConical, BookOpen, Activity,

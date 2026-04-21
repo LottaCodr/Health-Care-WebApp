@@ -52,6 +52,7 @@ import {
     updateDrugInventoryItem,
     createDrugInventoryItem,
 } from "@/lib/supabase-service";
+import supabase from "@/utils/supabase/client";
 
 // Type for hook state management
 interface UseAsyncState<T> {
@@ -850,6 +851,195 @@ export function useUpdateDrugInventoryItem() {
         finally { setLoading(false); }
     }, []);
     return { mutate, loading };
+}
+
+
+// ─── Drug Catalog hooks (replaces createClient() calls in DrugCatalogPage) ────
+
+export function useDrugCatalog() {
+    const [state, setState] = useState({ data: null as any[] | null, loading: true, error: null as Error | null });
+
+    const refetch = useCallback(async () => {
+        setState(p => ({ ...p, loading: true, error: null }));
+        try {
+            const { data, error } = await supabase
+                .from("drug_inventory")
+                .select("*")
+                .order("drug_name");
+            if (error) throw error;
+            setState({ data: data ?? [], loading: false, error: null });
+        } catch (err) {
+            setState({ data: null, loading: false, error: err as Error });
+        }
+    }, []);
+
+    useEffect(() => { refetch(); }, [refetch]);
+    return { ...state, refetch };
+}
+
+
+
+export function useUpsertDrug() {
+    const [loading, setLoading] = useState(false);
+
+    const mutate = useCallback(async (drug: Record<string, any>, id?: string) => {
+        setLoading(true);
+        try {
+            if (id) {
+                const { error } = await supabase.from("drug_inventory").update(drug).eq("id", id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from("drug_inventory").insert([drug]);
+                if (error) throw error;
+            }
+        } finally { setLoading(false); }
+    }, []);
+
+    return { mutate, loading };
+}
+
+export function useDeleteDrug() {
+    const [loading, setLoading] = useState(false);
+    const mutate = useCallback(async (id: string) => {
+        setLoading(true);
+        try {
+            const { error } = await supabase.from("drug_inventory").delete().eq("id", id);
+            if (error) throw error;
+        } finally { setLoading(false); }
+    }, []);
+    return { mutate, loading };
+}
+
+export function useToggleDrugActive() {
+    const [loading, setLoading] = useState(false);
+    const mutate = useCallback(async (id: string, current: boolean) => {
+        setLoading(true);
+        try {
+            const { error } = await supabase.from("drug_inventory").update({ is_active: !current }).eq("id", id);
+            if (error) throw error;
+        } finally { setLoading(false); }
+    }, []);
+    return { mutate, loading };
+}
+
+// ─── Lab Test Catalog hooks ────────────────────────────────────────────────────
+
+export function useLabTestCatalog() {
+    const [state, setState] = useState({ data: null as any[] | null, loading: true, error: null as Error | null });
+
+    const refetch = useCallback(async () => {
+        setState(p => ({ ...p, loading: true, error: null }));
+        try {
+            const { data, error } = await supabase
+                .from("lab_test_catalog")
+                .select("*")
+                .order("category")
+                .order("test_name");
+            if (error) throw error;
+            setState({ data: data ?? [], loading: false, error: null });
+        } catch (err) {
+            setState({ data: null, loading: false, error: err as Error });
+        }
+    }, []);
+
+    useEffect(() => { refetch(); }, [refetch]);
+    return { ...state, refetch };
+}
+
+export function useUpsertLabTest() {
+    const [loading, setLoading] = useState(false);
+
+    const mutate = useCallback(async (test: Record<string, any>, id?: string) => {
+        setLoading(true);
+        try {
+            if (id) {
+                const { error } = await supabase.from("lab_test_catalog").update(test).eq("id", id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from("lab_test_catalog").insert([test]);
+                if (error) throw error;
+            }
+        } finally { setLoading(false); }
+    }, []);
+
+    return { mutate, loading };
+}
+
+export function useDeleteLabTest() {
+    const [loading, setLoading] = useState(false);
+    const mutate = useCallback(async (id: string) => {
+        setLoading(true);
+        try {
+            const { error } = await supabase.from("lab_test_catalog").delete().eq("id", id);
+            if (error) throw error;
+        } finally { setLoading(false); }
+    }, []);
+    return { mutate, loading };
+}
+
+export function useToggleLabTestActive() {
+    const [loading, setLoading] = useState(false);
+    const mutate = useCallback(async (id: string, current: boolean) => {
+        setLoading(true);
+        try {
+            const { error } = await supabase.from("lab_test_catalog").update({ is_active: !current }).eq("id", id);
+            if (error) throw error;
+        } finally { setLoading(false); }
+    }, []);
+    return { mutate, loading };
+}
+
+// ─── Active lab tests (for doctor's request dropdown) ─────────────────────────
+// Used in ConsultationForm to populate the lab test selector from the DB
+
+export function useActiveLabTests() {
+    const [state, setState] = useState({ data: null as any[] | null, loading: true, error: null as Error | null });
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("lab_test_catalog")
+                    .select("id, test_name, test_code, category, sample_type, turnaround_time, price, instructions")
+                    .eq("is_active", true)
+                    .order("category")
+                    .order("test_name");
+                if (error) throw error;
+                setState({ data: data ?? [], loading: false, error: null });
+            } catch (err) {
+                setState({ data: null, loading: false, error: err as Error });
+            }
+        })();
+    }, []);
+
+    return state;
+}
+
+// ─── Active drugs (for pharmacist autocomplete) ────────────────────────────────
+// Used in PrescriptionDetails drug autocomplete from DB instead of hardcoded list
+
+export function useActiveDrugs() {
+    const [state, setState] = useState({ data: null as any[] | null, loading: false, error: null as Error | null });
+
+    useEffect(() => {
+        (async () => {
+            setState(p => ({ ...p, loading: true }));
+            try {
+                const { data, error } = await supabase
+                    .from("drug_inventory")
+                    .select("id, drug_name, generic_name, price, unit, quantity, requires_prescription, dosage_form, strength")
+                    .eq("is_active", true)
+                    .gt("quantity", 0)
+                    .order("drug_name");
+                if (error) throw error;
+                setState({ data: data ?? [], loading: false, error: null });
+            } catch (err) {
+                setState({ data: null, loading: false, error: err as Error });
+            }
+        })();
+    }, []);
+
+    return state;
 }
 
 /**

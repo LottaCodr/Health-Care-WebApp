@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
@@ -66,12 +67,14 @@ const ROLE_ROUTES: Record<string, (id: string) => string> = {
     Nurse: (id) => `/nurse/queue/patient/${id}`,
     LabTechnician: (id) => `/lab-tech/requests/patient/${id}`,
     Pharmacist: (id) => `/pharmacist/queue/patient/${id}`,
+    Radiologist: (id) => `/radiology/requests/patient/${id}`,
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const PatientsTable: React.FC<PatientsTableProps> = ({ patients, isPending }) => {
     const router = useRouter();
+    const client = useQueryClient();
     const { user } = useAuth();
 
     const handleClick = (id: string) => {

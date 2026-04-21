@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     };
 
-    // Supabase can transiently throw lock contention in dev when multiple
+    // Supabase can transiently throw lock contention in dev when` multiple
     // auth reads race. Retry once, then fall back to session user.
     const getAuthUserSafely = async () => {
         try {
