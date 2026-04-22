@@ -73,7 +73,7 @@ export function useCreateLabRequest() {
     });
 }
 
-export function useUpdateLabRequest() {
+export function useUpdateLabRequest(reqId: string, p0: { status: string; result: string; completed_by: any; completed_at: string; }) {
     const qc = useQueryClient();
 
     return useMutation({

@@ -13,9 +13,9 @@ import { toast } from "sonner";
 import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/emr/use-lab";
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-    routine: { label: "Routine", color: "text-gray-600",  bg: "bg-gray-100",  dot: "bg-gray-400"  },
-    urgent:  { label: "Urgent",  color: "text-amber-700", bg: "bg-amber-50",  dot: "bg-amber-500" },
-    stat:    { label: "STAT",    color: "text-red-700",   bg: "bg-red-50",    dot: "bg-red-500"   },
+    routine: { label: "Routine", color: "text-gray-600", bg: "bg-gray-100", dot: "bg-gray-400" },
+    urgent: { label: "Urgent", color: "text-amber-700", bg: "bg-amber-50", dot: "bg-amber-500" },
+    stat: { label: "STAT", color: "text-red-700", bg: "bg-red-50", dot: "bg-red-500" },
 };
 
 function PriorityBadge({ priority }: { priority?: string }) {
@@ -31,13 +31,13 @@ function PriorityBadge({ priority }: { priority?: string }) {
 const cleanTestType = (t: string) => t.replace(/^\[RADIOLOGY\]\s*/, "");
 
 export default function RadiologyDashboard() {
-    const { user }       = useAuth();
+    const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.Admin]);
-    const { data: allRequests, loading, refetch } = usePendingLabRequests();
-    const { mutate: updateRequest }               = useUpdateLabRequest();
+    const { data: allRequests, isLoading: loading, refetch } = usePendingLabRequests();
+    // const { mutate: updateRequest, isPending: isSubmitting } = useUpdateLabRequest();
 
-    const [activeId,     setActiveId]     = useState<string | null>(null);
-    const [resultText,   setResultText]   = useState<Record<string, string>>({});
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [resultText, setResultText] = useState<Record<string, string>>({});
     const [submittingId, setSubmittingId] = useState<string | null>(null);
 
     // Filter only radiology requests
@@ -45,7 +45,7 @@ export default function RadiologyDashboard() {
         String(r.test_type ?? "").startsWith("[RADIOLOGY]")
     ) ?? [];
 
-    const pending   = radiology.filter((r: any) => r.status === "pending");
+    const pending = radiology.filter((r: any) => r.status === "pending");
     const completed = radiology.filter((r: any) => r.status === "completed");
 
     const handleSubmitResult = async (reqId: string) => {
@@ -53,8 +53,8 @@ export default function RadiologyDashboard() {
         if (!result) { toast.error("Please enter the radiology report."); return; }
         setSubmittingId(reqId);
         try {
-            await updateRequest(reqId, {
-                status:       "completed",
+            await useUpdateLabRequest(reqId, {
+                status: "completed",
                 result,
                 completed_by: user?.$id ?? user?.id,
                 completed_at: new Date().toISOString(),
@@ -64,7 +64,7 @@ export default function RadiologyDashboard() {
             setActiveId(null);
             refetch();
         } catch { toast.error("Failed to submit report."); }
-        finally  { setSubmittingId(null); }
+        finally { setSubmittingId(null); }
     };
 
     // Admins see this; in production add "Radiologist" to UserRole enum and protect with that
@@ -77,8 +77,8 @@ export default function RadiologyDashboard() {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4">
                 {[
-                    { label: "Pending Reports", value: pending.length,   icon: Clock,        color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-                    { label: "Completed",        value: completed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
+                    { label: "Pending Reports", value: pending.length, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+                    { label: "Completed", value: completed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
                 ].map((s) => {
                     const Icon = s.icon;
                     return (

@@ -133,8 +133,8 @@ function PrescriptionCard({
 function PrescriptionHistoryTab() {
     const [query, setQuery] = useState("");
     const [patientId, setPId] = useState<string | null>(null);
-    const { data: results, loading: searching } = useSearchPatients(query);
-    const { data: history, loading: hLoading } = usePrescriptionsByPatient(patientId ?? "");
+    const { data: results, isLoading: searching } = useSearchPatients(query);
+    const { data: history, isLoading: hLoading } = usePrescriptionsByPatient(patientId ?? "");
 
     return (
         <div className="space-y-5">
@@ -220,7 +220,7 @@ function PrescriptionHistoryTab() {
 // ─── Inventory Tab ─────────────────────────────────────────────────────────────
 
 function InventoryTab() {
-    const { data: drugs, loading, refetch } = useDrugInventory();
+    const { data: drugs, isLoading, refetch } = useDrugInventory();
     const { mutate: restock } = useRestockDrug();
     const [restockId, setRestockId] = useState<string | null>(null);
     const [restockQty, setRestockQty] = useState("");
@@ -243,7 +243,11 @@ function InventoryTab() {
         if (isNaN(qty) || qty <= 0) { toast.error("Enter a valid quantity."); return; }
         setRestocking(true);
         try {
-            await restock(restockId, qty);
+            restock({
+                id: restockId,
+                qty,
+
+            });
             toast.success("Stock updated.");
             setRestockId(null); setRestockQty(""); refetch();
         } catch { toast.error("Restock failed."); }
@@ -305,7 +309,7 @@ function InventoryTab() {
                     </button>
                 </div>
 
-                {loading ? (
+                {isLoading ? (
                     <div className="flex items-center justify-center py-10 gap-3">
                         <Loader2 size={16} className="text-violet-500 animate-spin" />
                         <p className="text-sm text-gray-400">Loading inventory...</p>
@@ -353,7 +357,7 @@ export default function PharmacySuite() {
     const [activeTab, setTab] = useState<Tab>("queue");
     const [dispensingId, setDId] = useState<string | null>(null);
 
-    const { data: pending, loading: qLoading, refetch } = usePendingPrescriptions();
+    const { data: pending, isLoading: qLoading, refetch } = usePendingPrescriptions();
     const { mutate: updatePx } = useUpdatePrescription();
     const { mutate: logDispense } = useCreateDispensingRecord();
 
@@ -361,14 +365,17 @@ export default function PharmacySuite() {
         setDId(prescriptionId);
         try {
             // 1. Mark prescription as dispensed
-            await updatePx(prescriptionId, {
-                dispensed: true,
-                dispensed_at: new Date().toISOString(),
-                status: "Dispensed",
-            } as any);
+            updatePx({
+                id: prescriptionId,
+                updates: {
+
+                    updated_at: new Date().toISOString(),
+                    status: "Dispensed",
+                }
+            });
 
             // 2. Log dispensing record
-            await logDispense({
+            logDispense({
                 prescription_id: prescriptionId,
                 dispensed_by: user?.id ?? null,
                 dispensed_at: new Date().toISOString(),

@@ -51,7 +51,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.Nurse, UserRole.Admin]);
 
-    const { data: patient, loading: patientLoading } = usePatient(patientId, {
+    const { data: patient, isLoading: patientLoading } = usePatient(patientId, {
         enabled: !!patientId,
     });
 
@@ -60,7 +60,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     const [success, setSuccess] = useState<string | null>(null);
 
     const createActionMutation = useCreateNursingAction();
-    const updateActionMutation = useUpdateNursingAction();
+    const {mutate: updateActionMutation, isPending} = useUpdateNursingAction();
     const updatePatientStatusMutation = useUpdatePatientStatus();
     const age = calculateAge(patient?.date_of_birth!)
 
@@ -122,14 +122,17 @@ export default function VitalsCheckinAdvancedComponent(props: {
                 .join(". ");
 
             if (taskId) {
-                await updateActionMutation.mutate(taskId, {
-                    status: "Completed",
-                    description,
-                    completedBy: user?.$id,
-                    completionTime: new Date().toISOString(),
+                updateActionMutation({
+                    id: taskId,
+                    updates: {
+                        status: "Completed",
+                        description,
+                        completedBy: user?.$id,
+                        completionTime: new Date().toISOString(),
+                    }
                 });
             } else {
-                await createActionMutation.mutate({
+                createActionMutation.mutate({
                     patientId,
                     actionType: "Vitals",
                     description,
@@ -140,7 +143,12 @@ export default function VitalsCheckinAdvancedComponent(props: {
                 });
             }
 
-            await updatePatientStatusMutation.mutate(patientId, "AwaitingNextStep" as any);
+            updatePatientStatusMutation.mutate({
+                id: patientId,
+                
+                    status: "AwaitingNextStep" as any,
+                
+            });
 
             setSuccess("Vitals documentation finalized successfully.");
             toast.success("Vitals recorded successfully");

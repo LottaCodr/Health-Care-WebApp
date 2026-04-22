@@ -98,6 +98,8 @@ export interface Staff {
 
 // Consultation entity
 export interface Consultation {
+    $id: any;
+    startTime: string | number | Date;
     // Identity fields
     id: string;                  // Unique identifier
     patient_id: string;          // Patient's ID

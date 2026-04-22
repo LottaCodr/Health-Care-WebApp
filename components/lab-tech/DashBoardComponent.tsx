@@ -30,8 +30,7 @@ function PriorityBadge({ priority }: { priority?: string }) {
 export default function LabTechDashboard() {
     const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
-    const { data: requests, loading, refetch } = usePendingLabRequests();
-    const { mutate: updateLabRequest } = useUpdateLabRequest();
+    const { data: requests = [], isLoading, refetch } = usePendingLabRequests();
 
     const [activeId, setActiveId] = useState<string | null>(null);
     const [resultText, setResultText] = useState<Record<string, string>>({});
@@ -47,11 +46,14 @@ export default function LabTechDashboard() {
         if (!result) { toast.error("Please enter the test result."); return; }
         setSubmittingId(reqId);
         try {
-            await updateLabRequest(reqId, {
-                status: "completed", result,
-                completed_by: user?.$id,
-                completed_at: new Date().toISOString(),
-            });
+            useUpdateLabRequest(
+                reqId,
+                {
+                    status: "completed", result,
+                    completed_by: user?.$id,
+                    completed_at: new Date().toISOString(),
+                }
+            )
             toast.success("Result submitted.");
             setResultText((p) => { const n = { ...p }; delete n[reqId]; return n; });
             setActiveId(null);
@@ -110,7 +112,7 @@ export default function LabTechDashboard() {
                 </div>
 
                 <div className="px-6 py-5 space-y-3">
-                    {loading ? <LoadingSkeleton rows={4} /> : pending.length === 0 ? (
+                    {isLoading ? <LoadingSkeleton rows={4} /> : pending.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
                                 <CheckCircle2 size={22} className="text-green-500" />

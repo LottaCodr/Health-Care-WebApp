@@ -3,7 +3,7 @@
 import React from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { usePendingPrescriptions } from "@/hooks/use-emr";
+import { usePendingPrescriptions } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton } from "@/components/emr";
 import {
     Pill, Clock, CheckCircle2, ChevronRight,
@@ -13,20 +13,20 @@ import {
 import Link from "next/link";
 
 export default function PharmacistDashboard() {
-    const { authorized }                            = useRoleProtection([UserRole.Pharmacist, UserRole.Admin]);
-    const { data: prescriptions, loading, refetch } = usePendingPrescriptions();
+    const { authorized } = useRoleProtection([UserRole.Pharmacist, UserRole.Admin]);
+    const { data: prescriptions, isLoading: loading, refetch } = usePendingPrescriptions();
 
     if (!authorized) return null;
 
-    const active     = prescriptions?.filter((p: any) => p.status === "Active")    ?? [];
-    const dispensed  = prescriptions?.filter((p: any) => p.status === "Dispensed") ?? [];
+    const active = prescriptions?.filter((p: any) => p.status === "Active") ?? [];
+    const dispensed = prescriptions?.filter((p: any) => p.status === "Dispensed") ?? [];
     const unreviewed = active.filter((p: any) => !p.pharmacist_id);
     const totalValue = active.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
 
     const stats = [
-        { label: "Active Orders",   value: active.length,     icon: Pill,         color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
-        { label: "Pending Review",  value: unreviewed.length, icon: Clock,        color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
-        { label: "Dispensed Today", value: dispensed.length,  icon: CheckCircle2, color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
+        { label: "Active Orders", value: active.length, icon: Pill, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
+        { label: "Pending Review", value: unreviewed.length, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+        { label: "Dispensed Today", value: dispensed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
     ];
 
     return (
@@ -98,16 +98,16 @@ export default function PharmacistDashboard() {
                         </div>
                     ) : (
                         active.map((order: any, idx: number) => {
-                            const patientName  = order.patients?.name ?? `Patient #${order.patient_id?.slice(-6) ?? "—"}`;
+                            const patientName = order.patients?.name ?? `Patient #${order.patient_id?.slice(-6) ?? "—"}`;
                             const patientPhone = order.patients?.phone;
-                            const gender       = order.patients?.gender;
+                            const gender = order.patients?.gender;
                             const isUnreviewed = !order.pharmacist_id;
-                            const price        = Number(order.price) || 0;
-                            const initial      = patientName?.[0]?.toUpperCase() ?? "P";
-                            const dispensedAt  = order.dispensed_at
+                            const price = Number(order.price) || 0;
+                            const initial = patientName?.[0]?.toUpperCase() ?? "P";
+                            const dispensedAt = order.dispensed_at
                                 ? new Date(order.dispensed_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
                                 : null;
-                            const createdAt    = order.created_at
+                            const createdAt = order.created_at
                                 ? new Date(order.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
                                 : null;
 

@@ -17,13 +17,11 @@ interface LabSuiteProps {
 export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
     const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
-    const { data: request, loading: requestLoading } = useLabRequestsByPatient(requestId);
+    const { data: request, isLoading: requestLoading, isError: requestError } = useLabRequestsByPatient(requestId);
 
     const [results, setResults] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
-
-    const updateRequestMutation = useUpdateLabRequest();
     const updatePatientStatusMutation = useUpdatePatientStatus();
 
     if (!authorized) return null;
@@ -32,16 +30,21 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
         e.preventDefault();
         setSubmitting(true);
         try {
-            await updateRequestMutation.mutate(requestId, {
+            useUpdateLabRequest(  requestId, {
                 status: "Completed",
-                testResults: results,
-                completedBy: user?.$id,
-                resultDate: new Date().toISOString(),
+                completed_by: user?.$id,
+                completed_at: new Date().toISOString(),
+                result: ""
             });
 
             if (request?.patientId) {
                 // Determine next status - usually back to doctor for review
-                await updatePatientStatusMutation.mutate(request.patientId, PatientStatus.AwaitingConsultation);
+                 updatePatientStatusMutation({
+                    id: request.patientId,
+                    updates: {
+                        status: PatientStatus.AwaitingConsultation,
+                    }
+                });
             }
 
             setSuccess("Test results submitted successfully.");
