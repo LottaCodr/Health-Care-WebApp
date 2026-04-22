@@ -1,81 +1,115 @@
 "use client";
 
-
-import { useState, useEffect, useCallback } from "react";
-import { Patient, PatientStatus } from "@/types/models";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { patientKeys } from "../query-keys";
 import * as PatientService from "@/lib/services/patient.service";
-import { useQuery } from '@tanstack/react-query';
+import type { Patient, PatientStatus } from "@/types/models";
 
+// ─── Cache config ─────────────────────────────────────────────────────────────
 
+const LIST_STALE = 30_000;       // 30s  — queue changes often
+const DETAIL_STALE = 60_000;       // 1min — patient detail
+const GC_TIME = 10 * 60_000;  // 10min — keep in memory after unmount
 
-interface S<T> { data: T; loading: boolean; error: Error | null; }
+// ─── Queries ──────────────────────────────────────────────────────────────────
 
 export function usePatient(id: string, opts?: { enabled?: boolean }) {
-    const { data, isPending, error, refetch, isFetching } = useQuery({
-        queryKey: ["patient", id],
+    return useQuery({
+        queryKey: patientKeys.detail(id),
         queryFn: () => PatientService.getPatientById(id),
-        enabled: !!id && (opts?.enabled ?? true),
+        enabled: !!id && opts?.enabled !== false,
+        staleTime: DETAIL_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
-
-    return { data, isPending, error, refetch, isFetching };
 }
 
 export function usePatientsByStatus(status: PatientStatus) {
-    const [s, set] = useState<S<Patient[]>>({ data: [], loading: true, error: null });
-
-    useEffect(() => {
-        set({ data: [], loading: true, error: null });
-        PatientService.listPatientsByStatus(status)
-            .then(d => set({ data: d, loading: false, error: null }))
-            .catch(e => set({ data: [], loading: false, error: e }));
-    }, [status]);
-
-    return s;
+    return useQuery({
+        queryKey: patientKeys.byStatus(status),
+        queryFn: () => PatientService.listPatientsByStatus(status),
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
 }
 
 export function useSearchPatients(query: string) {
-    const [s, set] = useState<S<Patient[]>>({ data: [], loading: false, error: null });
-
-    useEffect(() => {
-        if (!query.trim()) { set({ data: [], loading: false, error: null }); return; }
-        set({ data: [], loading: true, error: null });
-        const t = setTimeout(() =>
-            PatientService.searchPatients(query)
-                .then(d => set({ data: d, loading: false, error: null }))
-                .catch(e => set({ data: [], loading: false, error: e }))
-            , 300);
-        return () => clearTimeout(t);
-    }, [query]);
-
-    return s;
+    return useQuery({
+        queryKey: patientKeys.search(query),
+        queryFn: () => PatientService.searchPatients(query),
+        enabled: query.trim().length >= 2,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+        placeholderData: (prev) => prev,   // keep showing previous results while new query fetches
+    });
 }
 
 export function useAllPatients() {
-    const { data, isPending, error, refetch, isFetching } = useQuery({
-        queryKey: ["patients"],
+    return useQuery({
+        queryKey: patientKeys.lists(),
         queryFn: () => PatientService.getAllPatients(),
-        initialData: [],
-
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
     });
-    return { data, isPending, isFetching, error, refetch };
+}
+
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
+export function useCreatePatient() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: Parameters<typeof PatientService.createPatient>[0]) =>
+            PatientService.createPatient(data),
+
+        onSuccess: (patient) => {
+            // Seed detail cache — instant navigation without extra request
+            qc.setQueryData(patientKeys.detail(patient.id), patient);
+            // Bust all patient lists
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
+        },
+    });
+}
+
+export function useUpdatePatient() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, updates }: { id: string; updates: Partial<Patient> }) =>
+            PatientService.updatePatient(id, updates),
+
+        onSuccess: (updated) => {
+            qc.setQueryData(patientKeys.detail(updated.id), updated);
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
+        },
+    });
 }
 
 export function useUpdatePatientStatus() {
-    const [loading, setLoading] = useState(false);
-    const mutate = useCallback(async (id: string, status: PatientStatus) => {
-        setLoading(true);
-        try { return await PatientService.updatePatientStatus(id, status); }
-        finally { setLoading(false); }
-    }, []);
-    return { mutate, loading };
-}
+    const qc = useQueryClient();
 
-export function useCreatePatient() {
-    const [loading, setLoading] = useState(false);
-    const mutate = useCallback(async (data: Parameters<typeof PatientService.createPatient>[0]) => {
-        setLoading(true);
-        try { return await PatientService.createPatient(data); }
-        finally { setLoading(false); }
-    }, []);
-    return { mutate, loading };
+    return useMutation({
+        mutationFn: ({ id, status }: { id: string; status: PatientStatus }) =>
+            PatientService.updatePatientStatus(id, status),
+
+        // Optimistic: status badge updates instantly, rolls back on failure
+        onMutate: async ({ id, status }) => {
+            await qc.cancelQueries({ queryKey: patientKeys.detail(id) });
+            const previous = qc.getQueryData<Patient>(patientKeys.detail(id));
+            if (previous) qc.setQueryData(patientKeys.detail(id), { ...previous, status });
+            return { previous, id };
+        },
+
+        onError: (_err, _vars, ctx) => {
+            if (ctx?.previous) qc.setQueryData(patientKeys.detail(ctx.id), ctx.previous);
+        },
+
+        onSettled: (_data, _err, { id }) => {
+            qc.invalidateQueries({ queryKey: patientKeys.detail(id) });
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
+        },
+    });
 }

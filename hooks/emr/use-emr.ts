@@ -1,17 +1,18 @@
 
-
 // Patients
 export {
     usePatient,
     usePatientsByStatus,
     useSearchPatients,
     useAllPatients,
-    useUpdatePatientStatus,
     useCreatePatient,
+    useUpdatePatient,
+    useUpdatePatientStatus,
 } from "./use-patients";
 
 // Consultations
 export {
+    useConsultation,
     useConsultationsByPatient,
     useConsultationsByDoctor,
     useCreateConsultation,
@@ -19,8 +20,9 @@ export {
     useDeleteConsultation,
 } from "./use-consultations";
 
-// Lab + Lab Test Catalog
+// Lab requests + lab test catalog
 export {
+    useLabRequest,
     useLabRequestsByPatient,
     usePendingLabRequests,
     useCompletedLabRequests,
@@ -33,15 +35,31 @@ export {
     useToggleLabTestActive,
 } from "./use-lab";
 
-// Pharmacy + Drug Catalog
+// Nursing
 export {
-    
+    usePendingNursingActions,
+    useNursingActionsByPatient,
+    useCreateNursingAction,
+    useUpdateNursingAction,
+} from "./use-nursing";
+
+// Payments
+export {
+    usePendingPayments,
+    usePaymentsByPatient,
+    useCreatePayment,
+    useConfirmPayment,
+} from "./use-payment";
+
+// Pharmacy — prescriptions + drug catalog + inventory
+export {
+    usePrescription,
     usePrescriptionsByPatient,
     usePendingPrescriptions,
     useCreatePrescription,
     useUpdatePrescription,
-    useCreateDispensingRecord,
     useDispensingRecordsByPatient,
+    useCreateDispensingRecord,
     useDrugInventory,
     useDrugCatalog,
     useActiveDrugs,
@@ -51,27 +69,15 @@ export {
     useToggleDrugActive,
 } from "./use-pharmacy";
 
-// Nursing + Payments + Staff (split from one file for brevity)
-export {
-    usePendingNursingActions,
-    useNursingActionsByPatient,
-    useCreateNursingAction,
-    useUpdateNursingAction,
-} from "./use-nursing";
-
 // Staff
 export {
     useAllStaff,
+    useStaff,
     useStaffByRole,
     useCreateStaff,
     useUpdateStaff,
     useDeleteStaff,
 } from "./use-staff";
 
-//payment
-export {
-    usePendingPayments,
-    usePaymentsByPatient,
-    useCreatePayment,
-    useConfirmPayment,
-} from "./use-payment";
+// Query keys — export for prefetching in page.tsx server components
+export * from "../query-keys";

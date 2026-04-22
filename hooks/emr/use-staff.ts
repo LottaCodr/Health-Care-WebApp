@@ -1,60 +1,108 @@
-import { useState, useEffect, useCallback } from "react";
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { staffKeys } from "../query-keys";
 import * as SS from "@/lib/services/staff.service";
+import type { Staff } from "@/types/models";
 
+const STALE = 5 * 60_000;  // staff list changes rarely — 5min stale
+const GC_TIME = 10 * 60_000;
 
-interface S<T> { data: T; loading: boolean; error: Error | null; }
-
+// ─── Queries ──────────────────────────────────────────────────────────────────
 
 export function useAllStaff() {
-    const [s, set] = useState<S<any[]>>({ data: [], loading: true, error: null });
-    const refetch = useCallback(() => {
-        set({ data: [], loading: true, error: null });
-        SS.getAllStaffs()
-            .then(d => set({ data: d, loading: false, error: null }))
-            .catch(e => set({ data: [], loading: false, error: e }));
-    }, []);
-    useEffect(() => { refetch(); }, [refetch]);
-    return { ...s, refetch };
+    return useQuery({
+        queryKey: staffKeys.all(),
+        queryFn: SS.getAllStaffs,
+        staleTime: STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+export function useStaff(id: string) {
+    return useQuery({
+        queryKey: staffKeys.detail(id),
+        queryFn: () => SS.getStaffById(id),
+        enabled: !!id,
+        staleTime: STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
 }
 
 export function useStaffByRole(role: string) {
-    const [s, set] = useState<S<any[]>>({ data: [], loading: true, error: null });
-    useEffect(() => {
-        if (!role) return;
-        set({ data: [], loading: true, error: null });
-        SS.getStaffByRole(role)
-            .then(d => set({ data: d, loading: false, error: null }))
-            .catch(e => set({ data: [], loading: false, error: e }));
-    }, [role]);
-    return s;
+    return useQuery({
+        queryKey: staffKeys.byRole(role),
+        queryFn: () => SS.getStaffByRole(role),
+        enabled: !!role,
+        staleTime: STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
 }
 
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
 export function useCreateStaff() {
-    const [loading, setLoading] = useState(false);
-    const mutate = useCallback(async (data: Parameters<typeof SS.createStaff>[0]) => {
-        setLoading(true);
-        try { return await SS.createStaff(data); }
-        finally { setLoading(false); }
-    }, []);
-    return { mutate, loading };
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: Parameters<typeof SS.createStaff>[0]) =>
+            SS.createStaff(data),
+
+        onSuccess: (staff) => {
+            qc.setQueryData(staffKeys.detail(staff.id), staff);
+            qc.invalidateQueries({ queryKey: staffKeys.all() });
+            qc.invalidateQueries({ queryKey: staffKeys.byRole(staff.role) });
+        },
+    });
 }
 
 export function useUpdateStaff() {
-    const [loading, setLoading] = useState(false);
-    const mutate = useCallback(async (id: string, updates: Parameters<typeof SS.updateStaff>[1]) => {
-        setLoading(true);
-        try { return await SS.updateStaff(id, updates); }
-        finally { setLoading(false); }
-    }, []);
-    return { mutate, loading };
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, updates }: { id: string; updates: Partial<Staff> }) =>
+            SS.updateStaff(id, updates),
+
+        onMutate: async ({ id, updates }) => {
+            await qc.cancelQueries({ queryKey: staffKeys.detail(id) });
+            const previous = qc.getQueryData<Staff>(staffKeys.detail(id));
+            if (previous) qc.setQueryData(staffKeys.detail(id), { ...previous, ...updates });
+            return { previous, id };
+        },
+
+        onError: (_err, _vars, ctx) => {
+            if (ctx?.previous) qc.setQueryData(staffKeys.detail(ctx.id), ctx.previous);
+        },
+
+        onSuccess: (updated) => {
+            qc.setQueryData(staffKeys.detail(updated.id), updated);
+            qc.invalidateQueries({ queryKey: staffKeys.all() });
+            qc.invalidateQueries({ queryKey: staffKeys.byRole(updated.role) });
+        },
+    });
 }
 
 export function useDeleteStaff() {
-    const [loading, setLoading] = useState(false);
-    const mutate = useCallback(async (id: string) => {
-        setLoading(true);
-        try { return await SS.deleteStaff(id); }
-        finally { setLoading(false); }
-    }, []);
-    return { mutate, loading };
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => SS.deleteStaff(id),
+
+        onMutate: async (id) => {
+            const previous = qc.getQueryData<Staff[]>(staffKeys.all());
+            qc.setQueryData<Staff[]>(staffKeys.all(), (old = []) => old.filter(s => s.id !== id));
+            return { previous };
+        },
+
+        onError: (_err, _vars, ctx) => {
+            if (ctx?.previous) qc.setQueryData(staffKeys.all(), ctx.previous);
+        },
+
+        onSettled: () => {
+            qc.invalidateQueries({ queryKey: staffKeys.all() });
+        },
+    });
 }
