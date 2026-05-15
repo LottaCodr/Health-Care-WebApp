@@ -11,27 +11,11 @@ import {
     ToggleLeft, ToggleRight, ArrowUpCircle, Filter,
 } from "lucide-react";
 import { useDrugCatalog, useToggleDrugActive } from "@/hooks/emr/use-pharmacy";
+import { usePharmacyStore, Drug, ViewMode } from "@/store/pharmacy-store";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Drug {
-    id: string;
-    drug_name: string;
-    generic_name?: string;
-    category?: string;
-    dosage_form?: string;
-    strength?: string;
-    manufacturer?: string;
-    unit: string;
-    quantity: number;
-    reorder_level?: number;
-    price: number;
-    cost_price?: number;
-    expiry_date?: string;
-    requires_prescription: boolean;
-    is_active: boolean;
-    created_at?: string;
-}
+
 
 const CATEGORIES = [
     "Antibiotics", "Analgesics / Pain Relief", "Antipyretics", "Antimalarials",
@@ -50,11 +34,7 @@ const fmtDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString("en-GB"
 const isExpiringSoon = (iso?: string) => { if (!iso) return false; const d = new Date(iso).getTime() - Date.now(); return d > 0 && d < 60 * 24 * 3600 * 1000; };
 const isExpired = (iso?: string) => iso ? new Date(iso).getTime() < Date.now() : false;
 
-// ─── VIEW MODE toggle ──────────────────────────────────────────────────────────
-// "catalog"   — full pricing/management view (Admin + Pharmacist with edit access)
-// "inventory" — stock-focused view with restock actions (Pharmacist daily use)
 
-type ViewMode = "catalog" | "inventory";
 
 // ─── Add/Edit Drug Modal ───────────────────────────────────────────────────────
 
@@ -302,18 +282,12 @@ function DeleteModal({ drug, onClose, onDeleted }: { drug: Drug; onClose: () => 
 
 export default function DrugManagementPage() {
     const { authorized } = useRoleProtection([UserRole.Admin, UserRole.Pharmacist]);
-    const { data: drugs, loading: isLoading, error: isError, refetch } = useDrugCatalog();
+    const { data: drugs, isLoading, error: isError, refetch } = useDrugCatalog();
     const { mutate: toggleActive } = useToggleDrugActive();
 
-    const [viewMode, setViewMode] = useState<ViewMode>("catalog");
-    const [search, setSearch] = useState("");
-    const [category, setCategory] = useState("all");
-    const [stockFilter, setStockFilter] = useState("all");
-    const [editTarget, setEditTarget] = useState<Drug | null>(null);
-    const [deleteTarget, setDeleteTarget] = useState<Drug | null>(null);
-    const [restockTarget, setRestockTarget] = useState<Drug | null>(null);
-    const [showAdd, setShowAdd] = useState(false);
-    const [toggling, setToggling] = useState<string | null>(null);
+    const {
+        viewMode, search, category, stockFilter, editTarget, deleteTarget, restockTarget, showAdd, toggling, setField
+    } = usePharmacyStore();
 
     const filtered = useMemo(() => {
         if (!drugs) return [];
@@ -336,10 +310,10 @@ export default function DrugManagementPage() {
     }, [drugs, search, category, stockFilter]);
 
     const handleToggle = async (d: Drug) => {
-        setToggling(d.id);
-        try { await toggleActive(d.id, d.is_active); toast.success(`${d.drug_name} ${d.is_active ? "deactivated" : "activated"}.`); refetch(); }
+        setField("toggling", d.id);
+        try { await toggleActive({ id: d.id, current: d.is_active }); toast.success(`${d.drug_name} ${d.is_active ? "deactivated" : "activated"}.`); refetch(); }
         catch { toast.error("Failed to update."); }
-        finally { setToggling(null); }
+        finally { setField("toggling", null); }
     };
 
     if (!authorized) return null;
@@ -363,14 +337,14 @@ export default function DrugManagementPage() {
                     {/* View toggle */}
                     <div className="flex items-center bg-gray-100 rounded-xl p-0.5">
                         {(["catalog", "inventory"] as ViewMode[]).map(v => (
-                            <button key={v} onClick={() => setViewMode(v)}
+                            <button key={v} onClick={() => setField("viewMode", v)}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all
                                     ${viewMode === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
                                 {v}
                             </button>
                         ))}
                     </div>
-                    <button onClick={() => setShowAdd(true)}
+                    <button onClick={() => setField("showAdd", true)}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold shadow-sm shadow-violet-200 transition-all">
                         <Plus size={14} /> Add Drug
                     </button>
@@ -381,8 +355,8 @@ export default function DrugManagementPage() {
             <div className="grid grid-cols-3 gap-4">
                 {[
                     { label: "Total Drugs", value: drugs?.length ?? 0, icon: Package, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
-                    { label: "Low Stock", value: lowStock, icon: TrendingDown, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", onClick: () => setStockFilter("low") },
-                    { label: "Out of Stock", value: outOfStock, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50", border: "border-red-100", onClick: () => setStockFilter("out") },
+                    { label: "Low Stock", value: lowStock, icon: TrendingDown, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", onClick: () => setField("stockFilter", "low") },
+                    { label: "Out of Stock", value: outOfStock, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50", border: "border-red-100", onClick: () => setField("stockFilter", "out") },
                 ].map(({ label, value, icon: Icon, color, bg, border, onClick }) => (
                     <div key={label} onClick={onClick}
                         className={`bg-white rounded-2xl border ${border} shadow-sm px-5 py-5 flex items-center gap-4 hover:shadow-md transition-all ${onClick ? "cursor-pointer" : ""}`}>
@@ -403,19 +377,19 @@ export default function DrugManagementPage() {
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-50 flex-wrap">
                     <div className="relative flex-1 min-w-[180px]">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search drug name, generic, category..."
+                        <input value={search} onChange={e => setField("search", e.target.value)} placeholder="Search drug name, generic, category..."
                             className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400/20 focus:border-violet-400 focus:bg-white transition-all" />
-                        {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
+                        {search && <button onClick={() => setField("search", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
                     </div>
                     <div className="relative">
-                        <select value={category} onChange={e => setCategory(e.target.value)} className={selCls}>
+                        <select value={category} onChange={e => setField("category", e.target.value)} className={selCls}>
                             <option value="all">All Categories</option>
                             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                         <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
                     <div className="relative">
-                        <select value={stockFilter} onChange={e => setStockFilter(e.target.value)} className={selCls}>
+                        <select value={stockFilter} onChange={e => setField("stockFilter", e.target.value)} className={selCls}>
                             <option value="all">All Stock</option>
                             <option value="low">Low Stock</option>
                             <option value="out">Out of Stock</option>
@@ -426,7 +400,7 @@ export default function DrugManagementPage() {
                         <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
                     {(search || category !== "all" || stockFilter !== "all") && (
-                        <button onClick={() => { setSearch(""); setCategory("all"); setStockFilter("all"); }}
+                        <button onClick={() => { setField("search", ""); setField("category", "all"); setField("stockFilter", "all"); }}
                             className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold text-red-600 bg-red-50 border border-red-100">
                             <X size={11} /> Clear
                         </button>
@@ -452,7 +426,7 @@ export default function DrugManagementPage() {
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                         <Pill size={22} className="text-gray-300" />
                         <p className="text-sm font-semibold text-gray-500">No drugs found</p>
-                        <button onClick={() => setShowAdd(true)} className="text-xs text-violet-600 font-bold hover:underline">Add first drug →</button>
+                        <button onClick={() => setField("showAdd", true)} className="text-xs text-violet-600 font-bold hover:underline">Add first drug →</button>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -521,15 +495,15 @@ export default function DrugManagementPage() {
                                             </td>
                                             <td className="px-4 py-3.5">
                                                 <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => setRestockTarget(d)}
+                                                    <button onClick={() => setField("restockTarget", d)}
                                                         className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-green-600 hover:border-green-200 transition-colors">
                                                         <ArrowUpCircle size={12} />
                                                     </button>
-                                                    <button onClick={() => setEditTarget(d)}
+                                                    <button onClick={() => setField("editTarget", d)}
                                                         className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-violet-600 hover:border-violet-200 transition-colors">
                                                         <Edit3 size={12} />
                                                     </button>
-                                                    <button onClick={() => setDeleteTarget(d)}
+                                                    <button onClick={() => setField("deleteTarget", d)}
                                                         className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-200 transition-colors">
                                                         <Trash2 size={12} />
                                                     </button>
@@ -550,15 +524,15 @@ export default function DrugManagementPage() {
                         <p className="text-xs text-amber-700 font-medium flex-1">
                             <span className="font-bold">{lowStock} drug{lowStock !== 1 ? "s" : ""}</span> at or below reorder level.
                         </p>
-                        <button onClick={() => setStockFilter("low")} className="text-xs font-bold text-amber-700 hover:underline">View all</button>
+                        <button onClick={() => setField("stockFilter", "low")} className="text-xs font-bold text-amber-700 hover:underline">View all</button>
                     </div>
                 )}
             </div>
 
-            {showAdd && <DrugModal onClose={() => setShowAdd(false)} onSaved={refetch} />}
-            {editTarget && <DrugModal drug={editTarget} onClose={() => setEditTarget(null)} onSaved={refetch} />}
-            {restockTarget && <RestockModal drug={restockTarget} onClose={() => setRestockTarget(null)} onSaved={refetch} />}
-            {deleteTarget && <DeleteModal drug={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={refetch} />}
+            {showAdd && <DrugModal onClose={() => setField("showAdd", false)} onSaved={refetch} />}
+            {editTarget && <DrugModal drug={editTarget} onClose={() => setField("editTarget", null)} onSaved={refetch} />}
+            {restockTarget && <RestockModal drug={restockTarget} onClose={() => setField("restockTarget", null)} onSaved={refetch} />}
+            {deleteTarget && <DeleteModal drug={deleteTarget} onClose={() => setField("deleteTarget", null)} onDeleted={refetch} />}
         </div>
     );
 }

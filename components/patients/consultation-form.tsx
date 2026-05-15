@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useConsultationStore, RequestPriority } from "@/store/consultation-store";
 import { useAuth } from "@/context/auth-provider";
 import { PatientStatus } from "@/types/models";
 import { Staff } from "@/actions/staff/types";
@@ -30,7 +31,6 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RequestPriority = "routine" | "urgent" | "stat";
 
 interface Props {
     patientId: string;
@@ -192,58 +192,23 @@ export default function ConsultationForm({
     const isChild = isPaed(patientAge);
     const isFem = isFemale(patientGender);
 
-    // ── History fields ────────────────────────────────────────────────────────
+    // ── Store ────────────────────────────────────────────────────────────────
+    const {
+        presentingComplaint, symptomsAnalysis, aetiology, historyComplications, historyTreatment,
+        antenatalHistory, nutritionalHistory, developmentalMilestones, immunisationHistory, pastMedicalHistory,
+        drugHistory, familySocialHistory, imp, lmp, ega, eod, gravidity, parity,
+        generalExam, respiratory, cardiovascular, gastrointestinal, summary, assessment,
+        investigations, prescriptions, recommendations, referredTo, statusOverride,
+        labTestType, labPriority, labNotes, radTestType, radPriority, radNotes,
+        setField, resetForm
+    } = useConsultationStore();
 
-    const [presentingComplaint, setPresentingComplaint] = useState("");
-    const [symptomsAnalysis, setSymptomsAnalysis] = useState("");
-    const [aetiology, setAetiology] = useState("");
-    const [historyComplications, setHistoryComplications] = useState("");
-    const [historyTreatment, setHistoryTreatment] = useState("");
-    const [antenatalHistory, setAntenatalHistory] = useState("");
-    const [nutritionalHistory, setNutritionalHistory] = useState("");
-    const [developmentalMilestones, setDevelopmentalMilestones] = useState("");
-    const [immunisationHistory, setImmunisationHistory] = useState("");
-    const [pastMedicalHistory, setPastMedicalHistory] = useState(patientMedicalHistory ?? "");
-    const [drugHistory, setDrugHistory] = useState("");
-    const [familySocialHistory, setFamilySocialHistory] = useState("");
-
-    // Female obstetric
-    const [imp, setImp] = useState("");
-    const [lmp, setLmp] = useState("");
-    const [ega, setEga] = useState("");
-    const [eod, setEod] = useState("");
-    const [gravidity, setGravidity] = useState("");
-    const [parity, setParity] = useState("");
-
-    // ── Examination ───────────────────────────────────────────────────────────
-
-    const [generalExam, setGeneralExam] = useState("");
-    const [respiratory, setRespiratory] = useState("");
-    const [cardiovascular, setCardiovascular] = useState("");
-    const [gastrointestinal, setGastrointestinal] = useState("");
-
-    // ── Assessment / Management ───────────────────────────────────────────────
-
-    const [summary, setSummary] = useState("");
-    const [assessment, setAssessment] = useState("");
-    const [investigations, setInvestigations] = useState("");
-    const [prescriptions, setPrescriptions] = useState("");
-    const [recommendations, setRecommendations] = useState("");
-
-    // ── Routing ───────────────────────────────────────────────────────────────
-
-    const [referredTo, setReferredTo] = useState("");
-    const [statusOverride, setStatusOverride] = useState("");
-
-    // Lab request
-    const [labTestType, setLabTestType] = useState("");
-    const [labPriority, setLabPriority] = useState<RequestPriority>("routine"); // ← typed union
-    const [labNotes, setLabNotes] = useState("");
-
-    // Radiology request
-    const [radTestType, setRadTestType] = useState("");
-    const [radPriority, setRadPriority] = useState<RequestPriority>("routine"); // ← typed union
-    const [radNotes, setRadNotes] = useState("");
+    // Initialize pastMedicalHistory if provided and empty
+    useEffect(() => {
+        if (patientMedicalHistory && !pastMedicalHistory) {
+            setField("pastMedicalHistory", patientMedicalHistory);
+        }
+    }, [patientMedicalHistory]);
 
     const referralOption = REFERRAL_OPTIONS.find(r => r.value === referredTo);
     const nextStatusLabel = referralOption?.label ?? "Nurse";
@@ -348,8 +313,7 @@ export default function ConsultationForm({
                     toast.success(`Consultation saved. Patient routed to ${nextStatusLabel}.`);
 
                     // Reset key fields
-                    setPresentingComplaint(""); setAssessment(""); setPrescriptions("");
-                    setRecommendations(""); setReferredTo(""); setLabTestType(""); setRadTestType("");
+                    resetForm();
                     onSuccess?.();
                 },
                 onError: (err: any) =>
@@ -383,7 +347,7 @@ export default function ConsultationForm({
                 <Section id="history" icon={ClipboardList} title="A. History" badge="Presenting complaints & background" defaultOpen>
                     <div className="space-y-1.5">
                         <FieldLabel required>A1 · Presenting Complaint</FieldLabel>
-                        <Textarea rows={3} value={presentingComplaint} onChange={e => setPresentingComplaint(e.target.value)}
+                        <Textarea rows={3} value={presentingComplaint} onChange={e => setField("presentingComplaint", e.target.value)}
                             placeholder="Chief complaint — what brings the patient in today?"
                             className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-red-400" />
                     </div>
@@ -391,14 +355,14 @@ export default function ConsultationForm({
                     <div className="pl-3 border-l-2 border-red-100 space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-red-400">A2 · History of Presenting Complaints</p>
                         {[
-                            { label: "Analysis of Symptoms", val: symptomsAnalysis, set: setSymptomsAnalysis, ph: "Onset, duration, character, radiation, aggravating/relieving factors..." },
-                            { label: "Aetiology / Cause", val: aetiology, set: setAetiology, ph: "Possible cause or predisposing factors..." },
-                            { label: "History of Complications", val: historyComplications, set: setHistoryComplications, ph: "Any complications arising from this condition..." },
-                            { label: "History of Treatment", val: historyTreatment, set: setHistoryTreatment, ph: "Treatments tried before — medications, procedures, outcomes..." },
-                        ].map(({ label, val, set, ph }) => (
+                            { label: "Analysis of Symptoms", val: symptomsAnalysis, key: "symptomsAnalysis", ph: "Onset, duration, character, radiation, aggravating/relieving factors..." },
+                            { label: "Aetiology / Cause", val: aetiology, key: "aetiology", ph: "Possible cause or predisposing factors..." },
+                            { label: "History of Complications", val: historyComplications, key: "historyComplications", ph: "Any complications arising from this condition..." },
+                            { label: "History of Treatment", val: historyTreatment, key: "historyTreatment", ph: "Treatments tried before — medications, procedures, outcomes..." },
+                        ].map(({ label, val, key, ph }) => (
                             <div key={label} className="space-y-1.5">
                                 <FieldLabel>{label}</FieldLabel>
-                                <Textarea rows={2} value={val} onChange={e => set(e.target.value)} placeholder={ph}
+                                <Textarea rows={2} value={val} onChange={e => setField(key as any, e.target.value)} placeholder={ph}
                                     className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-red-400" />
                             </div>
                         ))}
@@ -413,14 +377,14 @@ export default function ConsultationForm({
                             </div>
                             <div className="pl-3 border-l-2 border-blue-100 space-y-4">
                                 {[
-                                    { label: "A3 · Antenatal / Delivery History", val: antenatalHistory, set: setAntenatalHistory, ph: "Pregnancy complications, mode of delivery, birth weight, APGAR score..." },
-                                    { label: "A4 · Nutritional History", val: nutritionalHistory, set: setNutritionalHistory, ph: "Breastfeeding, weaning, current diet, nutritional status..." },
-                                    { label: "A5 · Developmental Milestones", val: developmentalMilestones, set: setDevelopmentalMilestones, ph: "Motor, language, social milestones — achieved or delayed..." },
-                                    { label: "A6 · Immunisation History", val: immunisationHistory, set: setImmunisationHistory, ph: "BCG, OPV, DPT, Hepatitis B, Measles, Pentavalent..." },
-                                ].map(({ label, val, set, ph }) => (
+                                    { label: "A3 · Antenatal / Delivery History", val: antenatalHistory, key: "antenatalHistory", ph: "Pregnancy complications, mode of delivery, birth weight, APGAR score..." },
+                                    { label: "A4 · Nutritional History", val: nutritionalHistory, key: "nutritionalHistory", ph: "Breastfeeding, weaning, current diet, nutritional status..." },
+                                    { label: "A5 · Developmental Milestones", val: developmentalMilestones, key: "developmentalMilestones", ph: "Motor, language, social milestones — achieved or delayed..." },
+                                    { label: "A6 · Immunisation History", val: immunisationHistory, key: "immunisationHistory", ph: "BCG, OPV, DPT, Hepatitis B, Measles, Pentavalent..." },
+                                ].map(({ label, val, key, ph }) => (
                                     <div key={label} className="space-y-1.5">
                                         <FieldLabel>{label}</FieldLabel>
-                                        <Textarea rows={2} value={val} onChange={e => set(e.target.value)} placeholder={ph}
+                                        <Textarea rows={2} value={val} onChange={e => setField(key as any, e.target.value)} placeholder={ph}
                                             className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-blue-400" />
                                     </div>
                                 ))}
@@ -432,13 +396,13 @@ export default function ConsultationForm({
                     <div className="pl-3 border-l-2 border-red-100 space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-red-400">A7–A9 · General History</p>
                         {[
-                            { label: "A7 · Past Medical & Surgical History", val: pastMedicalHistory, set: setPastMedicalHistory, ph: "Previous illnesses, hospitalisations, operations..." },
-                            { label: "A8 · Drug History", val: drugHistory, set: setDrugHistory, ph: "Current medications, allergies to drugs..." },
-                            { label: "A9 · Family & Social History", val: familySocialHistory, set: setFamilySocialHistory, ph: "Family illnesses, smoking, alcohol, occupation..." },
-                        ].map(({ label, val, set, ph }) => (
+                            { label: "A7 · Past Medical & Surgical History", val: pastMedicalHistory, key: "pastMedicalHistory", ph: "Previous illnesses, hospitalisations, operations..." },
+                            { label: "A8 · Drug History", val: drugHistory, key: "drugHistory", ph: "Current medications, allergies to drugs..." },
+                            { label: "A9 · Family & Social History", val: familySocialHistory, key: "familySocialHistory", ph: "Family illnesses, smoking, alcohol, occupation..." },
+                        ].map(({ label, val, key, ph }) => (
                             <div key={label} className="space-y-1.5">
                                 <FieldLabel>{label}</FieldLabel>
-                                <Textarea rows={2} value={val} onChange={e => set(e.target.value)} placeholder={ph}
+                                <Textarea rows={2} value={val} onChange={e => setField(key as any, e.target.value)} placeholder={ph}
                                     className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-red-400" />
                             </div>
                         ))}
@@ -453,16 +417,16 @@ export default function ConsultationForm({
                             </div>
                             <div className="pl-3 border-l-2 border-pink-100 grid grid-cols-2 gap-3">
                                 {[
-                                    { label: "IMP (Impression)", val: imp, set: setImp, type: "text", ph: "e.g. G3P2 at 32 weeks" },
-                                    { label: "LMP (Last Menstrual Period)", val: lmp, set: setLmp, type: "date", ph: "" },
-                                    { label: "EGA (Gestational Age)", val: ega, set: setEga, type: "text", ph: "e.g. 32 weeks + 4 days" },
-                                    { label: "EOD (Expected Delivery)", val: eod, set: setEod, type: "date", ph: "" },
-                                    { label: "Gravidity (G)", val: gravidity, set: setGravidity, type: "number", ph: "Total pregnancies" },
-                                    { label: "Parity (P)", val: parity, set: setParity, type: "text", ph: "e.g. P2+0 or P1011" },
-                                ].map(({ label, val, set, type, ph }) => (
+                                    { label: "IMP (Impression)", val: imp, key: "imp", type: "text", ph: "e.g. G3P2 at 32 weeks" },
+                                    { label: "LMP (Last Menstrual Period)", val: lmp, key: "lmp", type: "date", ph: "" },
+                                    { label: "EGA (Gestational Age)", val: ega, key: "ega", type: "text", ph: "e.g. 32 weeks + 4 days" },
+                                    { label: "EOD (Expected Delivery)", val: eod, key: "eod", type: "date", ph: "" },
+                                    { label: "Gravidity (G)", val: gravidity, key: "gravidity", type: "number", ph: "Total pregnancies" },
+                                    { label: "Parity (P)", val: parity, key: "parity", type: "text", ph: "e.g. P2+0 or P1011" },
+                                ].map(({ label, val, key, type, ph }) => (
                                     <div key={label} className="space-y-1.5">
                                         <FieldLabel>{label}</FieldLabel>
-                                        <input type={type} value={val} onChange={e => set(e.target.value)} placeholder={ph} className={inputCls} />
+                                        <input type={type} value={val} onChange={e => setField(key as any, e.target.value)} placeholder={ph} className={inputCls} />
                                     </div>
                                 ))}
                             </div>
@@ -472,7 +436,7 @@ export default function ConsultationForm({
 
                 {/* ── B. General Examination ── */}
                 <Section id="exam" icon={Activity} title="B. General Examination" badge="Section B" color="text-blue-600" bg="bg-blue-50">
-                    <Textarea rows={4} value={generalExam} onChange={e => setGeneralExam(e.target.value)}
+                    <Textarea rows={4} value={generalExam} onChange={e => setField("generalExam", e.target.value)}
                         placeholder="General appearance, consciousness, pallor, jaundice, cyanosis, clubbing, lymphadenopathy, oedema, vital signs review..."
                         className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-blue-400" />
                 </Section>
@@ -481,13 +445,13 @@ export default function ConsultationForm({
                 <Section id="systemic" icon={Stethoscope} title="C. Systemic Examination" badge="Section C" color="text-teal-600" bg="bg-teal-50">
                     <div className="space-y-4">
                         {[
-                            { label: "I. Respiratory System", val: respiratory, set: setRespiratory, ph: "Inspection, palpation, percussion, auscultation — breath sounds, added sounds..." },
-                            { label: "II. Cardiovascular System", val: cardiovascular, set: setCardiovascular, ph: "Heart sounds, murmurs, apex beat, JVP, peripheral pulses, BP..." },
-                            { label: "III. Gastrointestinal System", val: gastrointestinal, set: setGastrointestinal, ph: "Abdomen — inspection, bowel sounds, tenderness, organomegaly, ascites..." },
-                        ].map(({ label, val, set, ph }) => (
+                            { label: "I. Respiratory System", val: respiratory, key: "respiratory", ph: "Inspection, palpation, percussion, auscultation — breath sounds, added sounds..." },
+                            { label: "II. Cardiovascular System", val: cardiovascular, key: "cardiovascular", ph: "Heart sounds, murmurs, apex beat, JVP, peripheral pulses, BP..." },
+                            { label: "III. Gastrointestinal System", val: gastrointestinal, key: "gastrointestinal", ph: "Abdomen — inspection, bowel sounds, tenderness, organomegaly, ascites..." },
+                        ].map(({ label, val, key, ph }) => (
                             <div key={label} className="pl-3 border-l-2 border-teal-100 space-y-1.5">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">{label}</p>
-                                <Textarea rows={3} value={val} onChange={e => set(e.target.value)} placeholder={ph}
+                                <Textarea rows={3} value={val} onChange={e => setField(key as any, e.target.value)} placeholder={ph}
                                     className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-teal-400" />
                             </div>
                         ))}
@@ -496,14 +460,14 @@ export default function ConsultationForm({
 
                 {/* ── D. Summary ── */}
                 <Section id="summary" icon={FileText} title="D. Summary" badge="Section D" color="text-violet-600" bg="bg-violet-50">
-                    <Textarea rows={4} value={summary} onChange={e => setSummary(e.target.value)}
+                    <Textarea rows={4} value={summary} onChange={e => setField("summary", e.target.value)}
                         placeholder="Brief clinical summary of key findings and their significance..."
                         className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-violet-400" />
                 </Section>
 
                 {/* ── E. Assessment — required ── */}
                 <Section id="assessment-sec" icon={Brain} title="E. Assessment / Diagnosis" badge="Section E — Required" color="text-amber-600" bg="bg-amber-50" defaultOpen>
-                    <Textarea rows={3} value={assessment} onChange={e => setAssessment(e.target.value)}
+                    <Textarea rows={3} value={assessment} onChange={e => setField("assessment", e.target.value)}
                         placeholder="Diagnosis or differential diagnoses with clinical reasoning..."
                         className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-amber-400" />
                 </Section>
@@ -513,19 +477,19 @@ export default function ConsultationForm({
                     <div className="space-y-4">
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-black uppercase tracking-widest text-green-600">I. Investigations Planned</p>
-                            <Textarea rows={2} value={investigations} onChange={e => setInvestigations(e.target.value)}
+                            <Textarea rows={2} value={investigations} onChange={e => setField("investigations", e.target.value)}
                                 placeholder="Planned lab tests, imaging, other investigations..."
                                 className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-green-400" />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-black uppercase tracking-widest text-green-600">II. Treatment Plan</p>
-                            <Textarea rows={3} value={prescriptions} onChange={e => setPrescriptions(e.target.value)}
+                            <Textarea rows={3} value={prescriptions} onChange={e => setField("prescriptions", e.target.value)}
                                 placeholder="Medications, dosages, frequency, duration..."
                                 className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-green-400" />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-black uppercase tracking-widest text-green-600">Recommendations</p>
-                            <Textarea rows={2} value={recommendations} onChange={e => setRecommendations(e.target.value)}
+                            <Textarea rows={2} value={recommendations} onChange={e => setField("recommendations", e.target.value)}
                                 placeholder="Follow-up, lifestyle advice, return instructions..."
                                 className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-green-400" />
                         </div>
@@ -554,7 +518,7 @@ export default function ConsultationForm({
                                 <button
                                     key={opt.value}
                                     type="button"
-                                    onClick={() => setReferredTo(isSelected ? "" : opt.value)}
+                                    onClick={() => setField("referredTo", isSelected ? "" : opt.value)}
                                     className={`flex flex-col items-start gap-2 p-3 rounded-xl border-2 text-left transition-all duration-150
                                         ${isSelected
                                             ? `${opt.border} ${opt.bg}`
@@ -583,7 +547,7 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel required>Test Type</FieldLabel>
-                                    <Select onValueChange={setLabTestType} value={labTestType}>
+                                    <Select onValueChange={(v) => setField("labTestType", v)} value={labTestType}>
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
                                             <SelectValue placeholder="Select test..." />
                                         </SelectTrigger>
@@ -596,7 +560,7 @@ export default function ConsultationForm({
                                     <FieldLabel>Priority</FieldLabel>
                                     <Select
                                         value={labPriority}
-                                        onValueChange={(v) => setLabPriority(v as RequestPriority)}
+                                        onValueChange={(v) => setField("labPriority", v as RequestPriority)}
                                     >
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl"><SelectValue /></SelectTrigger>
                                         <SelectContent className="bg-white shadow-xl rounded-xl">
@@ -609,7 +573,7 @@ export default function ConsultationForm({
                             </div>
                             <div className="space-y-1.5">
                                 <FieldLabel>Notes for Lab Tech</FieldLabel>
-                                <Textarea rows={2} value={labNotes} onChange={e => setLabNotes(e.target.value)}
+                                <Textarea rows={2} value={labNotes} onChange={e => setField("labNotes", e.target.value)}
                                     placeholder="e.g. Patient is fasting. Collect before medication..."
                                     className="text-sm bg-white border-gray-200 rounded-xl resize-none placeholder:text-gray-300" />
                             </div>
@@ -626,7 +590,7 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel required>Investigation Type</FieldLabel>
-                                    <Select onValueChange={setRadTestType} value={radTestType}>
+                                    <Select onValueChange={(v) => setField("radTestType", v)} value={radTestType}>
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
                                             <SelectValue placeholder="Select investigation..." />
                                         </SelectTrigger>
@@ -639,7 +603,7 @@ export default function ConsultationForm({
                                     <FieldLabel>Priority</FieldLabel>
                                     <Select
                                         value={radPriority}
-                                        onValueChange={(v) => setRadPriority(v as RequestPriority)}
+                                        onValueChange={(v) => setField("radPriority", v as RequestPriority)}
                                     >
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl"><SelectValue /></SelectTrigger>
                                         <SelectContent className="bg-white shadow-xl rounded-xl">
@@ -652,7 +616,7 @@ export default function ConsultationForm({
                             </div>
                             <div className="space-y-1.5">
                                 <FieldLabel>Clinical Indication for Radiologist</FieldLabel>
-                                <Textarea rows={2} value={radNotes} onChange={e => setRadNotes(e.target.value)}
+                                <Textarea rows={2} value={radNotes} onChange={e => setField("radNotes", e.target.value)}
                                     placeholder="Relevant clinical history, specific area of concern..."
                                     className="text-sm bg-white border-gray-200 rounded-xl resize-none placeholder:text-gray-300" />
                             </div>
@@ -663,7 +627,7 @@ export default function ConsultationForm({
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
                         <div className="space-y-1.5">
                             <FieldLabel>Override Status (optional)</FieldLabel>
-                            <Select onValueChange={setStatusOverride} value={statusOverride}>
+                            <Select onValueChange={(v) => setField("statusOverride", v)} value={statusOverride}>
                                 <SelectTrigger className="h-10 text-sm bg-gray-50 border-gray-200 rounded-xl">
                                     <SelectValue placeholder="Auto (based on referral)" />
                                 </SelectTrigger>

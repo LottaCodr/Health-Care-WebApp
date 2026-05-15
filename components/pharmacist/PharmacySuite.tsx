@@ -19,13 +19,10 @@ import {
     ClipboardList, ChevronRight, AlertCircle, Layers,
     TrendingDown, ShieldAlert, History, Inbox,
 } from "lucide-react";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { usePharmacyStore, PharmacyTab } from "@/store/pharmacy-store";
 
 const fmtNaira = (n?: number) => n !== undefined ? `₦${Number(n).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "—";
 const fmtDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
-
-type Tab = "queue" | "dispense" | "inventory";
 
 // ─── Pending Prescription Card ─────────────────────────────────────────────────
 
@@ -131,8 +128,7 @@ function PrescriptionCard({
 // ─── Prescription History Tab ─────────────────────────────────────────────────
 
 function PrescriptionHistoryTab() {
-    const [query, setQuery] = useState("");
-    const [patientId, setPId] = useState<string | null>(null);
+    const { query, patientId, setField } = usePharmacyStore();
     const { data: results, isLoading: searching } = useSearchPatients(query);
     const { data: history, isLoading: hLoading } = usePrescriptionsByPatient(patientId ?? "");
 
@@ -142,10 +138,10 @@ function PrescriptionHistoryTab() {
                 <p className="text-sm font-bold text-gray-900">Search Patient</p>
                 <div className="relative">
                     <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    <input value={query} onChange={e => { setQuery(e.target.value); setPId(null); }}
+                    <input value={query} onChange={e => { setField("query", e.target.value); setField("patientId", null); }}
                         placeholder="Search by name, phone, or email..."
                         className="w-full h-10 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400/20 focus:border-violet-400 focus:bg-white transition-all" />
-                    {query && <button onClick={() => { setQuery(""); setPId(null); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
+                    {query && <button onClick={() => { setField("query", ""); setField("patientId", null); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
                 </div>
 
                 {/* Search results */}
@@ -155,7 +151,7 @@ function PrescriptionHistoryTab() {
                             <div className="flex items-center gap-2 p-4"><Loader2 size={14} className="text-violet-500 animate-spin" /><p className="text-sm text-gray-400">Searching...</p></div>
                         ) : results && results.length > 0 ? (
                             (results as any[]).map(p => (
-                                <button key={p.id} onClick={() => { setPId(p.id); setQuery(p.name); }}
+                                <button key={p.id} onClick={() => { setField("patientId", p.id); setField("query", p.name); }}
                                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-violet-50 transition-colors border-b border-gray-50 last:border-0 text-left">
                                     <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center font-bold text-violet-600 text-xs shrink-0">
                                         {p.name[0].toUpperCase()}
@@ -222,10 +218,7 @@ function PrescriptionHistoryTab() {
 function InventoryTab() {
     const { data: drugs, isLoading, refetch } = useDrugInventory();
     const { mutate: restock } = useRestockDrug();
-    const [restockId, setRestockId] = useState<string | null>(null);
-    const [restockQty, setRestockQty] = useState("");
-    const [restocking, setRestocking] = useState(false);
-    const [search, setSearch] = useState("");
+    const { restockId, restockQty, restocking, search, setField } = usePharmacyStore();
 
     const filtered = useMemo(() => {
         if (!drugs) return [];
@@ -241,7 +234,7 @@ function InventoryTab() {
         if (!restockId) return;
         const qty = parseInt(restockQty);
         if (isNaN(qty) || qty <= 0) { toast.error("Enter a valid quantity."); return; }
-        setRestocking(true);
+        setField("restocking", true);
         try {
             restock({
                 id: restockId,
@@ -249,9 +242,9 @@ function InventoryTab() {
 
             });
             toast.success("Stock updated.");
-            setRestockId(null); setRestockQty(""); refetch();
+            setField("restockId", null); setField("restockQty", ""); refetch();
         } catch { toast.error("Restock failed."); }
-        finally { setRestocking(false); }
+        finally { setField("restocking", false); }
     };
 
     return (
@@ -280,7 +273,7 @@ function InventoryTab() {
                 <div className="bg-white rounded-2xl border border-green-100 shadow-sm p-5 space-y-3">
                     <p className="text-sm font-bold text-gray-900">Restock Drug</p>
                     <div className="flex items-center gap-3">
-                        <input type="number" min="1" value={restockQty} onChange={e => setRestockQty(e.target.value)}
+                        <input type="number" min="1" value={restockQty} onChange={e => setField("restockQty", e.target.value)}
                             placeholder="Add quantity..."
                             className="flex-1 h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-400/25 focus:border-green-400 focus:bg-white transition-all" />
                         <button onClick={handleRestock} disabled={restocking}
@@ -288,7 +281,7 @@ function InventoryTab() {
                             {restocking ? <Loader2 size={13} className="animate-spin" /> : <ArrowUpCircle size={13} />}
                             Restock
                         </button>
-                        <button onClick={() => { setRestockId(null); setRestockQty(""); }}
+                        <button onClick={() => { setField("restockId", null); setField("restockQty", ""); }}
                             className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700">
                             <X size={14} />
                         </button>
@@ -301,7 +294,7 @@ function InventoryTab() {
                 <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-50">
                     <div className="relative flex-1">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search drugs..."
+                        <input value={search} onChange={e => setField("search", e.target.value)} placeholder="Search drugs..."
                             className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400/20 focus:border-violet-400 focus:bg-white transition-all" />
                     </div>
                     <button onClick={() => refetch()} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shrink-0">
@@ -336,7 +329,7 @@ function InventoryTab() {
                                         <p className="text-sm font-bold text-gray-900">{fmtNaira(d.price)}</p>
                                         <p className="text-[10px] text-gray-400">per {d.unit?.toLowerCase()}</p>
                                     </div>
-                                    <button onClick={() => { setRestockId(d.id); setRestockQty(""); }}
+                                    <button onClick={() => { setField("restockId", d.id); setField("restockQty", ""); }}
                                         className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-green-600 hover:border-green-200 transition-colors shrink-0">
                                         <ArrowUpCircle size={14} />
                                     </button>
@@ -354,15 +347,14 @@ function InventoryTab() {
 
 export default function PharmacySuite() {
     const { user } = useAuth();
-    const [activeTab, setTab] = useState<Tab>("queue");
-    const [dispensingId, setDId] = useState<string | null>(null);
+    const { activeTab, dispensingId, setField } = usePharmacyStore();
 
     const { data: pending, isLoading: qLoading, refetch } = usePendingPrescriptions();
     const { mutate: updatePx } = useUpdatePrescription();
     const { mutate: logDispense } = useCreateDispensingRecord();
 
     const handleDispense = async (prescriptionId: string) => {
-        setDId(prescriptionId);
+        setField("dispensingId", prescriptionId);
         try {
             // 1. Mark prescription as dispensed
             updatePx({
@@ -386,11 +378,11 @@ export default function PharmacySuite() {
         } catch (err: any) {
             toast.error(err?.message ?? "Failed to dispense. Please try again.");
         } finally {
-            setDId(null);
+            setField("dispensingId", null);
         }
     };
 
-    const tabs: { id: Tab; label: string; icon: React.ElementType; count?: number }[] = [
+    const tabs: { id: PharmacyTab; label: string; icon: React.ElementType; count?: number }[] = [
         { id: "queue", label: "Prescription Queue", icon: Inbox, count: pending?.length ?? 0 },
         { id: "dispense", label: "Patient History", icon: History, },
         { id: "inventory", label: "Inventory", icon: Layers, },
@@ -411,7 +403,7 @@ export default function PharmacySuite() {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
                     return (
-                        <button key={tab.id} onClick={() => setTab(tab.id)}
+                        <button key={tab.id} onClick={() => setField("activeTab", tab.id)}
                             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all
                                 ${isActive ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
                             <Icon size={13} />

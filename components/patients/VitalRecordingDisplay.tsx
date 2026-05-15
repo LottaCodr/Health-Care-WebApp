@@ -77,7 +77,7 @@ function formatDateTime(iso?: string) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function VitalsRecordDisplay({ patientId, onClose }: { patientId: string; onClose?: () => void }) {
-    const { data, loading, error } = useNursingActionsByPatient(patientId, { enabled: !!patientId });
+    const { data, isLoading: loading, error } = useNursingActionsByPatient(patientId, { enabled: !!patientId });
 
     const latestAction: NursingActionRow | null = Array.isArray(data)
         ? ([...data] as NursingActionRow[])

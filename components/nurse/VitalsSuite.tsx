@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { UserRole } from "@/types/models";
 import { AITriageScore } from "../ai/AIComponents";
 import { calculateAge } from "@/utils/export";
+import { useVitalsStore } from "@/store/vitals-store";
 
 const FIELD_CONFIG = [
     { key: "bloodPressure", label: "Blood Pressure (mmHg)", placeholder: "120/80", leftIcon: <Activity size={16} className="text-blue-600" />, required: true, type: "text" },
@@ -27,18 +28,7 @@ const FIELD_CONFIG = [
     { key: "bmi", label: "BMI (auto-calculated)", placeholder: "", required: false, type: "number", disabled: true },
 ];
 
-const INITIAL_FORM = {
-    bloodPressure: "",
-    temperature: "",
-    pulse: "",
-    respiration: "",
-    spo2: "",
-    weight: "",
-    height: "",
-    bmi: "",
-    treatment: "",
-    notes: "",
-};
+
 
 export default function VitalsCheckinAdvancedComponent(props: {
     patientId: string;
@@ -55,7 +45,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
         enabled: !!patientId,
     });
 
-    const [form, setForm] = useState(INITIAL_FORM);
+    const { form, setField, resetForm } = useVitalsStore();
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
 
@@ -63,18 +53,6 @@ export default function VitalsCheckinAdvancedComponent(props: {
     const {mutate: updateActionMutation, isPending} = useUpdateNursingAction();
     const updatePatientStatusMutation = useUpdatePatientStatus();
     const age = calculateAge(patient?.date_of_birth!)
-
-    // Auto-calculate BMI
-    useEffect(() => {
-        const weight = parseFloat(form.weight);
-        const height = parseFloat(form.height);
-        if (!isNaN(weight) && !isNaN(height) && height > 0) {
-            const bmi = weight / (height / 100) ** 2;
-            setForm((prev) => ({ ...prev, bmi: bmi.toFixed(1) }));
-        } else {
-            setForm((prev) => ({ ...prev, bmi: "" }));
-        }
-    }, [form.weight, form.height]);
 
     if (!authorized) return null;
 
@@ -89,7 +67,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     if (patientLoading) return <LoadingSkeleton rows={5} />;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        setField(e.target.name as any, e.target.value);
     };
 
     const handleSubmit = async (e?: React.FormEvent) => {
@@ -152,6 +130,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
 
             setSuccess("Vitals documentation finalized successfully.");
             toast.success("Vitals recorded successfully");
+            resetForm();
 
             if (onComplete) {
                 setTimeout(onComplete, 2000);

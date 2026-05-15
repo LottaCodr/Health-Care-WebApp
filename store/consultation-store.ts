@@ -2,33 +2,104 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { ConsultationReferred } from "@/actions/consultations/types";
 
+export type RequestPriority = "routine" | "urgent" | "stat";
+
 export interface ConsultationState {
-    symptoms: string;
-    diagnosis: string;
+    presentingComplaint: string;
+    symptomsAnalysis: string;
+    aetiology: string;
+    historyComplications: string;
+    historyTreatment: string;
+    antenatalHistory: string;
+    nutritionalHistory: string;
+    developmentalMilestones: string;
+    immunisationHistory: string;
+    pastMedicalHistory: string;
+    drugHistory: string;
+    familySocialHistory: string;
+    
+    imp: string;
+    lmp: string;
+    ega: string;
+    eod: string;
+    gravidity: string;
+    parity: string;
+    
+    generalExam: string;
+    respiratory: string;
+    cardiovascular: string;
+    gastrointestinal: string;
+    
+    summary: string;
+    assessment: string;
+    investigations: string;
     prescriptions: string;
     recommendations: string;
-    referredTo: ConsultationReferred | "";
+    
+    referredTo: string;
+    statusOverride: string;
+    
+    labTestType: string;
+    labPriority: RequestPriority;
+    labNotes: string;
+    
+    radTestType: string;
+    radPriority: RequestPriority;
+    radNotes: string;
+    
     loading: boolean;
 }
 
 export interface ConsultationActions {
-    setSymptoms: (symptoms: string) => void;
-    setDiagnosis: (diagnosis: string) => void;
-    setPrescriptions: (prescriptions: string) => void;
-    setRecommendations: (recommendations: string) => void;
-    setReferredTo: (referredTo: ConsultationReferred) => void;
-    setLoading: (loading: boolean) => void;
+    setField: <K extends keyof ConsultationState>(field: K, value: ConsultationState[K]) => void;
     resetForm: () => void;
 }
 
 type ConsultationStore = ConsultationState & ConsultationActions;
 
 const initialState: ConsultationState = {
-    symptoms: "",
-    diagnosis: "",
+    presentingComplaint: "",
+    symptomsAnalysis: "",
+    aetiology: "",
+    historyComplications: "",
+    historyTreatment: "",
+    antenatalHistory: "",
+    nutritionalHistory: "",
+    developmentalMilestones: "",
+    immunisationHistory: "",
+    pastMedicalHistory: "",
+    drugHistory: "",
+    familySocialHistory: "",
+    
+    imp: "",
+    lmp: "",
+    ega: "",
+    eod: "",
+    gravidity: "",
+    parity: "",
+    
+    generalExam: "",
+    respiratory: "",
+    cardiovascular: "",
+    gastrointestinal: "",
+    
+    summary: "",
+    assessment: "",
+    investigations: "",
     prescriptions: "",
     recommendations: "",
+    
     referredTo: "",
+    statusOverride: "",
+    
+    labTestType: "",
+    labPriority: "routine",
+    labNotes: "",
+    
+    radTestType: "",
+    radPriority: "routine",
+    radNotes: "",
+    
     loading: false,
 };
 
@@ -36,12 +107,7 @@ export const useConsultationStore = create<ConsultationStore>()(
     devtools(
         (set) => ({
             ...initialState,
-            setSymptoms: (symptoms) => set({ symptoms }),
-            setDiagnosis: (diagnosis) => set({ diagnosis }),
-            setPrescriptions: (prescriptions) => set({ prescriptions }),
-            setRecommendations: (recommendations) => set({ recommendations }),
-            setReferredTo: (referredTo) => set({ referredTo }),
-            setLoading: (loading) => set({ loading }),
+            setField: (field, value) => set({ [field]: value }),
             resetForm: () => set(initialState),
         }),
         { name: "consultation-store" }
