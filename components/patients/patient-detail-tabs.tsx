@@ -15,8 +15,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/auth-provider";
-import { useConsultationContext } from "@/context/consultation/consultation";
-import { usePatientContext } from "@/context/patients/patient-context";
+import { useConsultationStore } from "@/store/consultation-store";
+import { usePatientStore } from "@/store/patient-store";
 import { PatientStatus } from "@/context/patients/types";
 
 import { getAllStaffs } from "@/actions/staff/get.staff";
@@ -211,9 +211,8 @@ export default function PatientDetailTabs({
   patient: Patient;
 }) {
   const [tab, setTab] = useState("vitals");
-  const { state: consultationState, dispatch: consultationDispatch } =
-    useConsultationContext();
-  const { dispatch: patientDispatch } = usePatientContext();
+  const consultationStore = useConsultationStore();
+  const patientStore = usePatientStore();
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -231,10 +230,10 @@ export default function PatientDetailTabs({
       staff.filter(
         (s: Staff) =>
           s.role &&
-          consultationState.referredTo &&
-          s.role.toLowerCase() === consultationState.referredTo
+          consultationStore.referredTo &&
+          s.role.toLowerCase() === consultationStore.referredTo
       ),
-    [staff, consultationState.referredTo]
+    [staff, consultationStore.referredTo]
   );
 
   // Patient age calculation
@@ -243,16 +242,10 @@ export default function PatientDetailTabs({
   // Set up context and patient state when patient changes
   useEffect(() => {
     if (patient) {
-      patientDispatch({ type: "SET_PATIENT", payload: [patient] });
-      patientDispatch({
-        type: "UPDATE_NOTES",
-        payload: patient.notes || "",
-      });
-      patientDispatch({
-        type: "SET_STATUS",
-        payload: (patient.status as PatientStatus) || "no-status",
-      });
-      consultationDispatch({ type: "RESET_FORM" });
+      patientStore.setPatient([patient]);
+      patientStore.updateNotes(patient.notes || "");
+      patientStore.setStatus((patient.status as PatientStatus) || "no-status");
+      consultationStore.resetForm();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient]);

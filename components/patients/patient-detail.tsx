@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useCallback, useState, ReactNode } from "react";
-import { usePatientContext } from "@/context/patients/patient-context";
-import { useConsultationContext } from "@/context/consultation/consultation";
+import { usePatientStore } from "@/store/patient-store";
+import { useConsultationStore } from "@/store/consultation-store";
 import PatientDetailsSkeleton from "./skeleton";
 import {  PatientStatus } from "@/context/patients/types";
 import { toast } from "@/hooks/use-toast";
@@ -31,18 +31,18 @@ interface Props {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PatientDetailsComponent({ patient }: Props) {
-    const { state: patientState, dispatch: patientDispatch } = usePatientContext();
-    const { state: consultationState, dispatch: consultationDispatch } = useConsultationContext();
+    const patientStore = usePatientStore();
+    const consultationStore = useConsultationStore();
 
     const [showCopied, setShowCopied] = useState(false);
     const [activeGroup, setActiveGroup] = useState("basic");
 
     useEffect(() => {
         if (patient) {
-            patientDispatch({ type: "SET_PATIENT", payload: [patient] });
-            patientDispatch({ type: "UPDATE_NOTES", payload: patient.notes || "" });
-            patientDispatch({ type: "SET_STATUS", payload: (patient.status as PatientStatus) || "no-status" });
-            consultationDispatch({ type: "RESET_FORM" });
+            patientStore.setPatient([patient]);
+            patientStore.updateNotes(patient.notes || "");
+            patientStore.setStatus((patient.status as PatientStatus) || "no-status");
+            consultationStore.resetForm();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patient]);
@@ -61,9 +61,9 @@ export default function PatientDetailsComponent({ patient }: Props) {
         if (window.history.length > 1) window.history.back();
     }, []);
 
-    if (consultationState.loading) return <PatientDetailsSkeleton />;
+    if (consultationStore.loading) return <PatientDetailsSkeleton />;
 
-    if (!patientState.patient?.length) {
+    if (!patientStore.patient?.length) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
@@ -80,13 +80,13 @@ export default function PatientDetailsComponent({ patient }: Props) {
         );
     }
 
-    const currentPatient = patientState.patient[0];
+    const currentPatient = patientStore.patient[0];
 
     return (
         <main className="max-w-full px-2 md:px-6 py-10 space-y-8">
             <PatientProfile
                 patient={currentPatient}
-                status={patientState.status}
+                status={patientStore.status}
                 onCopyId={() => handleCopyId(currentPatient.id || (currentPatient as any).$id || "")}
                 showCopied={showCopied}
                 activeGroup={activeGroup}
