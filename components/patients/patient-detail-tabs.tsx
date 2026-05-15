@@ -416,6 +416,7 @@ export default function PatientDetailTabs({
 
       {/* Radiology Tab */}
       <TabsContent value="radiology" className="mt-0">
+      
             <RadiologyTab patient={patient} userRole={user?.role} />
         </TabsContent>
     </Tabs>
