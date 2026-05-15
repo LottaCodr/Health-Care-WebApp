@@ -39,7 +39,7 @@ function PriorityBadge({ priority }: { priority?: string }) {
 
 
 export function RadiologyTab({ patient, userRole }: { patient: Patient; userRole?: string }) {
-    const { data: allRequests, loading, error, refetch } = useLabRequestsByPatient(patient.id ?? "");
+    const { data: allRequests, isLoading: loading, error, refetch } = useLabRequestsByPatient(patient.id ?? "");
     const [reportTarget, setReportTarget] = useState<any | null>(null);
     const [expandedId,   setExpandedId]   = useState<string | null>(null);
  

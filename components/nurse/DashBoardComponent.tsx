@@ -14,7 +14,7 @@ import { usePendingNursingActions } from "@/hooks/emr/use-nursing";
 export default function NurseDashboard() {
     const { user }       = useAuth();
     const { authorized } = useRoleProtection([UserRole.Nurse, UserRole.Admin]);
-    const { data: actions, loading, refetch } = usePendingNursingActions();
+    const { data: actions, isLoading: loading, refetch } = usePendingNursingActions();
 
     if (!authorized) return null;
 

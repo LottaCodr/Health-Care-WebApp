@@ -99,7 +99,7 @@ export default function DashBoardComponent() {
                     </div>
 
                     <div className="px-6 py-4 space-y-3">
-                        {registeredPatients.loading ? (
+                        {registeredPatients.isLoading ? (
                             <LoadingSkeleton rows={3} />
                         ) : registeredPatients.data?.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-10 gap-2">
@@ -150,7 +150,7 @@ export default function DashBoardComponent() {
                     </div>
 
                     <div className="px-6 py-4 space-y-3">
-                        {awaitingPaymentPatients.loading ? (
+                        {awaitingPaymentPatients.isLoading ? (
                             <LoadingSkeleton rows={3} />
                         ) : awaitingPaymentPatients.data?.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-10 gap-2">

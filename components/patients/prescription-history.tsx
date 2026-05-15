@@ -33,7 +33,7 @@ interface Props {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PrescriptionHistory({ patientId }: Props) {
-  const { data: prescriptions, loading, error } = usePrescriptionsByPatient(patientId);
+  const { data: prescriptions, isLoading: loading, error } = usePrescriptionsByPatient(patientId);
 
   // ── Loading ──
   if (loading) {

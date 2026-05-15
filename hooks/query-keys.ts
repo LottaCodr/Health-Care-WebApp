@@ -4,14 +4,10 @@
 // Centralised query key factories.
 // Hierarchy: domain → collection → filters | detail → id
 //
-// Why this matters:
-//   queryClient.invalidateQueries({ queryKey: patientKeys.lists() })
-//   → invalidates every patient list regardless of filters
-//
-//   queryClient.invalidateQueries({ queryKey: patientKeys.detail(id) })
-//   → invalidates only that patient's detail — leaves lists intact
-//
-// Always import from here, never write raw string arrays.
+// Radiology and Lab are now SEPARATE domains even though they share the same
+// underlying DB table (lab_requests). The prefix "[RADIOLOGY]" in test_type
+// determines which domain owns a row. Keeping them in separate key namespaces
+// means cache invalidation never bleeds between departments.
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ─── Patients ─────────────────────────────────────────────────────────────────
@@ -34,7 +30,9 @@ export const consultationKeys = {
     detail: (id: string) => ["consultations", "detail", id] as const,
 };
 
-// ─── Lab requests ─────────────────────────────────────────────────────────────
+// ─── Lab requests (NON-radiology only) ────────────────────────────────────────
+// These keys cover test_type values that do NOT start with "[RADIOLOGY]".
+// All lab tech dashboard data uses these keys exclusively.
 
 export const labKeys = {
     all: () => ["lab"] as const,
@@ -42,9 +40,23 @@ export const labKeys = {
     completed: () => ["lab", "requests", "completed"] as const,
     byPatient: (id: string) => ["lab", "requests", "patient", id] as const,
     detail: (id: string) => ["lab", "requests", "detail", id] as const,
-    // Catalog
+    // Test catalog
     catalog: () => ["lab", "catalog"] as const,
     catalogActive: () => ["lab", "catalog", "active"] as const,
+};
+
+// ─── Radiology requests ───────────────────────────────────────────────────────
+// Separate namespace for test_type values that start with "[RADIOLOGY]".
+// Radiologist dashboard and patient radiology tab use these keys exclusively.
+// Invalidating radiologyKeys.pending() will NEVER touch labKeys.pending() and
+// vice versa — no cross-department cache pollution.
+
+export const radiologyKeys = {
+    all: () => ["radiology"] as const,
+    pending: () => ["radiology", "pending"] as const,
+    completed: () => ["radiology", "completed"] as const,
+    byPatient: (id: string) => ["radiology", "patient", id] as const,
+    detail: (id: string) => ["radiology", "detail", id] as const,
 };
 
 // ─── Nursing ──────────────────────────────────────────────────────────────────
@@ -66,16 +78,13 @@ export const paymentKeys = {
 // ─── Pharmacy ─────────────────────────────────────────────────────────────────
 
 export const pharmacyKeys = {
-    // Prescriptions
     prescriptions: () => ["pharmacy", "prescriptions"] as const,
     prescriptionsPending: () => ["pharmacy", "prescriptions", "pending"] as const,
     prescriptionsByPatient: (id: string) => ["pharmacy", "prescriptions", "patient", id] as const,
     prescription: (id: string) => ["pharmacy", "prescriptions", "detail", id] as const,
-    // Drug inventory
     inventory: () => ["pharmacy", "inventory"] as const,
     inventoryActive: () => ["pharmacy", "inventory", "active"] as const,
     catalog: () => ["pharmacy", "catalog"] as const,
-    // Dispensing
     dispensing: (id: string) => ["pharmacy", "dispensing", "patient", id] as const,
 };
 

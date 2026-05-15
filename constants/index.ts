@@ -44,7 +44,7 @@ export const PatientFormDefaultValues = {
   name: "",
   email: "",
   phone: "",
-  birthDate: "",          // maps to date_of_birth in DB
+  birthDate: "" as any,          // maps to date_of_birth in DB
   gender: "Male" as const,
   religion: "",
   occupation: "",

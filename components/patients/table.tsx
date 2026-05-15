@@ -8,8 +8,8 @@ import { calculateAge, formatDate } from '@/lib/utils';
 import { useAuth } from '@/context/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    User, Droplets,  Pill,
-    Calendar, ChevronRight, 
+    User, Droplets, Pill,
+    Calendar, ChevronRight,
 } from 'lucide-react';
 import { Patient } from '@/types/models';
 

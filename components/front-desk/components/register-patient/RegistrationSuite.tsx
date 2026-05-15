@@ -21,7 +21,7 @@ import {
   GenotypeOptions,
 } from "@/constants";
 import { FormFieldType } from "@/components/forms/PatientForm";
-import { createPatient } from "@/lib/services/patient.service";  
+import { createPatient } from "@/lib/services/patient.service";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
 
@@ -219,7 +219,7 @@ export default function RegistrationSuite() {
         address: v.address,
         occupation: v.occupation,
         religion: v.religion,
-        status: "registered",
+        status: "sent-to-nurse",
         // Emergency contact
         emergency_contact_name: v.emergencyContactName,
         emergency_contact_number: v.emergencyContactNumber,

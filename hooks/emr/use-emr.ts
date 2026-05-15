@@ -20,7 +20,7 @@ export {
     useDeleteConsultation,
 } from "./use-consultations";
 
-// Lab requests + lab test catalog
+// Lab requests + lab test catalog (NON-radiology)
 export {
     useLabRequest,
     useLabRequestsByPatient,
@@ -34,6 +34,16 @@ export {
     useDeleteLabTest,
     useToggleLabTestActive,
 } from "./use-lab";
+
+// Radiology (separate domain — own hooks, own cache keys)
+export {
+    useRadiologyRequest,
+    useRadiologyRequestsByPatient,
+    usePendingRadiologyRequests,
+    useCompletedRadiologyRequests,
+    useCreateRadiologyRequest,
+    useSubmitRadiologyReport,
+} from "./use-radiology";
 
 // Nursing
 export {
@@ -79,5 +89,5 @@ export {
     useDeleteStaff,
 } from "./use-staff";
 
-// Query keys — export for prefetching in page.tsx server components
+// Query keys — export for prefetching in server components / page.tsx
 export * from "../query-keys";

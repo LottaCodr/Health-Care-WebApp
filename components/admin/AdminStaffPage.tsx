@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import supabase from "@/utils/supabase/client";
 import {
     Users, Plus, Search, X, Edit3, Trash2,
     Loader2, CheckCircle2, AlertTriangle, ChevronDown,
     Shield, Mail, Phone, RefreshCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAllStaff, useCreateStaff, useDeleteStaff, useUpdateStaff } from "@/hooks/emr/use-staff";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ interface Staff {
     created_at: string;
 }
 
-const ROLES = ["Doctor", "Nurse", "Pharmacist", "Labtechnician", "Frontdesk", "Admin"];
+const ROLES = ["Doctor", "Nurse", "Pharmacist", "Labtechnician", "Frontdesk", "Radiolgist", "Admin"];
 
 const ROLE_CONFIG: Record<string, { color: string; bg: string; dot: string }> = {
     Doctor: { color: "text-red-700", bg: "bg-red-50", dot: "bg-red-500" },
@@ -31,6 +31,7 @@ const ROLE_CONFIG: Record<string, { color: string; bg: string; dot: string }> = 
     Pharmacist: { color: "text-violet-700", bg: "bg-violet-50", dot: "bg-violet-500" },
     Labtechnician: { color: "text-indigo-700", bg: "bg-indigo-50", dot: "bg-indigo-500" },
     Frontdesk: { color: "text-blue-700", bg: "bg-blue-50", dot: "bg-blue-500" },
+    Radiolgist: { color: "text-blue-700", bg: "bg-blue-50", dot: "bg-blue-500" },
     Admin: { color: "text-amber-700", bg: "bg-amber-50", dot: "bg-amber-500" },
 };
 
@@ -67,20 +68,34 @@ function StaffModal({ staff, onClose, onSaved }: {
         try {
 
             if (isEdit) {
-                // Update staffs table
-                const { error } = await supabase
-                    .from("staffs")
-                    .update({ name: form.name, role: form.role, phone_number: form.phone_number || null })
-                    .eq("id", staff!.id);
-                if (error) throw error;
+                const { mutateAsync: updateStaff } = useUpdateStaff();
+                updateStaff({
+                    id: staff!.id,
+                    updates: {
+                        name: form.name,
+                        role: form.role as UserRole,
+                        phone: form.phone_number
+                    }
+                });
+
                 toast.success("Staff member updated.");
             } else {
                 // Create auth user via admin API (requires service role — use server action in production)
                 // For now update staffs directly if auth user already exists
-                const { error } = await supabase
-                    .from("staffs")
-                    .insert([{ name: form.name, email: form.email, role: form.role, phone_number: form.phone_number || null }]);
-                if (error) throw error;
+                // const { error } = await supabase
+                //     .from("staffs")
+                //     .insert([{ name: form.name, email: form.email, role: form.role, phone_number: form.phone_number || null }]);
+                // if (error) throw error;
+                const { mutateAsync: createStaff } = useCreateStaff();
+                createStaff({
+                    name: form.name,
+                    email: form.email,
+                    role: form.role as UserRole,
+                    phone: form.phone_number,
+                    status: "Active",
+                    department: "",
+                    dateJoined: ""
+                });
                 toast.success("Staff member added. Ensure their auth account is created in Supabase Auth.");
             }
 
@@ -158,8 +173,9 @@ function DeleteModal({ staff, onClose, onDeleted }: { staff: Staff; onClose: () 
     const handleDelete = async () => {
         setDeleting(true);
         try {
-            const { error } = await supabase.from("staffs").delete().eq("id", staff.id);
-            if (error) throw error;
+            useDeleteStaff();
+            // const { error } = await supabase.from("staffs").delete().eq("id", staff.id);
+            // if (error) throw error;
             toast.success(`${staff.name} removed from staff.`);
             onDeleted();
             onClose();
@@ -209,18 +225,13 @@ export default function AdminStaffPage() {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const fetchStaff = async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from("staffs")
-            .select("*")
-            .order("created_at", { ascending: false });
-        if (!error) setStaff(data ?? []);
 
-        // const theStaffs = await fetchStaff()
-        console.log('fetching staffs:', data)
+
+        const { data } = useAllStaff();
+
         setLoading(false);
     };
-    
+
 
     useEffect(() => { fetchStaff(); }, []);
 

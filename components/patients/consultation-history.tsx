@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
-import { getPatientConsultations, deleteConsultation } from "@/actions/consultations/consultation";
+
 import {
     History, ChevronLeft, ChevronRight, CalendarDays,
     Stethoscope, ClipboardList, Pill, UserRound, ArrowRight,
@@ -12,18 +12,7 @@ import {
     RefreshCcw, Lock, Eye, EyeOff, Baby, Heart, Brain,
     Activity, FileText, ChevronDown,
 } from "lucide-react";
-// import { canDelete } from "@/lib/role-permissions";
-
-// ══════════════════════════════════════════════════════════════════════════════
-// CONFIDENTIALITY MODEL (HIPAA / NDPR)
-//
-// Doctor / Admin  → Full access: all sections A–F, obstetric, clinical notes
-// Nurse           → Routing info, general status, nursing-relevant recommendations only
-// Lab Tech        → Lab test type + clinical indication only
-// Radiologist     → Radiology request + clinical indication only
-// Pharmacist      → Prescriptions / drug section + known allergies only
-// Front Desk      → Date, referral destination, patient status only
-// ══════════════════════════════════════════════════════════════════════════════
+import { deleteConsultation, getConsultationById, listConsultationsByPatient } from "@/lib/services";
 
 type AccessLevel = "full" | "nursing" | "lab" | "radiology" | "pharmacy" | "admin" | "minimal";
 
@@ -326,7 +315,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
 
     const { data, isPending, isError } = useQuery({
         queryKey: ["consultations", patientId],
-        queryFn:  () => getPatientConsultations(patientId),
+        queryFn: () => listConsultationsByPatient(patientId),
         enabled:  !!patientId,
     });
 

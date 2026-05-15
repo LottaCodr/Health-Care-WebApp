@@ -6,24 +6,31 @@ import { useAuth } from "@/context/auth-provider";
 import { PatientStatus } from "@/types/models";
 import { Staff } from "@/actions/staff/types";
 import { toast } from "sonner";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateConsultation, useUpdatePatientStatus, useCreateLabRequest } from "@/hooks/emr/use-emr";
+import {
+    useCreateConsultation,
+    useUpdatePatientStatus,
+    useCreateLabRequest,
+    useCreateRadiologyRequest,       // ← dedicated radiology hook
+} from "@/hooks/emr/use-emr";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 const AIClinicalAssistant = dynamic(
     () => import("@/components/ai/AIClinicalAssistant"),
     { loading: () => <div className="animate-pulse h-32 bg-gray-50 rounded-2xl" /> }
 );
+
 import {
-    Stethoscope, HeartPulse, ClipboardList, Pill,
-    UserRound, ArrowRight, Loader2, CheckCircle2,
+    Stethoscope, ClipboardList, Pill,
+    ArrowRight, Loader2, CheckCircle2,
     ChevronRight, FlaskConical, UserCog, Baby, User,
     Heart, Brain, Activity, FileText, Zap, Radio,
-    ChevronDown, X,
+    ChevronDown,
 } from "lucide-react";
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type RequestPriority = "routine" | "urgent" | "stat";
 
 interface Props {
     patientId: string;
@@ -41,10 +48,38 @@ const isPaed = (age?: number) => age !== undefined && age <= 12;
 const isFemale = (gender?: string) => ["female", "f"].includes((gender ?? "").toLowerCase());
 
 const REFERRAL_OPTIONS = [
-    { value: "nurse", label: "Nurse", desc: "Post-consultation nursing care", icon: UserCog, status: PatientStatus.SentToNurse, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-400" },
-    { value: "lab-tech", label: "Lab Technician", desc: "Request laboratory investigations", icon: FlaskConical, status: PatientStatus.SentToLab, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-400" },
-    { value: "radiology", label: "Radiology", desc: "Imaging investigations", icon: Radio, status: PatientStatus.SentToLab, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-400" },
-    { value: "pharmacist", label: "Pharmacist", desc: "Dispense prescribed medications", icon: Pill, status: PatientStatus.SentToPharmacy, color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-400" },
+    {
+        value: "nurse",
+        label: "Nurse",
+        desc: "Post-consultation nursing care",
+        icon: UserCog,
+        status: "sent-to-nurse" as PatientStatus,
+        color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-400",
+    },
+    {
+        value: "lab-tech",
+        label: "Lab Technician",
+        desc: "Request laboratory investigations",
+        icon: FlaskConical,
+        status: "sent-to-lab" as PatientStatus,
+        color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-400",
+    },
+    {
+        value: "radiology",
+        label: "Radiology",
+        desc: "Imaging investigations",
+        icon: Radio,
+        status: "sent-to-radiology" as PatientStatus,   // ← correct status
+        color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-400",
+    },
+    {
+        value: "pharmacist",
+        label: "Pharmacist",
+        desc: "Dispense prescribed medications",
+        icon: Pill,
+        status: "sent-to-pharmacy" as PatientStatus,
+        color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-400",
+    },
 ] as const;
 
 const LAB_TESTS = [
@@ -72,35 +107,46 @@ const PATIENT_STATUSES = [
     { value: "sent-to-nurse", label: "Sent to Nurse" },
     { value: "sent-to-lab", label: "Sent to Lab" },
     { value: "sent-to-pharmacy", label: "Sent to Pharmacy" },
+    { value: "sent-to-radiology", label: "Sent to Radiology" },
     { value: "under-observation", label: "Under Observation" },
     { value: "discharged", label: "Discharged" },
 ];
 
-// ─── Field components ─────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 const inputCls = "w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 focus:bg-white transition-all";
-const selectCls = "w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 focus:bg-white appearance-none transition-all";
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
     return (
         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
-            {children}{required && <span className="text-red-500 ml-0.5">*</span>}
+            {children}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
         </p>
     );
 }
 
 function Section({
-    id, icon: Icon, title, badge, color = "text-red-600", bg = "bg-red-50",
+    id, icon: Icon, title, badge,
+    color = "text-red-600", bg = "bg-red-50",
     defaultOpen = false, children,
 }: {
-    id: string; icon: React.ElementType; title: string; badge?: string;
-    color?: string; bg?: string; defaultOpen?: boolean; children: React.ReactNode;
+    id: string;
+    icon: React.ElementType;
+    title: string;
+    badge?: string;
+    color?: string;
+    bg?: string;
+    defaultOpen?: boolean;
+    children: React.ReactNode;
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
         <div id={id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <button type="button" onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50/60 transition-colors text-left">
+            <button
+                type="button"
+                onClick={() => setOpen(v => !v)}
+                className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50/60 transition-colors text-left"
+            >
                 <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                     <Icon size={15} className={color} />
                 </div>
@@ -108,32 +154,16 @@ function Section({
                     <p className="text-sm font-bold text-gray-900">{title}</p>
                     {badge && <p className="text-[10px] text-gray-400 mt-0.5 font-bold uppercase tracking-widest">{badge}</p>}
                 </div>
-                {open ? <ChevronDown size={14} className="text-gray-400 shrink-0" /> : <ChevronRight size={14} className="text-gray-400 shrink-0" />}
+                {open
+                    ? <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                    : <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                }
             </button>
-            {open && <div className="px-5 pb-5 space-y-4 border-t border-gray-50 pt-4">{children}</div>}
-        </div>
-    );
-}
-
-function FieldCard({
-    id, step, icon, label, helper, children, onFocus,
-}: {
-    id: string; step: number; icon: React.ReactNode; label: string;
-    helper?: string; children: React.ReactNode; onFocus?: () => void;
-}) {
-    return (
-        <div id={id} onFocus={onFocus}
-            className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-red-100 transition-all overflow-hidden">
-            <div className="flex items-center gap-3 px-6 pt-5 pb-3 border-b border-gray-50">
-                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0">{icon}</div>
-                <div>
-                    <p className="text-sm font-bold text-gray-800">{label}</p>
-                    {helper && <p className="text-xs text-gray-400 mt-0.5">{helper}</p>}
+            {open && (
+                <div className="px-5 pb-5 space-y-4 border-t border-gray-50 pt-4">
+                    {children}
                 </div>
-                <span className="ml-auto text-xs font-bold text-gray-200 tracking-widest">0{step}</span>
-            </div>
-            <div className="px-6 py-4">{children}</div>
-            <div className="h-0.5 w-0 group-focus-within:w-full bg-red-600 transition-all duration-300 ease-out" />
+            )}
         </div>
     );
 }
@@ -141,19 +171,29 @@ function FieldCard({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ConsultationForm({
-    patientId, availableStaff, onSuccess,
-    patientAge, patientGender, patientMedicalHistory, patientAllergies,
+    patientId,
+    availableStaff,
+    onSuccess,
+    patientAge,
+    patientGender,
+    patientMedicalHistory,
+    patientAllergies,
 }: Props) {
     const { user } = useAuth();
-    const { mutate: createConsultation, loading: cLoading } = useCreateConsultation();
-    const { mutate: updateStatus, loading: sLoading } = useUpdatePatientStatus();
-    const { mutate: createLabRequest, loading: lLoading } = useCreateLabRequest();
+
+    // ── Hooks — all called unconditionally at top level ──────────────────────
+    const { mutate: createConsultation, isPending: cLoading } = useCreateConsultation();
+    const { mutate: updateStatus } = useUpdatePatientStatus();
+    const { mutate: createLabRequest, isPending: lLoading } = useCreateLabRequest();
+    const { mutate: createRadRequest, isPending: rLoading } = useCreateRadiologyRequest();
+
+    const loading = cLoading || lLoading || rLoading;
 
     const isChild = isPaed(patientAge);
     const isFem = isFemale(patientGender);
-    const loading = cLoading || sLoading || lLoading;
 
-    // ── History fields ──
+    // ── History fields ────────────────────────────────────────────────────────
+
     const [presentingComplaint, setPresentingComplaint] = useState("");
     const [symptomsAnalysis, setSymptomsAnalysis] = useState("");
     const [aetiology, setAetiology] = useState("");
@@ -166,6 +206,7 @@ export default function ConsultationForm({
     const [pastMedicalHistory, setPastMedicalHistory] = useState(patientMedicalHistory ?? "");
     const [drugHistory, setDrugHistory] = useState("");
     const [familySocialHistory, setFamilySocialHistory] = useState("");
+
     // Female obstetric
     const [imp, setImp] = useState("");
     const [lmp, setLmp] = useState("");
@@ -174,35 +215,42 @@ export default function ConsultationForm({
     const [gravidity, setGravidity] = useState("");
     const [parity, setParity] = useState("");
 
-    // ── Examination ──
+    // ── Examination ───────────────────────────────────────────────────────────
+
     const [generalExam, setGeneralExam] = useState("");
     const [respiratory, setRespiratory] = useState("");
     const [cardiovascular, setCardiovascular] = useState("");
     const [gastrointestinal, setGastrointestinal] = useState("");
 
-    // ── Summary / Assessment / Management ──
+    // ── Assessment / Management ───────────────────────────────────────────────
+
     const [summary, setSummary] = useState("");
     const [assessment, setAssessment] = useState("");
     const [investigations, setInvestigations] = useState("");
     const [prescriptions, setPrescriptions] = useState("");
     const [recommendations, setRecommendations] = useState("");
 
-    // ── Routing ──
+    // ── Routing ───────────────────────────────────────────────────────────────
+
     const [referredTo, setReferredTo] = useState("");
-    const [selectedStaffId, setSelectedStaffId] = useState("");
     const [statusOverride, setStatusOverride] = useState("");
+
+    // Lab request
     const [labTestType, setLabTestType] = useState("");
-    const [labPriority, setLabPriority] = useState("routine");
+    const [labPriority, setLabPriority] = useState<RequestPriority>("routine"); // ← typed union
     const [labNotes, setLabNotes] = useState("");
+
+    // Radiology request
     const [radTestType, setRadTestType] = useState("");
-    const [radPriority, setRadPriority] = useState("routine");
+    const [radPriority, setRadPriority] = useState<RequestPriority>("routine"); // ← typed union
     const [radNotes, setRadNotes] = useState("");
 
     const referralOption = REFERRAL_OPTIONS.find(r => r.value === referredTo);
     const nextStatusLabel = referralOption?.label ?? "Nurse";
-    const nextStatus = (referralOption?.status ?? PatientStatus.SentToNurse) as PatientStatus;
+    const nextStatus = referralOption?.status ?? ("sent-to-nurse" as PatientStatus);
 
-    // Build concatenated symptoms / diagnosis strings
+    // ── Build concatenated text fields ────────────────────────────────────────
+
     const buildSymptoms = () => [
         `Presenting Complaint:\n${presentingComplaint}`,
         symptomsAnalysis ? `Analysis of Symptoms:\n${symptomsAnalysis}` : "",
@@ -238,45 +286,79 @@ export default function ConsultationForm({
         recommendations ? `Recommendations:\n${recommendations}` : "",
     ].filter(Boolean).join("\n\n");
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    // ── Submit ────────────────────────────────────────────────────────────────
+
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (!presentingComplaint.trim()) { toast.error("Presenting complaint is required."); return; }
         if (!assessment.trim()) { toast.error("Assessment / diagnosis is required."); return; }
         if (referredTo === "lab-tech" && !labTestType) { toast.error("Select a lab test type."); return; }
         if (referredTo === "radiology" && !radTestType) { toast.error("Select a radiology investigation type."); return; }
 
-        try {
-            await createConsultation({
+        const doctorId = user?.id ?? user?.$id ?? "";
+
+        // 1 — Save consultation note
+        createConsultation(
+            {
                 patientId,
-                doctorId: user?.$id ?? user?.id ?? "",
+                doctorId,
                 symptoms: buildSymptoms(),
                 diagnosis: buildDiagnosis(),
                 prescriptions: prescriptions || undefined,
                 recommendations: buildRecommendations(),
                 referredTo: referredTo || undefined,
-                assignedStaffId: selectedStaffId || undefined,
                 status: "underConsultation",
-            });
+            },
+            {
+                onSuccess: () => {
+                    // 2 — Create investigation request if applicable
+                    if (referredTo === "lab-tech") {
+                        createLabRequest({
+                            patientId,
+                            requestedBy: doctorId,
+                            testType: labTestType,
+                            priority: labPriority,   // typed as RequestPriority — no cast needed
+                            notes: labNotes || undefined,
+                            status: "pending",
+                        });
+                    }
 
-            if (referredTo === "lab-tech") {
-                await createLabRequest({ patientId, requestedBy: user?.$id ?? user?.id, testType: labTestType, priority: labPriority || undefined, notes: labNotes || undefined, status: "pending" });
+                    if (referredTo === "radiology") {
+                        // Use the dedicated radiology service — it prepends "[RADIOLOGY] " automatically
+                        createRadRequest({
+                            patientId,
+                            requestedBy: doctorId,
+                            testType: radTestType,   // service adds the prefix
+                            priority: radPriority,   // typed as RequestPriority — no cast needed
+                            notes: radNotes || undefined,
+                        });
+                    }
+
+                    // 3 — Move patient to next status
+                    const resolvedStatus = statusOverride
+                        ? (statusOverride as PatientStatus)
+                        : nextStatus;
+
+                    updateStatus(
+                        { id: patientId, status: resolvedStatus },
+                        { onError: () => toast.error("Consultation saved but patient status could not be updated.") }
+                    );
+
+                    toast.success(`Consultation saved. Patient routed to ${nextStatusLabel}.`);
+
+                    // Reset key fields
+                    setPresentingComplaint(""); setAssessment(""); setPrescriptions("");
+                    setRecommendations(""); setReferredTo(""); setLabTestType(""); setRadTestType("");
+                    onSuccess?.();
+                },
+                onError: (err: any) =>
+                    toast.error(err?.message ?? "Failed to submit consultation."),
             }
-            if (referredTo === "radiology") {
-                await createLabRequest({ patientId, requestedBy: user?.$id ?? user?.id, testType: `[RADIOLOGY] ${radTestType}`, priority: radPriority || undefined, notes: radNotes || undefined, status: "pending" });
-            }
-
-            const resolvedStatus = statusOverride ? (statusOverride as PatientStatus) : nextStatus;
-            await updateStatus(patientId, resolvedStatus);
-
-            toast.success(`Consultation saved. Patient routed to ${nextStatusLabel}.`);
-            // Reset key fields
-            setPresentingComplaint(""); setAssessment(""); setPrescriptions("");
-            setRecommendations(""); setReferredTo(""); setLabTestType(""); setRadTestType("");
-            onSuccess?.();
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to submit consultation.");
-        }
+        );
     };
+
+    // ─── Render ───────────────────────────────────────────────────────────────
 
     return (
         <div className="space-y-4">
@@ -297,9 +379,8 @@ export default function ConsultationForm({
 
             <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* ── SECTION A: History ── */}
+                {/* ── A. History ── */}
                 <Section id="history" icon={ClipboardList} title="A. History" badge="Presenting complaints & background" defaultOpen>
-
                     <div className="space-y-1.5">
                         <FieldLabel required>A1 · Presenting Complaint</FieldLabel>
                         <Textarea rows={3} value={presentingComplaint} onChange={e => setPresentingComplaint(e.target.value)}
@@ -347,7 +428,7 @@ export default function ConsultationForm({
                         </div>
                     )}
 
-                    {/* A7–A9 Shared */}
+                    {/* A7–A9 General History */}
                     <div className="pl-3 border-l-2 border-red-100 space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-red-400">A7–A9 · General History</p>
                         {[
@@ -389,14 +470,14 @@ export default function ConsultationForm({
                     )}
                 </Section>
 
-                {/* ── SECTION B: General Examination ── */}
+                {/* ── B. General Examination ── */}
                 <Section id="exam" icon={Activity} title="B. General Examination" badge="Section B" color="text-blue-600" bg="bg-blue-50">
                     <Textarea rows={4} value={generalExam} onChange={e => setGeneralExam(e.target.value)}
                         placeholder="General appearance, consciousness, pallor, jaundice, cyanosis, clubbing, lymphadenopathy, oedema, vital signs review..."
                         className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-blue-400" />
                 </Section>
 
-                {/* ── SECTION C: Systemic Examination ── */}
+                {/* ── C. Systemic Examination ── */}
                 <Section id="systemic" icon={Stethoscope} title="C. Systemic Examination" badge="Section C" color="text-teal-600" bg="bg-teal-50">
                     <div className="space-y-4">
                         {[
@@ -413,21 +494,21 @@ export default function ConsultationForm({
                     </div>
                 </Section>
 
-                {/* ── SECTION D: Summary ── */}
+                {/* ── D. Summary ── */}
                 <Section id="summary" icon={FileText} title="D. Summary" badge="Section D" color="text-violet-600" bg="bg-violet-50">
                     <Textarea rows={4} value={summary} onChange={e => setSummary(e.target.value)}
                         placeholder="Brief clinical summary of key findings and their significance..."
                         className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-violet-400" />
                 </Section>
 
-                {/* ── SECTION E: Assessment ── */}
+                {/* ── E. Assessment — required ── */}
                 <Section id="assessment-sec" icon={Brain} title="E. Assessment / Diagnosis" badge="Section E — Required" color="text-amber-600" bg="bg-amber-50" defaultOpen>
                     <Textarea rows={3} value={assessment} onChange={e => setAssessment(e.target.value)}
                         placeholder="Diagnosis or differential diagnoses with clinical reasoning..."
                         className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-amber-400" />
                 </Section>
 
-                {/* ── SECTION F: Management ── */}
+                {/* ── F. Management ── */}
                 <Section id="management" icon={Zap} title="F. Management" badge="Section F" color="text-green-600" bg="bg-green-50">
                     <div className="space-y-4">
                         <div className="space-y-1.5">
@@ -463,16 +544,23 @@ export default function ConsultationForm({
 
                 {/* ── Routing ── */}
                 <Section id="routing" icon={ArrowRight} title="Patient Routing" badge="Referral & status update" defaultOpen color="text-indigo-600" bg="bg-indigo-50">
-                    {/* Referral cards */}
+
+                    {/* Referral option cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {REFERRAL_OPTIONS.map((opt) => {
                             const Icon = opt.icon;
                             const isSelected = referredTo === opt.value;
                             return (
-                                <button key={opt.value} type="button"
-                                    onClick={() => { setReferredTo(isSelected ? "" : opt.value); setSelectedStaffId(""); }}
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setReferredTo(isSelected ? "" : opt.value)}
                                     className={`flex flex-col items-start gap-2 p-3 rounded-xl border-2 text-left transition-all duration-150
-                                        ${isSelected ? `${opt.border} ${opt.bg}` : "border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white"}`}>
+                                        ${isSelected
+                                            ? `${opt.border} ${opt.bg}`
+                                            : "border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white"
+                                        }`}
+                                >
                                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? opt.bg : "bg-white border border-gray-100"}`}>
                                         <Icon size={14} className={isSelected ? opt.color : "text-gray-400"} />
                                     </div>
@@ -485,7 +573,7 @@ export default function ConsultationForm({
                         })}
                     </div>
 
-                    {/* Lab request details */}
+                    {/* Lab request details panel */}
                     {referredTo === "lab-tech" && (
                         <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
                             <div className="flex items-center gap-2">
@@ -506,7 +594,10 @@ export default function ConsultationForm({
                                 </div>
                                 <div className="space-y-1.5">
                                     <FieldLabel>Priority</FieldLabel>
-                                    <Select onValueChange={setLabPriority} value={labPriority}>
+                                    <Select
+                                        value={labPriority}
+                                        onValueChange={(v) => setLabPriority(v as RequestPriority)}
+                                    >
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl"><SelectValue /></SelectTrigger>
                                         <SelectContent className="bg-white shadow-xl rounded-xl">
                                             <SelectItem value="routine">Routine</SelectItem>
@@ -525,7 +616,7 @@ export default function ConsultationForm({
                         </div>
                     )}
 
-                    {/* Radiology request details */}
+                    {/* Radiology request details panel */}
                     {referredTo === "radiology" && (
                         <div className="rounded-2xl border-2 border-cyan-200 bg-cyan-50/40 p-4 space-y-3">
                             <div className="flex items-center gap-2">
@@ -546,7 +637,10 @@ export default function ConsultationForm({
                                 </div>
                                 <div className="space-y-1.5">
                                     <FieldLabel>Priority</FieldLabel>
-                                    <Select onValueChange={setRadPriority} value={radPriority}>
+                                    <Select
+                                        value={radPriority}
+                                        onValueChange={(v) => setRadPriority(v as RequestPriority)}
+                                    >
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl"><SelectValue /></SelectTrigger>
                                         <SelectContent className="bg-white shadow-xl rounded-xl">
                                             <SelectItem value="routine">Routine</SelectItem>
@@ -574,7 +668,11 @@ export default function ConsultationForm({
                                     <SelectValue placeholder="Auto (based on referral)" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-white shadow-xl rounded-xl">
-                                    {PATIENT_STATUSES.map(s => <SelectItem key={s.value} value={s.value} className="text-sm">{s.label}</SelectItem>)}
+                                    {PATIENT_STATUSES.map(s => (
+                                        <SelectItem key={s.value} value={s.value} className="text-sm">
+                                            {s.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -590,8 +688,11 @@ export default function ConsultationForm({
                 </Section>
 
                 {/* Submit */}
-                <button type="submit" disabled={loading}
-                    className="w-full h-13 flex items-center justify-center gap-2.5 bg-red-700 hover:bg-red-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed py-3.5">
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2.5 bg-red-700 hover:bg-red-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed py-3.5"
+                >
                     {loading
                         ? <><Loader2 size={16} className="animate-spin" /> Saving...</>
                         : <><CheckCircle2 size={16} /> Submit & Route Patient <ArrowRight size={15} /></>
