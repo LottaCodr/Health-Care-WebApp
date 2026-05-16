@@ -1,15 +1,28 @@
-
 "use server";
+
+// ══════════════════════════════════════════════════════════════════════════════
+// lib/services/radiology.service.ts
+//
+// All DB operations for radiology investigations.
+// Requires the FK lab_requests_visit_id_fkey to exist (see migration).
+// PostgREST uses the FK name as a hint to resolve the patients join.
+// ══════════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "@/utils/supabase/server";
 
-// ─── Shared select ────────────────────────────────────────────────────────────
-// Join patients so the radiologist can see who the request belongs to.
-
-const SELECT = "*, patients(id, name, phone, gender, date_of_birth, allergies, significant_medication_history)";
 const PREFIX = "[RADIOLOGY]";
 
-// ─── Read ─────────────────────────────────────────────────────────────────────
+// PostgREST join syntax: table!fk_constraint_name(columns)
+// The FK name comes from the migration: lab_requests_visit_id_fkey
+const SELECT = `
+    *,
+    patients!lab_requests_visit_id_fkey(
+        id, name, phone, gender, date_of_birth,
+        allergies, significant_medication_history
+    )
+`.trim();
+
+// ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function listPendingRadiologyRequests() {
     const sb = await createClient();
@@ -18,7 +31,7 @@ export async function listPendingRadiologyRequests() {
         .select(SELECT)
         .like("test_type", `${PREFIX}%`)
         .eq("status", "pending")
-        .order("created_at", { ascending: true });   // oldest first → FIFO queue
+        .order("created_at", { ascending: true });
     if (error) throw error;
     return data ?? [];
 }
@@ -30,7 +43,7 @@ export async function listCompletedRadiologyRequests() {
         .select(SELECT)
         .like("test_type", `${PREFIX}%`)
         .eq("status", "completed")
-        .order("completed_at", { ascending: false }); // newest completed first
+        .order("completed_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
 }
@@ -41,7 +54,7 @@ export async function listRadiologyRequestsByPatient(patientId: string) {
         .from("lab_requests")
         .select(SELECT)
         .like("test_type", `${PREFIX}%`)
-        .eq("visit_id", patientId)                   // visit_id stores the patient_id
+        .eq("visit_id", patientId)
         .order("created_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
@@ -58,13 +71,13 @@ export async function getRadiologyRequestById(id: string) {
     return data;
 }
 
-// ─── Write ────────────────────────────────────────────────────────────────────
+// ─── Mutations ────────────────────────────────────────────────────────────────
 
 export interface CreateRadiologyRequestInput {
     patientId: string;
     requestedBy: string;
-    testType: string;   // will be stored as "[RADIOLOGY] <testType>"
-    priority?: string;
+    testType: string;
+    priority?: "routine" | "urgent" | "stat";
     notes?: string;
 }
 
@@ -112,7 +125,6 @@ export async function submitRadiologyReport(
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-/** Strip the "[RADIOLOGY] " prefix for display purposes */
-export async function stripRadiologyPrefix(testType: string): Promise<string> {
+export function stripRadiologyPrefix(testType: string): string {
     return testType.replace(/^\[RADIOLOGY\]\s*/, "");
 }

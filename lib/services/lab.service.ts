@@ -55,6 +55,7 @@ export async function listLabRequestsByPatient(
         .from("lab_requests")
         .select("*")
         .eq("visit_id", patientId)
+        .not("test_type", "like", "[RADIOLOGY]%")   // ← exclude radiology rows
         .order("created_at", { ascending: false });
 
     if (error) { console.error("[lab] listByPatient:", error); return []; }
@@ -67,7 +68,8 @@ export async function listPendingLabRequests(): Promise<LabRequest[]> {
         .from("lab_requests")
         .select("*")
         .eq("status", "pending")
-        .order("created_at", { ascending: false });
+        .not("test_type", "like", "[RADIOLOGY]%")   // ← exclude radiology rows
+        .order("created_at", { ascending: true });   // oldest first → FIFO queue
 
     if (error) { console.error("[lab] listPending:", error); return []; }
     return data as unknown as LabRequest[];
@@ -79,6 +81,7 @@ export async function listCompletedLabRequests(): Promise<LabRequest[]> {
         .from("lab_requests")
         .select("*")
         .eq("status", "completed")
+        .not("test_type", "like", "[RADIOLOGY]%")   // ← exclude radiology rows
         .order("completed_at", { ascending: false });
 
     if (error) { console.error("[lab] listCompleted:", error); return []; }
