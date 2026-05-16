@@ -14,6 +14,7 @@ import {
     Loader2, AlertTriangle, ChevronDown,
 } from "lucide-react";
 import type { Patient } from "@/types/models";
+import { useRadiologyStore } from "@/store/radiology-store";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,11 +56,12 @@ function InlineReportForm({
     const { mutate: submitReport, isPending: saving } = useSubmitRadiologyReport();
     const { mutate: updateStatus } = useUpdatePatientStatus();
 
-    const [findings, setFindings] = useState("");
-    const [impression, setImpression] = useState("");
-    const [recommendation, setRec] = useState("");
-    const [isCritical, setIsCritical] = useState(false);
-    const [criticalNote, setCritical] = useState("");
+    const { advancedForms, setAdvancedFormField, clearAdvancedForm } = useRadiologyStore();
+    const form = advancedForms[request.id] || {
+        findings: "", impression: "", recommendation: "",
+        criticalFindings: false, criticalNote: "",
+    };
+    const { findings, impression, recommendation, criticalFindings: isCritical, criticalNote: criticalNoteState } = form;
 
     const taCls = "w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 focus:border-cyan-400 focus:bg-white resize-none transition-all";
 
@@ -72,7 +74,7 @@ function InlineReportForm({
             `FINDINGS:\n${findings}`,
             `IMPRESSION:\n${impression}`,
             recommendation ? `RECOMMENDATION:\n${recommendation}` : null,
-            isCritical ? `⚠ CRITICAL FINDING:\n${criticalNote}` : null,
+            isCritical ? `⚠ CRITICAL FINDING:\n${criticalNoteState}` : null,
         ].filter(Boolean).join("\n\n");
 
         submitReport(
@@ -92,6 +94,7 @@ function InlineReportForm({
                         { onError: () => toast.error("Report saved, but patient status could not be updated.") }
                     );
                     toast.success("Report filed.");
+                    clearAdvancedForm(request.id);
                     onClose();
                 },
                 onError: (err: any) => toast.error(err?.message ?? "Failed to submit report."),
@@ -109,7 +112,7 @@ function InlineReportForm({
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
                     Findings <span className="text-red-500">*</span>
                 </p>
-                <textarea rows={5} value={findings} onChange={e => setFindings(e.target.value)}
+                <textarea rows={5} value={findings} onChange={e => setAdvancedFormField(request.id, "findings", e.target.value)}
                     placeholder={`Describe findings systematically:\n\nLungs: Clear. No consolidation or effusion.\nHeart: Normal size.\nBones: No acute osseous abnormality.`}
                     className={taCls} />
             </div>
@@ -118,14 +121,14 @@ function InlineReportForm({
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
                     Impression <span className="text-red-500">*</span>
                 </p>
-                <textarea rows={3} value={impression} onChange={e => setImpression(e.target.value)}
+                <textarea rows={3} value={impression} onChange={e => setAdvancedFormField(request.id, "impression", e.target.value)}
                     placeholder="1. No acute cardiopulmonary disease."
                     className={taCls} />
             </div>
 
             <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Recommendation</p>
-                <textarea rows={2} value={recommendation} onChange={e => setRec(e.target.value)}
+                <textarea rows={2} value={recommendation} onChange={e => setAdvancedFormField(request.id, "recommendation", e.target.value)}
                     placeholder="e.g. No further imaging required."
                     className={taCls} />
             </div>
@@ -133,7 +136,7 @@ function InlineReportForm({
             {/* Critical flag */}
             <label className="flex items-center gap-3 cursor-pointer">
                 <div
-                    onClick={() => setIsCritical(v => !v)}
+                    onClick={() => setAdvancedFormField(request.id, "criticalFindings", !isCritical)}
                     className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors
                         ${isCritical ? "bg-red-600 border-red-600" : "border-gray-300 hover:border-red-400"}`}
                 >
@@ -142,7 +145,7 @@ function InlineReportForm({
                 <p className="text-xs font-bold text-red-600">⚠ Critical Finding</p>
             </label>
             {isCritical && (
-                <textarea rows={2} value={criticalNote} onChange={e => setCritical(e.target.value)}
+                <textarea rows={2} value={criticalNoteState} onChange={e => setAdvancedFormField(request.id, "criticalNote", e.target.value)}
                     placeholder="Describe the critical finding..."
                     className="w-full px-3 py-2.5 rounded-xl border-2 border-red-200 bg-red-50 text-sm text-red-800 placeholder:text-red-300 focus:outline-none focus:border-red-400 resize-none" />
             )}
@@ -175,7 +178,8 @@ function PendingRow({
     patientId: string;
     canReport: boolean;
 }) {
-    const [open, setOpen] = useState(false);
+    const { inlineExpanded, toggleInlineExpanded } = useRadiologyStore();
+    const open = inlineExpanded[request.id] ?? false;
 
     return (
         <div className={`rounded-2xl border overflow-hidden transition-all ${open ? "border-cyan-200" : "border-amber-100 bg-white"}`}>
@@ -196,7 +200,7 @@ function PendingRow({
                     <PriorityBadge priority={request.priority} />
                     {canReport && (
                         <button
-                            onClick={() => setOpen(v => !v)}
+                            onClick={() => toggleInlineExpanded(request.id)}
                             className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors
                                 ${open
                                     ? "bg-gray-100 hover:bg-gray-200 text-gray-600"
@@ -213,7 +217,7 @@ function PendingRow({
                 <InlineReportForm
                     request={request}
                     patientId={patientId}
-                    onClose={() => setOpen(false)}
+                    onClose={() => toggleInlineExpanded(request.id)}
                 />
             )}
         </div>
@@ -223,13 +227,14 @@ function PendingRow({
 // ─── Completed report row ─────────────────────────────────────────────────────
 
 function CompletedRow({ request }: { request: any }) {
-    const [expanded, setExpanded] = useState(false);
+    const { inlineExpanded, toggleInlineExpanded } = useRadiologyStore();
+    const expanded = inlineExpanded[request.id] ?? false;
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <button
                 type="button"
-                onClick={() => setExpanded(v => !v)}
+                onClick={() => toggleInlineExpanded(request.id)}
                 className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-50/60 transition-colors"
             >
                 <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">

@@ -12,6 +12,7 @@ import {
     StickyNote, ArrowRight, Clock, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabStore } from "@/store/lab-store";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -72,17 +73,16 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
     // all the existing disabled/loading references in the JSX below.
     const { mutate: updateLabRequest, isPending: completing } = useUpdateLabRequest();
 
-    const [form, setForm] = useState({
-        results: "", normalRange: "", interpretation: "", remarks: "",
-        resultFile: null as File | null,
-    });
+    const { uploadForms, uploadExpanded, setUploadFormField, toggleUploadExpanded, clearUploadForm } = useLabStore();
+    const form = uploadForms[req.id] || { results: "", normalRange: "", interpretation: "", remarks: "", resultFile: null };
+    const expanded = uploadExpanded[req.id] ?? true;
+
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [expanded, setExpanded] = useState(true);
 
     const priorityCfg = PRIORITY_CONFIG[req.priority ?? "routine"] ?? PRIORITY_CONFIG.routine;
 
-    const update = (field: string, val: string) => {
-        setForm((p) => ({ ...p, [field]: val }));
+    const update = (field: any, val: any) => {
+        setUploadFormField(req.id, field, val);
         setErrors((p) => { const n = { ...p }; delete n[field]; return n; });
     };
 
@@ -93,7 +93,7 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
             setErrors((p) => ({ ...p, resultFile: "File must be under 10MB" }));
             return;
         }
-        setForm((p) => ({ ...p, resultFile: file }));
+        setUploadFormField(req.id, "resultFile", file);
         setErrors((p) => { const n = { ...p }; delete n.resultFile; return n; });
     };
 
@@ -131,6 +131,7 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
             {
                 onSuccess: () => {
                     toast.success("Results submitted successfully.");
+                    clearUploadForm(req.id);
                     onSuccess ? onSuccess() : setTimeout(() => router.back(), 1200);
                 },
                 onError: (err: any) => {
@@ -146,7 +147,7 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
             {/* ── Request header ── */}
             <button
                 type="button"
-                onClick={() => setExpanded((v) => !v)}
+                onClick={() => toggleUploadExpanded(req.id)}
                 className="w-full flex items-center justify-between px-6 py-5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
             >
                 <div className="flex items-center gap-3">

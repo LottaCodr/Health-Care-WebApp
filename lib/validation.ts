@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PatientStatus } from "@/types/models";
 
 export const UserFormValidation = z.object({
   name: z
@@ -58,7 +59,7 @@ export const PatientFormValidation = z.object({
   // currentMedication: z.string().optional(),
   significantMedicationHistory: z.string(),
   longTermMedication: z.string(),
-  covidVaccinationOptions: z.enum(["Yes", "No"]),
+  covidVaccinationOptions: z.enum(["Vaccinated", "Not Vaccinated", "Partial"]),
   bloodGroup: z.string().min(1, "Blood group is required"),
   genoType: z.string().min(1, "Geno type is required"),
 
@@ -76,8 +77,8 @@ export const PatientFormValidation = z.object({
   privateClient: z.boolean(),
 
   // Additional fields in Patient interface
-  status: z.enum(['registered', 'awaiting-consultation', 'under-consultation', 'sent-to-nurse', 'sent-to-lab', 'sent-to-pharmacy', 'awaiting-payment', 'admitted', 'under-observation', 'discharged', 'no-status']).optional(), // If you have an enum for PatientStatus, replace with z.enum([...])
-  userId: z.string().min(1, "User ID is required"),
+  status: z.nativeEnum(PatientStatus).optional(),
+  userId: z.string().optional(),
   notes: z.string().optional(),
   symptoms: z.string().optional(),
   diagnosis: z.string().optional(),

@@ -60,7 +60,7 @@ export interface Patient {
     current_medication?: string;
     long_term_medication?: string;
     significant_medication_history?: string;
-    covid_vaccination_options?: boolean;
+    covid_vaccination_options?: string;
     hmo?: boolean;
     hmo_name?: string;
     policy_number?: string;

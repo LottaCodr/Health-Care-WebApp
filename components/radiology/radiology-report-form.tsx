@@ -11,6 +11,7 @@ import { stripRadiologyPrefix } from "@/lib/services/radiology.service";
 import {
     Radio, CheckCircle2, Loader2, X, BadgeInfo,
 } from "lucide-react";
+import { useRadiologyStore } from "@/store/radiology-store";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,13 +56,12 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
     const { mutate: updatePatientStatus } = useUpdatePatientStatus();
 
     // ── Form state ────────────────────────────────────────────────────────────
-    const [technique, setTechnique] = useState("");
-    const [comparisonStudy, setComparisonStudy] = useState("");
-    const [findings, setFindings] = useState("");
-    const [impression, setImpression] = useState("");
-    const [recommendation, setRecommendation] = useState("");
-    const [criticalFindings, setCriticalFindings] = useState(false);
-    const [criticalNote, setCriticalNote] = useState("");
+    const { advancedForms, setAdvancedFormField, clearAdvancedForm } = useRadiologyStore();
+    const form = advancedForms[req.id] || {
+        technique: "", comparisonStudy: "", findings: "", impression: "",
+        recommendation: "", criticalFindings: false, criticalNote: "",
+    };
+    const { technique, comparisonStudy, findings, impression, recommendation, criticalFindings, criticalNote } = form;
 
     const taClass = "w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 focus:border-cyan-400 focus:bg-white resize-none transition-all font-medium";
 
@@ -106,6 +106,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                         );
                     }
                     toast.success("Radiology report submitted.");
+                    clearAdvancedForm(req.id);
                     onSuccess();
                     onClose();
                 },
@@ -166,7 +167,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Technique / Protocol
                             <span className="ml-2 text-gray-300 normal-case font-normal">imaging method used</span>
                         </p>
-                        <textarea rows={2} value={technique} onChange={e => setTechnique(e.target.value)}
+                        <textarea rows={2} value={technique} onChange={e => setAdvancedFormField(req.id, "technique", e.target.value)}
                             placeholder="e.g. PA and lateral chest radiographs obtained. / Contrast-enhanced CT abdomen performed..."
                             className={taClass} />
                     </div>
@@ -177,7 +178,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Comparison Studies
                             <span className="ml-2 text-gray-300 normal-case font-normal">prior imaging for reference</span>
                         </p>
-                        <textarea rows={2} value={comparisonStudy} onChange={e => setComparisonStudy(e.target.value)}
+                        <textarea rows={2} value={comparisonStudy} onChange={e => setAdvancedFormField(req.id, "comparisonStudy", e.target.value)}
                             placeholder="e.g. None available. / Compared with chest X-ray dated [date]..."
                             className={taClass} />
                     </div>
@@ -188,7 +189,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Findings <span className="text-red-500">*</span>
                             <span className="ml-2 text-gray-300 normal-case font-normal">systematic organ-by-organ observations</span>
                         </p>
-                        <textarea rows={8} value={findings} onChange={e => setFindings(e.target.value)}
+                        <textarea rows={8} value={findings} onChange={e => setAdvancedFormField(req.id, "findings", e.target.value)}
                             placeholder={`Lungs: Clear. No consolidation, effusion or pneumothorax.\nHeart: Normal size and contour.\nMediastinum: Normal width.\nBones: No acute osseous abnormality.\nSoft tissues: Unremarkable.`}
                             className={taClass} />
                     </div>
@@ -199,7 +200,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Impression / Conclusion <span className="text-red-500">*</span>
                             <span className="ml-2 text-gray-300 normal-case font-normal">diagnostic conclusions</span>
                         </p>
-                        <textarea rows={4} value={impression} onChange={e => setImpression(e.target.value)}
+                        <textarea rows={4} value={impression} onChange={e => setAdvancedFormField(req.id, "impression", e.target.value)}
                             placeholder={`1. No acute cardiopulmonary disease.\n2. Mild cardiomegaly — clinical correlation recommended.\n3. No pleural effusion identified.`}
                             className={taClass} />
                     </div>
@@ -210,7 +211,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Recommendation
                             <span className="ml-2 text-gray-300 normal-case font-normal">follow-up or clinical action</span>
                         </p>
-                        <textarea rows={2} value={recommendation} onChange={e => setRecommendation(e.target.value)}
+                        <textarea rows={2} value={recommendation} onChange={e => setAdvancedFormField(req.id, "recommendation", e.target.value)}
                             placeholder="e.g. Follow-up CT in 3 months. / No further imaging required."
                             className={taClass} />
                     </div>
@@ -219,7 +220,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                     <div className="space-y-3">
                         <label className="flex items-center gap-3 cursor-pointer">
                             <div
-                                onClick={() => setCriticalFindings(v => !v)}
+                                onClick={() => setAdvancedFormField(req.id, "criticalFindings", !criticalFindings)}
                                 className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors
                                     ${criticalFindings ? "bg-red-600 border-red-600" : "border-gray-300 hover:border-red-400"}`}
                             >
@@ -236,7 +237,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             <textarea
                                 rows={2}
                                 value={criticalNote}
-                                onChange={e => setCriticalNote(e.target.value)}
+                                onChange={e => setAdvancedFormField(req.id, "criticalNote", e.target.value)}
                                 placeholder="Describe the critical finding and recommended urgency of action..."
                                 className="w-full px-4 py-3 rounded-xl border-2 border-red-200 bg-red-50 text-sm text-red-800 placeholder:text-red-300 focus:outline-none focus:border-red-400 resize-none font-medium"
                             />

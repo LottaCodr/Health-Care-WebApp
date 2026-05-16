@@ -24,6 +24,7 @@ import { FormFieldType } from "@/components/forms/PatientForm";
 import { createPatient } from "@/lib/services/patient.service";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
+import { useFrontDeskStore } from "@/store/frontdesk-store";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ export default function RegistrationSuite() {
 
   const form = useForm<z.infer<typeof PatientFormValidation>>({
     resolver: zodResolver(PatientFormValidation),
-    defaultValues: { ...PatientFormDefaultValues },
+    defaultValues: PatientFormDefaultValues as any,
     mode: "onTouched",
   });
 
@@ -169,12 +170,7 @@ export default function RegistrationSuite() {
   const ageInfo = calcAge(watchedDOB as string);
   const isChild = ageInfo?.isChild ?? false;
 
-  // Paediatric extra fields — not in Zod schema, stored as local state
-  const [childClass, setChildClass] = useState("");
-  const [parentInfo, setParentInfo] = useState("");
-  const [referralInfo, setReferralInfo] = useState("");
-
-  const [currentStep, setCurrentStep] = useState(0);
+  const { currentStep, childClass, parentInfo, referralInfo, setField, nextStep, prevStep, resetForm } = useFrontDeskStore();
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -189,10 +185,10 @@ export default function RegistrationSuite() {
 
   const handleNext = async () => {
     if (validatingStep) return;
-    if (await validateStep()) setCurrentStep(p => Math.min(p + 1, STEPS.length - 1));
+    if (await validateStep()) nextStep(STEPS.length);
   };
 
-  const handleBack = () => setCurrentStep(p => Math.max(p - 1, 0));
+  const handleBack = () => prevStep();
 
   const handleFinalSubmit = async () => {
     if (submitting) return;
@@ -263,7 +259,7 @@ export default function RegistrationSuite() {
   useEffect(() => {
     if (!submitted) return;
     const t = setTimeout(() => {
-      form.reset(); setSubmitted(false); setCurrentStep(0);
+      form.reset(); setSubmitted(false); resetForm();
       router.push("/front-desk/patient");
     }, 5000);
     return () => clearTimeout(t);
@@ -318,7 +314,7 @@ export default function RegistrationSuite() {
                         <p className="text-xs text-blue-600 font-medium">Redirecting in 5 seconds...</p>
                       </div>
                       <button type="button"
-                        onClick={() => { setSubmitted(false); setCurrentStep(0); form.reset(); }}
+                        onClick={() => { setSubmitted(false); resetForm(); form.reset(); }}
                         className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors">
                         Register Another Patient
                       </button>
@@ -391,17 +387,17 @@ export default function RegistrationSuite() {
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Class / School Year</p>
-                                  <input value={childClass} onChange={e => setChildClass(e.target.value)}
+                                  <input value={childClass} onChange={e => setField("childClass", e.target.value)}
                                     placeholder="e.g. Primary 3, JSS 1" className={inputCls} />
                                 </div>
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Parent / Guardian</p>
-                                  <input value={parentInfo} onChange={e => setParentInfo(e.target.value)}
+                                  <input value={parentInfo} onChange={e => setField("parentInfo", e.target.value)}
                                     placeholder="Parent or guardian name" className={inputCls} />
                                 </div>
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Referral Source</p>
-                                  <input value={referralInfo} onChange={e => setReferralInfo(e.target.value)}
+                                  <input value={referralInfo} onChange={e => setField("referralInfo", e.target.value)}
                                     placeholder="Referred by / school / clinic" className={inputCls} />
                                 </div>
                               </div>

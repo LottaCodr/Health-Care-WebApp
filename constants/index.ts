@@ -44,7 +44,7 @@ export const PatientFormDefaultValues = {
   name: "",
   email: "",
   phone: "",
-  birthDate: "" as any,          // maps to date_of_birth in DB
+  birthDate: new Date(Date.now()),          // maps to date_of_birth in DB
   gender: "Male" as const,
   religion: "",
   occupation: "",
@@ -75,6 +75,12 @@ export const PatientFormDefaultValues = {
 
   // System
   status: "registered" as PatientStatus,
+  userId: "",
+  notes: "",
+  symptoms: "",
+  diagnosis: "",
+  prescriptions: "",
+  recommendations: "",
 };
 
 export type PatientFormValues = typeof PatientFormDefaultValues;

@@ -14,6 +14,7 @@ import {
     Radio, CheckCircle2, Clock, RefreshCcw, FileText,
     Loader2, AlertTriangle, Image, ChevronDown,
 } from "lucide-react";
+import { useRadiologyStore } from "@/store/radiology-store";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,10 +59,11 @@ function RequestCard({ request }: { request: any }) {
     const { mutate: submitReport, isPending: saving } = useSubmitRadiologyReport();
     const { mutate: updateStatus } = useUpdatePatientStatus();
 
-    const [open, setOpen] = useState(false);
-    const [resultText, setResultText] = useState("");
-    const [isCritical, setIsCritical] = useState(false);
-    const [criticalNote, setCriticalNote] = useState("");
+    const { inlineForms, inlineExpanded, setInlineFormField, toggleInlineExpanded, clearInlineForm } = useRadiologyStore();
+    
+    const form = inlineForms[request.id] || { resultText: "", isCritical: false, criticalNote: "" };
+    const { resultText, isCritical, criticalNote } = form;
+    const open = inlineExpanded[request.id] ?? false;
 
     const handleSubmit = () => {
         if (!resultText.trim()) { toast.error("Enter the radiology report before submitting."); return; }
@@ -91,8 +93,7 @@ function RequestCard({ request }: { request: any }) {
                         );
                     }
                     toast.success("Radiology report submitted.");
-                    setOpen(false);
-                    setResultText("");
+                    clearInlineForm(request.id);
                 },
                 onError: (err: any) =>
                     toast.error(err?.message ?? "Failed to submit report."),
@@ -134,7 +135,7 @@ function RequestCard({ request }: { request: any }) {
                 </div>
 
                 <button
-                    onClick={() => setOpen(v => !v)}
+                    onClick={() => toggleInlineExpanded(request.id)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm shrink-0
                         ${open
                             ? "bg-gray-100 hover:bg-gray-200 text-gray-600"
@@ -155,7 +156,7 @@ function RequestCard({ request }: { request: any }) {
                     <textarea
                         value={resultText}
                         rows={6}
-                        onChange={e => setResultText(e.target.value)}
+                        onChange={e => setInlineFormField(request.id, "resultText", e.target.value)}
                         placeholder={`Describe findings systematically:\n\nLungs: Clear. No consolidation or effusion.\nHeart: Normal size and contour.\n\nImpression:\n1. No acute cardiopulmonary disease.`}
                         className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 placeholder:text-gray-300 transition-all"
                     />
@@ -163,7 +164,7 @@ function RequestCard({ request }: { request: any }) {
                     {/* Critical flag */}
                     <label className="flex items-center gap-3 cursor-pointer">
                         <div
-                            onClick={() => setIsCritical(v => !v)}
+                            onClick={() => setInlineFormField(request.id, "isCritical", !isCritical)}
                             className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors
                                 ${isCritical ? "bg-red-600 border-red-600" : "border-gray-300 hover:border-red-400"}`}
                         >
@@ -175,7 +176,7 @@ function RequestCard({ request }: { request: any }) {
                         <textarea
                             rows={2}
                             value={criticalNote}
-                            onChange={e => setCriticalNote(e.target.value)}
+                            onChange={e => setInlineFormField(request.id, "criticalNote", e.target.value)}
                             placeholder="Describe the critical finding and urgency of action..."
                             className="w-full px-4 py-3 rounded-xl border-2 border-red-200 bg-red-50 text-sm text-red-800 placeholder:text-red-300 focus:outline-none focus:border-red-400 resize-none"
                         />
@@ -183,7 +184,7 @@ function RequestCard({ request }: { request: any }) {
 
                     <div className="flex justify-end gap-2">
                         <button
-                            onClick={() => setOpen(false)}
+                            onClick={() => toggleInlineExpanded(request.id)}
                             className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors"
                         >
                             Cancel

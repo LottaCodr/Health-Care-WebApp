@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import createClient from "@/utils/supabase/client";
+import supabase from "@/utils/supabase/client";
 import { toast } from "sonner";
 import {
     FlaskConical, Plus, Search, X, Edit3, Trash2, Loader2,
@@ -12,24 +12,7 @@ import {
     AlertTriangle, Clock, Droplets, FileText,
     ToggleLeft, ToggleRight, DollarSign,
 } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface LabTest {
-    id: string;
-    test_name: string;
-    test_code?: string;
-    category: string;
-    description?: string;
-    price: number;
-    sample_type?: string;
-    turnaround_time?: string;
-    normal_range?: string;
-    instructions?: string;
-    is_active: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
+import { useLabStore, type LabTest } from "@/store/lab-store";
 
 const CATEGORIES = [
     "Haematology", "Biochemistry", "Serology", "Microbiology",
@@ -53,26 +36,23 @@ const TURNAROUND_TIMES = [
 const fmtNaira = (n?: number) => n !== undefined ? `₦${Number(n).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "—";
 
 async function fetchTests() {
-    const s = createClient();
-    const { data, error } = await s.from("lab_test_catalog").select("*").order("category").order("test_name");
+    const { data, error } = await supabase.from("lab_test_catalog").select("*").order("category").order("test_name");
     if (error) throw error;
     return (data ?? []) as LabTest[];
 }
 
 async function saveTest(test: Partial<LabTest>, id?: string) {
-    const s = createClient();
     if (id) {
-        const { error } = await s.from("lab_test_catalog").update(test).eq("id", id);
+        const { error } = await supabase.from("lab_test_catalog").update(test).eq("id", id);
         if (error) throw error;
     } else {
-        const { error } = await s.from("lab_test_catalog").insert([test]);
+        const { error } = await supabase.from("lab_test_catalog").insert([test]);
         if (error) throw error;
     }
 }
 
 async function deleteTest(id: string) {
-    const s = createClient();
-    const { error } = await s.from("lab_test_catalog").delete().eq("id", id);
+    const { error } = await supabase.from("lab_test_catalog").delete().eq("id", id);
     if (error) throw error;
 }
 
@@ -257,12 +237,10 @@ export default function LabTestCatalogPage() {
         queryFn: fetchTests,
     });
 
-    const [search, setSearch] = useState("");
-    const [category, setCategory] = useState("all");
-    const [editTarget, setEditTarget] = useState<LabTest | null>(null);
-    const [deleteTarget, setDeleteTarget] = useState<LabTest | null>(null);
-    const [showAdd, setShowAdd] = useState(false);
-    const [toggling, setToggling] = useState<string | null>(null);
+    const {
+        catalogSearch: search, setField, catalogCategory: category,
+        editTarget, deleteTarget, showAdd, togglingId: toggling
+    } = useLabStore();
 
     const filtered = useMemo(() => {
         if (!tests) return [];
@@ -288,15 +266,14 @@ export default function LabTestCatalogPage() {
     }, [filtered]);
 
     const handleToggle = async (test: LabTest) => {
-        setToggling(test.id);
+        setField("togglingId", test.id);
         try {
-            const s = createClient();
-            const { error } = await s.from("lab_test_catalog").update({ is_active: !test.is_active }).eq("id", test.id);
+            const { error } = await supabase.from("lab_test_catalog").update({ is_active: !test.is_active }).eq("id", test.id);
             if (error) throw error;
             toast.success(`${test.test_name} ${test.is_active ? "deactivated" : "activated"}.`);
             refetch();
         } catch { toast.error("Failed to update."); }
-        finally { setToggling(null); }
+        finally { setField("togglingId", null); }
     };
 
     if (!authorized) return null;
@@ -316,7 +293,7 @@ export default function LabTestCatalogPage() {
                     <h1 className="text-xl font-black text-gray-900">Lab Test Catalog</h1>
                     <p className="text-xs text-gray-400 mt-0.5">{tests?.length ?? 0} tests across {categories.length} categories</p>
                 </div>
-                <button onClick={() => setShowAdd(true)}
+                <button onClick={() => setField("showAdd", true)}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm shadow-indigo-200 transition-all">
                     <Plus size={14} /> Add Test
                 </button>
@@ -345,13 +322,13 @@ export default function LabTestCatalogPage() {
             <div className="flex items-center gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
                     <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    <input value={search} onChange={e => setSearch(e.target.value)}
+                    <input value={search} onChange={e => setField("catalogSearch", e.target.value)}
                         placeholder="Search test name, code, category..."
                         className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-white text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/20 focus:border-indigo-400 transition-all shadow-sm" />
-                    {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
+                    {search && <button onClick={() => setField("catalogSearch", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
                 </div>
                 <div className="relative">
-                    <select value={category} onChange={e => setCategory(e.target.value)} className={selectCls}>
+                    <select value={category} onChange={e => setField("catalogCategory", e.target.value)} className={selectCls}>
                         <option value="all">All Categories</option>
                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -379,7 +356,7 @@ export default function LabTestCatalogPage() {
                 <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-3xl border border-gray-100 shadow-sm">
                     <FlaskConical size={22} className="text-gray-300" />
                     <p className="text-sm font-semibold text-gray-500">No tests found</p>
-                    <button onClick={() => setShowAdd(true)} className="text-xs text-indigo-600 hover:underline font-bold">Add the first test →</button>
+                    <button onClick={() => setField("showAdd", true)} className="text-xs text-indigo-600 hover:underline font-bold">Add the first test →</button>
                 </div>
             ) : (
                 <div className="space-y-5">
@@ -444,11 +421,11 @@ export default function LabTestCatalogPage() {
                                                 }
                                             </button>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => setEditTarget(t)}
+                                                <button onClick={() => setField("editTarget", t)}
                                                     className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors">
                                                     <Edit3 size={12} />
                                                 </button>
-                                                <button onClick={() => setDeleteTarget(t)}
+                                                <button onClick={() => setField("deleteTarget", t)}
                                                     className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-200 transition-colors">
                                                     <Trash2 size={12} />
                                                 </button>
@@ -462,9 +439,9 @@ export default function LabTestCatalogPage() {
                 </div>
             )}
 
-            {showAdd && <TestModal onClose={() => setShowAdd(false)} onSaved={refetch} />}
-            {editTarget && <TestModal test={editTarget} onClose={() => setEditTarget(null)} onSaved={refetch} />}
-            {deleteTarget && <DeleteModal test={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={refetch} />}
+            {showAdd && <TestModal onClose={() => setField("showAdd", false)} onSaved={refetch} />}
+            {editTarget && <TestModal test={editTarget} onClose={() => setField("editTarget", null)} onSaved={refetch} />}
+            {deleteTarget && <DeleteModal test={deleteTarget} onClose={() => setField("deleteTarget", null)} onDeleted={refetch} />}
         </div>
     );
 }
