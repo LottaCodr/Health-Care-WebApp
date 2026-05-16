@@ -14,16 +14,30 @@ import { LogOut, ChevronRight } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 
 // ─── Role config ──────────────────────────────────────────────────────────────
+// Keys must match the exact DB values from staffs.role (case-sensitive in Postgres).
+// The normaliseRole() helper below handles case variations from the auth context.
 
 const ROLE_CONFIG: Record<string, { accent: string; gradient: string; label: string }> = {
-    Doctor: { accent: "text-red-400", gradient: "from-red-500    to-red-700", label: "Doctor" },
-    Nurse: { accent: "text-teal-400", gradient: "from-teal-500   to-teal-700", label: "Nurse" },
-    Pharmacist: { accent: "text-violet-400", gradient: "from-violet-500 to-violet-700", label: "Pharmacist" },
-    LabTechnician: { accent: "text-indigo-400", gradient: "from-indigo-500 to-indigo-700", label: "Lab Technician" },
-    Frontdesk: { accent: "text-blue-400", gradient: "from-blue-500   to-blue-700", label: "Front Desk" },
-    Admin: { accent: "text-amber-400", gradient: "from-amber-500  to-amber-700", label: "Administrator" },
+    Doctor: { accent: "text-red-400", gradient: "from-red-500     to-red-700", label: "Doctor" },
+    Nurse: { accent: "text-teal-400", gradient: "from-teal-500    to-teal-700", label: "Nurse" },
+    Pharmacist: { accent: "text-violet-400", gradient: "from-violet-500  to-violet-700", label: "Pharmacist" },
+    Labtech: { accent: "text-indigo-400", gradient: "from-indigo-500  to-indigo-700", label: "Lab Technician" },
+    Frontdesk: { accent: "text-blue-400", gradient: "from-blue-500    to-blue-700", label: "Front Desk" },
+    Admin: { accent: "text-amber-400", gradient: "from-amber-500   to-amber-700", label: "Administrator" },
     Radiologist: { accent: "text-fuchsia-400", gradient: "from-fuchsia-500 to-fuchsia-700", label: "Radiologist" },
 };
+
+// ─── Normalise role ───────────────────────────────────────────────────────────
+// Converts any casing the auth context might store ("frontdesk", "FRONTDESK",
+// "front_desk") into the canonical DB form ("Frontdesk").
+// Steps: lower-case everything → capitalise first letter.
+// This handles all known variants without requiring exhaustive aliases.
+
+function normaliseRole(raw?: string): string {
+    if (!raw) return "";
+    const lower = raw.toLowerCase().replace(/[_\s-]/g, ""); // strip separators
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -31,11 +45,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuth();
-    const userRole = user?.role;
-    const nav = userRole ? NAV_CONFIG[userRole] : null;
-    const roleCfg = ROLE_CONFIG[userRole ?? ""] ?? ROLE_CONFIG.Admin;
     const { unreadCount } = useNotifications();
     const [showLogout, setShowLogout] = useState(false);
+
+    // Normalise so lookups work regardless of auth context casing
+    const userRole = normaliseRole(user?.role);
+
+    const nav = userRole ? NAV_CONFIG[userRole] ?? NAV_CONFIG[user?.role ?? ""] : null;
+    const roleCfg = ROLE_CONFIG[userRole] ?? ROLE_CONFIG[user?.role ?? ""] ?? ROLE_CONFIG.Admin;
 
     if (!nav) return null;
 
@@ -98,7 +115,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     </SidebarMenuItem>
                 </SidebarMenu>
 
-                {/* Role + notification badge */}
+                {/* Role badge + notification count */}
                 <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/4 border border-white/5">
                     <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-br ${roleCfg.gradient} shrink-0`} />
                     <p className={`text-[10px] font-black uppercase tracking-widest flex-1 ${roleCfg.accent}`}>
@@ -121,17 +138,23 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             <SidebarContent className="flex-1 px-3 overflow-y-auto space-y-5 pb-4">
                 <NavSection label="Main Menu">
                     {nav.main.map((item) => (
-                        <NavItem key={item.url} item={item}
+                        <NavItem
+                            key={item.url}
+                            item={item}
                             isActive={pathname.startsWith(item.url)}
-                            onClick={() => router.push(item.url)} />
+                            onClick={() => router.push(item.url)}
+                        />
                     ))}
                 </NavSection>
 
                 <NavSection label="Preferences">
                     {nav.secondary.map((item) => (
-                        <NavItem key={item.url} item={item}
+                        <NavItem
+                            key={item.url}
+                            item={item}
                             isActive={pathname.startsWith(item.url)}
-                            onClick={() => router.push(item.url)} />
+                            onClick={() => router.push(item.url)}
+                        />
                     ))}
                 </NavSection>
             </SidebarContent>
@@ -158,7 +181,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     </button>
                 </div>
 
-                {/* Logout confirmation popover */}
+                {/* Logout confirmation */}
                 <AnimatePresence>
                     {showLogout && (
                         <motion.div
@@ -196,7 +219,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div>
-            <p className="text-[9px] font-black text-white/18 uppercase tracking-[0.22em] mb-1.5 px-3">{label}</p>
+            <p className="text-[9px] font-black text-white/18 uppercase tracking-[0.22em] mb-1.5 px-3">
+                {label}
+            </p>
             <ul className="space-y-0.5">{children}</ul>
         </div>
     );
@@ -219,7 +244,6 @@ function NavItem({
                 className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150
                     ${isActive ? "text-white" : "text-white/35 hover:text-white/65 hover:bg-white/4"}`}
             >
-                {/* Active background */}
                 {isActive && (
                     <motion.div
                         layoutId="sidebar-active-bg"
@@ -227,8 +251,6 @@ function NavItem({
                         transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     />
                 )}
-
-                {/* Active left accent */}
                 {isActive && (
                     <motion.div
                         layoutId="sidebar-accent-bar"
@@ -238,10 +260,9 @@ function NavItem({
                 )}
 
                 <Icon size={16} className={`relative shrink-0 transition-colors ${isActive ? "text-blue-400" : "text-white/25"}`} />
-
                 <span className="relative flex-1 text-left tracking-tight">{item.title}</span>
 
-                {item.badge && item.badge > 0 && (
+                {item.badge != null && item.badge > 0 && (
                     <span className="relative text-[9px] font-black px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/20 shrink-0">
                         {item.badge}
                     </span>
