@@ -17,11 +17,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { useConsultationStore } from "@/store/consultation-store";
 import { usePatientStore } from "@/store/patient-store";
-import { PatientStatus } from "@/context/patients/types";
-
+import { Patient, PatientStatus } from "@/types/models";
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { Staff } from "@/actions/staff/types";
-import { Patient } from "@/types/models";
 import { calculateAge } from "@/utils/export";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";

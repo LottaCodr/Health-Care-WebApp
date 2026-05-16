@@ -5,7 +5,7 @@ import { useEffect, useCallback, useState, ReactNode } from "react";
 import { usePatientStore } from "@/store/patient-store";
 import { useConsultationStore } from "@/store/consultation-store";
 import PatientDetailsSkeleton from "./skeleton";
-import {  PatientStatus } from "@/context/patients/types";
+import { Patient, PatientStatus } from "@/types/models";
 import { toast } from "@/hooks/use-toast";
 import {
     User, Mail, Phone, MapPin, Briefcase, ShieldAlert, CheckCircle,
@@ -13,7 +13,7 @@ import {
     Check, ChevronRight, ArrowLeft, AlertTriangle, Dna, Droplets,
     Baby, BookUser, Pill, History, Syringe,
 } from "lucide-react";
-import { Patient } from "@/types/models";
+// Patient import already at line 8
 
 const PatientDetailTabs = dynamic(() => import("./patient-detail-tabs"), {
   loading: () => (
@@ -112,7 +112,7 @@ function PatientProfile({
     patient, status, onCopyId, showCopied, activeGroup, setActiveGroup,
 }: {
     patient: Patient;
-    status: string;
+    status: PatientStatus;
     onCopyId: () => void;
     showCopied: boolean;
     activeGroup: string;
@@ -177,15 +177,17 @@ function PatientProfile({
 
     const statusColors: Record<string, string> = {
         registered:           "bg-gray-100 text-gray-600",
-        awaitingConsultation: "bg-yellow-50 text-yellow-700",
-        underConsultation:    "bg-blue-50 text-blue-700",
-        sentToNurse:          "bg-teal-50 text-teal-700",
-        sentToLab:            "bg-indigo-50 text-indigo-700",
-        sentToPharmacy:       "bg-violet-50 text-violet-700",
-        awaitingPayment:      "bg-orange-50 text-orange-700",
+        "awaiting-consultation": "bg-yellow-50 text-yellow-700",
+        "under-consultation":    "bg-blue-50 text-blue-700",
+        "sent-to-nurse":          "bg-teal-50 text-teal-700",
+        "sent-to-lab":            "bg-indigo-50 text-indigo-700",
+        "sent-to-pharmacy":       "bg-violet-50 text-violet-700",
+        "awaiting-payment":      "bg-orange-50 text-orange-700",
         admitted:             "bg-red-50 text-red-700",
-        underObservation:     "bg-cyan-50 text-cyan-700",
+        "under-observation":     "bg-cyan-50 text-cyan-700",
         discharged:           "bg-green-50 text-green-700",
+        "sent-to-radiology":      "bg-cyan-50 text-cyan-700",
+        "no-status":          "bg-gray-100 text-gray-600",
     };
 
     const statusClass = statusColors[status] || "bg-gray-100 text-gray-600";
