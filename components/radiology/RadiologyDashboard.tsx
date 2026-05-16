@@ -9,7 +9,7 @@ import {
     useSubmitRadiologyReport,
     useUpdatePatientStatus,
 } from "@/hooks/emr/use-emr";
-import { stripRadiologyPrefix } from "@/lib/services/radiology.service";
+import { stripRadiologyPrefix } from "@/lib/utils";
 import {
     Radio, CheckCircle2, Clock, RefreshCcw, FileText,
     Loader2, AlertTriangle, Image, ChevronDown,

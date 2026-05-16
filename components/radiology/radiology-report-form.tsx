@@ -7,7 +7,7 @@ import {
     useSubmitRadiologyReport,
     useUpdatePatientStatus,
 } from "@/hooks/emr/use-emr";
-import { stripRadiologyPrefix } from "@/lib/services/radiology.service";
+import { stripRadiologyPrefix } from "@/lib/utils";
 import {
     Radio, CheckCircle2, Loader2, X, BadgeInfo,
 } from "lucide-react";

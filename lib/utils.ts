@@ -145,3 +145,7 @@ export function calcAge(dob?: string): string {
     if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) yrs--;
     return yrs < 2 ? `${yrs * 12 + now.getMonth() - d.getMonth()} months` : `${yrs} years`;
 }
+
+export function stripRadiologyPrefix(testType: string): string {
+    return (testType ?? "").replace(/^\[RADIOLOGY\]\s*/, "");
+}
