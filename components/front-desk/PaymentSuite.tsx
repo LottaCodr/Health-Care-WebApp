@@ -2,13 +2,13 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listPendingPayments, confirmPayment } from "@/lib/supabase-service";
 import {
     BadgeDollarSign, CheckCircle2, Clock,
     Loader2, RefreshCcw, AlertTriangle, Receipt,
     Banknote, CreditCard, ArrowLeftRight, User,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmPayment, usePendingPayments } from "@/hooks/emr/use-payment";
 
 // ─── Method config ────────────────────────────────────────────────────────────
 
@@ -21,28 +21,40 @@ const METHOD_CONFIG = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PaymentConfirmation() {
-    const queryClient = useQueryClient();
     const [confirmingId, setConfirmingId] = useState<string | null>(null);
     const [methodMap, setMethodMap] = useState<Record<string, string>>({});
+    const { data: payments, isLoading, isError, refetch } = usePendingPayments();
+    const {mutate: confirm, isPending} = useConfirmPayment();
 
-    const { data: payments, isLoading, isError, refetch } = useQuery({
-        queryKey: ["pending-payments"],
-        queryFn: listPendingPayments,
-        refetchInterval: 30_000,
-    });
+    
 
-    const { mutate: confirm } = useMutation({
-        mutationFn: (paymentId: string) => confirmPayment(paymentId),
-        onMutate: (id) => setConfirmingId(id),
-        onSuccess: () => {
-            toast.success("Payment confirmed. Patient discharged.");
-            queryClient.invalidateQueries({ queryKey: ["pending-payments"] });
-        },
-        onError: () => toast.error("Failed to confirm payment."),
-        onSettled: () => setConfirmingId(null),
-    });
+    // const { mutate: confirm } = useMutation({
+    //     mutationFn: (paymentId: string) => confirmPayment(paymentId),
+    //     onMutate: (id) => setConfirmingId(id),
+    //     onSuccess: () => {
+    //         toast.success("Payment confirmed. Patient discharged.");
+    //         queryClient.invalidateQueries({ queryKey: ["pending-payments"] });
+    //     },
+    //     onError: () => toast.error("Failed to confirm payment."),
+    //     onSettled: () => setConfirmingId(null),
+    // });
 
     const handleConfirm = (id: string, amount: number, name: string) => {
+        if (isPending) return;
+        setConfirmingId(id);
+
+        confirm(
+            id,
+            {
+                onSuccess: () => {
+                    toast.success("Payment confirmed. Patient discharged.");
+                    refetch();
+                },
+                onError: () => toast.error("Failed to confirm payment."),
+                onSettled: () => setConfirmingId(null),
+            }
+        )
+
         const method = methodMap[id] ?? "cash";
         if (window.confirm(`Confirm ₦${amount.toLocaleString()} payment from ${name} via ${method}?`)) {
             confirm(id);

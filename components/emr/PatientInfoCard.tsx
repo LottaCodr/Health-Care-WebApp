@@ -47,7 +47,7 @@ export function PatientInfoCard({ patient }: { patient: Patient }) {
                     <p className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                         <Droplets size={12} className="text-red-500" /> Blood Group
                     </p>
-                    <p className="text-sm font-bold text-red-600 font-black">{patient.bloodGroup || "N/A"}</p>
+                    <p className="text-sm font-bold text-red-600 font-black">{patient.blood_group || "N/A"}</p>
                 </div>
 
                 <div className="col-span-1 lg:col-span-2 space-y-1">

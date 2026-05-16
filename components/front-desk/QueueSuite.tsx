@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
-import { usePatientsByStatus, useUpdatePatientStatus } from "@/hooks/use-emr";
+import { usePatientsByStatus, useUpdatePatientStatus } from "@/hooks/emr/use-patients";
 import { PatientInfoCard, LoadingSkeleton, EmptyState, ErrorAlert, SuccessAlert } from "@/components/emr";
 
 export default function QueueSuite() {

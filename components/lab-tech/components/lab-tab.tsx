@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useLabRequestsByPatient } from "@/hooks/use-emr";
+import { useLabRequestsByPatient } from "@/hooks/emr/use-emr";
 import { LabResultUploadForm } from "@/components/lab-tech/lab-result-upload-form";
 // import { Patient } from "@/context/patients/types";
 import {
@@ -34,7 +34,7 @@ function PriorityBadge({ priority }: { priority?: string }) {
 
 function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
 
-    const age = calculateAge(patient?.date_of_birth!)
+    const age = calculateAge(patient?.birth_date!)
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
@@ -143,7 +143,7 @@ interface Props {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function LabTab({ patient, userRole }: Props) {
-    const { data: labRequests, loading, error } = useLabRequestsByPatient(patient.id ?? "");
+    const { data: labRequests, isLoading: loading, error } = useLabRequestsByPatient(patient.id ?? "");
 
     const isLabTech = userRole === "Labtech" || userRole === "LabTechnician";
     const pendingRequests = labRequests?.filter((r: any) => r.status === "pending") ?? [];

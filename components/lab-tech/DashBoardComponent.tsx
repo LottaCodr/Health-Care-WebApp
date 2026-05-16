@@ -4,18 +4,19 @@ import React, { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/use-emr";
+import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton } from "@/components/emr";
 import {
     FlaskConical, CheckCircle2, Clock,
     Loader2, RefreshCcw, FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabStore } from "@/store/lab-store";
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-    routine: { label: "Routine", color: "text-gray-600",  bg: "bg-gray-100",  dot: "bg-gray-400"  },
-    urgent:  { label: "Urgent",  color: "text-amber-700", bg: "bg-amber-50",  dot: "bg-amber-500" },
-    stat:    { label: "STAT",    color: "text-red-700",   bg: "bg-red-50",    dot: "bg-red-500"   },
+    routine: { label: "Routine", color: "text-gray-600", bg: "bg-gray-100", dot: "bg-gray-400" },
+    urgent: { label: "Urgent", color: "text-amber-700", bg: "bg-amber-50", dot: "bg-amber-500" },
+    stat: { label: "STAT", color: "text-red-700", bg: "bg-red-50", dot: "bg-red-500" },
 };
 
 function PriorityBadge({ priority }: { priority?: string }) {
@@ -28,36 +29,55 @@ function PriorityBadge({ priority }: { priority?: string }) {
 }
 
 export default function LabTechDashboard() {
-    const { user }       = useAuth();
+    const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
-    const { data: requests, loading, refetch } = usePendingLabRequests();
-    const { mutate: updateLabRequest }         = useUpdateLabRequest();
+    const { data: requests = [], isLoading, refetch } = usePendingLabRequests();
 
-    const [activeId,     setActiveId]     = useState<string | null>(null);
-    const [resultText,   setResultText]   = useState<Record<string, string>>({});
-    const [submittingId, setSubmittingId] = useState<string | null>(null);
+    const {
+        dashboardActiveId: activeId,
+        dashboardResultText: resultText,
+        dashboardSubmittingId: submittingId,
+        setField,
+        setDashboardResultText
+    } = useLabStore();
+
+    const { mutate: updateLabRequest } = useUpdateLabRequest();
 
     if (!authorized) return null;
 
-    const pending   = requests?.filter((r: any) => r.status === "pending")   ?? [];
+    const pending = requests?.filter((r: any) => r.status === "pending") ?? [];
     const completed = requests?.filter((r: any) => r.status === "completed") ?? [];
 
     const handleSubmitResult = async (reqId: string) => {
         const result = resultText[reqId]?.trim();
         if (!result) { toast.error("Please enter the test result."); return; }
-        setSubmittingId(reqId);
+        setField("dashboardSubmittingId", reqId);
         try {
-            await updateLabRequest(reqId, {
-                status: "completed", result,
-                completed_by: user?.$id,
-                completed_at: new Date().toISOString(),
-            });
-            toast.success("Result submitted.");
-            setResultText((p) => { const n = { ...p }; delete n[reqId]; return n; });
-            setActiveId(null);
-            refetch();
-        } catch { toast.error("Failed to submit result."); }
-        finally { setSubmittingId(null); }
+            updateLabRequest(
+                {
+                    id: reqId,
+                    updates: {
+                        status: "completed",
+                        result,
+                        completed_by: user?.$id,
+                        completed_at: new Date().toISOString(),
+                    },
+                },
+                {
+                    onSuccess: () => {
+                        toast.success("Result submitted.");
+                        setDashboardResultText(reqId, "");
+                        setField("dashboardActiveId", null);
+                        refetch();
+                    },
+                    onError: () => toast.error("Failed to submit result."),
+                    onSettled: () => setField("dashboardSubmittingId", null),
+                }
+            );
+        } catch { 
+            toast.error("Failed to submit result."); 
+            setField("dashboardSubmittingId", null);
+        }
     };
 
     return (
@@ -66,8 +86,8 @@ export default function LabTechDashboard() {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4">
                 {[
-                    { label: "Pending Tests", value: pending.length,   icon: Clock,        color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-                    { label: "Completed",     value: completed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
+                    { label: "Pending Tests", value: pending.length, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+                    { label: "Completed", value: completed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
                 ].map((s) => {
                     const Icon = s.icon;
                     return (
@@ -110,7 +130,7 @@ export default function LabTechDashboard() {
                 </div>
 
                 <div className="px-6 py-5 space-y-3">
-                    {loading ? <LoadingSkeleton rows={4} /> : pending.length === 0 ? (
+                    {isLoading ? <LoadingSkeleton rows={4} /> : pending.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
                                 <CheckCircle2 size={22} className="text-green-500" />
@@ -136,7 +156,7 @@ export default function LabTechDashboard() {
                                         {req.notes && <p className="text-xs text-blue-600 mt-1 italic">"{req.notes}"</p>}
                                     </div>
                                     <button
-                                        onClick={() => setActiveId(isExpanded ? null : req.id)}
+                                        onClick={() => setField("dashboardActiveId", isExpanded ? null : req.id)}
                                         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm shrink-0
                                             ${isExpanded ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"}`}
                                     >
@@ -150,13 +170,13 @@ export default function LabTechDashboard() {
                                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Test Result</label>
                                         <textarea
                                             value={resultText[req.id] ?? ""}
-                                            onChange={(e) => setResultText((p) => ({ ...p, [req.id]: e.target.value }))}
+                                            onChange={(e) => setDashboardResultText(req.id, e.target.value)}
                                             placeholder="Enter detailed test results here..."
                                             rows={4}
                                             className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all"
                                         />
                                         <div className="flex justify-end gap-2">
-                                            <button onClick={() => setActiveId(null)}
+                                            <button onClick={() => setField("dashboardActiveId", null)}
                                                 className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
                                                 Cancel
                                             </button>

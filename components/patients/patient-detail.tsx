@@ -1,20 +1,28 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useCallback, useState, ReactNode } from "react";
-import { usePatientContext } from "@/context/patients/patient-context";
-import { useConsultationContext } from "@/context/consultation/consultation";
+import { usePatientStore } from "@/store/patient-store";
+import { useConsultationStore } from "@/store/consultation-store";
 import PatientDetailsSkeleton from "./skeleton";
-import {  PatientStatus } from "@/context/patients/types";
+import { Patient, PatientStatus } from "@/types/models";
 import { toast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/auth-provider";
-import PatientDetailTabs from "./patient-detail-tabs";
 import {
     User, Mail, Phone, MapPin, Briefcase, ShieldAlert, CheckCircle,
     ClipboardList, Activity, Heart, Building2, CreditCard, Copy,
     Check, ChevronRight, ArrowLeft, AlertTriangle, Dna, Droplets,
     Baby, BookUser, Pill, History, Syringe,
 } from "lucide-react";
-import { Patient } from "@/types/models";
+// Patient import already at line 8
+
+const PatientDetailTabs = dynamic(() => import("./patient-detail-tabs"), {
+  loading: () => (
+    <div
+      className="animate-pulse rounded-2xl border border-gray-100 bg-white h-52 w-full"
+      aria-hidden
+    />
+  ),
+});
 
 interface Props {
     patient: Patient;
@@ -23,18 +31,18 @@ interface Props {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PatientDetailsComponent({ patient }: Props) {
-    const { state: patientState, dispatch: patientDispatch } = usePatientContext();
-    const { state: consultationState, dispatch: consultationDispatch } = useConsultationContext();
+    const patientStore = usePatientStore();
+    const consultationStore = useConsultationStore();
 
     const [showCopied, setShowCopied] = useState(false);
     const [activeGroup, setActiveGroup] = useState("basic");
 
     useEffect(() => {
         if (patient) {
-            patientDispatch({ type: "SET_PATIENT", payload: [patient] });
-            patientDispatch({ type: "UPDATE_NOTES", payload: patient.notes || "" });
-            patientDispatch({ type: "SET_STATUS", payload: (patient.status as PatientStatus) || "no-status" });
-            consultationDispatch({ type: "RESET_FORM" });
+            patientStore.setPatient([patient]);
+            patientStore.updateNotes(patient.notes || "");
+            patientStore.setStatus((patient.status as PatientStatus) || "no-status");
+            consultationStore.resetForm();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patient]);
@@ -53,9 +61,9 @@ export default function PatientDetailsComponent({ patient }: Props) {
         if (window.history.length > 1) window.history.back();
     }, []);
 
-    if (consultationState.loading) return <PatientDetailsSkeleton />;
+    if (consultationStore.loading) return <PatientDetailsSkeleton />;
 
-    if (!patientState.patient?.length) {
+    if (!patientStore.patient?.length) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
@@ -72,13 +80,13 @@ export default function PatientDetailsComponent({ patient }: Props) {
         );
     }
 
-    const currentPatient = patientState.patient[0];
+    const currentPatient = patientStore.patient[0];
 
     return (
         <main className="max-w-full px-2 md:px-6 py-10 space-y-8">
             <PatientProfile
                 patient={currentPatient}
-                status={patientState.status}
+                status={patientStore.status}
                 onCopyId={() => handleCopyId(currentPatient.id || (currentPatient as any).$id || "")}
                 showCopied={showCopied}
                 activeGroup={activeGroup}
@@ -104,7 +112,7 @@ function PatientProfile({
     patient, status, onCopyId, showCopied, activeGroup, setActiveGroup,
 }: {
     patient: Patient;
-    status: string;
+    status: PatientStatus;
     onCopyId: () => void;
     showCopied: boolean;
     activeGroup: string;
@@ -116,7 +124,7 @@ function PatientProfile({
         basic: [
             { label: "Full Name",   icon: <User size={14} />,      value: patient.name },
             { label: "Gender",      icon: <User size={14} />,      value: patient.gender },
-            { label: "Birth Date",  icon: <Baby size={14} />,      value: patient.date_of_birth ? new Date(patient.date_of_birth).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null },
+            { label: "Birth Date",  icon: <Baby size={14} />,      value: patient.birth_date ? new Date(patient.birth_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null },
             { label: "Religion",    icon: <BookUser size={14} />,  value: p.religion },
             { label: "Occupation",  icon: <Briefcase size={14} />, value: patient.occupation },
             { label: "Email",       icon: <Mail size={14} />,      value: patient.email },
@@ -143,14 +151,14 @@ function PatientProfile({
         ],
         emergency: [
             { label: "Name", icon: <User size={14} />, value: patient.emergency_contact_name },
-            { label: "Phone", icon: <Phone size={14} />, value: patient.emergency_contact_phone },
+            { label: "Phone", icon: <Phone size={14} />, value: patient.emergency_contact_number },
             { label: "Relationship", icon: <BookUser size={14} />, value: patient.emergency_contact_relationship },
             { label: "Email", icon: <Mail size={14} />, value: patient.emergency_contact_email },
             { label: "Address", icon: <MapPin size={14} />, value: patient.emergency_contact_address },
         ],
         medical: [
             { label: "Allergies",                    icon: <ShieldAlert size={14} />, value: patient.allergies },
-            { label: "Blood Group",                  icon: <Droplets size={14} />,   value: patient.bloodGroup },
+            { label: "Blood Group",                  icon: <Droplets size={14} />,   value: patient.blood_group },
             { label: "Genotype",                     icon: <Dna size={14} />,        value: patient.geno_type },
             { label: "Current Medication",           icon: <Pill size={14} />,       value: patient.current_medication },
             { label: "Long-Term Medication", icon: <Pill size={14} />, value: patient.long_term_medication },
@@ -169,15 +177,17 @@ function PatientProfile({
 
     const statusColors: Record<string, string> = {
         registered:           "bg-gray-100 text-gray-600",
-        awaitingConsultation: "bg-yellow-50 text-yellow-700",
-        underConsultation:    "bg-blue-50 text-blue-700",
-        sentToNurse:          "bg-teal-50 text-teal-700",
-        sentToLab:            "bg-indigo-50 text-indigo-700",
-        sentToPharmacy:       "bg-violet-50 text-violet-700",
-        awaitingPayment:      "bg-orange-50 text-orange-700",
+        "awaiting-consultation": "bg-yellow-50 text-yellow-700",
+        "under-consultation":    "bg-blue-50 text-blue-700",
+        "sent-to-nurse":          "bg-teal-50 text-teal-700",
+        "sent-to-lab":            "bg-indigo-50 text-indigo-700",
+        "sent-to-pharmacy":       "bg-violet-50 text-violet-700",
+        "awaiting-payment":      "bg-orange-50 text-orange-700",
         admitted:             "bg-red-50 text-red-700",
-        underObservation:     "bg-cyan-50 text-cyan-700",
+        "under-observation":     "bg-cyan-50 text-cyan-700",
         discharged:           "bg-green-50 text-green-700",
+        "sent-to-radiology":      "bg-cyan-50 text-cyan-700",
+        "no-status":          "bg-gray-100 text-gray-600",
     };
 
     const statusClass = statusColors[status] || "bg-gray-100 text-gray-600";
@@ -208,9 +218,9 @@ function PatientProfile({
                                     {patient.gender}
                                 </span>
                             )}
-                            {patient.date_of_birth && (
+                            {patient.birth_date && (
                                 <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
-                                    DOB: {new Date(patient.date_of_birth).toLocaleDateString()}
+                                    DOB: {new Date(patient.birth_date).toLocaleDateString()}
                                 </span>
                             )}
                         </div>

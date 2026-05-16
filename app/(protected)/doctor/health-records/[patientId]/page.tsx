@@ -1,7 +1,6 @@
-// app/(protected)/doctor/health-records/[patientId]/page.tsx
 
 import PatientRecordPage from "@/components/doctor/health-record/PatientRecordPage";
-import { getPatientById } from "@/lib/supabase-service";
+import { getPatientById } from "@/lib/services/patient.service";
 import { notFound } from "next/navigation";
 
 interface Props {

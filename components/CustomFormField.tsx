@@ -254,6 +254,9 @@ const renderField = (
               onSelect={field.onChange}
               disabled={disabled}
               initialFocus
+              captionLayout="dropdown"
+              fromYear={1900}
+              toYear={new Date().getFullYear()}
             />
           </PopoverContent>
         </Popover>

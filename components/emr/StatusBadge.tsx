@@ -13,9 +13,10 @@ const statusStyles: Record<PatientStatus, string> = {
     [PatientStatus.SentToPharmacy]: "bg-indigo-100 text-indigo-800 border-indigo-200",
     [PatientStatus.AwaitingPayment]: "bg-red-100 text-red-800 border-red-200",
     [PatientStatus.Discharged]: "bg-gray-100 text-gray-800 border-gray-200",
-    [PatientStatus.Cancelled]: "bg-rose-100 text-rose-800 border-rose-200",
-    [PatientStatus.AwaitingDoctorReview]: "bg-cyan-100 text-cyan-800 border-cyan-200",
-    [PatientStatus.AwaitingNextStep]: "bg-teal-100 text-teal-800 border-teal-200",
+    [PatientStatus.Admitted]: "bg-cyan-100 text-cyan-800 border-cyan-200",
+    [PatientStatus.UnderObservation]: "bg-teal-100 text-teal-800 border-teal-200",
+    [PatientStatus.NoStatus]: "bg-gray-100 text-gray-800 border-gray-200",
+    [PatientStatus.SentToRadiology]: "bg-purple-100 text-purple-800 border-purple-200"
 };
 
 export function StatusBadge({ status }: { status: PatientStatus }) {

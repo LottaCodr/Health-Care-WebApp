@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
-import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/use-emr";
+import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/emr/use-emr";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -12,6 +12,7 @@ import {
     StickyNote, ArrowRight, Clock, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabStore } from "@/store/lab-store";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -67,27 +68,32 @@ function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
 function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
     const router = useRouter();
     const { user } = useAuth();
-    const { mutate: updateLabRequest, loading: completing } = useUpdateLabRequest();
 
-    const [form, setForm] = useState({
-        results: "", normalRange: "", interpretation: "", remarks: "",
-        resultFile: null as File | null,
-    });
+    // FIX: hook takes no arguments; isPending renamed to `completing` to match
+    // all the existing disabled/loading references in the JSX below.
+    const { mutate: updateLabRequest, isPending: completing } = useUpdateLabRequest();
+
+    const { uploadForms, uploadExpanded, setUploadFormField, toggleUploadExpanded, clearUploadForm } = useLabStore();
+    const form = uploadForms[req.id] || { results: "", normalRange: "", interpretation: "", remarks: "", resultFile: null };
+    const expanded = uploadExpanded[req.id] ?? true;
+
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [expanded, setExpanded] = useState(true);
 
     const priorityCfg = PRIORITY_CONFIG[req.priority ?? "routine"] ?? PRIORITY_CONFIG.routine;
 
-    const update = (field: string, val: string) => {
-        setForm((p) => ({ ...p, [field]: val }));
+    const update = (field: any, val: any) => {
+        setUploadFormField(req.id, field, val);
         setErrors((p) => { const n = { ...p }; delete n[field]; return n; });
     };
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > 10 * 1024 * 1024) { setErrors((p) => ({ ...p, resultFile: "File must be under 10MB" })); return; }
-        setForm((p) => ({ ...p, resultFile: file }));
+        if (file.size > 10 * 1024 * 1024) {
+            setErrors((p) => ({ ...p, resultFile: "File must be under 10MB" }));
+            return;
+        }
+        setUploadFormField(req.id, "resultFile", file);
         setErrors((p) => { const n = { ...p }; delete n.resultFile; return n; });
     };
 
@@ -112,18 +118,27 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
             form.remarks ? `\nRemarks:\n${form.remarks}` : null,
         ].filter(Boolean).join("\n");
 
-        try {
-            await updateLabRequest(req.id, {
-                status: "completed",
-                result: combinedResult,
-                completed_by: user?.$id,
-                completed_at: new Date().toISOString(),
-            });
-            toast.success("Results submitted successfully.");
-            onSuccess ? onSuccess() : setTimeout(() => router.back(), 1200);
-        } catch (err: any) {
-            toast.error(err?.message ?? "Failed to submit results. Please try again.");
-        }
+        updateLabRequest(
+            {
+                id: req.id,
+                updates: {
+                    status: "completed",
+                    result: combinedResult,
+                    completed_by: user?.$id,
+                    completed_at: new Date().toISOString(),
+                },
+            },
+            {
+                onSuccess: () => {
+                    toast.success("Results submitted successfully.");
+                    clearUploadForm(req.id);
+                    onSuccess ? onSuccess() : setTimeout(() => router.back(), 1200);
+                },
+                onError: (err: any) => {
+                    toast.error(err?.message ?? "Failed to submit results. Please try again.");
+                },
+            }
+        );
     };
 
     return (
@@ -132,7 +147,7 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
             {/* ── Request header ── */}
             <button
                 type="button"
-                onClick={() => setExpanded((v) => !v)}
+                onClick={() => toggleUploadExpanded(req.id)}
                 className="w-full flex items-center justify-between px-6 py-5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
             >
                 <div className="flex items-center gap-3">
@@ -198,7 +213,8 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
                             placeholder="e.g. WBC: 7.5K/μL, RBC: 4.8M/μL, Haemoglobin: 14.2 g/dL, Platelets: 250K/μL..."
                             value={form.results}
                             onChange={(e) => update("results", e.target.value)}
-                            rows={5} disabled={completing}
+                            rows={5}
+                            disabled={completing}
                             className={`text-sm border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0 ${errors.results ? "text-red-600" : "text-gray-800"}`}
                         />
                         {errors.results && <p className="flex items-center gap-1 text-[10px] text-red-500 font-semibold mt-1"><AlertCircle size={10} /> {errors.results}</p>}
@@ -222,7 +238,8 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
                             placeholder="e.g. Results indicate mild leukocytosis. Suggest clinical correlation with symptoms. No evidence of anaemia..."
                             value={form.interpretation}
                             onChange={(e) => update("interpretation", e.target.value)}
-                            rows={4} disabled={completing}
+                            rows={4}
+                            disabled={completing}
                             className={`text-sm border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0 ${errors.interpretation ? "text-red-600" : "text-gray-800"}`}
                         />
                         {errors.interpretation && <p className="flex items-center gap-1 text-[10px] text-red-500 font-semibold mt-1"><AlertCircle size={10} /> {errors.interpretation}</p>}
@@ -307,7 +324,7 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFormProps) {
-    const { data, loading, error } = useLabRequestsByPatient(patientId);
+    const { data, isLoading: loading, error } = useLabRequestsByPatient(patientId);
 
     const pendingRequests = data?.filter((r: any) => r.status === "pending") ?? [];
 
@@ -367,8 +384,6 @@ export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFor
     // ── Pending requests ──
     return (
         <div className="space-y-5">
-
-            {/* Page header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className="w-11 h-11 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 shrink-0">
@@ -386,7 +401,6 @@ export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFor
                 )}
             </div>
 
-            {/* One form per pending request */}
             <div className="space-y-4">
                 {pendingRequests.map((req: any) => (
                     <RequestForm key={req.id} req={req} onSuccess={onSuccess} />

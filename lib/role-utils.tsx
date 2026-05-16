@@ -7,17 +7,15 @@
 import { UserRole } from "@/types/models";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
+import {
+    ROLE_DASHBOARD_MAP as SHARED_ROLE_DASHBOARD_MAP,
+    getDashboardRoute,
+} from "@/lib/role-dashboard";
 
 // Route configuration by role
-export const ROLE_ROUTES: Record<UserRole, string> = {
-    [UserRole.FrontDesk]: "/front-desk/dashboard",
-    [UserRole.Doctor]: "/doctor/dashboard",
-    [UserRole.Nurse]: "/nurse/dashboard",
-    [UserRole.LabTechnician]: "/lab-tech/dashboard",
-    [UserRole.Pharmacist]: "/pharmacist/dashboard",
-    [UserRole.Admin]: "/admin/dashboard",
-};
+export const ROLE_ROUTES: Record<UserRole, string> = SHARED_ROLE_DASHBOARD_MAP;
+export { getDashboardRoute };
 
 // Protected routes that require specific roles
 export const PROTECTED_ROUTES: Record<string, UserRole[]> = {
@@ -26,6 +24,7 @@ export const PROTECTED_ROUTES: Record<string, UserRole[]> = {
     "/nurse": [UserRole.Nurse, UserRole.Admin],
     "/lab-tech": [UserRole.LabTechnician, UserRole.Admin],
     "/pharmacist": [UserRole.Pharmacist, UserRole.Admin],
+    "/radiology": [UserRole.Radiologist, UserRole.Admin],
     "/admin": [UserRole.Admin],
 };
 
@@ -36,18 +35,28 @@ export const PROTECTED_ROUTES: Record<string, UserRole[]> = {
 export function useRoleProtection(allowedRoles: UserRole[]) {
     const router = useRouter();
     const { user, isLoading } = useAuth();
+    const userRole = user?.role as UserRole | undefined;
+
+    useEffect(() => {
+        if (isLoading) return;
+
+        if (!user) {
+            router.replace("/login");
+            return;
+        }
+
+        if (userRole && !allowedRoles.includes(userRole)) {
+            router.replace("/unauthorized");
+        }
+    }, [isLoading, user, userRole, allowedRoles, router]);
 
     if (isLoading) return { authorized: false, loading: true };
 
     if (!user) {
-        router.push("/login");
         return { authorized: false, loading: false };
     }
 
-    const userRole = user.role as UserRole;
-
-    if (!allowedRoles.includes(userRole)) {
-        router.push("/unauthorized");
+    if (!allowedRoles.includes(userRole!)) {
         return { authorized: false, loading: false };
     }
 
@@ -81,13 +90,6 @@ export function withRoleProtection(
 }
 
 /**
- * Get dashboard route for a specific role
- */
-export function getDashboardRoute(role: UserRole): string {
-    return ROLE_ROUTES[role] || "/login";
-}
-
-/**
  * Check if a route is accessible by a role
  */
 export function isRouteAccessible(pathname: string, role: UserRole): boolean {
@@ -107,6 +109,5 @@ export function useRedirectAfterLogin() {
 
     if (!user) return "/login";
 
-    const role = user.role as UserRole;
-    return ROLE_ROUTES[role] || "/login";
+    return getDashboardRoute(user.role);
 }

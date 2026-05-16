@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
-import { usePatientsByStatus, useConsultationsByDoctor } from "@/hooks/use-emr";
+import { usePatientsByStatus, useConsultationsByDoctor } from "@/hooks/emr/use-emr";
 import { PatientInfoCard, ConsultationCard, LoadingSkeleton, EmptyState, ErrorAlert } from "@/components/emr-ui";
 import {
     Clock, ClipboardList, CheckCircle2, Users,

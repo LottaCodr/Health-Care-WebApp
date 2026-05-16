@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
+import { getDashboardRoute } from "@/lib/role-dashboard";
 import { Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, ArrowRight, Stethoscope } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -36,6 +37,7 @@ function LoginForm(props: {
     } = props;
 
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     // create confetti when user logs in
     const fireConfetti = () => {
@@ -62,10 +64,9 @@ function LoginForm(props: {
                 return;
             }
 
-            fireConfetti();                           // ← fire before redirect
-            await new Promise((r) => setTimeout(r, 1200));
-            const next = searchParams.get("next") || "/";
-            window.location.href = next;
+            fireConfetti();
+            const next = searchParams.get("next") || getDashboardRoute(result.staff?.role);
+            router.replace(next); 
         } catch (err) {
             setError(err instanceof Error ? err.message : "Login failed. Please try again.");
             setLoading(false);

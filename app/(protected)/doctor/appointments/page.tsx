@@ -1,12 +1,12 @@
-
+import ComingSoon from '@/components/ui/coming-soon'
 import React from 'react'
-import AppointmentsComponent from '@/components/doctor/appointments'
-
 
 const AppointmentsPage = async () => {
-
     return (
-        <AppointmentsComponent />
+        <ComingSoon 
+            title="Appointment Management" 
+            description="The advanced appointment scheduling and management module is currently under development."
+        />
     )
 }
 

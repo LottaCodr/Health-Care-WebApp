@@ -4,11 +4,11 @@ import React from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
-import { usePatientsByStatus } from "@/hooks/use-emr";
 import { LoadingSkeleton, EmptyState } from "@/components/emr";
 import { Users, ClipboardList, Wallet, LogOut, Plus, ChevronRight, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import PaymentConfirmation from "./PaymentSuite";
+import { usePatientsByStatus } from "@/hooks/emr/use-patients";
 
 export default function DashBoardComponent() {
     const { user } = useAuth();
@@ -18,6 +18,7 @@ export default function DashBoardComponent() {
     const awaitingConsultationPatients = usePatientsByStatus(PatientStatus.AwaitingConsultation);
     const awaitingPaymentPatients = usePatientsByStatus(PatientStatus.AwaitingPayment);
     const dischargedPatients = usePatientsByStatus(PatientStatus.Discharged);
+    
 
     if (!authorized) return null;
 
@@ -98,7 +99,7 @@ export default function DashBoardComponent() {
                     </div>
 
                     <div className="px-6 py-4 space-y-3">
-                        {registeredPatients.loading ? (
+                        {registeredPatients.isLoading ? (
                             <LoadingSkeleton rows={3} />
                         ) : registeredPatients.data?.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-10 gap-2">
@@ -149,7 +150,7 @@ export default function DashBoardComponent() {
                     </div>
 
                     <div className="px-6 py-4 space-y-3">
-                        {awaitingPaymentPatients.loading ? (
+                        {awaitingPaymentPatients.isLoading ? (
                             <LoadingSkeleton rows={3} />
                         ) : awaitingPaymentPatients.data?.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-10 gap-2">

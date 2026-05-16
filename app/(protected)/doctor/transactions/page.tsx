@@ -1,17 +1,13 @@
-
-
+import ComingSoon from '@/components/ui/coming-soon'
 import React from 'react'
-import TransactionComponent from '@/components/doctor/transactions'
 
-
-
-
-const Transactions = async () => {
-
-
+const TransactionsPage = async () => {
     return (
-        <TransactionComponent />
+        <ComingSoon 
+            title="Financial Transactions" 
+            description="Transaction history and billing records are being integrated into the doctor's clinical workspace."
+        />
     )
 }
 
-export default Transactions
+export default TransactionsPage

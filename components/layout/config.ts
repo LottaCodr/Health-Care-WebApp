@@ -18,6 +18,7 @@ import {
     UsersRound,
     ScrollText,
     LucideIcon,
+    Radio,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -79,6 +80,8 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Dashboard", url: "/lab-tech/dashboard", icon: LayoutDashboard },
             { title: "Requests", url: "/lab-tech/requests", icon: FlaskConical },
             { title: "Reports", url: "/lab-tech/reports", icon: Microscope },
+            { title: "Test Catalog", url: "/lab-tech/catalog", icon: Microscope }
+
         ],
         secondary: [
             { title: "Settings", url: "/lab-tech/settings", icon: Settings },
@@ -95,12 +98,23 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Settings", url: "/pharmacist/settings", icon: Settings },
         ],
     },
+    [UserRole.Radiologist]: {
+        main: [
+            { title: "Dashboard", url: "/radiology/dashboard", icon: LayoutDashboard },
+            { title: "Requests", url: "/radiology/requests", icon: FlaskConical },
+            { title: "Reports", url: "/radiology/reports", icon: Radio },
+        ],
+        secondary: [
+            { title: "Settings", url: "/radiology/settings", icon: Settings },
+        ],
+    },
 
     [UserRole.Admin]: {
         main: [
             { title: "Console", url: "/admin/dashboard", icon: LayoutDashboard },
             { title: "Staff", url: "/admin/staff", icon: UsersRound },
             { title: "Audit Log", url: "/admin/audit", icon: ScrollText },
+            { title: "Radiology",  url: "/admin/radiology",   icon: Radio           },
         ],
         secondary: [
             { title: "Configuration", url: "/admin/settings", icon: Settings },

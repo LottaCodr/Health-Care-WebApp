@@ -1,0 +1,97 @@
+// ══════════════════════════════════════════════════════════════════════════════
+// hooks/query-keys.ts
+//
+// Centralised query key factories.
+// Hierarchy: domain → collection → filters | detail → id
+//
+// Radiology and Lab are now SEPARATE domains even though they share the same
+// underlying DB table (lab_requests). The prefix "[RADIOLOGY]" in test_type
+// determines which domain owns a row. Keeping them in separate key namespaces
+// means cache invalidation never bleeds between departments.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ─── Patients ─────────────────────────────────────────────────────────────────
+
+export const patientKeys = {
+    all: () => ["patients"] as const,
+    lists: () => ["patients", "list"] as const,
+    byStatus: (s: string) => ["patients", "list", "status", s] as const,
+    search: (q: string) => ["patients", "search", q] as const,
+    details: () => ["patients", "detail"] as const,
+    detail: (id: string) => ["patients", "detail", id] as const,
+};
+
+// ─── Consultations ────────────────────────────────────────────────────────────
+
+export const consultationKeys = {
+    all: () => ["consultations"] as const,
+    byPatient: (id: string) => ["consultations", "patient", id] as const,
+    byDoctor: (id: string) => ["consultations", "doctor", id] as const,
+    detail: (id: string) => ["consultations", "detail", id] as const,
+};
+
+// ─── Lab requests (NON-radiology only) ────────────────────────────────────────
+// These keys cover test_type values that do NOT start with "[RADIOLOGY]".
+// All lab tech dashboard data uses these keys exclusively.
+
+export const labKeys = {
+    all: () => ["lab"] as const,
+    pending: () => ["lab", "requests", "pending"] as const,
+    completed: () => ["lab", "requests", "completed"] as const,
+    byPatient: (id: string) => ["lab", "requests", "patient", id] as const,
+    detail: (id: string) => ["lab", "requests", "detail", id] as const,
+    // Test catalog
+    catalog: () => ["lab", "catalog"] as const,
+    catalogActive: () => ["lab", "catalog", "active"] as const,
+};
+
+// ─── Radiology requests ───────────────────────────────────────────────────────
+// Separate namespace for test_type values that start with "[RADIOLOGY]".
+// Radiologist dashboard and patient radiology tab use these keys exclusively.
+// Invalidating radiologyKeys.pending() will NEVER touch labKeys.pending() and
+// vice versa — no cross-department cache pollution.
+
+export const radiologyKeys = {
+    all: () => ["radiology"] as const,
+    pending: () => ["radiology", "pending"] as const,
+    completed: () => ["radiology", "completed"] as const,
+    byPatient: (id: string) => ["radiology", "patient", id] as const,
+    detail: (id: string) => ["radiology", "detail", id] as const,
+};
+
+// ─── Nursing ──────────────────────────────────────────────────────────────────
+
+export const nursingKeys = {
+    all: () => ["nursing"] as const,
+    pending: () => ["nursing", "pending"] as const,
+    byPatient: (id: string) => ["nursing", "patient", id] as const,
+};
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+
+export const paymentKeys = {
+    all: () => ["payments"] as const,
+    pending: () => ["payments", "pending"] as const,
+    byPatient: (id: string) => ["payments", "patient", id] as const,
+};
+
+// ─── Pharmacy ─────────────────────────────────────────────────────────────────
+
+export const pharmacyKeys = {
+    prescriptions: () => ["pharmacy", "prescriptions"] as const,
+    prescriptionsPending: () => ["pharmacy", "prescriptions", "pending"] as const,
+    prescriptionsByPatient: (id: string) => ["pharmacy", "prescriptions", "patient", id] as const,
+    prescription: (id: string) => ["pharmacy", "prescriptions", "detail", id] as const,
+    inventory: () => ["pharmacy", "inventory"] as const,
+    inventoryActive: () => ["pharmacy", "inventory", "active"] as const,
+    catalog: () => ["pharmacy", "catalog"] as const,
+    dispensing: (id: string) => ["pharmacy", "dispensing", "patient", id] as const,
+};
+
+// ─── Staff ────────────────────────────────────────────────────────────────────
+
+export const staffKeys = {
+    all: () => ["staff"] as const,
+    byRole: (r: string) => ["staff", "role", r] as const,
+    detail: (id: string) => ["staff", "detail", id] as const,
+};

@@ -1,30 +1,22 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
-import { Loader2 } from "lucide-react";
+import { getDashboardRoute } from "@/lib/role-dashboard";
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
   const router = useRouter();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (user) {
-        // Redirection logic by role
-        const roleRoutes: Record<string, string> = {
-          Doctor: "/doctor/dashboard",
-          Nurse: "/nurse/dashboard",
-          Pharmacist: "/pharmacist/dashboard",
-          LabTechnician: "/lab-tech/dashboard",
-          FrontDesk: "/front-desk/dashboard",
-          Admin: "/admin/dashboard",
-        };
-        router.push(roleRoutes[user.role] || "/login");
-      } else {
-        router.push("/login");
-      }
+    if (isLoading) return;
+    if (user) {
+      router.replace(getDashboardRoute(user.role));
+    } else {
+      router.replace("/login");
     }
   }, [user, isLoading, router]);
 

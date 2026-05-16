@@ -1,11 +1,7 @@
-/**
- * Server-Side Access Control & Permissions
- * Enforces document-level and row-level security
- */
 
 "use server";
 
-import { UserRole, PatientStatus } from "@/types/models";
+import { UserRole } from "@/types/models";
 import { createClient } from "@/utils/supabase/server";
 
 const DB_ID = process.env.NEXT_PUBLIC_DATABASE_ID!;
@@ -54,9 +50,14 @@ export async function enforceCollectionAccess(
             write: ["prescriptions", "drug_dispensing"],
             delete: [],
         },
+        [UserRole.Radiologist]: {
+            read: ["patients", "radiology_requests"],
+            write: ["radiology_requests"],
+            delete: [],
+        },
         [UserRole.Admin]: {
-            read: ["patients", "consultations", "prescriptions", "lab_requests", "nursing_actions", "payments", "drug_dispensing", "audit_logs"],
-            write: ["patients", "consultations", "prescriptions", "lab_requests", "nursing_actions", "payments", "drug_dispensing", "audit_logs"],
+            read: ["patients", "consultations", "prescriptions", "lab_requests", "nursing_actions", "payments", "drug_dispensing", "audit_logs", "radiology_requests"],
+            write: ["patients", "consultations", "prescriptions", "lab_requests", "nursing_actions", "payments", "drug_dispensing", "audit_logs", "radiology_requests"],
             delete: [],
         },
     };
@@ -150,12 +151,21 @@ export async function enforceDocumentAccess(
                     return { allowed: false, reason: "Can only update active prescriptions" };
                 }
                 break;
+            case UserRole.Radiologist:
+                // Radiologists can read any radiology request but write only pending ones
+                if (collectionName === "radiology_requests" && operation === "write" && document.status !== "Pending") {
+                    return { allowed: false, reason: "Can only update pending radiology requests" };
+                }
+                break;
 
             case UserRole.FrontDesk:
                 // Front desk can only update patient payments
                 if (collectionName === "payments" && document.processed_by !== context.userId) {
                     return { allowed: false, reason: "Can only manage own payment records" };
                 }
+                break;
+            case UserRole.Admin:
+                // Admins can access all collections
                 break;
 
             default:
@@ -203,6 +213,19 @@ export function getRowLevelSecurityFilter(context: AccessContext, collectionName
             if (collectionName === "lab_requests") {
                 filters.push({ column: "status", value: "Pending" });
             }
+            break;
+        case UserRole.Radiologist:
+            if (collectionName === "radiology_requests") {
+                filters.push({ column: "status", value: "Pending" });
+            }
+            break;
+        case UserRole.FrontDesk:
+            if (collectionName === "payments") {
+                filters.push({ column: "processed_by", value: context.userId });
+            }
+            break;
+        case UserRole.Admin:
+            // Admin can see all
             break;
 
         default:

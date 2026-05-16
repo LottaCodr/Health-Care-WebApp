@@ -1,9 +1,18 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
 import supabase from "@/utils/supabase/client";
 import { fetchStaffProfile } from "@/actions/staff/staff";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFrontDeskStore } from "@/store/frontdesk-store";
+import { useLabStore } from "@/store/lab-store";
+import { useRadiologyStore } from "@/store/radiology-store";
+import { useVitalsStore } from "@/store/vitals-store";
+import { useConsultationStore } from "@/store/consultation-store";
+import { usePharmacyStore } from "@/store/pharmacy-store";
+import { usePatientStore } from "@/store/patient-store";
+import { useCacheStore } from "@/store/store";
 
 interface AuthContextType {
     user: any | null;
@@ -23,6 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const isAuthenticatingRef = useRef(false);
 
     // Normalize role strings
     const normalizeRole = (role: any): string => {
@@ -46,11 +57,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     };
 
+    // Supabase can transiently throw lock contention in dev when` multiple
+    // auth reads race. Retry once, then fall back to session user.
+    const getAuthUserSafely = async () => {
+        try {
+            const { data } = await supabase.auth.getUser();
+            return data.user ?? null;
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            const isLockContention =
+                msg.toLowerCase().includes("lock") &&
+                msg.toLowerCase().includes("stole");
+
+            if (!isLockContention) throw error;
+
+            await new Promise((resolve) => setTimeout(resolve, 80));
+            try {
+                const { data } = await supabase.auth.getUser();
+                return data.user ?? null;
+            } catch {
+                const { data } = await supabase.auth.getSession();
+                return data.session?.user ?? null;
+            }
+        }
+    };
+
     useEffect(() => {
         const initSession = async () => {
             setIsLoading(true);
             try {
-                const { data: { user: authUser } } = await supabase.auth.getUser();
+                const authUser = await getAuthUserSafely();
 
                 if (authUser) {
                     const staff = await fetchStaffProfile(authUser.id);
@@ -68,16 +104,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         initSession();
-
+        
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                if (session?.user) {
-                    const staff = await fetchStaffProfile(session.user.id);
-                    const profile = buildProfile(session.user, staff?.profile);
+            async (event, session) => {
+                // If we are currently in the middle of a manual login() call, 
+                // ignore this event to prevent double-fetching the profile.
+                if (isAuthenticatingRef.current) return;
+
+                const authUser = session?.user ?? (await getAuthUserSafely());
+
+                if (authUser) {
+                    const staff = await fetchStaffProfile(authUser.id);
+                    const profile = buildProfile(authUser, staff?.profile);
                     setUser(profile);
                 } else {
                     setUser(null);
+                }
+                
+                if (event === "SIGNED_OUT") {
+                    setIsLoading(false);
                 }
             }
         );
@@ -86,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const login = async (email: string, password: string) => {
-        setIsLoading(true);
+        isAuthenticatingRef.current = true; // Block onAuthStateChange from double-fetching
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
@@ -94,7 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             if (error) {
-                setIsLoading(false);
                 return { success: false, message: error.message };
             }
 
@@ -105,7 +150,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // the user as authenticated. This keeps post-login redirects reliable.
                 if (!staffResult.success || !staffResult.profile?.role) {
                     setUser(null);
-                    setIsLoading(false);
                     return {
                         success: false,
                         message:
@@ -116,7 +160,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 const profile = buildProfile(data.user, staffResult.profile);
                 setUser(profile);
-                setIsLoading(false);
 
                 console.log("staff detail", staffResult, profile);
 
@@ -130,19 +173,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             throw new Error("Login failed");
         } catch (error) {
             const message = error instanceof Error ? error.message : "Login failed";
-            setIsLoading(false);
             return { success: false, message };
+        } finally {
+            isAuthenticatingRef.current = false;
         }
     };
 
     const logout = async () => {
         try {
-            await supabase.auth.signOut();
+            // 1. Immediate redirect and UI reset for instant feedback
+            router.replace("/login");
             setUser(null);
-            router.push("/login");
+            
+            // 2. Clear TanStack Query cache
+            queryClient.clear();
+            
+            // 3. Reset Zustand stores
+            useFrontDeskStore.getState().resetForm();
+            useLabStore.getState().resetAll();
+            useRadiologyStore.getState().resetAll();
+            useVitalsStore.getState().resetForm();
+            useConsultationStore.getState().resetForm();
+            usePharmacyStore.getState().resetForm();
+            usePatientStore.getState().resetForm();
+            useCacheStore.getState().clear();
+
+            // 4. Perform session termination in background
+            await supabase.auth.signOut();
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Logout failed";
-            throw error;
+            console.error("Logout error:", error);
+            router.replace("/login");
         }
     };
 

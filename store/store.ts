@@ -23,17 +23,17 @@ export const useUserStore = create<UserState>()(
             user: null,
             isLoading: true,
             error: null,
-            setUser: (user) =>
+            setUser: (user: any) =>
                 set({
                     user,
                     isLoading: false,
                     error: null,
                 }),
-            setLoading: (isLoading) =>
+            setLoading: (isLoading: boolean) =>
                 set({
                     isLoading,
                 }),
-            setError: (error) =>
+            setError: (error: string | null) =>
                 set({
                     error,
                     isLoading: false,
@@ -213,7 +213,10 @@ export const useErrorStore = create<ErrorState>()(
             getLastError: () => {
                 const errors = get().errors;
                 if (errors.size === 0) return null;
-                return Array.from(errors.values()).sort((a, b) => b.timestamp - a.timestamp)[0] ?? null;
+                const sorted = Array.from(errors.values()).sort(
+                    (a: ErrorEntry, b: ErrorEntry) => b.timestamp - a.timestamp
+                );
+                return sorted[0] ?? null;
             },
         }),
         { name: "error-store" }
@@ -241,7 +244,7 @@ export const useNotificationStore = create<NotificationState>()(
     devtools(
         (set) => ({
             notifications: [],
-            addNotification: (notification) => {
+            addNotification: (notification: Omit<Notification, "id">) => {
                 const id = `${Date.now()}-${Math.random()}`;
                 set((state) => ({
                     notifications: [...state.notifications, { ...notification, id }],
@@ -250,7 +253,7 @@ export const useNotificationStore = create<NotificationState>()(
             },
             removeNotification: (id: string) => {
                 set((state) => ({
-                    notifications: state.notifications.filter((n) => n.id !== id),
+                    notifications: state.notifications.filter((n: Notification) => n.id !== id),
                 }));
             },
             clearAll: () => {
@@ -277,9 +280,9 @@ export const useUIStore = create<UIState>()(
             (set) => ({
                 sidebarOpen: true,
                 darkMode: false,
-                setSidebarOpen: (open) =>
+                setSidebarOpen: (open: boolean) =>
                     set({ sidebarOpen: open }),
-                setDarkMode: (dark) =>
+                setDarkMode: (dark: boolean) =>
                     set({ darkMode: dark }),
                 toggleSidebar: () =>
                     set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -291,4 +294,3 @@ export const useUIStore = create<UIState>()(
         { name: "ui-store" }
     )
 );
-

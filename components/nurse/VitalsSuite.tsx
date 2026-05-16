@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
-import { usePatient, useCreateNursingAction, useUpdateNursingAction, useUpdatePatientStatus } from "@/hooks/use-emr";
+import { usePatient, useCreateNursingAction, useUpdateNursingAction, useUpdatePatientStatus } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton, SuccessAlert, PatientInfoCard } from "@/components/emr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { UserRole } from "@/types/models";
 import { AITriageScore } from "../ai/AIComponents";
 import { calculateAge } from "@/utils/export";
+import { useVitalsStore } from "@/store/vitals-store";
 
 const FIELD_CONFIG = [
     { key: "bloodPressure", label: "Blood Pressure (mmHg)", placeholder: "120/80", leftIcon: <Activity size={16} className="text-blue-600" />, required: true, type: "text" },
@@ -27,18 +28,7 @@ const FIELD_CONFIG = [
     { key: "bmi", label: "BMI (auto-calculated)", placeholder: "", required: false, type: "number", disabled: true },
 ];
 
-const INITIAL_FORM = {
-    bloodPressure: "",
-    temperature: "",
-    pulse: "",
-    respiration: "",
-    spo2: "",
-    weight: "",
-    height: "",
-    bmi: "",
-    treatment: "",
-    notes: "",
-};
+
 
 export default function VitalsCheckinAdvancedComponent(props: {
     patientId: string;
@@ -51,30 +41,18 @@ export default function VitalsCheckinAdvancedComponent(props: {
     const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.Nurse, UserRole.Admin]);
 
-    const { data: patient, loading: patientLoading } = usePatient(patientId, {
+    const { data: patient, isLoading: patientLoading } = usePatient(patientId, {
         enabled: !!patientId,
     });
 
-    const [form, setForm] = useState(INITIAL_FORM);
+    const { form, setField, resetForm } = useVitalsStore();
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
 
     const createActionMutation = useCreateNursingAction();
-    const updateActionMutation = useUpdateNursingAction();
+    const {mutate: updateActionMutation, isPending} = useUpdateNursingAction();
     const updatePatientStatusMutation = useUpdatePatientStatus();
-    const age = calculateAge(patient?.date_of_birth!)
-
-    // Auto-calculate BMI
-    useEffect(() => {
-        const weight = parseFloat(form.weight);
-        const height = parseFloat(form.height);
-        if (!isNaN(weight) && !isNaN(height) && height > 0) {
-            const bmi = weight / (height / 100) ** 2;
-            setForm((prev) => ({ ...prev, bmi: bmi.toFixed(1) }));
-        } else {
-            setForm((prev) => ({ ...prev, bmi: "" }));
-        }
-    }, [form.weight, form.height]);
+    const age = calculateAge(patient?.birth_date!)
 
     if (!authorized) return null;
 
@@ -89,7 +67,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     if (patientLoading) return <LoadingSkeleton rows={5} />;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        setField(e.target.name as any, e.target.value);
     };
 
     const handleSubmit = async (e?: React.FormEvent) => {
@@ -122,14 +100,17 @@ export default function VitalsCheckinAdvancedComponent(props: {
                 .join(". ");
 
             if (taskId) {
-                await updateActionMutation.mutate(taskId, {
-                    status: "Completed",
-                    description,
-                    completedBy: user?.$id,
-                    completionTime: new Date().toISOString(),
+                updateActionMutation({
+                    id: taskId,
+                    updates: {
+                        status: "Completed",
+                        description,
+                        completedBy: user?.$id,
+                        completionTime: new Date().toISOString(),
+                    }
                 });
             } else {
-                await createActionMutation.mutate({
+                createActionMutation.mutate({
                     patientId,
                     actionType: "Vitals",
                     description,
@@ -140,10 +121,16 @@ export default function VitalsCheckinAdvancedComponent(props: {
                 });
             }
 
-            await updatePatientStatusMutation.mutate(patientId, "AwaitingNextStep" as any);
+            updatePatientStatusMutation.mutate({
+                id: patientId,
+                
+                    status: "awaiting-consultation" as any,
+                
+            });
 
             setSuccess("Vitals documentation finalized successfully.");
             toast.success("Vitals recorded successfully");
+            resetForm();
 
             if (onComplete) {
                 setTimeout(onComplete, 2000);
@@ -161,7 +148,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     return (
         <div className="space-y-8">
             {success && <SuccessAlert message={success} />}
-            {patient && <PatientInfoCard patient={patient} />}
+            {/* {patient && <PatientInfoCard patient={patient} />} */}
 
             <form
                 onSubmit={handleSubmit}

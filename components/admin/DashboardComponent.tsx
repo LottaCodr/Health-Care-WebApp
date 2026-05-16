@@ -8,7 +8,7 @@ import {
     usePendingLabRequests,
     usePendingPrescriptions,
     usePendingNursingActions,
-} from "@/hooks/use-emr";
+} from "@/hooks/emr/use-emr";
 import {
     Users, Stethoscope, FlaskConical, Pill,
     HeartPulse, CreditCard, Activity, TrendingUp,

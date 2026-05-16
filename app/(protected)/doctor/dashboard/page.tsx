@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import DashBoardComponent from "@/components/doctor";
+
+const DashBoardComponent = dynamic(() => import("@/components/doctor"), {
+  loading: () => (
+    <div className="animate-pulse rounded-3xl border border-gray-100 bg-white h-72 w-full" />
+  ),
+});
 import { useAuth } from "@/context/auth-provider";
 import { Loader2, Stethoscope, CalendarDays, Bell } from "lucide-react";
 

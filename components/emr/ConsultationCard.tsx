@@ -15,7 +15,7 @@ export function ConsultationCard({ consultation }: { consultation: Consultation 
                     </div>
                     <div>
                         <h4 className="font-black text-gray-900 tracking-tight">
-                            Case Ref: #{consultation.$id.substring(0, 8).toUpperCase()}
+                            Case Ref: #{consultation.id.substring(0, 8).toUpperCase()}
                         </h4>
                         <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
                             <Calendar size={10} /> {new Date(consultation.startTime).toLocaleDateString()} at {new Date(consultation.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

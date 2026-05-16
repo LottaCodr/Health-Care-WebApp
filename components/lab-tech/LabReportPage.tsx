@@ -3,13 +3,14 @@
 import React, { useState, useMemo } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { useCompletedLabRequests } from "@/hooks/use-emr";
+import { useCompletedLabRequests } from "@/hooks/emr/use-lab";
 import {
     FlaskConical, Search, RefreshCcw, CheckCircle2,
     Clock, Calendar, User, X, ChevronDown,
     Microscope, Loader2, AlertTriangle, FileText,
     Filter,
 } from "lucide-react";
+import { useLabStore } from "@/store/lab-store";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,10 +92,10 @@ export default function LabReportsPage() {
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
     const { data: results, loading, error, refetch } = useCompletedLabRequests();
 
-    const [search, setSearch] = useState("");
-    const [priority, setPriority] = useState("all");
-    const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "all">("all");
-    const [selected, setSelected] = useState<any | null>(null);
+    const {
+        reportSearch: search, setField, reportPriority: priority,
+        reportDateRange: dateRange, reportSelected: selected
+    } = useLabStore();
 
     const filtered = useMemo(() => {
         if (!results) return [];
@@ -173,13 +174,13 @@ export default function LabReportsPage() {
                     <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-50 flex-wrap">
                         <div className="relative flex-1 min-w-[180px]">
                             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            <input value={search} onChange={(e) => setSearch(e.target.value)}
+                            <input value={search} onChange={(e) => setField("reportSearch", e.target.value)}
                                 placeholder="Search test, result, patient..."
                                 className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 focus:bg-white transition-all" />
-                            {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={13} /></button>}
+                            {search && <button onClick={() => setField("reportSearch", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={13} /></button>}
                         </div>
                         <div className="relative">
-                            <select value={priority} onChange={(e) => setPriority(e.target.value)}
+                            <select value={priority} onChange={(e) => setField("reportPriority", e.target.value)}
                                 className="h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none appearance-none cursor-pointer">
                                 <option value="all">All Priority</option>
                                 <option value="routine">Routine</option>
@@ -189,7 +190,7 @@ export default function LabReportsPage() {
                             <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         </div>
                         <div className="relative">
-                            <select value={dateRange} onChange={(e) => setDateRange(e.target.value as any)}
+                            <select value={dateRange} onChange={(e) => setField("reportDateRange", e.target.value as any)}
                                 className="h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none appearance-none cursor-pointer">
                                 <option value="all">All Time</option>
                                 <option value="today">Today</option>
@@ -223,7 +224,7 @@ export default function LabReportsPage() {
                                 <p className="text-xs text-gray-400">Try adjusting your filters</p>
                             </div>
                         ) : filtered.map((req: any) => (
-                            <button key={req.id} onClick={() => setSelected(selected?.id === req.id ? null : req)}
+                            <button key={req.id} onClick={() => setField("reportSelected", selected?.id === req.id ? null : req)}
                                 className={`w-full text-left flex items-center gap-4 p-4 rounded-2xl border transition-all
                                     ${selected?.id === req.id
                                         ? "border-indigo-200 bg-indigo-50/50"
@@ -252,7 +253,7 @@ export default function LabReportsPage() {
                 {selected && (
                     <div className="space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">Result Details</p>
-                        <ResultPanel req={selected} onClose={() => setSelected(null)} />
+                        <ResultPanel req={selected} onClose={() => setField("reportSelected", null)} />
                     </div>
                 )}
             </div>

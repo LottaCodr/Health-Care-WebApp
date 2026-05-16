@@ -3,56 +3,46 @@
 import { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./auth-provider";
-import { PatientProvider } from "./patients/patient-context";
-// import { AppointmentProvider } from "./appointments/appointment.reducer";
-import { EmployeeProvider } from "./employees/context";
-import { ConsultationProvider } from "./consultation/consultation";
-// import { ErrorBoundary } from "@/components/error-boundary";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useState } from "react";
 
-// Lazily create QueryClient to avoid recreating on every render
-function useStableQueryClient() {
+export function useStableQueryClient() {
   const [client] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 30_000, //data fresh for 30 seconds - no refresh on ta focus
+        gcTime: 10 * 60 * 1000, // keep in memmory 10 mins
         retry: 1,
         refetchOnWindowFocus: false,
+        refetchOnMount: true,
+        refetchOnReconnect: true,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
       },
       mutations: {
-        retry: 1,
+        retry: 0,
       },
     },
   }));
   return client;
 }
 
+
 interface ProvidersProps {
   children: ReactNode;
 }
 
-/**
- * Unified Provider Component
- * Combines all context providers with error boundary
- */
+
 export function Providers({ children }: ProvidersProps) {
   const queryClient = useStableQueryClient();
 
+
   return (
-    // <ErrorBoundary>
-    <AuthProvider>
+    <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ConsultationProvider>
-          <EmployeeProvider>
-            <PatientProvider>
-              {/* <AppointmentProvider> */}
-                {children}
-              {/* </AppointmentProvider> */}
-            </PatientProvider>
-          </EmployeeProvider>
-        </ConsultationProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </QueryClientProvider>
-    </AuthProvider>
-    // </ErrorBoundary>
+    </ErrorBoundary>
   );
 }

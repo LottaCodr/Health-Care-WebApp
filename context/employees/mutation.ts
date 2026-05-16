@@ -1,15 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEmployeesContext } from "./context";
+import { useEmployeeStore } from "@/store/employee-store";
 import { deleteStaff, updateStaff } from "@/actions/staff/update.deletestaff";
 import { Staff } from "@/actions/staff/types";
 
 export function useStaffMutations() {
-    const { dispatch } = useEmployeesContext();
+    const { updateEmployee, deleteEmployee, addEmployee } = useEmployeeStore();
     const queryClient = useQueryClient()
 
     //Update Staff mutation
     const updateMutation = useMutation({
-        mutationFn: ({ id, updates }: { id: string; updates: Partial<Staff> }) => updateStaff(id, updates),
+        mutationFn: ({ id, updates }: { id: string; updates: any }) => updateStaff(id, updates),
 
         onMutate: async ({ id, updates }) => {
 
@@ -22,16 +22,16 @@ export function useStaffMutations() {
                 const optimistic = {
                     ...prevEmployee, ...updates
                 }
-                dispatch({ type: "UPDATE_EMPLOYEE", payload: optimistic })
+                updateEmployee(optimistic)
             } return { prevEmployee }
         },
         onError: (err, _, context) => {
             if (context?.prevEmployee) {
-                dispatch({ type: "UPDATE_EMPLOYEE", payload: context?.prevEmployee })
+                updateEmployee(context?.prevEmployee)
             }
         },
         onSuccess: (updated) => {
-            dispatch({ type: "UPDATE_EMPLOYEE", payload: updated })
+            updateEmployee(updated)
         },
 
         onSettled() {
@@ -42,19 +42,18 @@ export function useStaffMutations() {
 
 
     //Remove Staff 
-    const deleteMutation = useMutation<Staff, Error, string, { deleted?: Staff }>({
+    const deleteMutation = useMutation<any, Error, string, { deleted?: Staff }>({
         mutationFn: deleteStaff,
         onMutate: async (id: string) => {
             const prev = queryClient.getQueryData<Staff[]>(['employees']);
 
             const deleted = prev?.find(e => e.$id === id)
-            dispatch({ type: "DELETE_EMPLOYEE", payload: id }
-            )
+            deleteEmployee(id)
             return { deleted }
         },
         onError: (err, id, context) => {
             if (context?.deleted) {
-                dispatch({ type: "ADD_EMPLOYEE", payload: context.deleted })
+                addEmployee(context.deleted)
             }
         },
         onSettled: () => {

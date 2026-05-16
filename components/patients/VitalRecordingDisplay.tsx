@@ -1,6 +1,6 @@
 "use client";
 
-import { useNursingActionsByPatient } from "@/hooks/use-emr";
+import { useNursingActionsByPatient } from "@/hooks/emr/use-emr";
 import {
     Activity, Thermometer, HeartPulse, Wind,
     Droplets, Weight, Ruler, Calculator,
@@ -77,7 +77,7 @@ function formatDateTime(iso?: string) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function VitalsRecordDisplay({ patientId, onClose }: { patientId: string; onClose?: () => void }) {
-    const { data, loading, error } = useNursingActionsByPatient(patientId, { enabled: !!patientId });
+    const { data, isLoading: loading, error } = useNursingActionsByPatient(patientId, { enabled: !!patientId });
 
     const latestAction: NursingActionRow | null = Array.isArray(data)
         ? ([...data] as NursingActionRow[])

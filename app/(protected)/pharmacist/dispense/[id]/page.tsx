@@ -22,7 +22,7 @@ export default function DispensePage() {
                 </span>
             </div>
 
-            <PharmacySuite prescriptionId={id} onComplete={() => router.push("/pharmacist/dashboard")} />
+            <PharmacySuite  />
         </div>
     );
 }

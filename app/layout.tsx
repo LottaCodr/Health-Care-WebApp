@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-import { cn } from "./lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 // import { NotificationContainer } from "@/components/notification-container";
-import ProtectedRedirect from "./(auth)/protected";
 import { Providers } from "@/context/provider";
+import { cn } from "@/utils/utils";
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -26,19 +25,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={cn("min-h-screen font-sans antialiased", fontSans.variable)}
+        suppressHydrationWarning
       >
-        <ProtectedRedirect>
-          <Providers>
-            <ThemeProvider attribute="class" defaultTheme="light">
-              {children}
-              {/* <NotificationContainer /> */}
-              <Toaster />
-            </ThemeProvider>
-          </Providers>
-        </ProtectedRedirect>
+        <Providers>
+          <ThemeProvider attribute="class" defaultTheme="light">
+            {children}
+            {/* <NotificationContainer /> */}
+            <Toaster />
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
