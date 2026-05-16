@@ -186,15 +186,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
-            await supabase.auth.signOut();
-            
-            // 1. Clear UI state
+            // 1. Immediate redirect and UI reset for instant feedback
+            router.replace("/login");
             setUser(null);
             
-            // 2. Clear TanStack Query cache (Removes all patient/staff data from memory)
+            // 2. Clear TanStack Query cache
             queryClient.clear();
             
-            // 3. Reset Zustand stores (Clears transient form state)
+            // 3. Reset Zustand stores
             useFrontDeskStore.getState().resetForm();
             useLabStore.getState().resetAll();
             useRadiologyStore.getState().resetAll();
@@ -203,9 +202,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             usePharmacyStore.getState().resetForm();
             usePatientStore.getState().resetForm();
             useCacheStore.getState().clear();
-            
-            // 4. Immediate redirect
-            router.replace("/login");
+
+            // 4. Perform session termination in background
+            await supabase.auth.signOut();
         } catch (error) {
             console.error("Logout error:", error);
             router.replace("/login");
