@@ -1,19 +1,5 @@
 import { Staff } from "@/actions/staff/types";
-import { Patient } from "@/types/models";
-
-
-export type PatientStatus =
-    | 'registered'
-    | 'awaiting-consultation'
-    | 'under-consultation'
-    | 'sent-to-nurse'
-    | 'sent-to-lab'
-    | 'sent-to-pharmacy'
-    | 'awaiting-payment'
-    | 'admitted'
-    | 'under-observation'
-    | 'discharged'
-    | 'no-status';
+import { Patient, PatientStatus } from "@/types/models";
 
 
 
@@ -42,7 +28,8 @@ export type PatientAction =
     | { type: "SET_ASSIGNED_STAFF"; payload: Staff }
     | { type: "SET_ASSIGNED_DOCTOR"; payload: string }
     | { type: "UPDATE_NOTES"; payload: string }
-    | { type: "SET_STATUS"; payload: string }
+    | { type: "SET_STATUS"; payload: PatientStatus }
     | { type: "SET_RECIPIENT_ROLE"; payload: string }
     | { type: "SET_LOADING"; payload: boolean }
     | { type: "RESET_FORM" }
+

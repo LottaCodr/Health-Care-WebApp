@@ -445,8 +445,8 @@ export function AIPrescriptionCheck(props: RxProps) {
 interface SummaryProps {
     patient: {
         name: string; age?: number; gender?: string;
-        bloodGroup?: string; genoType?: string;
-        allergies?: string; medicalHistory?: string; currentMeds?: string;
+        blood_group?: string; geno_type?: string;
+        allergies?: string; significant_medication_history?: string; currentMeds?: string;
     };
     consultations?: { symptoms: string; diagnosis: string; date: string }[];
     prescriptions?: { drugName: string; dosage: string; date: string; status: string }[];

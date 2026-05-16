@@ -40,8 +40,7 @@ export interface Patient {
     birth_date: string;
     address: string;
     occupation?: string;
-    city: string;
-    state: string;
+    religion: string;
     blood_group: string;
     geno_type: string;
     allergies: string;
@@ -62,8 +61,6 @@ export interface Patient {
     company_name?: string;
     private_client?: boolean;
     status: PatientStatus;
-    registration_date: string;
-    registered_by: string; // Staff ID (Front Desk)
     notes: string;
     created_at?: string;
     updated_at?: string;

@@ -143,7 +143,7 @@ interface Props {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function LabTab({ patient, userRole }: Props) {
-    const { data: labRequests, loading, error } = useLabRequestsByPatient(patient.id ?? "");
+    const { data: labRequests, isLoading: loading, error } = useLabRequestsByPatient(patient.id ?? "");
 
     const isLabTech = userRole === "Labtech" || userRole === "LabTechnician";
     const pendingRequests = labRequests?.filter((r: any) => r.status === "pending") ?? [];

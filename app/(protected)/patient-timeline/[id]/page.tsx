@@ -6,9 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
     useConsultationsByPatient, useLabRequestsByPatient,
-    useNursingActionsByPatient, usePaymentsByPatient,
-} from "@/hooks/use-emr";
-import { getPatientById } from "@/actions/front-desk/get.patients";
+    useNursingActionsByPatient, usePaymentsByPatient, usePatient
+} from "@/hooks/emr/use-emr";
 import {
     ArrowLeft, Calendar, Stethoscope, FlaskConical, HeartPulse,
     CreditCard, CheckCircle2, Clock, AlertCircle, Loader2,
@@ -20,41 +19,41 @@ import { fmtFull, calcAge } from "@/lib/utils";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TimelineEvent {
-    id:          string;
-    type:        "registration" | "consultation" | "lab" | "radiology" | "nursing" | "pharmacy" | "payment";
-    title:       string;
+    id: string;
+    type: "registration" | "consultation" | "lab" | "radiology" | "nursing" | "pharmacy" | "payment";
+    title: string;
     description: string;
-    timestamp:   string;
-    status?:     string;
-    meta?:       string;
+    timestamp: string;
+    status?: string;
+    meta?: string;
 }
 
 // ─── Event config ─────────────────────────────────────────────────────────────
 
 const EVENT_CONFIG: Record<string, {
-    icon:  React.ElementType;
+    icon: React.ElementType;
     color: string;
-    bg:    string;
-    border:string;
+    bg: string;
+    border: string;
     label: string;
-    line:  string;
+    line: string;
 }> = {
-    registration:  { icon: User,         color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-200",   label: "Registration",   line: "bg-blue-200"   },
-    consultation:  { icon: Stethoscope,  color: "text-red-600",    bg: "bg-red-50",    border: "border-red-200",    label: "Consultation",   line: "bg-red-200"    },
-    lab:           { icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200", label: "Lab",            line: "bg-indigo-200" },
-    radiology:     { icon: Radio,        color: "text-cyan-600",   bg: "bg-cyan-50",   border: "border-cyan-200",   label: "Radiology",      line: "bg-cyan-200"   },
-    nursing:       { icon: HeartPulse,   color: "text-teal-600",   bg: "bg-teal-50",   border: "border-teal-200",   label: "Nursing",        line: "bg-teal-200"   },
-    pharmacy:      { icon: Pill,         color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200", label: "Pharmacy",       line: "bg-violet-200" },
-    payment:       { icon: CreditCard,   color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-200",  label: "Payment",        line: "bg-amber-200"  },
+    registration: { icon: User, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", label: "Registration", line: "bg-blue-200" },
+    consultation: { icon: Stethoscope, color: "text-red-600", bg: "bg-red-50", border: "border-red-200", label: "Consultation", line: "bg-red-200" },
+    lab: { icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200", label: "Lab", line: "bg-indigo-200" },
+    radiology: { icon: Radio, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200", label: "Radiology", line: "bg-cyan-200" },
+    nursing: { icon: HeartPulse, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200", label: "Nursing", line: "bg-teal-200" },
+    pharmacy: { icon: Pill, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200", label: "Pharmacy", line: "bg-violet-200" },
+    payment: { icon: CreditCard, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", label: "Payment", line: "bg-amber-200" },
 };
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: React.ElementType }> = {
-    completed:    { color: "text-green-700",  bg: "bg-green-50 border-green-200",   icon: CheckCircle2  },
-    pending:      { color: "text-amber-700",  bg: "bg-amber-50 border-amber-200",   icon: Clock         },
-    active:       { color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",     icon: Activity      },
-    inprogress:   { color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",     icon: Activity      },
-    failed:       { color: "text-red-700",    bg: "bg-red-50 border-red-200",       icon: AlertCircle   },
-    cancelled:    { color: "text-gray-600",   bg: "bg-gray-100 border-gray-200",    icon: AlertCircle   },
+    completed: { color: "text-green-700", bg: "bg-green-50 border-green-200", icon: CheckCircle2 },
+    pending: { color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Clock },
+    active: { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Activity },
+    inprogress: { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Activity },
+    failed: { color: "text-red-700", bg: "bg-red-50 border-red-200", icon: AlertCircle },
+    cancelled: { color: "text-gray-600", bg: "bg-gray-100 border-gray-200", icon: AlertCircle },
 };
 
 
@@ -147,20 +146,16 @@ function FilterChip({ label, active, onClick, color, bg }: {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function PatientTimelinePage() {
-    const params    = useParams();
-    const router    = useRouter();
+    const params = useParams();
+    const router = useRouter();
     const patientId = (params?.id ?? params?.patientId ?? params?.userId) as string;
 
-    const { data: patient, isLoading: pLoading } = useQuery({
-        queryKey: ["patient", patientId],
-        queryFn:  () => getPatientById(patientId),
-        enabled:  !!patientId,
-    });
+    const { data: patient, isLoading: pLoading } = usePatient(patientId);
 
     const { data: consultations } = useConsultationsByPatient(patientId);
-    const { data: labRequests   } = useLabRequestsByPatient(patientId);
-    const { data: nursing       } = useNursingActionsByPatient(patientId);
-    const { data: payments      } = usePaymentsByPatient(patientId);
+    const { data: labRequests } = useLabRequestsByPatient(patientId);
+    const { data: nursing } = useNursingActionsByPatient(patientId);
+    const { data: payments } = usePaymentsByPatient(patientId);
 
     const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
@@ -170,29 +165,29 @@ export default function PatientTimelinePage() {
         // Registration
         if (patient) {
             events.push({
-                id:          `reg-${patient.id}`,
-                type:        "registration",
-                title:       "Patient Registered",
+                id: `reg-${patient.id}`,
+                type: "registration",
+                title: "Patient Registered",
                 description: `${patient.name} was registered at Nile Valley Hospital. Blood Group: ${patient.blood_group ?? "—"} · Genotype: ${patient.geno_type ?? "—"}`,
-                timestamp:   patient.created_at ?? patient.$createdAt ?? new Date().toISOString(),
-                status:      "Completed",
+                timestamp: patient.created_at ?? patient.created_at ?? new Date().toISOString(),
+                status: "Completed",
             });
         }
 
         // Consultations
         consultations?.forEach((c: any) => {
             const desc = [
-                c.symptoms  ? `Symptoms: ${c.symptoms.slice(0, 120)}${c.symptoms.length > 120 ? "…" : ""}` : null,
+                c.symptoms ? `Symptoms: ${c.symptoms.slice(0, 120)}${c.symptoms.length > 120 ? "…" : ""}` : null,
                 c.diagnosis ? `Assessment: ${c.diagnosis.slice(0, 80)}${c.diagnosis.length > 80 ? "…" : ""}` : null,
             ].filter(Boolean).join(" · ");
             events.push({
-                id:          c.id ?? c.$id,
-                type:        "consultation",
-                title:       "Doctor Consultation",
+                id: c.id ?? c.$id,
+                type: "consultation",
+                title: "Doctor Consultation",
                 description: desc || "Consultation recorded.",
-                timestamp:   c.created_at ?? c.consultationDate,
-                status:      c.status,
-                meta:        c.referred_to ? `Referred → ${c.referred_to.replace(/-/g, " ")}` : undefined,
+                timestamp: c.created_at ?? c.consultationDate,
+                status: c.status,
+                meta: c.referred_to ? `Referred → ${c.referred_to.replace(/-/g, " ")}` : undefined,
             });
         });
 
@@ -201,13 +196,13 @@ export default function PatientTimelinePage() {
             ?.filter((r: any) => !String(r.test_type ?? "").startsWith("[RADIOLOGY]"))
             .forEach((r: any) => {
                 events.push({
-                    id:          r.id ?? r.$id,
-                    type:        "lab",
-                    title:       r.test_type ?? "Lab Test",
+                    id: r.id ?? r.$id,
+                    type: "lab",
+                    title: r.test_type ?? "Lab Test",
                     description: r.notes ? `Clinical indication: ${r.notes}` : r.result ? `Result: ${r.result.slice(0, 100)}` : "Lab investigation requested.",
-                    timestamp:   r.created_at,
-                    status:      r.status,
-                    meta:        r.status === "completed" && r.completed_at ? `Completed: ${fmtFull(r.completed_at)}` : `Priority: ${r.priority ?? "routine"}`,
+                    timestamp: r.created_at,
+                    status: r.status,
+                    meta: r.status === "completed" && r.completed_at ? `Completed: ${fmtFull(r.completed_at)}` : `Priority: ${r.priority ?? "routine"}`,
                 });
             });
 
@@ -217,38 +212,38 @@ export default function PatientTimelinePage() {
             .forEach((r: any) => {
                 const clean = r.test_type.replace(/^\[RADIOLOGY\]\s*/, "");
                 events.push({
-                    id:          `rad-${r.id}`,
-                    type:        "radiology",
-                    title:       clean,
+                    id: `rad-${r.id}`,
+                    type: "radiology",
+                    title: clean,
                     description: r.notes ? `Clinical indication: ${r.notes}` : r.result ? r.result.slice(0, 150) : "Radiology investigation requested.",
-                    timestamp:   r.created_at,
-                    status:      r.status,
-                    meta:        r.status === "completed" ? "Report filed" : `Priority: ${r.priority ?? "routine"}`,
+                    timestamp: r.created_at,
+                    status: r.status,
+                    meta: r.status === "completed" ? "Report filed" : `Priority: ${r.priority ?? "routine"}`,
                 });
             });
 
         // Nursing
         nursing?.forEach((a: any) => {
             events.push({
-                id:          a.id ?? a.$id,
-                type:        "nursing",
-                title:       `Nursing: ${a.action_type ?? "Care"}`,
+                id: a.id ?? a.$id,
+                type: "nursing",
+                title: `Nursing: ${a.action_type ?? "Care"}`,
                 description: a.description ?? "Nursing action performed.",
-                timestamp:   a.created_at,
-                status:      a.status,
-                meta:        a.completion_time ? `Completed: ${fmtFull(a.completion_time)}` : undefined,
+                timestamp: a.created_at,
+                status: a.status,
+                meta: a.completion_time ? `Completed: ${fmtFull(a.completion_time)}` : undefined,
             });
         });
 
         // Payments
         payments?.forEach((p: any) => {
             events.push({
-                id:          p.id ?? p.$id,
-                type:        "payment",
-                title:       "Payment",
+                id: p.id ?? p.$id,
+                type: "payment",
+                title: "Payment",
                 description: `₦${Number(p.amount ?? 0).toLocaleString("en-NG")} — ${p.payment_method ?? p.paymentMethod ?? "—"}`,
-                timestamp:   p.created_at,
-                status:      p.status,
+                timestamp: p.created_at,
+                status: p.status,
             });
         });
 
@@ -259,7 +254,7 @@ export default function PatientTimelinePage() {
 
     const filtered = useMemo(() =>
         activeFilter ? allEvents.filter(e => e.type === activeFilter) : allEvents
-    , [allEvents, activeFilter]);
+        , [allEvents, activeFilter]);
 
     const typeCounts = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -309,9 +304,9 @@ export default function PatientTimelinePage() {
                         <div className="flex-1 min-w-0">
                             <p className="text-base font-black text-gray-900">{patient.name}</p>
                             <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                {patient.gender    && <span className="text-xs text-gray-500 font-medium capitalize">{patient.gender}</span>}
+                                {patient.gender && <span className="text-xs text-gray-500 font-medium capitalize">{patient.gender}</span>}
                                 {patient.birth_date && <span className="text-xs text-gray-500 font-medium">{calcAge(patient.birth_date)}</span>}
-                                {patient.blood_group   && (
+                                {patient.blood_group && (
                                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">
                                         {patient.blood_group}
                                     </span>

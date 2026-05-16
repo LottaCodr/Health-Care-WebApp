@@ -161,15 +161,15 @@ export default function PatientRecordPage({ patient }: Props) {
                     <InfoGrid items={[
                         { label: "Date of Birth", value: fmt(patient.birth_date) },
                         { label: "Gender", value: patient.gender },
-                        { label: "Blood Group", value: patient.blood_group ?? patient.blood_group },
-                        { label: "Genotype", value: patient.geno_type ?? patient.geno_type },
+                        { label: "Blood Group", value: patient.blood_group },
+                        { label: "Genotype", value: patient.geno_type },
                         { label: "Phone", value: patient.phone },
                         { label: "Email", value: patient.email },
                         { label: "Occupation", value: patient.occupation },
-                        { label: "Religion", value: patient.city },
+                        { label: "Religion", value: patient.religion },
                         { label: "Address", value: patient.address },
                         { label: "Allergies", value: patient.allergies, red: true },
-                        { label: "Medical History", value: patient.significant_medication_history ?? patient.significant_medication_history },
+                        { label: "Medical History", value: patient.significant_medication_history },
                         { label: "Long-term Meds", value: patient.long_term_medication },
                     ]} />
                 </Section>

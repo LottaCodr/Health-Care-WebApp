@@ -1,20 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { Patient } from "@/types/models";
+import { Patient, PatientStatus } from "@/types/models";
 import { Staff } from "@/actions/staff/types";
-
-export type PatientStatus =
-    | 'registered'
-    | 'awaiting-consultation'
-    | 'under-consultation'
-    | 'sent-to-nurse'
-    | 'sent-to-lab'
-    | 'sent-to-pharmacy'
-    | 'awaiting-payment'
-    | 'admitted'
-    | 'under-observation'
-    | 'discharged'
-    | 'no-status';
 
 export interface SortConfig {
     key: keyof Patient;
@@ -51,7 +38,7 @@ type PatientStore = PatientState & PatientActions;
 const initialState: PatientState = {
     patient: [],
     notes: "",
-    status: "no-status",
+    status: PatientStatus.NoStatus,
     recipientRole: "",
     recipientName: "",
     loading: false,
@@ -79,7 +66,7 @@ export const usePatientStore = create<PatientStore>()(
             setLoading: (loading) => set({ loading }),
             resetForm: () => set({
                 notes: '',
-                status: 'no-status',
+                status: PatientStatus.NoStatus,
                 recipientName: '',
                 recipientRole: '',
                 loading: false,

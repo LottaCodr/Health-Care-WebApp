@@ -251,10 +251,10 @@ export async function getAIPatientSummary(input: {
         name: string;
         age?: number;
         gender?: string;
-        bloodGroup?: string;
-        genoType?: string;
+        blood_group?: string;
+        geno_type?: string;
         allergies?: string;
-        medicalHistory?: string;
+        significant_medication_history?: string;
         currentMeds?: string;
     };
     consultations?: { symptoms: string; diagnosis: string; date: string }[];
@@ -290,9 +290,9 @@ Return ONLY the JSON, no markdown.`;
 
     const message = `
 Patient: ${input.patient.name}, ${input.patient.gender ?? "Unknown"}, ${input.patient.age ? `${input.patient.age} years` : "age unknown"}
-Blood Group: ${input.patient.bloodGroup ?? "—"} | Genotype: ${input.patient.genoType ?? "—"}
+Blood Group: ${input.patient.blood_group ?? "—"} | Genotype: ${input.patient.geno_type ?? "—"}
 Allergies: ${input.patient.allergies ?? "None documented"}
-Medical History: ${input.patient.medicalHistory ?? "None documented"}
+Medical History: ${input.patient.significant_medication_history ?? "None documented"}
 
 ${input.vitals ? `Latest Vitals (${input.vitals.date}):
 BP: ${input.vitals.bloodPressure ?? "—"} | Temp: ${input.vitals.temperature ?? "—"} | Pulse: ${input.vitals.pulse ?? "—"}` : ""}

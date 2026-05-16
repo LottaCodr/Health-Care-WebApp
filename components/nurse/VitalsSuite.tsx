@@ -124,7 +124,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
             updatePatientStatusMutation.mutate({
                 id: patientId,
                 
-                    status: "AwaitingNextStep" as any,
+                    status: "awaiting-consultation" as any,
                 
             });
 
