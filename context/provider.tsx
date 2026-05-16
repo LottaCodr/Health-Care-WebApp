@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./auth-provider";
-// import { ErrorBoundary } from "@/components/error-boundary";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useState } from "react";
 
 export function useStableQueryClient() {
@@ -37,12 +37,12 @@ export function Providers({ children }: ProvidersProps) {
 
 
   return (
-    // <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </QueryClientProvider>
-    // </ErrorBoundary>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
