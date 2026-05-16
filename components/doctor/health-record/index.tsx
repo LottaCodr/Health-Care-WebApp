@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { getAllPatients } from "@/lib/supabase-service";
+import { useAllPatients } from "@/hooks/emr/use-patients";
 import { useRoleProtection } from "@/lib/role-utils";
+import Link from "next/link";
 import { UserRole } from "@/types/models";
 import {
     Search, X, Download, FileText, User, Calendar,
@@ -188,10 +187,7 @@ function PatientRow({ patient }: { patient: any }) {
 
 export default function HealthRecordsComponent() {
     const { authorized } = useRoleProtection([UserRole.Doctor, UserRole.Admin]);
-    const { data: patients, isLoading, isError, refetch } = useQuery({
-        queryKey: ["all-patients"],
-        queryFn: getAllPatients,
-    });
+    const { data: patients, isLoading, isError, refetch } = useAllPatients();
 
     const [search, setSearch] = useState("");
     const [gender, setGender] = useState("all");

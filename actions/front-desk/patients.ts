@@ -1,48 +1,11 @@
 
 
-import { Patient, PatientStatus } from "@/context/patients/types";
+import { Patient, PatientStatus } from "@/types/models";
 import supabase from "@/utils/supabase/client";
 
 
 // ✅ Centralized field list
-const PATIENT_SELECT = `
-  id,
-  created_at,
-  updated_at,
-  name,
-  religion,
-  email,
-  phone,
-  birth_date,
-  gender,
-  occupation,
-  address,
-  emergency_contact_name,
-  emergency_contact_number,
-  emergency_contact_relationship,
-  emergency_contact_email,
-  emergency_contact_address,
-  allergies,
-  current_medication,
-  significant_medication_history,
-  long_term_medication,
-  covid_vaccination_options,
-  blood_group,
-  geno_type,
-  policy_number,
-  hmo,
-  hmo_name,
-  company,
-  company_name,
-  private_client,
-  status,
-  user_id,
-  notes,
-  symptoms,
-  diagnosis,
-  prescriptions,
-  recommendations
-`;
+const PATIENT_SELECT = "*";
 
 // ✅ Mapper: DB → Patient type
 function mapPatient(row: any): Patient {

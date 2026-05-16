@@ -1,17 +1,13 @@
-
-
-import AppointmentBookingComponent from '@/components/front-desk/components/appointment/appointment-booking'
+import ComingSoon from '@/components/ui/coming-soon'
 import React from 'react'
 
-
-
-
-const AppointmentsPage = async () => {
-
-
+const AppointmentBookingPage = async () => {
     return (
-        <AppointmentBookingComponent />
+        <ComingSoon 
+            title="Appointment Booking" 
+            description="The front-desk appointment booking system is being upgraded to a more efficient version."
+        />
     )
 }
 
-export default AppointmentsPage
+export default AppointmentBookingPage

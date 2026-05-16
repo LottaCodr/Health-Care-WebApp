@@ -66,7 +66,7 @@ function LoginForm(props: {
 
             fireConfetti();
             const next = searchParams.get("next") || getDashboardRoute(result.staff?.role);
-            router.push(next); // Switched from window.location.href for smoother transition
+            router.replace(next); 
         } catch (err) {
             setError(err instanceof Error ? err.message : "Login failed. Please try again.");
             setLoading(false);

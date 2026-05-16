@@ -132,7 +132,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const login = async (email: string, password: string) => {
-        setIsLoading(true);
         isAuthenticatingRef.current = true; // Block onAuthStateChange from double-fetching
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -141,7 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             if (error) {
-                setIsLoading(false);
                 return { success: false, message: error.message };
             }
 
@@ -152,7 +150,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // the user as authenticated. This keeps post-login redirects reliable.
                 if (!staffResult.success || !staffResult.profile?.role) {
                     setUser(null);
-                    setIsLoading(false);
                     return {
                         success: false,
                         message:
@@ -163,7 +160,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 const profile = buildProfile(data.user, staffResult.profile);
                 setUser(profile);
-                setIsLoading(false);
 
                 console.log("staff detail", staffResult, profile);
 
@@ -177,7 +173,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             throw new Error("Login failed");
         } catch (error) {
             const message = error instanceof Error ? error.message : "Login failed";
-            setIsLoading(false);
             return { success: false, message };
         } finally {
             isAuthenticatingRef.current = false;
