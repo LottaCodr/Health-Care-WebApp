@@ -148,7 +148,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     return (
         <div className="space-y-8">
             {success && <SuccessAlert message={success} />}
-            {patient && <PatientInfoCard patient={patient} />}
+            {/* {patient && <PatientInfoCard patient={patient} />} */}
 
             <form
                 onSubmit={handleSubmit}
