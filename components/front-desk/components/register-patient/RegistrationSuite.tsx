@@ -210,7 +210,7 @@ export default function RegistrationSuite() {
         name: v.name,
         email: v.email,
         phone: v.phone,
-        date_of_birth: v.birthDate,
+        birth_date: v.birthDate,
         gender: v.gender,
         address: v.address,
         occupation: v.occupation,
@@ -237,7 +237,7 @@ export default function RegistrationSuite() {
         company_name: v.companyName,
         private_client: v.privateClient,
         // Meta
-        created_by: user?.id ?? null,
+        user_id: user?.id ?? null,
         // Paediatric (only if child)
         ...(isChild ? {
           child_class: childClass || null,
