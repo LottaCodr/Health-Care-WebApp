@@ -125,6 +125,6 @@ export async function submitRadiologyReport(
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-export function stripRadiologyPrefix(testType: string): string {
-    return testType.replace(/^\[RADIOLOGY\]\s*/, "");
+export async function stripRadiologyPrefix(testType: string): Promise<string> {
+    return  testType.replace(/^\[RADIOLOGY\]\s*/, "");
 }

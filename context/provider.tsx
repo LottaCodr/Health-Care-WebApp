@@ -38,13 +38,11 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     // <ErrorBoundary>
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        {/* <AppointmentProvider> */}
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
         {children}
-        {/* </AppointmentProvider> */}
-      </QueryClientProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </QueryClientProvider>
     // </ErrorBoundary>
   );
 }
