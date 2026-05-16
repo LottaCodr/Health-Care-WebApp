@@ -17,7 +17,7 @@ const PREFIX = "[RADIOLOGY]";
 const SELECT = `
     *,
     patients!lab_requests_visit_id_fkey(
-        id, name, phone, gender, date_of_birth,
+        id, name, phone, gender, birth_date,
         allergies, significant_medication_history
     )
 `.trim();

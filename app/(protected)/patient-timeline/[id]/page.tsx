@@ -310,7 +310,7 @@ export default function PatientTimelinePage() {
                             <p className="text-base font-black text-gray-900">{patient.name}</p>
                             <div className="flex items-center gap-3 mt-1 flex-wrap">
                                 {patient.gender    && <span className="text-xs text-gray-500 font-medium capitalize">{patient.gender}</span>}
-                                {patient.date_of_birth && <span className="text-xs text-gray-500 font-medium">{calcAge(patient.date_of_birth)}</span>}
+                                {patient.birth_date && <span className="text-xs text-gray-500 font-medium">{calcAge(patient.birth_date)}</span>}
                                 {patient.blood_group   && (
                                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">
                                         {patient.blood_group}

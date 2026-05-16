@@ -237,7 +237,7 @@ export default function PatientDetailTabs({
   );
 
   // Patient age calculation
-  const age = calculateAge(patient?.date_of_birth!);
+  const age = calculateAge(patient?.birth_date!);
 
   // Set up context and patient state when patient changes
   useEffect(() => {

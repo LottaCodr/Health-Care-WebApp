@@ -37,26 +37,20 @@ export interface Patient {
     email: string;
     phone: string;
     gender: "Male" | "Female" | "Other";
-    dateOfBirth: string;
-    date_of_birth?: string;
+    birth_date: string;
     address: string;
     occupation?: string;
     city: string;
     state: string;
-    bloodGroup: string;
-    blood_group?: string;
+    blood_group: string;
     geno_type: string;
     allergies: string;
-    medicalHistory: string;
-    medical_history?: string;
-    emergencyContactName: string;
-    emergency_contact_name?: string;
+    medical_history: string;
+    emergency_contact_name: string;
     emergency_contact_email?: string;
     emergency_contact_address?: string;
-    emergencyContactPhone: string;
-    emergency_contact_phone?: string;
-    emergencyContactRelationship: string;
-    emergency_contact_relationship?: string;
+    emergency_contact_number: string;
+    emergency_contact_relationship: string;
     current_medication?: string;
     long_term_medication?: string;
     significant_medication_history?: string;
@@ -68,10 +62,8 @@ export interface Patient {
     company_name?: string;
     private_client?: boolean;
     status: PatientStatus;
-    registrationDate: string;
-    registration_date?: string;
-    registeredBy: string; // Staff ID (Front Desk)
-    registered_by?: string;
+    registration_date: string;
+    registered_by: string; // Staff ID (Front Desk)
     notes: string;
     created_at?: string;
     updated_at?: string;

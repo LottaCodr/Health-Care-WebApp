@@ -1,7 +1,14 @@
 "use server";
 
-
 import { createClient } from "@/utils/supabase/server";
+
+// PostgREST join — requires nursing_actions_patient_id_fkey to exist (see migration)
+const SELECT_WITH_PATIENT = `
+    *,
+    patients!nursing_actions_patient_id_fkey(
+        id, name, phone, gender, birth_date, blood_group, allergies
+    )
+`.trim();
 
 export interface CreateNursingActionInput {
     patientId: string;
@@ -20,9 +27,7 @@ export interface UpdateNursingActionInput {
     completionTime?: string;
 }
 
-export async function createNursingAction(
-    input: CreateNursingActionInput
-) {
+export async function createNursingAction(input: CreateNursingActionInput) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")
@@ -46,7 +51,7 @@ export async function getNursingActionById(id: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")
-        .select("*")
+        .select(SELECT_WITH_PATIENT)
         .eq("id", id)
         .single();
 
@@ -70,18 +75,27 @@ export async function listPendingNursingActions() {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")
-        .select("*")
+        .select(SELECT_WITH_PATIENT)          // ← includes patient name/phone
         .in("status", ["Pending", "InProgress"])
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });   // oldest first → FIFO
 
     if (error) { console.error("[nursing] listPending:", error); return []; }
     return data;
 }
 
-export async function updateNursingAction(
-    id: string,
-    input: UpdateNursingActionInput
-) {
+export async function listCompletedNursingActions() {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("nursing_actions")
+        .select(SELECT_WITH_PATIENT)
+        .eq("status", "Completed")
+        .order("completion_time", { ascending: false });
+
+    if (error) { console.error("[nursing] listCompleted:", error); return []; }
+    return data;
+}
+
+export async function updateNursingAction(id: string, input: UpdateNursingActionInput) {
     const supabase = await createClient();
     const mapped: Record<string, any> = {};
     if (input.status !== undefined) mapped.status = input.status;

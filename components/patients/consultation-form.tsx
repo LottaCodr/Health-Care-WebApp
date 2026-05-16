@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useConsultationStore, RequestPriority } from "@/store/consultation-store";
 import { useAuth } from "@/context/auth-provider";

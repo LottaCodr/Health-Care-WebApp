@@ -70,7 +70,7 @@ function exportToPDF(patients: any[]) {
     const rows = patients.map(p => `
         <tr>
             <td>${p.name ?? "—"}</td>
-            <td>${calcAge(p.date_of_birth)}</td>
+            <td>${calcAge(p.birth_date)}</td>
             <td>${p.gender ?? "—"}</td>
             <td>${p.phone ?? "—"}</td>
             <td>${p.blood_group ?? "—"} / ${p.geno_type ?? "—"}</td>
@@ -108,9 +108,9 @@ function exportToCSV(patients: any[]) {
     const headers = ["Name", "Age", "Gender", "DOB", "Phone", "Email", "Blood Group", "Genotype", "Allergies", "Status", "Registered"];
     const rows = patients.map(p => [
         p.name ?? "",
-        calcAge(p.date_of_birth),
+        calcAge(p.birth_date),
         p.gender ?? "",
-        fmt(p.date_of_birth),
+        fmt(p.birth_date),
         p.phone ?? "",
         p.email ?? "",
         p.blood_group ?? "",
@@ -132,7 +132,7 @@ function exportToCSV(patients: any[]) {
 // ─── Patient row ──────────────────────────────────────────────────────────────
 
 function PatientRow({ patient }: { patient: any }) {
-    const child = isChild(patient.date_of_birth);
+    const child = isChild(patient.birth_date);
     return (
         <tr className="group hover:bg-gray-50/80 transition-colors">
             <td className="px-4 py-3.5">
@@ -148,8 +148,8 @@ function PatientRow({ patient }: { patient: any }) {
                 </div>
             </td>
             <td className="px-4 py-3.5">
-                <p className="text-sm font-semibold text-gray-700">{calcAge(patient.date_of_birth)}</p>
-                <p className="text-[10px] text-gray-400">{fmt(patient.date_of_birth)}</p>
+                <p className="text-sm font-semibold text-gray-700">{calcAge(patient.birth_date)}</p>
+                <p className="text-[10px] text-gray-400">{fmt(patient.birth_date)}</p>
             </td>
             <td className="px-4 py-3.5 text-sm font-medium text-gray-600 capitalize">{patient.gender ?? "—"}</td>
             <td className="px-4 py-3.5">
@@ -218,10 +218,10 @@ export default function HealthRecordsComponent() {
                     (p.id ?? "").toLowerCase().includes(search.toLowerCase());
                 const matchGender = gender === "all" || (p.gender ?? "").toLowerCase() === gender;
                 const matchStatus = status === "all" || p.status === status;
-                const age = parseInt(calcAge(p.date_of_birth));
+                const age = parseInt(calcAge(p.birth_date));
                 const matchAge = ageGroup === "all" ||
-                    (ageGroup === "child" && isChild(p.date_of_birth)) ||
-                    (ageGroup === "adult" && !isChild(p.date_of_birth));
+                    (ageGroup === "child" && isChild(p.birth_date)) ||
+                    (ageGroup === "adult" && !isChild(p.birth_date));
                 return matchSearch && matchGender && matchStatus && matchAge;
             })
             .sort((a: any, b: any) => {

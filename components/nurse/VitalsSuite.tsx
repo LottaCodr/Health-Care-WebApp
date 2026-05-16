@@ -52,7 +52,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     const createActionMutation = useCreateNursingAction();
     const {mutate: updateActionMutation, isPending} = useUpdateNursingAction();
     const updatePatientStatusMutation = useUpdatePatientStatus();
-    const age = calculateAge(patient?.date_of_birth!)
+    const age = calculateAge(patient?.birth_date!)
 
     if (!authorized) return null;
 

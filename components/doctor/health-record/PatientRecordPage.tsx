@@ -8,7 +8,7 @@ import {
     usePrescriptionsByPatient,
     useLabRequestsByPatient,
     useNursingActionsByPatient,
-} from "@/hooks/use-emr";
+} from "@/hooks/emr/use-emr";
 import {
     Printer, Download, User, Phone, Mail, Droplets,
     Dna, AlertCircle, MapPin, Calendar, Stethoscope,
@@ -159,9 +159,9 @@ export default function PatientRecordPage({ patient }: Props) {
                         </div>
                     </div>
                     <InfoGrid items={[
-                        { label: "Date of Birth", value: fmt(patient.date_of_birth) },
+                        { label: "Date of Birth", value: fmt(patient.birth_date) },
                         { label: "Gender", value: patient.gender },
-                        { label: "Blood Group", value: patient.blood_group ?? patient.bloodGroup },
+                        { label: "Blood Group", value: patient.blood_group ?? patient.blood_group },
                         { label: "Genotype", value: patient.geno_type ?? patient.geno_type },
                         { label: "Phone", value: patient.phone },
                         { label: "Email", value: patient.email },
@@ -169,7 +169,7 @@ export default function PatientRecordPage({ patient }: Props) {
                         { label: "Religion", value: patient.city },
                         { label: "Address", value: patient.address },
                         { label: "Allergies", value: patient.allergies, red: true },
-                        { label: "Medical History", value: patient.significant_medication_history ?? patient.medicalHistory },
+                        { label: "Medical History", value: patient.significant_medication_history ?? patient.significant_medication_history },
                         { label: "Long-term Meds", value: patient.long_term_medication },
                     ]} />
                 </Section>

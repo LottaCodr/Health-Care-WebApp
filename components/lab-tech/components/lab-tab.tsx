@@ -34,7 +34,7 @@ function PriorityBadge({ priority }: { priority?: string }) {
 
 function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
 
-    const age = calculateAge(patient?.date_of_birth!)
+    const age = calculateAge(patient?.birth_date!)
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 

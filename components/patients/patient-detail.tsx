@@ -124,7 +124,7 @@ function PatientProfile({
         basic: [
             { label: "Full Name",   icon: <User size={14} />,      value: patient.name },
             { label: "Gender",      icon: <User size={14} />,      value: patient.gender },
-            { label: "Birth Date",  icon: <Baby size={14} />,      value: patient.date_of_birth ? new Date(patient.date_of_birth).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null },
+            { label: "Birth Date",  icon: <Baby size={14} />,      value: patient.birth_date ? new Date(patient.birth_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null },
             { label: "Religion",    icon: <BookUser size={14} />,  value: p.religion },
             { label: "Occupation",  icon: <Briefcase size={14} />, value: patient.occupation },
             { label: "Email",       icon: <Mail size={14} />,      value: patient.email },
@@ -151,14 +151,14 @@ function PatientProfile({
         ],
         emergency: [
             { label: "Name", icon: <User size={14} />, value: patient.emergency_contact_name },
-            { label: "Phone", icon: <Phone size={14} />, value: patient.emergency_contact_phone },
+            { label: "Phone", icon: <Phone size={14} />, value: patient.emergency_contact_number },
             { label: "Relationship", icon: <BookUser size={14} />, value: patient.emergency_contact_relationship },
             { label: "Email", icon: <Mail size={14} />, value: patient.emergency_contact_email },
             { label: "Address", icon: <MapPin size={14} />, value: patient.emergency_contact_address },
         ],
         medical: [
             { label: "Allergies",                    icon: <ShieldAlert size={14} />, value: patient.allergies },
-            { label: "Blood Group",                  icon: <Droplets size={14} />,   value: patient.bloodGroup },
+            { label: "Blood Group",                  icon: <Droplets size={14} />,   value: patient.blood_group },
             { label: "Genotype",                     icon: <Dna size={14} />,        value: patient.geno_type },
             { label: "Current Medication",           icon: <Pill size={14} />,       value: patient.current_medication },
             { label: "Long-Term Medication", icon: <Pill size={14} />, value: patient.long_term_medication },
@@ -216,9 +216,9 @@ function PatientProfile({
                                     {patient.gender}
                                 </span>
                             )}
-                            {patient.date_of_birth && (
+                            {patient.birth_date && (
                                 <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
-                                    DOB: {new Date(patient.date_of_birth).toLocaleDateString()}
+                                    DOB: {new Date(patient.birth_date).toLocaleDateString()}
                                 </span>
                             )}
                         </div>

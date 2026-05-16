@@ -64,8 +64,7 @@ function LoginForm(props: {
                 return;
             }
 
-            fireConfetti();                           // ← fire before redirect
-            await new Promise((r) => setTimeout(r, 600)); // Reduced from 1200ms
+            fireConfetti();
             const next = searchParams.get("next") || getDashboardRoute(result.staff?.role);
             router.push(next); // Switched from window.location.href for smoother transition
         } catch (err) {
