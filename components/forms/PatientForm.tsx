@@ -34,7 +34,7 @@ type QuickRegisterValues = z.infer<typeof QuickRegisterSchema>;
 
 const PatientForm = () => {
   const router = useRouter();
-  const { mutate: createPatient } = useCreatePatient();
+  const { mutateAsync: createPatient } = useCreatePatient();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<QuickRegisterValues>({
