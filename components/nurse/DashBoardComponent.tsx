@@ -139,7 +139,7 @@ export default function NurseDashboard() {
                             return (
                                 <Link
                                     key={patient.id}
-                                    href={`/nurse/patient/${patient.id}`}
+                                    href={`/nurse/queue/patient/${patient.id}`}
                                     className="group flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-teal-100 hover:shadow-sm transition-all"
                                 >
                                     {/* Queue number */}

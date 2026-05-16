@@ -37,7 +37,7 @@ const ROLE_STATUSES: Record<string, string[] | null> = {
 const ROLE_ROUTES: Record<string, (id: string) => string> = {
     // Frontdesk: (id) => `/front-desk/patient/${id}`,
     Doctor: (id) => `/doctor/patients/${id}`,
-    Nurse: (id) => `/nurse/queue/   patient/${id}`,
+    Nurse: (id) => `/nurse/queue/patient/${id}`,
     Labtech: (id) => `/lab-tech/requests/patient/${id}`,
     Pharmacist: (id) => `/pharmacist/queue/patient/${id}`,
     Radiologist: (id) => `/radiology/requests/patient/${id}`,
