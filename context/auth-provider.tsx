@@ -1,9 +1,18 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
 import supabase from "@/utils/supabase/client";
 import { fetchStaffProfile } from "@/actions/staff/staff";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFrontDeskStore } from "@/store/frontdesk-store";
+import { useLabStore } from "@/store/lab-store";
+import { useRadiologyStore } from "@/store/radiology-store";
+import { useVitalsStore } from "@/store/vitals-store";
+import { useConsultationStore } from "@/store/consultation-store";
+import { usePharmacyStore } from "@/store/pharmacy-store";
+import { usePatientStore } from "@/store/patient-store";
+import { useCacheStore } from "@/store/store";
 
 interface AuthContextType {
     user: any | null;
@@ -23,6 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const isAuthenticatingRef = useRef(false);
 
     // Normalize role strings
     const normalizeRole = (role: any): string => {
@@ -93,10 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         initSession();
-
+        
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
+            async (event, session) => {
+                // If we are currently in the middle of a manual login() call, 
+                // ignore this event to prevent double-fetching the profile.
+                if (isAuthenticatingRef.current) return;
+
                 const authUser = session?.user ?? (await getAuthUserSafely());
 
                 if (authUser) {
@@ -106,6 +121,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 } else {
                     setUser(null);
                 }
+                
+                if (event === "SIGNED_OUT") {
+                    setIsLoading(false);
+                }
             }
         );
 
@@ -114,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (email: string, password: string) => {
         setIsLoading(true);
+        isAuthenticatingRef.current = true; // Block onAuthStateChange from double-fetching
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
@@ -159,17 +179,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const message = error instanceof Error ? error.message : "Login failed";
             setIsLoading(false);
             return { success: false, message };
+        } finally {
+            isAuthenticatingRef.current = false;
         }
     };
 
     const logout = async () => {
         try {
             await supabase.auth.signOut();
+            
+            // 1. Clear UI state
             setUser(null);
-            router.push("/login");
+            
+            // 2. Clear TanStack Query cache (Removes all patient/staff data from memory)
+            queryClient.clear();
+            
+            // 3. Reset Zustand stores (Clears transient form state)
+            useFrontDeskStore.getState().resetForm();
+            useLabStore.getState().resetAll();
+            useRadiologyStore.getState().resetAll();
+            useVitalsStore.getState().resetForm();
+            useConsultationStore.getState().resetForm();
+            usePharmacyStore.getState().resetForm();
+            usePatientStore.getState().resetForm();
+            useCacheStore.getState().clear();
+            
+            // 4. Immediate redirect
+            router.replace("/login");
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Logout failed";
-            throw error;
+            console.error("Logout error:", error);
+            router.replace("/login");
         }
     };
 

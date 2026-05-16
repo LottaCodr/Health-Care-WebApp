@@ -37,6 +37,7 @@ function LoginForm(props: {
     } = props;
 
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     // create confetti when user logs in
     const fireConfetti = () => {
@@ -64,9 +65,9 @@ function LoginForm(props: {
             }
 
             fireConfetti();                           // ← fire before redirect
-            await new Promise((r) => setTimeout(r, 1200));
+            await new Promise((r) => setTimeout(r, 600)); // Reduced from 1200ms
             const next = searchParams.get("next") || getDashboardRoute(result.staff?.role);
-            window.location.href = next;
+            router.push(next); // Switched from window.location.href for smoother transition
         } catch (err) {
             setError(err instanceof Error ? err.message : "Login failed. Please try again.");
             setLoading(false);
