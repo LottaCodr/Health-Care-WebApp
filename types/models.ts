@@ -293,7 +293,12 @@ export interface DrugInventoryItem {
     unit: string;
     quantity: number;
     reorder_level: number;
-    unit_price: number;
+    price: number;
+    cost_price?: number;
+    manufacturer?: string;
+    dosage_form?: string;
+    strength?: string;
+    requires_prescription?: boolean;
     supplier?: string;
     expiry_date?: string;
     batch_number?: string;

@@ -10,7 +10,13 @@ import {
     AlertTriangle, TrendingDown, ShieldAlert,
     ToggleLeft, ToggleRight, ArrowUpCircle, Filter,
 } from "lucide-react";
-import { useDrugCatalog, useToggleDrugActive } from "@/hooks/emr/use-pharmacy";
+import {
+    useDrugCatalog,
+    useToggleDrugActive,
+    useUpsertDrug,
+    useDeleteDrug,
+    useRestockDrug,
+} from "@/hooks/emr/use-pharmacy";
 import { usePharmacyStore, Drug, ViewMode } from "@/store/pharmacy-store";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,7 +54,7 @@ const EMPTY: Partial<Drug> = {
 function DrugModal({ drug, onClose, onSaved }: {
     drug?: Drug | null; onClose: () => void; onSaved: () => void;
 }) {
-    const { mutate: upsert, loading } = useUpsertDrug();
+    const { mutateAsync: upsert, isPending: loading } = useUpsertDrug();
     const isEdit = !!drug;
     const [form, setForm] = useState<Partial<Drug>>(drug ? { ...drug } : { ...EMPTY });
     const set = (k: keyof Drug, v: any) => setForm(p => ({ ...p, [k]: v }));
@@ -57,9 +63,13 @@ function DrugModal({ drug, onClose, onSaved }: {
         if (!form.drug_name?.trim()) { toast.error("Drug name is required."); return; }
         if (!form.price || form.price < 0) { toast.error("Selling price is required."); return; }
         try {
-            await upsert(form as Record<string, any>, isEdit ? drug!.id : undefined);
+            await upsert({
+                drug: form,
+                id: isEdit ? drug!.id : undefined,
+            });
             toast.success(isEdit ? "Drug updated." : "Drug added to catalog.");
-            onSaved(); onClose();
+            onSaved();
+            onClose();
         } catch (err: any) { toast.error(err?.message ?? "Failed to save."); }
     };
 
@@ -193,7 +203,7 @@ function DrugModal({ drug, onClose, onSaved }: {
 // ─── Restock Modal (from original PharmacistInventory) ────────────────────────
 
 function RestockModal({ drug, onClose, onSaved }: { drug: Drug; onClose: () => void; onSaved: () => void }) {
-    const { mutate: update } = useUpdateDrugInventoryItem();
+    const { mutateAsync: restock } = useRestockDrug();
     const [qty, setQty] = useState("");
     const [saving, setSaving] = useState(false);
 
@@ -202,9 +212,13 @@ function RestockModal({ drug, onClose, onSaved }: { drug: Drug; onClose: () => v
         if (isNaN(add) || add <= 0) { toast.error("Enter a valid quantity."); return; }
         setSaving(true);
         try {
-            await update(drug.id, { quantity: drug.quantity + add });
+            await restock({
+                id: drug.id,
+                qty: add,
+            });
             toast.success(`Restocked ${drug.drug_name} with ${add} ${drug.unit}.`);
-            onSaved(); onClose();
+            onSaved();
+            onClose();
         } catch { toast.error("Failed to restock."); }
         finally { setSaving(false); }
     };
@@ -253,9 +267,14 @@ function RestockModal({ drug, onClose, onSaved }: { drug: Drug; onClose: () => v
 // ─── Delete confirm ────────────────────────────────────────────────────────────
 
 function DeleteModal({ drug, onClose, onDeleted }: { drug: Drug; onClose: () => void; onDeleted: () => void }) {
-    const { mutate: remove, loading } = useDeleteDrug();
+    const { mutateAsync: remove, isPending: loading } = useDeleteDrug();
     const handleDelete = async () => {
-        try { await remove(drug.id); toast.success(`${drug.drug_name} removed.`); onDeleted(); onClose(); }
+        try {
+            await remove(drug.id);
+            toast.success(`${drug.drug_name} removed.`);
+            onDeleted();
+            onClose();
+        }
         catch (err: any) { toast.error(err?.message ?? "Failed."); }
     };
     return (
@@ -537,16 +556,3 @@ export default function DrugManagementPage() {
     );
 }
 
-function useUpsertDrug(): { mutate: any; loading: any; } {
-    throw new Error("Function not implemented.");
-}
-
-
-function useUpdateDrugInventoryItem(): { mutate: any; } {
-    throw new Error("Function not implemented.");
-}
-
-
-function useDeleteDrug(): { mutate: any; loading: any; } {
-    throw new Error("Function not implemented.");
-}
