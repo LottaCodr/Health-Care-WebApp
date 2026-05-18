@@ -261,7 +261,7 @@ export default function LabTestCatalogPage() {
         filtered.forEach(t => {
             const cat = t.category || "Other";
             if (!map.has(cat)) map.set(cat, []);
-            map.get(cat)!.push(t);
+            map.get(cat)!.push(t as LabTest);
         });
         return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
     }, [filtered]);
