@@ -58,7 +58,7 @@ export async function updatePatientStatus(
         .single();
 
     if (error) { console.error("[patient] updatePatientStatus:", error); throw error; }
-    return data as unknown as Patient;
+    return data  as Patient;
 }
 
 export async function listPatientsByStatus(
@@ -72,7 +72,7 @@ export async function listPatientsByStatus(
         .order("created_at", { ascending: false });
 
     if (error) { console.error("[patient] listPatientsByStatus:", error); return []; }
-    return data as unknown as Patient[];
+    return data  as Patient[];
 }
 
 export async function searchPatients(query: string): Promise<Patient[]> {
@@ -84,7 +84,7 @@ export async function searchPatients(query: string): Promise<Patient[]> {
         .limit(50);
 
     if (error) { console.error("[patient] searchPatients:", error); return []; }
-    return data as unknown as Patient[];
+    return data as Patient[];
 }
 
 export async function getAllPatients(
