@@ -114,7 +114,7 @@ export async function updateLabRequest(
 // ─── Lab Test Catalog ─────────────────────────────────────────────────────────
 
 export interface LabTestCatalogItem {
-    id: string;
+    id?: string;
     test_name: string;
     test_code?: string;
     category: string;
