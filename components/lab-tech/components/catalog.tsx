@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import supabase from "@/utils/supabase/client";
 import { toast } from "sonner";
 import {
     FlaskConical, Plus, Search, X, Edit3, Trash2, Loader2,
@@ -13,6 +11,12 @@ import {
     ToggleLeft, ToggleRight, DollarSign,
 } from "lucide-react";
 import { useLabStore, type LabTest } from "@/store/lab-store";
+import {
+    useLabTestCatalog,
+    useUpsertLabTest,
+    useDeleteLabTest,
+    useToggleLabTestActive,
+} from "@/hooks/emr/use-lab";
 
 const CATEGORIES = [
     "Haematology", "Biochemistry", "Serology", "Microbiology",
@@ -35,26 +39,7 @@ const TURNAROUND_TIMES = [
 
 const fmtNaira = (n?: number) => n !== undefined ? `₦${Number(n).toLocaleString("en-NG", { minimumFractionDigits: 2 })}` : "—";
 
-async function fetchTests() {
-    const { data, error } = await supabase.from("lab_test_catalog").select("*").order("category").order("test_name");
-    if (error) throw error;
-    return (data ?? []) as LabTest[];
-}
 
-async function saveTest(test: Partial<LabTest>, id?: string) {
-    if (id) {
-        const { error } = await supabase.from("lab_test_catalog").update(test).eq("id", id);
-        if (error) throw error;
-    } else {
-        const { error } = await supabase.from("lab_test_catalog").insert([test]);
-        if (error) throw error;
-    }
-}
-
-async function deleteTest(id: string) {
-    const { error } = await supabase.from("lab_test_catalog").delete().eq("id", id);
-    if (error) throw error;
-}
 
 // ─── Test modal ────────────────────────────────────────────────────────────────
 
@@ -64,25 +49,32 @@ const EMPTY_TEST: Partial<LabTest> = {
     instructions: "", is_active: true,
 };
 
-function TestModal({ test, onClose, onSaved }: {
-    test?: LabTest | null; onClose: () => void; onSaved: () => void;
+function TestModal({
+    test,
+    onClose,
+
+}: {
+    test?: LabTest | null;
+    onClose: () => void;
+
 }) {
     const isEdit = !!test;
+    const upsertMutation = useUpsertLabTest();
     const [form, setForm] = useState<Partial<LabTest>>(test ? { ...test } : { ...EMPTY_TEST });
-    const [saving, setSaving] = useState(false);
     const set = (k: keyof LabTest, v: any) => setForm(p => ({ ...p, [k]: v }));
 
     const handleSave = async () => {
         if (!form.test_name?.trim()) { toast.error("Test name is required."); return; }
         if (!form.category?.trim()) { toast.error("Category is required."); return; }
         if (form.price === undefined || form.price < 0) { toast.error("Price is required."); return; }
-        setSaving(true);
         try {
-            await saveTest(form, isEdit ? test!.id : undefined);
+            await upsertMutation.mutateAsync({
+                test: form,
+                id: isEdit ? test!.id : undefined,
+            });
             toast.success(isEdit ? "Test updated." : "Test added to catalog.");
-            onSaved(); onClose();
+            onClose();
         } catch (err: any) { toast.error(err?.message ?? "Failed to save."); }
-        finally { setSaving(false); }
     };
 
     const inputCls = "w-full h-9 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/20 focus:border-indigo-400 focus:bg-white transition-all";
@@ -188,9 +180,9 @@ function TestModal({ test, onClose, onSaved }: {
 
                 <div className="px-6 pb-5 pt-4 border-t border-gray-50 flex gap-2 shrink-0">
                     <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">Cancel</button>
-                    <button onClick={handleSave} disabled={saving}
+                    <button onClick={handleSave} disabled={upsertMutation.isPending}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm shadow-indigo-200 transition-all disabled:opacity-60">
-                        {saving ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : <><CheckCircle2 size={13} /> {isEdit ? "Save Changes" : "Add Test"}</>}
+                        {upsertMutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : <><CheckCircle2 size={13} /> {isEdit ? "Save Changes" : "Add Test"}</>}
                     </button>
                 </div>
             </div>
@@ -200,13 +192,16 @@ function TestModal({ test, onClose, onSaved }: {
 
 // ─── Delete confirm ────────────────────────────────────────────────────────────
 
-function DeleteModal({ test, onClose, onDeleted }: { test: LabTest; onClose: () => void; onDeleted: () => void }) {
-    const [deleting, setDeleting] = useState(false);
+function DeleteModal({ test, onClose }: { test: LabTest; onClose: () => void; }) {
+    const deleteMutation = useDeleteLabTest();
     const handleDelete = async () => {
-        setDeleting(true);
-        try { await deleteTest(test.id); toast.success(`${test.test_name} removed.`); onDeleted(); onClose(); }
-        catch (err: any) { toast.error(err?.message ?? "Failed."); }
-        finally { setDeleting(false); }
+        try {
+            await deleteMutation.mutateAsync(test.id);
+            toast.success(`${test.test_name} removed.`);
+            onClose();
+        } catch (error: any) {
+            toast.error(error?.message ?? "Failed to delete.");
+        }
     };
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
@@ -218,9 +213,9 @@ function DeleteModal({ test, onClose, onDeleted }: { test: LabTest; onClose: () 
                 </div>
                 <div className="flex gap-2">
                     <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
-                    <button onClick={handleDelete} disabled={deleting}
+                    <button onClick={handleDelete} disabled={deleteMutation.isPending}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold disabled:opacity-60 transition-colors">
-                        {deleting ? <><Loader2 size={13} className="animate-spin" /> Removing...</> : <><Trash2 size={13} /> Remove</>}
+                        {deleteMutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Removing...</> : <><Trash2 size={13} /> Remove</>}
                     </button>
                 </div>
             </div>
@@ -232,10 +227,16 @@ function DeleteModal({ test, onClose, onDeleted }: { test: LabTest; onClose: () 
 
 export default function LabTestCatalogPage() {
     const { authorized } = useRoleProtection([UserRole.Admin, UserRole.LabTechnician]);
-    const { data: tests, isLoading, isError, refetch } = useQuery({
-        queryKey: ["lab-test-catalog"],
-        queryFn: fetchTests,
-    });
+    const {
+        data: tests = [],
+        isLoading,
+        isError,
+        refetch,
+    } = useLabTestCatalog();
+
+    const upsertMutation = useUpsertLabTest();
+    const deleteMutation = useDeleteLabTest();
+    const toggleMutation = useToggleLabTestActive();
 
     const {
         catalogSearch: search, setField, catalogCategory: category,
@@ -268,11 +269,15 @@ export default function LabTestCatalogPage() {
     const handleToggle = async (test: LabTest) => {
         setField("togglingId", test.id);
         try {
-            const { error } = await supabase.from("lab_test_catalog").update({ is_active: !test.is_active }).eq("id", test.id);
-            if (error) throw error;
+            await toggleMutation.mutateAsync({
+                id: test.id,
+                current: test.is_active,
+            });
             toast.success(`${test.test_name} ${test.is_active ? "deactivated" : "activated"}.`);
-            refetch();
-        } catch { toast.error("Failed to update."); }
+            await refetch();
+        } catch (error: any) {
+            toast.error(error?.message ?? "Failed to update.");
+        }
         finally { setField("togglingId", null); }
     };
 
@@ -439,9 +444,23 @@ export default function LabTestCatalogPage() {
                 </div>
             )}
 
-            {showAdd && <TestModal onClose={() => setField("showAdd", false)} onSaved={refetch} />}
-            {editTarget && <TestModal test={editTarget} onClose={() => setField("editTarget", null)} onSaved={refetch} />}
-            {deleteTarget && <DeleteModal test={deleteTarget} onClose={() => setField("deleteTarget", null)} onDeleted={refetch} />}
+            {showAdd && (
+                <TestModal
+                    onClose={() => setField("showAdd", false)}
+                />
+            )}
+            {editTarget && (
+                <TestModal
+                    test={editTarget}
+                    onClose={() => setField("editTarget", null)}
+                />
+            )}
+            {deleteTarget && (
+                <DeleteModal
+                    test={deleteTarget}
+                    onClose={() => setField("deleteTarget", null)}
+                />
+            )}
         </div>
     );
 }

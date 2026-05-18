@@ -34,6 +34,8 @@ export function usePatientsByStatus(status: PatientStatus) {
     });
 }
 
+
+
 export function useSearchPatients(query: string) {
     return useQuery({
         queryKey: patientKeys.search(query),

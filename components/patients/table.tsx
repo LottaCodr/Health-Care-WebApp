@@ -28,7 +28,7 @@ const ROLE_STATUSES: Record<string, string[] | null> = {
     Admin: null,
     Doctor: ["awaiting-consultation", "under-consultation"],
     Nurse: ["sent-to-nurse", "under-observation", "admitted"],
-    Labtech: ["sent-to-lab"],
+    LabTechnician: ["sent-to-lab"],
     Pharmacist: ["sent-to-pharmacy"],
     Radiologist: ["sent-to-radiology"],
 };
