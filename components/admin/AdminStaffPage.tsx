@@ -118,6 +118,8 @@ function normalizeRole(role?: string) {
 
         case "labtechnician":
         case "lab technician":
+        case "labtech":
+        case "lab-tech":
         case "lab_technician":
             return "LabTechnician";
 
@@ -213,7 +215,7 @@ function StaffModal({
                     updates: {
                         name: form.name,
                         role: form.role as UserRole,
-                        phone: form.phone,
+                        phone_number: form.phone,
                     },
                 });
 
@@ -223,7 +225,7 @@ function StaffModal({
                     name: form.name,
                     email: form.email,
                     role: form.role as UserRole,
-                    phone: form.phone,
+                    phone_number: form.phone,
                     status: "Active",
                     department: "",
                     dateJoined: "",
@@ -741,7 +743,7 @@ export default function AdminStaffPage() {
                                             </p>
                                         </div>
 
-                                        {s.phone && (
+                                        {s.phone_number && (
                                             <div className="flex items-center gap-1">
                                                 <Phone
                                                     size={10}
@@ -749,7 +751,7 @@ export default function AdminStaffPage() {
                                                 />
 
                                                 <p className="text-[11px] text-gray-500">
-                                                    {s.phone}
+                                                    {s.phone_number}
                                                 </p>
                                             </div>
                                         )}
