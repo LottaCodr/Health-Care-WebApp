@@ -7,7 +7,7 @@ export default function AdminLayout({
     children: React.ReactNode;
 }) {
     return (
-        <PremiumLayout requiredRole={UserRole.Admin}>
+        <PremiumLayout >
             {children}
         </PremiumLayout>
     );

@@ -111,10 +111,12 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
 
     [UserRole.Admin]: {
         main: [
-            { title: "Console", url: "/admin/dashboard", icon: LayoutDashboard },
-            { title: "Staff", url: "/admin/staff", icon: UsersRound },
+            { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
+            { title: "Staff Management", url: "/admin/staff", icon: UsersRound },
+            { title: "Drugs Inventory", url: "/admin/stocked-drugs", icon: Pill },
+            { title: "Tests Catalogue", url: "/admin/tests-catalogue", icon: Microscope },
             { title: "Audit Log", url: "/admin/audit", icon: ScrollText },
-            { title: "Radiology",  url: "/admin/radiology",   icon: Radio           },
+            // { title: "Radiology",  url: "/admin/radiology",   icon: Radio           },
         ],
         secondary: [
             { title: "Configuration", url: "/admin/settings", icon: Settings },

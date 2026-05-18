@@ -71,7 +71,7 @@ export interface Staff {
     id: string;
     name: string;
     email: string;
-    phone: string;
+    phone_number: string;
     role: UserRole;
     department: string;
     licenseNumber?: string;
