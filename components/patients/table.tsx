@@ -54,7 +54,7 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> =
     "sent-to-lab": { bg: "bg-indigo-50", text: "text-indigo-700", dot: "bg-indigo-500" },
     "sent-to-pharmacy": { bg: "bg-pink-50", text: "text-pink-700", dot: "bg-pink-500" },
     "sent-to-radiology": { bg: "bg-cyan-50", text: "text-cyan-700", dot: "bg-cyan-500" },
-    "awaiting-payment": { bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500" },
+    "awaiting-payment": { bg: "bg-orange-50", text: "text-orange-700 ", dot: "bg-orange-500" },
     "admitted": { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
     "under-observation": { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
     "discharged": { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
@@ -77,6 +77,7 @@ function StatusBadge({ status }: { status: string }) {
 const containerVariants = {
     hidden: {},
     visible: { transition: { staggerChildren: 0.05 } },
+
 };
 
 const cardVariants = {
