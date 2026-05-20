@@ -6,3 +6,6 @@ export * from "./payment.service";
 export * from "./pharmacy.service";
 export * from "./staff.service";
 export * from "./audit.service";
+export * from "./appointment.service";
+export * from "./discharge.service";
+export * from "./nurse-charts.service";
