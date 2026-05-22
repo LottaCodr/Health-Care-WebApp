@@ -34,6 +34,19 @@ export const patientKeys = {
     
 };
 
+export const dischargeKeys = {
+    all:       ()           => ["discharge_notes"]              as const,
+    byPatient: (id: string) => ["discharge_notes", "patient", id] as const,
+    detail: (id: string) => ["discharge_notes", "detail", id] as const,
+    create: () => ["discharge_notes", "create"] as const,
+    update: () => ["discharge_notes", "update"] as const,
+    delete: () => ["discharge_notes", "delete"] as const,
+    updateStatus: () => ["discharge_notes", "update", "status"] as const,
+    updateStatusDetail: (id: string) => ["discharge_notes", "update", "status", "detail", id] as const,
+    updateStatusCreate: () => ["discharge_notes", "update", "status", "create"] as const,
+    updateStatusDelete: () => ["discharge_notes", "update", "status", "delete"] as const,
+};
+
 
 export const appointmentKeys = {
     all:       ()           => ["appointments"]                          as const,
