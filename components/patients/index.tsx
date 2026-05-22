@@ -3,10 +3,18 @@
 import React, { useState, useMemo, Suspense } from "react";
 import SearchInput from "./search-input";
 import PatientsTable from "./table";
+import BulkUploadComponent from "@/components/BulkUpload";
+import { bulkUploadRows } from "@/lib/actions/patient-workflow.actions";
 import { Button } from "@/components/ui/button";
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
     RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
-    Users, Plus, Loader2, Search, UserX,
+    Users, Plus, Loader2, Search, UserX, Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -110,6 +118,7 @@ export default function PatientsComponent() {
 
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
+    const [bulkOpen, setBulkOpen] = useState(false);
 
     const { data: patients, isPending, isFetching, refetch } = useRolePatients(role);
 
@@ -131,7 +140,8 @@ export default function PatientsComponent() {
 
     React.useEffect(() => { setCurrentPage(1); }, [search]);
 
-    const isFrontdesk = role === "Frontdesk";
+    const isFrontdesk = role === "Frontdesk" || role === "FrontDesk";
+    const isAdmin = role === "Admin";
 
     // ── Queue label per role ───────────────────────────────────────────────────
     const queueLabel: Record<string, string> = {
@@ -222,6 +232,15 @@ export default function PatientsComponent() {
                                 <RefreshCcw size={15} className={isFetching ? "animate-spin" : ""} />
                                 <span className="hidden sm:inline font-medium">Refresh</span>
                             </Button>
+                            {(isFrontdesk || isAdmin) && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setBulkOpen(true)}
+                                    className="h-9 gap-1.5 rounded-xl border-gray-200 text-sm font-semibold"
+                                >
+                                    <Upload size={15} /> Bulk Import
+                                </Button>
+                            )}
                             {isFrontdesk && (
                                 <Link href="/front-desk/patient/new">
                                     <Button className="h-9 gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm shadow-blue-200 px-4">
@@ -232,6 +251,21 @@ export default function PatientsComponent() {
                         </div>
                     </div>
                 </div>
+
+                <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Bulk patient import</DialogTitle>
+                        </DialogHeader>
+                        <BulkUploadComponent
+                            onUpload={async (type, rows) => {
+                                const result = await bulkUploadRows(type, rows);
+                                if (result.success > 0) refetch();
+                                return result;
+                            }}
+                        />
+                    </DialogContent>
+                </Dialog>
 
                 {/* Table card */}
                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">

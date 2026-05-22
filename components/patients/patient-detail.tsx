@@ -7,6 +7,13 @@ import { useConsultationStore } from "@/store/consultation-store";
 import PatientDetailsSkeleton from "./skeleton";
 import { Patient, PatientStatus } from "@/types/models";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-provider";
+import ReturnPatient from "./return-patient";
+import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+import {
+    Dialog,
+    DialogContent,
+} from "@/components/ui/dialog";
 import {
     User, Mail, Phone, MapPin, Briefcase, ShieldAlert, CheckCircle,
     ClipboardList, Activity, Heart, Building2, CreditCard, Copy,
@@ -33,9 +40,18 @@ interface Props {
 export default function PatientDetailsComponent({ patient }: Props) {
     const patientStore = usePatientStore();
     const consultationStore = useConsultationStore();
+    const { user } = useAuth();
 
     const [showCopied, setShowCopied] = useState(false);
     const [activeGroup, setActiveGroup] = useState("basic");
+    const [returnOpen, setReturnOpen] = useState(false);
+
+    const role = (user?.role ?? "").toLowerCase();
+    const isFrontDesk = role.includes("front");
+    const isDischarged =
+        patient.status === PatientStatus.Discharged ||
+        String(patient.status).toLowerCase() === "discharged";
+    const staffId = user?.$id ?? user?.id ?? "";
 
     useEffect(() => {
         if (patient) {
@@ -84,6 +100,35 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
     return (
         <main className="max-w-full px-2 md:px-6 py-10 space-y-8">
+            {isFrontDesk && isDischarged && patient.id && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-teal-50 border border-teal-100">
+                    <p className="text-sm text-teal-800 font-medium">
+                        This patient is discharged. Start a return visit to check them in again.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setReturnOpen(true)}
+                        className="shrink-0 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold"
+                    >
+                        Return visit
+                    </button>
+                </div>
+            )}
+
+            <Dialog open={returnOpen} onOpenChange={setReturnOpen}>
+                <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none">
+                    <ReturnPatient
+                        patientId={patient.id!}
+                        patientName={patient.name ?? "Patient"}
+                        staffId={staffId}
+                        onReturn={async (input) => {
+                            await processReturnVisit(input);
+                        }}
+                        onCancel={() => setReturnOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
+
             <PatientProfile
                 patient={currentPatient}
                 status={patientStore.status}

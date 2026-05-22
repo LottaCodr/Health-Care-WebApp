@@ -1,13 +1,31 @@
-import ComingSoon from '@/components/ui/coming-soon'
-import React from 'react'
+"use client";
 
-const AppointmentBookingPage = async () => {
+import { ArrowLeft, Calendar } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-provider";
+import AppointmentComponent from "@/components/front-desk/AppointmentComponent";
+import { Button } from "@/components/ui/button";
+
+export default function AppointmentBookingPage() {
+    const router = useRouter();
+    const { user } = useAuth();
+    const staffId = user?.$id ?? user?.id ?? "";
+
     return (
-        <ComingSoon 
-            title="Appointment Booking" 
-            description="The front-desk appointment booking system is being upgraded to a more efficient version."
-        />
-    )
+        <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+            <div className="flex items-center gap-3">
+                <Button onClick={() => router.back()} variant="ghost" className="gap-2 rounded-xl px-3">
+                    <ArrowLeft size={18} />
+                </Button>
+                <span className="flex items-center gap-2 text-blue-800 font-bold text-2xl">
+                    <Calendar size={24} /> Appointment Booking
+                </span>
+            </div>
+            {staffId ? (
+                <AppointmentComponent staffId={staffId} />
+            ) : (
+                <p className="text-sm text-gray-500">Sign in to manage appointments.</p>
+            )}
+        </div>
+    );
 }
-
-export default AppointmentBookingPage

@@ -47,13 +47,15 @@ const textareaClass =
 interface DischargeNoteFormProps {
     staffId:    string;
     onSuccess?: () => void;
+    /** When true, always render inside a patient tab (no modal gate). */
+    embedded?:  boolean;
 }
 
-export default function DischargeNoteForm({ staffId, onSuccess }: DischargeNoteFormProps) {
+export default function DischargeNoteForm({ staffId, onSuccess, embedded = false }: DischargeNoteFormProps) {
     const store  = useDischargeStore();
     const create = useCreateDischargeNote();
 
-    if (!store.showForm) return null;
+    if (!embedded && !store.showForm) return null;
 
     const isTransfer  = store.dischargeType === "transfer";
     const isDeceased  = store.dischargeType === "deceased";

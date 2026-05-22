@@ -10,17 +10,26 @@ import {
   FlaskConical,
   AlertCircle,
   CheckCircle2,
-  Radio
+  Radio,
+  Syringe,
+  Droplets,
+  ClipboardCheck,
+  CreditCard,
+  Calendar,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/auth-provider";
 import { useConsultationStore } from "@/store/consultation-store";
 import { usePatientStore } from "@/store/patient-store";
+import { useDischargeStore } from "@/store/discharge-store";
 import { Patient, PatientStatus } from "@/types/models";
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { Staff } from "@/actions/staff/types";
 import { calculateAge } from "@/utils/export";
+import { listPaymentsByPatient } from "@/lib/services/payment.service";
+import { mapPaymentsForHistory } from "@/lib/utils/map-payment-history";
+import { useConfirmPayment } from "@/hooks/emr/use-payment";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
 
@@ -56,60 +65,74 @@ const RadiologyTab = dynamic(
   () => import("../radiology/RadiologyTab").then((m) => m.RadiologyTab),
   { loading: () => <TabChunkSkeleton /> }
 );
+const DrugChart = dynamic(() => import("../nurse/DrugChart"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const FluidBalanceChart = dynamic(() => import("../nurse/FluidBalanceChart"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const DischargeNoteForm = dynamic(() => import("../doctor/DischargeNoteForm"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const PaymentHistory = dynamic(() => import("./payment-history"), {
+  loading: () => <TabChunkSkeleton />,
+});
+const AppointmentComponent = dynamic(
+  () => import("../front-desk/AppointmentComponent"),
+  { loading: () => <TabChunkSkeleton /> }
+);
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Tab configuration
-// ──────────────────────────────────────────────────────────────────────────────
+type TabDef = {
+  value: string;
+  label: string;
+  icon: React.ElementType;
+  accent: string;
+  activeBar: string;
+};
 
-const TAB_CONFIG = [
-  {
-    value: "vitals",
-    label: "Vitals",
-    icon: Activity,
-    accent: "text-blue-600",
-    activeBar: "bg-blue-500",
-  },
-  {
-    value: "consultations",
-    label: "Consultations",
-    icon: Stethoscope,
-    accent: "text-red-600",
-    activeBar: "bg-red-500",
-  },
-  {
-    value: "prescriptions",
-    label: "Prescriptions",
-    icon: Pill,
-    accent: "text-violet-600",
-    activeBar: "bg-violet-500",
-  },
-  {
-    value: "lab",
-    label: "Lab Results",
-    icon: FlaskConical,
-    accent: "text-indigo-600",
-    activeBar: "bg-indigo-500",
-  },
-  {
-    value: "radiology",
-    label: "Radiology",
-    icon: Radio,
-    accent: "text-cyan-600",
-    activeBar: "bg-cyan-500",
-  },
+const BASE_TABS: TabDef[] = [
+  { value: "vitals", label: "Vitals", icon: Activity, accent: "text-blue-600", activeBar: "bg-blue-500" },
+  { value: "consultations", label: "Consultations", icon: Stethoscope, accent: "text-red-600", activeBar: "bg-red-500" },
+  { value: "prescriptions", label: "Prescriptions", icon: Pill, accent: "text-violet-600", activeBar: "bg-violet-500" },
+  { value: "lab", label: "Lab Results", icon: FlaskConical, accent: "text-indigo-600", activeBar: "bg-indigo-500" },
+  { value: "radiology", label: "Radiology", icon: Radio, accent: "text-cyan-600", activeBar: "bg-cyan-500" },
 ];
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Helper components
-// ──────────────────────────────────────────────────────────────────────────────
+const NURSE_CHART_STATUSES = new Set([
+  PatientStatus.SentToNurse,
+  PatientStatus.UnderObservation,
+  PatientStatus.Admitted,
+  "sent-to-nurse",
+  "under-observation",
+  "admitted",
+]);
 
-function AlertBanner({
-  type,
-  message,
-}: {
-  type: "error" | "success";
-  message: string;
-}) {
+const DISCHARGE_STATUSES = new Set([
+  PatientStatus.UnderConsultation,
+  PatientStatus.Admitted,
+  PatientStatus.AwaitingPayment,
+  "under-consultation",
+  "admitted",
+  "awaiting-payment",
+]);
+
+const BILLING_STATUSES = new Set([
+  PatientStatus.AwaitingPayment,
+  PatientStatus.Discharged,
+  "awaiting-payment",
+  "discharged",
+]);
+
+function normalizeRole(role?: string) {
+  const r = (role ?? "").toLowerCase();
+  if (r.includes("front")) return "FrontDesk";
+  if (r.includes("doc")) return "Doctor";
+  if (r.includes("nurse")) return "Nurse";
+  if (r.includes("admin")) return "Admin";
+  return role ?? "";
+}
+
+function AlertBanner({ type, message }: { type: "error" | "success"; message: string }) {
   const isError = type === "error";
   return (
     <div
@@ -144,28 +167,18 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <div
-        className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center shrink-0`}
-      >
+      <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
         <Icon size={17} className={color} />
       </div>
       <div>
-        <h3 className="text-sm font-bold text-gray-900 leading-tight">
-          {title}
-        </h3>
+        <h3 className="text-sm font-bold text-gray-900 leading-tight">{title}</h3>
         <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
       </div>
     </div>
   );
 }
 
-function NoPatient({
-  icon: Icon,
-  label,
-}: {
-  icon: React.ElementType;
-  label: string;
-}) {
+function NoPatient({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
       <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-3">
@@ -177,52 +190,38 @@ function NoPatient({
   );
 }
 
-function Panel({
-  accent,
-  label,
-  children,
-}: {
-  accent: string;
-  label: string;
-  children: React.ReactNode;
-}) {
+function Panel({ accent, label, children }: { accent: string; label: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-50">
         <div className={`w-1.5 h-4 rounded-full ${accent}`} />
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-          {label}
-        </p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</p>
       </div>
       <div className="p-5">{children}</div>
     </div>
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Main component
-// ──────────────────────────────────────────────────────────────────────────────
-
-export default function PatientDetailTabs({
-  patient,
-}: {
-  patient: Patient;
-}) {
+export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const [tab, setTab] = useState("vitals");
   const consultationStore = useConsultationStore();
   const patientStore = usePatientStore();
+  const dischargeStore = useDischargeStore();
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const confirmPayment = useConfirmPayment();
 
-  // Fetch all staff
+  const role = normalizeRole(user?.role);
+  const staffId = user?.$id ?? user?.id ?? "";
+  const status = (patient.status ?? patientStore.status ?? "") as string;
+
   const { data: staff = [] } = useQuery({
     queryKey: ["staffs"],
     queryFn: getAllStaffs,
   });
 
-  // Staff available for referral
   const availableStaff = useMemo(
     () =>
       staff.filter(
@@ -234,10 +233,72 @@ export default function PatientDetailTabs({
     [staff, consultationStore.referredTo]
   );
 
-  // Patient age calculation
   const age = calculateAge(patient?.birth_date!);
 
-  // Set up context and patient state when patient changes
+  const visibleTabs = useMemo(() => {
+    const extra: TabDef[] = [];
+    const extraDefs = [
+      {
+        value: "drug-chart",
+        label: "Drug Chart",
+        icon: Syringe,
+        accent: "text-teal-600",
+        activeBar: "bg-teal-500",
+        show:
+          role === "Nurse" && NURSE_CHART_STATUSES.has(status as PatientStatus),
+      },
+      {
+        value: "fluid-balance",
+        label: "Fluid Balance",
+        icon: Droplets,
+        accent: "text-sky-600",
+        activeBar: "bg-sky-500",
+        show:
+          role === "Nurse" && NURSE_CHART_STATUSES.has(status as PatientStatus),
+      },
+      {
+        value: "discharge",
+        label: "Discharge",
+        icon: ClipboardCheck,
+        accent: "text-emerald-600",
+        activeBar: "bg-emerald-500",
+        show: role === "Doctor" && DISCHARGE_STATUSES.has(status as PatientStatus),
+      },
+      {
+        value: "billing",
+        label: "Billing",
+        icon: CreditCard,
+        accent: "text-orange-600",
+        activeBar: "bg-orange-500",
+        show:
+          (role === "FrontDesk" || role === "Doctor" || role === "Admin") &&
+          BILLING_STATUSES.has(status as PatientStatus),
+      },
+      {
+        value: "appointments",
+        label: "Appointments",
+        icon: Calendar,
+        accent: "text-blue-600",
+        activeBar: "bg-blue-500",
+        show: role === "FrontDesk" || role === "Doctor",
+      },
+    ] as const;
+
+    for (const d of extraDefs) {
+      if (d.show) {
+        extra.push({
+          value: d.value,
+          label: d.label,
+          icon: d.icon,
+          accent: d.accent,
+          activeBar: d.activeBar,
+        });
+      }
+    }
+
+    return [...BASE_TABS, ...extra];
+  }, [role, status]);
+
   useEffect(() => {
     if (patient) {
       patientStore.setPatient([patient]);
@@ -248,7 +309,18 @@ export default function PatientDetailTabs({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient]);
 
-  // Dismiss error after delay
+  useEffect(() => {
+    if (tab === "discharge" && patient.id) {
+      dischargeStore.openForm(patient.id);
+    }
+  }, [tab, patient.id, dischargeStore]);
+
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.value === tab)) {
+      setTab("vitals");
+    }
+  }, [visibleTabs, tab]);
+
   useEffect(() => {
     if (formError) {
       const t = setTimeout(() => setFormError(null), 5000);
@@ -256,7 +328,6 @@ export default function PatientDetailTabs({
     }
   }, [formError]);
 
-  // Dismiss success message after delay
   useEffect(() => {
     if (successMessage) {
       const t = setTimeout(() => setSuccessMessage(null), 4000);
@@ -264,39 +335,36 @@ export default function PatientDetailTabs({
     }
   }, [successMessage]);
 
+  const fetchPayments = async (patientId: string) =>
+    mapPaymentsForHistory(await listPaymentsByPatient(patientId));
+
+  const billingReadOnly = role !== "FrontDesk";
+
   return (
     <Tabs value={tab} onValueChange={setTab} className="w-full space-y-5">
-      {/* Tabs Bar */}
-      <TabsList className="grid grid-cols-5 w-full bg-white border border-gray-100 rounded-2xl p-1 shadow-sm gap-1">
-        {TAB_CONFIG.map(
-          ({ value, label, icon: Icon, accent, activeBar }) => {
-            const isActive = tab === value;
-            return (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className={`relative flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200
-                  ${
-                    isActive
-                      ? `bg-gray-50 border border-gray-100 shadow-sm ${accent}`
-                      : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/60"
-                  }`}
-              >
-                {/* Active indicator dot */}
-                {isActive && (
-                  <span
-                    className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${activeBar}`}
-                  />
-                )}
-                <Icon size={14} className="shrink-0" />
-                <span className="hidden sm:inline truncate">{label}</span>
-              </TabsTrigger>
-            );
-          }
-        )}
+      <TabsList className="flex flex-wrap w-full h-auto bg-white border border-gray-100 rounded-2xl p-1 shadow-sm gap-1">
+        {visibleTabs.map(({ value, label, icon: Icon, accent, activeBar }) => {
+          const isActive = tab === value;
+          return (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className={`relative flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 flex-1 min-w-[7rem] ${
+                isActive
+                  ? `bg-gray-50 border border-gray-100 shadow-sm ${accent}`
+                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/60"
+              }`}
+            >
+              {isActive && (
+                <span className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${activeBar}`} />
+              )}
+              <Icon size={14} className="shrink-0" />
+              <span className="truncate">{label}</span>
+            </TabsTrigger>
+          );
+        })}
       </TabsList>
 
-      {/* Vitals Tab */}
       <TabsContent value="vitals" className="mt-0">
         <div className="space-y-5">
           <SectionHeader
@@ -306,24 +374,18 @@ export default function PatientDetailTabs({
             title="Vitals Recording"
             subtitle="Patient measurements and clinical observations"
           />
-
           {!patient.id ? (
-            <NoPatient
-              icon={Activity}
-              label="Select a patient to view or record vitals"
-            />
+            <NoPatient icon={Activity} label="Select a patient to view or record vitals" />
           ) : (
             <div
               className={`grid gap-5 ${
-                user?.role === "Nurse"
-                  ? "grid-cols-1 xl:grid-cols-2"
-                  : "grid-cols-1"
+                role === "Nurse" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"
               }`}
             >
               <Panel accent="bg-blue-500" label="Latest Record">
                 <VitalsRecordDisplay patientId={patient.id} />
               </Panel>
-              {user?.role === "Nurse" && (
+              {role === "Nurse" && (
                 <Panel accent="bg-green-500" label="Record New Vitals">
                   <VitalsCheckinAdvancedComponent patientId={patient.id} />
                 </Panel>
@@ -333,7 +395,6 @@ export default function PatientDetailTabs({
         </div>
       </TabsContent>
 
-      {/* Consultations Tab */}
       <TabsContent value="consultations" className="mt-0">
         <div className="space-y-5">
           <SectionHeader
@@ -343,16 +404,11 @@ export default function PatientDetailTabs({
             title="Consultations"
             subtitle="Clinical findings and patient routing"
           />
-
-          {user?.role === "Doctor" && patient?.id && (
+          {role === "Doctor" && patient?.id && (
             <Panel accent="bg-red-500" label="New Consultation">
               <div ref={formRef}>
-                {formError && (
-                  <AlertBanner type="error" message={formError} />
-                )}
-                {successMessage && (
-                  <AlertBanner type="success" message={successMessage} />
-                )}
+                {formError && <AlertBanner type="error" message={formError} />}
+                {successMessage && <AlertBanner type="success" message={successMessage} />}
                 <ConsultationForm
                   patientId={patient.id}
                   availableStaff={availableStaff}
@@ -363,14 +419,12 @@ export default function PatientDetailTabs({
               </div>
             </Panel>
           )}
-
           <Panel accent="bg-gray-300" label="Consultation History">
             <ConsultationHistoryTable patientId={patient?.id!} />
           </Panel>
         </div>
       </TabsContent>
 
-      {/* Prescriptions Tab */}
       <TabsContent value="prescriptions" className="mt-0">
         <div className="space-y-5">
           <SectionHeader
@@ -380,21 +434,15 @@ export default function PatientDetailTabs({
             title="Prescriptions"
             subtitle="Medication records and dispensing history"
           />
-
           {!patient.id ? (
-            <NoPatient
-              icon={Pill}
-              label="Select a patient to view prescriptions"
-            />
+            <NoPatient icon={Pill} label="Select a patient to view prescriptions" />
           ) : (
             <div
               className={`grid gap-5 ${
-                user?.role === "Pharmacist"
-                  ? "grid-cols-1 xl:grid-cols-2"
-                  : "grid-cols-1"
+                role === "Pharmacist" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"
               }`}
             >
-              {user?.role === "Pharmacist" && (
+              {role === "Pharmacist" && (
                 <Panel accent="bg-violet-500" label="New Prescription">
                   <PrescriptionDetails patientId={patient.id} patient={patient} />
                 </Panel>
@@ -407,16 +455,67 @@ export default function PatientDetailTabs({
         </div>
       </TabsContent>
 
-      {/* Lab Results Tab */}
       <TabsContent value="lab" className="mt-0">
         <LabTab patient={patient} userRole={user?.role} />
       </TabsContent>
 
-      {/* Radiology Tab */}
       <TabsContent value="radiology" className="mt-0">
-      
-            <RadiologyTab patient={patient} userRole={user?.role} />
-        </TabsContent>
+        <RadiologyTab patient={patient} userRole={user?.role} />
+      </TabsContent>
+
+      {patient.id && (
+        <>
+          <TabsContent value="drug-chart" className="mt-0">
+            <DrugChart
+              patientId={patient.id}
+              staffId={staffId}
+              readOnly={role !== "Nurse"}
+            />
+          </TabsContent>
+
+          <TabsContent value="fluid-balance" className="mt-0">
+            <FluidBalanceChart
+              patientId={patient.id}
+              staffId={staffId}
+              readOnly={role !== "Nurse"}
+            />
+          </TabsContent>
+
+          <TabsContent value="discharge" className="mt-0">
+            <div className="space-y-4">
+              <SectionHeader
+                icon={ClipboardCheck}
+                color="text-emerald-600"
+                bg="bg-emerald-50"
+                title="Discharge Summary"
+                subtitle="Complete before sending patient to billing"
+              />
+              <DischargeNoteForm
+                staffId={staffId}
+                embedded
+                onSuccess={() => setSuccessMessage("Discharge note saved successfully.")}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="billing" className="mt-0">
+            <PaymentHistory
+              patientId={patient.id}
+              readOnly={billingReadOnly}
+              fetchPayments={fetchPayments}
+              onSettle={
+                billingReadOnly
+                  ? undefined
+                  : (paymentId) => confirmPayment.mutate(paymentId)
+              }
+            />
+          </TabsContent>
+
+          <TabsContent value="appointments" className="mt-0">
+            <AppointmentComponent staffId={staffId} patientId={patient.id} />
+          </TabsContent>
+        </>
+      )}
     </Tabs>
   );
 }

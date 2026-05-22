@@ -22,9 +22,12 @@ export function useCreateDischargeNote() {
     return useMutation({
         mutationFn: (input: DS.CreateDischargeNoteInput) => DS.createDischargeNote(input),
         onSuccess: (note: any) => {
-            qc.invalidateQueries({ queryKey: dischargeKeys.byPatient(note.patientId!) });
+            const pid = note?.patient_id ?? note?.patientId;
+            if (pid) {
+                qc.invalidateQueries({ queryKey: dischargeKeys.byPatient(pid) });
+                qc.invalidateQueries({ queryKey: patientKeys.detail(pid) });
+            }
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
-            qc.invalidateQueries({ queryKey: patientKeys.detail(note.patientId!) });
         },
     });
 }

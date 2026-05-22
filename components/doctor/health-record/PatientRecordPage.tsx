@@ -1,7 +1,14 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
+import PatientRecordDownload from "@/components/patients/patient-record-download";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { UserRole } from "@/types/models";
 import {
     useConsultationsByPatient,
@@ -80,6 +87,7 @@ interface Props { patient: Patient; }
 export default function PatientRecordPage({ patient }: Props) {
     const { authorized } = useRoleProtection([UserRole.Doctor, UserRole.Admin]);
     const printRef = useRef<HTMLDivElement>(null);
+    const [downloadOpen, setDownloadOpen] = useState(false);
 
     const { data: consultations } = useConsultationsByPatient(patient.id!);
     const { data: prescriptions } = usePrescriptionsByPatient(patient.id!);
@@ -117,12 +125,37 @@ export default function PatientRecordPage({ patient }: Props) {
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-sm font-bold text-gray-700 shadow-sm transition-all">
                         <Printer size={14} /> Print
                     </button>
-                    <button onClick={handlePrint}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white text-sm font-bold shadow-sm shadow-red-200 transition-all">
-                        <Download size={14} /> Export PDF
+                    <button
+                        type="button"
+                        onClick={() => setDownloadOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white text-sm font-bold shadow-sm shadow-red-200 transition-all"
+                    >
+                        <Download size={14} /> Export Record
                     </button>
                 </div>
             </div>
+
+            <Dialog open={downloadOpen} onOpenChange={setDownloadOpen}>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Export patient record</DialogTitle>
+                    </DialogHeader>
+                    {patient.id && (
+                        <PatientRecordDownload
+                            patientId={patient.id}
+                            patientName={patient.name ?? "Patient"}
+                            onDownload={async (options) => {
+                                if (options.format === "print") {
+                                    handlePrint();
+                                } else {
+                                    handlePrint();
+                                }
+                                setDownloadOpen(false);
+                            }}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* ── Printable region ── */}
             <div id="patient-record-print" ref={printRef} className="space-y-5">
