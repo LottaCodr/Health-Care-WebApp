@@ -19,6 +19,27 @@ export const patientKeys = {
     search: (q: string) => ["patients", "search", q] as const,
     details: () => ["patients", "detail"] as const,
     detail: (id: string) => ["patients", "detail", id] as const,
+    appointments: () => ["patients", "appointments"] as const,
+    appointmentsByDate: (date: string) => ["patients", "appointments", "date", date] as const,
+    appointmentsByPatient: (id: string) => ["patients", "appointments", "patient", id] as const,
+    appointmentsUpcoming: () => ["patients", "appointments", "upcoming"] as const,
+    appointmentsDetail: (id: string) => ["patients", "appointments", "detail", id] as const,
+    appointmentsCreate: () => ["patients", "appointments", "create"] as const,
+    appointmentsUpdate: () => ["patients", "appointments", "update"] as const,
+    appointmentsDelete: () => ["patients", "appointments", "delete"] as const,
+    appointmentsUpdateStatus: () => ["patients", "appointments", "update", "status"] as const,
+    appointmentsUpdateStatusDetail: (id: string) => ["patients", "appointments", "update", "status", "detail", id] as const,
+    appointmentsUpdateStatusCreate: () => ["patients", "appointments", "update", "status", "create"] as const,
+    appointmentsUpdateStatusDelete: () => ["patients", "appointments", "update", "status", "delete"] as const,
+    
+};
+
+
+export const appointmentKeys = {
+    all:       ()           => ["appointments"]                          as const,
+    upcoming:  ()           => ["appointments", "upcoming"]              as const,
+    byDate:    (d: string)  => ["appointments", "date", d]               as const,
+    byPatient: (id: string) => ["appointments", "patient", id]           as const,
 };
 
 // ─── Consultations ────────────────────────────────────────────────────────────
