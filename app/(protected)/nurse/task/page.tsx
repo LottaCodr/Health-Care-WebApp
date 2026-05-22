@@ -1,3 +1,5 @@
 import NurseTasksPage from "@/components/nurse/NurseTaskPage";
 
-export default function Page() { return <NurseTasksPage />; }
+export default function Page() {
+    return <NurseTasksPage />;
+}

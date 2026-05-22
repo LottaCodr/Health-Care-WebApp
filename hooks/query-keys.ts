@@ -87,6 +87,7 @@ export const radiologyKeys = {
 export const nursingKeys = {
     all: () => ["nursing"] as const,
     pending: () => ["nursing", "pending"] as const,
+    completed: () => ["nursing", "completed"] as const,
     byPatient: (id: string) => ["nursing", "patient", id] as const,
 };
 
