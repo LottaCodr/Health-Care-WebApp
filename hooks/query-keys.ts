@@ -1,14 +1,3 @@
-// ══════════════════════════════════════════════════════════════════════════════
-// hooks/query-keys.ts
-//
-// Centralised query key factories.
-// Hierarchy: domain → collection → filters | detail → id
-//
-// Radiology and Lab are now SEPARATE domains even though they share the same
-// underlying DB table (lab_requests). The prefix "[RADIOLOGY]" in test_type
-// determines which domain owns a row. Keeping them in separate key namespaces
-// means cache invalidation never bleeds between departments.
-// ══════════════════════════════════════════════════════════════════════════════
 
 // ─── Patients ─────────────────────────────────────────────────────────────────
 
