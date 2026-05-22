@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { paymentKeys } from "@/hooks/query-keys";
+import React, { useMemo, useState } from "react";
+import { usePaymentsByPatient } from "@/hooks/emr/use-payment";
+import { mapPaymentsForHistory } from "@/lib/utils/map-payment-history";
+import type { Payment as DbPayment } from "@/types/models";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -134,24 +135,15 @@ interface PaymentHistoryProps {
     patientId:  string;
     readOnly?:  boolean;
     onSettle?:  (paymentId: string) => void;
-    /** Optional: inject a custom fetcher. Falls back to query-key only pattern. */
-    fetchPayments?: (patientId: string) => Promise<Payment[]>;
 }
 
-export default function PaymentHistory({ patientId, readOnly = false, onSettle, fetchPayments }: PaymentHistoryProps) {
+export default function PaymentHistory({ patientId, readOnly = false, onSettle }: PaymentHistoryProps) {
     const [categoryFilter, setCategoryFilter] = useState<PaymentCategory | "all">("all");
     const [statusFilter,   setStatusFilter]   = useState<PaymentStatus   | "all">("all");
 
-    const { data, isLoading, isError } = useQuery<Payment[]>({
-        queryKey:             paymentKeys.byPatient(patientId),
-        queryFn:              () => fetchPayments ? fetchPayments(patientId) : Promise.resolve([]),
-        enabled:              !!patientId,
-        staleTime:            2 * 60_000,
-        gcTime:               10 * 60_000,
-        refetchOnWindowFocus: false,
-    });
+    const { data: raw = [], isLoading, isError } = usePaymentsByPatient(patientId);
 
-    const payments = data ?? [];
+    const payments = useMemo(() => mapPaymentsForHistory(raw as DbPayment[]), [raw]);
 
     const filtered = payments.filter((p) => {
         const matchCat    = categoryFilter === "all" || p.category === categoryFilter;

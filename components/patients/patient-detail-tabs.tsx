@@ -27,8 +27,6 @@ import { Patient, PatientStatus } from "@/types/models";
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { Staff } from "@/actions/staff/types";
 import { calculateAge } from "@/utils/export";
-import { listPaymentsByPatient } from "@/lib/services/payment.service";
-import { mapPaymentsForHistory } from "@/lib/utils/map-payment-history";
 import { useConfirmPayment } from "@/hooks/emr/use-payment";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
@@ -116,13 +114,6 @@ const DISCHARGE_STATUSES = new Set([
   "awaiting-payment",
 ]);
 
-const BILLING_STATUSES = new Set([
-  PatientStatus.AwaitingPayment,
-  PatientStatus.Discharged,
-  "awaiting-payment",
-  "discharged",
-]);
-
 function normalizeRole(role?: string) {
   const r = (role ?? "").toLowerCase();
   if (r.includes("front")) return "FrontDesk";
@@ -130,6 +121,13 @@ function normalizeRole(role?: string) {
   if (r.includes("nurse")) return "Nurse";
   if (r.includes("admin")) return "Admin";
   return role ?? "";
+}
+
+function normalizeStatus(status?: string) {
+  return String(status ?? "")
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .trim();
 }
 
 function AlertBanner({ type, message }: { type: "error" | "success"; message: string }) {
@@ -215,7 +213,9 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
   const role = normalizeRole(user?.role);
   const staffId = user?.$id ?? user?.id ?? "";
-  const status = (patient.status ?? patientStore.status ?? "") as string;
+  const status = normalizeStatus(patient.status ?? patientStore.status);
+  const canManageBilling = role === "FrontDesk" || role === "Admin";
+  const canViewBilling = canManageBilling || role === "Doctor";
 
   const { data: staff = [] } = useQuery({
     queryKey: ["staffs"],
@@ -270,9 +270,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         icon: CreditCard,
         accent: "text-orange-600",
         activeBar: "bg-orange-500",
-        show:
-          (role === "FrontDesk" || role === "Doctor" || role === "Admin") &&
-          BILLING_STATUSES.has(status as PatientStatus),
+        show: canViewBilling,
       },
       {
         value: "appointments",
@@ -335,10 +333,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     }
   }, [successMessage]);
 
-  const fetchPayments = async (patientId: string) =>
-    mapPaymentsForHistory(await listPaymentsByPatient(patientId));
-
-  const billingReadOnly = role !== "FrontDesk";
+  const billingReadOnly = !canManageBilling;
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="w-full space-y-5">
@@ -499,16 +494,37 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
           </TabsContent>
 
           <TabsContent value="billing" className="mt-0">
-            <PaymentHistory
-              patientId={patient.id}
-              readOnly={billingReadOnly}
-              fetchPayments={fetchPayments}
-              onSettle={
-                billingReadOnly
-                  ? undefined
-                  : (paymentId) => confirmPayment.mutate(paymentId)
-              }
-            />
+            <div className="space-y-4">
+              <SectionHeader
+                icon={CreditCard}
+                color="text-orange-600"
+                bg="bg-orange-50"
+                title="Payment History"
+                subtitle={
+                  canManageBilling
+                    ? "View and settle invoices for this patient"
+                    : "Read-only billing records"
+                }
+              />
+              {status === "awaiting-payment" && canManageBilling && (
+                <div className="px-4 py-3 rounded-xl bg-orange-50 border border-orange-100 text-xs text-orange-800 font-medium">
+                  This patient is awaiting payment. Confirm pending items below or use the{" "}
+                  <a href="/front-desk/payment" className="underline font-semibold">
+                    checkout queue
+                  </a>
+                  .
+                </div>
+              )}
+              <PaymentHistory
+                patientId={patient.id}
+                readOnly={billingReadOnly}
+                onSettle={
+                  billingReadOnly
+                    ? undefined
+                    : (paymentId) => confirmPayment.mutate(paymentId)
+                }
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="appointments" className="mt-0">
