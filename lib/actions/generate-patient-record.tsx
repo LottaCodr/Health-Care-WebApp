@@ -973,17 +973,16 @@ export async function generatePatientRecord(
     const logoBase64 = loadLogoBase64();
 
     const buffer = await renderToBuffer(
-        <PatientRecordPDF
-            patient={patient}
-            sections={input.sections}
-            data={data}
-            includeStamp={input.includeStamp}
-            logoBase64={logoBase64}
-            dateFrom={input.dateFrom}
-            dateTo={input.dateTo}
-            generatedAt={generatedAt}
-        />
-            
+        PatientRecordPDF({
+            patient,
+            sections:     input.sections,
+            data,
+            includeStamp: input.includeStamp,
+            logoBase64,
+            dateFrom:     input.dateFrom,
+            dateTo:       input.dateTo,
+            generatedAt,
+        })
     );
 
     const safeName = (patient.name ?? "patient")
