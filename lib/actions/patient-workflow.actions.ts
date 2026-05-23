@@ -31,6 +31,16 @@ export async function processReturnVisit(input: ReturnPatientInput) {
     return { success: true };
 }
 
+export async function generatePatientRecord(
+    input: { patientId: string } & DownloadOptions
+): Promise<{ type: "pdf"; base64: string; filename: string } | { type: "print"; html: string }>
+ {
+    // your PDF/print logic here
+    return { type: "pdf", base64: "", filename: "" };
+    return { type: "print", html: "" };
+    return { success: true };
+}
+
 export async function bulkUploadRows(
     type: UploadType,
     rows: Record<string, string>[]

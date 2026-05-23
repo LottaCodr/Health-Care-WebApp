@@ -30,13 +30,14 @@ import type { Patient } from "@/types/models";
 // ══════════════════════════════════════════════════════════════════════════════
 
 const ROLE_STATUSES: Record<string, string[] | null> = {
-    Frontdesk: null,    // null = all patients
-    Admin: null,
-    Doctor: ["awaiting-consultation", "under-consultation"],
-    Nurse: ["sent-to-nurse", "under-observation", "admitted"],
-    LabTechnician: ["sent-to-lab"],
-    Pharmacist: ["sent-to-pharmacy"],
-    Radiologist: ["sent-to-radiology"],
+     Frontdesk: ["awaiting-consultation", "under-consultation", "sent-to-pharmacy", "sent-to-lab", "sent-to-radiology", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-pharmacy"],
+    // Admin: null,
+    Doctor: ["awaiting-consultation", "under-consultation", "sent-to-pharmacy", "sent-to-lab", "sent-to-radiology"],
+    Nurse: ["sent-to-nurse", "under-observation", "admitted", "sent-to-pharmacy", "sent-to-lab", "sent-to-radiology"],
+    LabTechnician: ["sent-to-lab", "sent-to-pharmacy", "sent-to-radiology", "awaiting-consultation", "under-consultation"],
+    Pharmacist: ["sent-to-pharmacy", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-radiology", "awaiting-consultation", "under-consultation"],
+    Radiologist: ["sent-to-radiology", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-pharmacy", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-pharmacy"],
+    Admin: ["awaiting-consultation", "under-consultation", "sent-to-pharmacy", "sent-to-lab", "sent-to-radiology", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-pharmacy"],
 };
 
 // Role → destination route on card click
