@@ -10,7 +10,8 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
 import ReturnPatient from "./return-patient";
 import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
-import { processReturnVisit, generatePatientRecord } from "@/lib/actions/patient-workflow.actions";
+import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import {
     Dialog,
     DialogContent,
@@ -82,11 +83,34 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
     async function handleDownload(options: DownloadOptions) {
         try {
-            await generatePatientRecord({ patientId: patient.id!, ...options });
+            const result = await generatePatientRecord({ patientId: patient.id!, ...options });
+
+            if (result.type === "pdf") {
+                const bytes  = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
+                const blob   = new Blob([bytes], { type: "application/pdf" });
+                const url    = URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href     = url;
+                anchor.download = result.filename;
+                anchor.click();
+                URL.revokeObjectURL(url);
+            } else {
+                const win = window.open("", "_blank", "width=1000,height=760,scrollbars=yes");
+                if (win) {
+                    win.document.write(result.html);
+                    win.document.close();
+                } else {
+                    const blob = new Blob([result.html], { type: "text/html" });
+                    const url  = URL.createObjectURL(blob);
+                    window.open(url, "_blank");
+                    URL.revokeObjectURL(url);
+                }
+            }
+
             toast({ title: "Record ready", description: "Patient record generated successfully." });
         } catch {
             toast({ variant: "destructive", title: "Export failed", description: "Could not generate patient record." });
-            throw new Error("Export failed");   // re-throw so component resets done state
+            throw new Error("Export failed");
         }
     }
 
