@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as AS from "@/lib/services/appointment.service";
-import { appointmentKeys, patientKeys } from "./query-keys";
+import { appointmentKeys, patientKeys } from "@/hooks/query-keys";
 
 const STALE = 30_000;
 const GC    = 10 * 60_000;

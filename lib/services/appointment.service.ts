@@ -29,13 +29,6 @@ export interface CreateAppointmentInput {
     notes?:               string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Derives the display name from a returned appointment row. */
-export function resolvePatientName(appt: any): string {
-    return appt.patients?.name ?? appt.patient_name_override ?? "External Patient";
-}
-
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 export async function createAppointment(input: CreateAppointmentInput) {
