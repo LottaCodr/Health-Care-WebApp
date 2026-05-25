@@ -2,13 +2,12 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as AS from "@/lib/services/appointment.service";
-import { appointmentKeys, patientKeys } from "../query-keys";
-import { Appointment } from "@/types/models";
-import { AppointmentStatus } from "@/store/appoointment-store";
+import { appointmentKeys, patientKeys } from "./query-keys";
 
+const STALE = 30_000;
+const GC    = 10 * 60_000;
 
-const STALE  = 30_000;
-const GC     = 10 * 60_000;
+// ─── Queries ──────────────────────────────────────────────────────────────────
 
 export function useUpcomingAppointments() {
     return useQuery({
@@ -43,14 +42,19 @@ export function useAppointmentsByPatient(patientId: string) {
     });
 }
 
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
 export function useCreateAppointment() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (input: AS.CreateAppointmentInput) => AS.createAppointment(input),
-        onSuccess: (appt: any) => {
+        onSuccess: (appt) => {
             qc.invalidateQueries({ queryKey: appointmentKeys.upcoming() });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointmentDate) });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patientId) });
+            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
+            // Only invalidate patient-specific cache if it was a registered patient
+            if (appt.patient_id) {
+                qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
+            }
         },
     });
 }
@@ -60,10 +64,12 @@ export function useUpdateAppointment() {
     return useMutation({
         mutationFn: ({ id, updates }: { id: string; updates: Partial<AS.CreateAppointmentInput> }) =>
             AS.updateAppointment(id, updates),
-        onSuccess: (appt: any) => {
+        onSuccess: (appt) => {
             qc.invalidateQueries({ queryKey: appointmentKeys.upcoming() });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointmentDate!) });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patientId) });
+            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
+            if (appt.patient_id) {
+                qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
+            }
         },
     });
 }
@@ -71,14 +77,18 @@ export function useUpdateAppointment() {
 export function useUpdateAppointmentStatus() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, status, reason }: { id: string; status: "Cancelled" | "CheckedIn" | "Completed" | "NoShow" | "Scheduled"; reason?: string }) =>
+        mutationFn: ({
+            id, status, reason,
+        }: { id: string; status: string; reason?: string }) =>
             AS.updateAppointmentStatus(id, status, reason),
-        onSuccess: (appt: any) => {
+        onSuccess: (appt) => {
             qc.invalidateQueries({ queryKey: appointmentKeys.upcoming() });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointmentDate!) });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patientId) });
-            // When appointment is confirmed → patient queued for consultation
-            if (appt.status === "CheckedIn") {
+            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
+            if (appt.patient_id) {
+                qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
+            }
+            // Confirmed check-in → patient enters consultation queue
+            if (appt.status === "in_progress") {
                 qc.invalidateQueries({ queryKey: patientKeys.lists() });
             }
         },
