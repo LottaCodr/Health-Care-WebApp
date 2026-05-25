@@ -8,7 +8,7 @@ import { createClient } from "@/utils/supabase/server";
 
 const SELECT = `
     *,
-    patients!appointments_patient_id_fkey(id, name, phone, gender, date_of_birth),
+    patients!appointments_patient_id_fkey(id, name, phone, gender, birth_date),
     staffs!appointments_doctor_id_fkey(id, name, role)
 `.trim();
 

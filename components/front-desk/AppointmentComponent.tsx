@@ -452,6 +452,50 @@ function CancelModal({ id, onClose }: { id: string; onClose: () => void }) {
     );
 }
 
+// ─── Delete modal ────────────────────────────────────────────────────────────
+
+function DeleteModal({ id, patientName, onClose }: { id: string; patientName: string; onClose: () => void }) {
+    const deleteAppt = useDeleteAppointment();
+
+    async function handleDelete() {
+        await deleteAppt.mutateAsync(id);
+        onClose();
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                    <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <h3 className="text-sm font-semibold text-slate-800 mb-1">Delete Appointment</h3>
+                <p className="text-xs text-slate-500 mb-5">
+                    This will permanently delete the appointment for{" "}
+                    <span className="font-semibold text-slate-700">{patientName}</span>.
+                    This action cannot be undone.
+                </p>
+                <div className="flex justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                    >
+                        Keep it
+                    </button>
+                    <button
+                        onClick={handleDelete}
+                        disabled={deleteAppt.isPending}
+                        className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    >
+                        {deleteAppt.isPending ? "Deleting…" : "Yes, delete"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
@@ -472,6 +516,8 @@ interface AppointmentComponentProps {
 export default function AppointmentComponent({ staffId, patientId }: AppointmentComponentProps) {
     const store        = useAppointmentStore();
     const updateStatus = useUpdateAppointmentStatus();
+
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
     const dateQuery  = store.dateFilter || todayISO();
     const upcomingQ  = useUpcomingAppointments();
@@ -635,6 +681,15 @@ export default function AppointmentComponent({ staffId, patientId }: Appointment
                                                     </button>
                                                 </>
                                             )}
+                                            <button
+                                                onClick={() => setDeleteTarget({
+                                                    id:   appt.id,
+                                                    name: resolvePatientName(appt),
+                                                })}
+                                                className="text-xs text-slate-400 hover:text-red-500 hover:underline font-medium transition-colors"
+                                            >
+                                                Delete
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -651,6 +706,13 @@ export default function AppointmentComponent({ staffId, patientId }: Appointment
                 <CancelModal
                     id={store.cancelTargetId}
                     onClose={() => store.setUI("cancelTargetId", null)}
+                />
+            )}
+            {deleteTarget && (
+                <DeleteModal
+                    id={deleteTarget.id}
+                    patientName={deleteTarget.name}
+                    onClose={() => setDeleteTarget(null)}
                 />
             )}
         </div>
