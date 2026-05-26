@@ -1,29 +1,27 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
-export type AppointmentPriority = "routine" | "urgent" | "emergency";
-export type AppointmentStatus   = "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show";
-export type AppointmentDept     = "Doctor" | "Nurse" | "Lab" | "Radiology" | "Pharmacy";
+export type AppointmentPriority  = "routine" | "urgent" | "emergency";
+export type AppointmentStatus    = "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show";
+export type AppointmentDept      = "Doctor" | "Nurse" | "Lab" | "Radiology" | "Pharmacy";
+export type RecurringFrequency   = "weekly" | "biweekly" | "monthly";
 
 export interface AppointmentFormState {
-    // ── Patient ───────────────────────────────────────────────────────────────
-    // If patient exists in DB: patientId is set, isExternalPatient = false
-    // If walk-in / not registered: patientId = "", isExternalPatient = true, patientName is free text
     patientId:          string;
-    patientName:        string;   // display name for both DB patients and external walk-ins
+    patientName:        string;
     isExternalPatient:  boolean;
-
-    // ── Doctor / Staff ────────────────────────────────────────────────────────
     doctorId:           string;
-    doctorName:         string;   // display name
-
-    // ── Appointment details ───────────────────────────────────────────────────
+    doctorName:         string;
     appointmentDate:    string;
     appointmentTime:    string;
     reason:             string;
     department:         AppointmentDept;
     priority:           AppointmentPriority;
     notes:              string;
+    // Recurring
+    isRecurring:        boolean;
+    recurringFrequency: RecurringFrequency;
+    recurringCount:     number;
 }
 
 export interface AppointmentUIState {
@@ -33,6 +31,8 @@ export interface AppointmentUIState {
     dateFilter:     string;
     statusFilter:   AppointmentStatus | "all";
     search:         string;
+    viewMode:       "list" | "calendar";
+    doctorFilter:   string;   // staff ID or "" for all
 }
 
 export interface AppointmentActions {
@@ -44,26 +44,31 @@ export interface AppointmentActions {
 }
 
 const initialForm: AppointmentFormState = {
-    patientId:         "",
-    patientName:       "",
-    isExternalPatient: false,
-    doctorId:          "",
-    doctorName:        "",
-    appointmentDate:   "",
-    appointmentTime:   "",
-    reason:            "",
-    department:        "Doctor",
-    priority:          "routine",
-    notes:             "",
+    patientId:          "",
+    patientName:        "",
+    isExternalPatient:  false,
+    doctorId:           "",
+    doctorName:         "",
+    appointmentDate:    "",
+    appointmentTime:    "",
+    reason:             "",
+    department:         "Doctor",
+    priority:           "routine",
+    notes:              "",
+    isRecurring:        false,
+    recurringFrequency: "weekly",
+    recurringCount:     4,
 };
 
 const initialUI: AppointmentUIState = {
     showForm:       false,
     editTargetId:   null,
     cancelTargetId: null,
-    dateFilter:     "",
+    dateFilter:     new Date().toISOString().slice(0, 10),
     statusFilter:   "all",
     search:         "",
+    viewMode:       "list",
+    doctorFilter:   "",
 };
 
 type AppointmentStore = AppointmentFormState & AppointmentUIState & AppointmentActions;
@@ -73,18 +78,10 @@ export const useAppointmentStore = create<AppointmentStore>()(
         (set) => ({
             ...initialForm,
             ...initialUI,
-
             setFormField: (k, v) => set({ [k]: v } as any),
             setUI:        (k, v) => set({ [k]: v } as any),
-
-            resetForm: () => set({ ...initialForm, showForm: false, editTargetId: null }),
-
-            openEdit: (id, data) => set({
-                ...data,
-                showForm:     true,
-                editTargetId: id,
-            }),
-
+            resetForm:    () => set({ ...initialForm, showForm: false, editTargetId: null }),
+            openEdit: (id, data) => set({ ...data, showForm: true, editTargetId: id }),
             closeForm: () => set({ showForm: false, editTargetId: null }),
         }),
         { name: "appointment-store" }
