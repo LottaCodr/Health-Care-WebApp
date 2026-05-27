@@ -42,6 +42,11 @@ export function useAppointmentsByPatient(patientId: string) {
     });
 }
 
+// Helper — ensure we only access appointment properties on real objects, not errors
+function isAppointment(obj: any): obj is { appointment_date: string; patient_id?: string; status?: string } {
+    return obj && typeof obj === "object" && "appointment_date" in obj;
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 export function useCreateAppointment() {
@@ -50,10 +55,12 @@ export function useCreateAppointment() {
         mutationFn: (input: AS.CreateAppointmentInput) => AS.createAppointment(input),
         onSuccess: (appt) => {
             qc.invalidateQueries({ queryKey: appointmentKeys.upcoming() });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
-            // Only invalidate patient-specific cache if it was a registered patient
-            if (appt.patient_id) {
-                qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
+            if (isAppointment(appt)) {
+                qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
+                // Only invalidate patient-specific cache if it was a registered patient
+                if (appt.patient_id) {
+                    qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
+                }
             }
         },
     });
@@ -66,9 +73,11 @@ export function useUpdateAppointment() {
             AS.updateAppointment(id, updates),
         onSuccess: (appt) => {
             qc.invalidateQueries({ queryKey: appointmentKeys.upcoming() });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
-            if (appt.patient_id) {
-                qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
+            if (isAppointment(appt)) {
+                qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
+                if (appt.patient_id) {
+                    qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
+                }
             }
         },
     });
@@ -83,13 +92,15 @@ export function useUpdateAppointmentStatus() {
             AS.updateAppointmentStatus(id, status, reason),
         onSuccess: (appt) => {
             qc.invalidateQueries({ queryKey: appointmentKeys.upcoming() });
-            qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
-            if (appt.patient_id) {
-                qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
-            }
-            // Confirmed check-in → patient enters consultation queue
-            if (appt.status === "in_progress") {
-                qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            if (isAppointment(appt)) {
+                qc.invalidateQueries({ queryKey: appointmentKeys.byDate(appt.appointment_date) });
+                if (appt.patient_id) {
+                    qc.invalidateQueries({ queryKey: appointmentKeys.byPatient(appt.patient_id) });
+                }
+                // Confirmed check-in → patient enters consultation queue
+                if (appt.status === "in_progress") {
+                    qc.invalidateQueries({ queryKey: patientKeys.lists() });
+                }
             }
         },
     });

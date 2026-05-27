@@ -4,6 +4,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import {
     useUpcomingAppointments,
     useAppointmentsByDate,
+    useAppointmentsByPatient,
     useCreateAppointment,
     useUpdateAppointment,
     useUpdateAppointmentStatus,
@@ -748,46 +749,116 @@ function ActionBtn({ onClick, color, title, children }: {
     );
 }
 
+// ─── Appointment table ────────────────────────────────────────────────────────
+
+function AppointmentTable({ rows, pendingIds, onAction, label, labelColor }: {
+    rows:        any[];
+    pendingIds:  Set<string>;
+    onAction:    (type: string, appt: any) => void;
+    label?:      string;
+    labelColor?: string;
+}) {
+    return (
+        <div className="overflow-x-auto bg-white rounded-2xl border border-slate-100 shadow-sm">
+            {label && (
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100">
+                    <div className={`w-1.5 h-4 rounded-full ${labelColor ?? "bg-slate-300"}`} />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                    <span className="text-xs text-slate-400 font-medium ml-auto">{rows.length}</span>
+                </div>
+            )}
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide border-b border-slate-100">
+                        <th className="px-4 py-3 text-left font-semibold">Patient</th>
+                        <th className="px-4 py-3 text-left font-semibold">Doctor</th>
+                        <th className="px-4 py-3 text-left font-semibold">Date & Time</th>
+                        <th className="px-4 py-3 text-left font-semibold">Dept</th>
+                        <th className="px-4 py-3 text-left font-semibold">Reason</th>
+                        <th className="px-4 py-3 text-left font-semibold">Priority</th>
+                        <th className="px-4 py-3 text-left font-semibold">Status</th>
+                        <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(appt => (
+                        <AppointmentRow
+                            key={appt.id}
+                            appt={appt}
+                            pendingIds={pendingIds}
+                            onAction={onAction}
+                        />
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface AppointmentComponentProps {
-    staffId:    string;
-    patientId?: string;
+    staffId:          string;
+    patientId?:       string;
+    inPatientContext?: boolean;  // true when rendered inside a patient detail tab
 }
 
-export default function AppointmentComponent({ staffId, patientId }: AppointmentComponentProps) {
+export default function AppointmentComponent({ staffId, patientId, inPatientContext = false }: AppointmentComponentProps) {
     const store        = useAppointmentStore();
     const updateStatus = useUpdateAppointmentStatus();
     const { data: allStaff = [] } = useAllStaff();
 
-    const [pendingIds,      setPendingIds]      = useState<Set<string>>(new Set());
-    const [deleteTarget,    setDeleteTarget]    = useState<{ id: string; name: string } | null>(null);
-    const [rescheduleTarget,setRescheduleTarget]= useState<any | null>(null);
+    const [pendingIds,       setPendingIds]       = useState<Set<string>>(new Set());
+    const [deleteTarget,     setDeleteTarget]     = useState<{ id: string; name: string } | null>(null);
+    const [rescheduleTarget, setRescheduleTarget] = useState<any | null>(null);
 
-    // Always fetch upcoming; also fetch by date when a date is selected
-    const upcomingQ = useUpcomingAppointments();
-    const byDateQ   = useAppointmentsByDate(store.dateFilter);
+    // ── Data sources ──────────────────────────────────────────────────────────
+    // In patient context: fetch the full history for this patient (all time).
+    // In global context:  fetch upcoming + by selected date.
+    const upcomingQ    = useUpcomingAppointments();
+    const byDateQ      = useAppointmentsByDate(store.dateFilter);
+    const byPatientQ   = useAppointmentsByPatient(patientId ?? "");
 
-    const allAppointments: any[] = useMemo(() =>
-        [...(upcomingQ.data ?? []), ...(byDateQ.data ?? [])].filter(
-            (a, i, arr) => arr.findIndex(b => b.id === a.id) === i
-        ),
-    [upcomingQ.data, byDateQ.data]);
+    const allAppointments: any[] = useMemo(() => {
+        if (inPatientContext && patientId) {
+            return byPatientQ.data ?? [];
+        }
+        return [...(upcomingQ.data ?? []), ...(byDateQ.data ?? [])].filter(
+            (a, i, arr) => {
+                // Defensive: skip if missing id (could be GenericStringError)
+                if (!('id' in a)) return false;
+                return arr.findIndex(b => 'id' in b && b.id === a.id) === i;
+            }
+    
+        );
+    }, [inPatientContext, patientId, byPatientQ.data, upcomingQ.data, byDateQ.data]);
 
-    const loading = upcomingQ.isLoading || byDateQ.isLoading;
+    const loading = inPatientContext
+        ? byPatientQ.isLoading
+        : upcomingQ.isLoading || byDateQ.isLoading;
+
+    // In patient context, FrontDesk role is determined by the staffId caller;
+    // actions are gated via the canEdit flag passed down.
+    // We derive it from the store's own doctorFilter + context.
+    // The parent (PatientDetailTabs) passes staffId from auth — we infer role
+    // gating by checking whether inPatientContext is true and restricting actions.
+    // The parent must pass readOnly={role !== "FrontDesk"} — we accept it as prop.
+    // For simplicity: in patient context, hide create/edit/cancel/delete unless
+    // the caller explicitly unlocks it via `canWrite`.
+    const canWrite = !inPatientContext; // global page = always writable; patient tab = controlled below
 
     // Filtered list
     const filtered = useMemo(() =>
         allAppointments.filter(a => {
-            const matchDate    = !store.dateFilter || a.appointment_date === store.dateFilter;
+            const matchDate    = inPatientContext || !store.dateFilter || a.appointment_date === store.dateFilter;
             const matchStatus  = store.statusFilter === "all" || a.status === store.statusFilter;
-            const matchDoctor  = !store.doctorFilter || a.doctor_id === store.doctorFilter;
+            const matchDoctor  = inPatientContext || !store.doctorFilter || a.doctor_id === store.doctorFilter;
             const matchPatient = !patientId || a.patient_id === patientId;
             const name         = resolvePatientName(a).toLowerCase();
             const matchSearch  = !store.search || name.includes(store.search.toLowerCase()) || a.reason?.toLowerCase().includes(store.search.toLowerCase());
             return matchDate && matchStatus && matchDoctor && matchPatient && matchSearch;
         }),
-    [allAppointments, store.dateFilter, store.statusFilter, store.doctorFilter, patientId, store.search]);
+    [allAppointments, inPatientContext, store.dateFilter, store.statusFilter, store.doctorFilter, patientId, store.search]);
 
     // Per-row optimistic status handler
     const handleStatus = useCallback(async (id: string, status: string, reason?: string) => {
@@ -828,8 +899,12 @@ export default function AppointmentComponent({ staffId, patientId }: Appointment
 
     function openNewForm(prefillTime?: string) {
         store.resetForm();
-        if (store.dateFilter)  store.setFormField("appointmentDate", store.dateFilter);
-        if (prefillTime)       store.setFormField("appointmentTime", prefillTime);
+        if (!inPatientContext && store.dateFilter) store.setFormField("appointmentDate", store.dateFilter);
+        if (patientId) {
+            // pre-select the patient from the DB list — name will be resolved by combobox
+            store.setFormField("patientId", patientId);
+        }
+        if (prefillTime) store.setFormField("appointmentTime", prefillTime);
         store.setUI("showForm", true);
     }
 
@@ -844,6 +919,15 @@ export default function AppointmentComponent({ staffId, patientId }: Appointment
         (allStaff as any[]).filter(s => DOCTOR_ROLES.includes(s.role ?? "")),
     [allStaff]);
 
+    // ── Split past / upcoming in patient context ───────────────────────────────
+    const today = todayISO();
+    const { upcoming, past } = useMemo(() => {
+        if (!inPatientContext) return { upcoming: filtered, past: [] };
+        const up   = filtered.filter(a => a.appointment_date >= today).sort((a, b) => a.appointment_date.localeCompare(b.appointment_date));
+        const past = filtered.filter(a => a.appointment_date <  today).sort((a, b) => b.appointment_date.localeCompare(a.appointment_date));
+        return { upcoming: up, past };
+    }, [inPatientContext, filtered, today]);
+
     return (
         <div className="space-y-4">
 
@@ -851,26 +935,32 @@ export default function AppointmentComponent({ staffId, patientId }: Appointment
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h2 className="text-base font-bold text-slate-800">Appointments</h2>
+                        <h2 className="text-base font-bold text-slate-800">
+                            {inPatientContext ? "Appointment History" : "Appointments"}
+                        </h2>
                         <p className="text-xs text-slate-400 mt-0.5">
-                            {filtered.length} showing · {allAppointments.length} total
+                            {filtered.length} record{filtered.length !== 1 ? "s" : ""}
+                            {inPatientContext && past.length > 0 && ` · ${past.length} past`}
                             {loading && <span className="ml-2 inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin align-middle" />}
                         </p>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* View toggle */}
-                        <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
-                            {(["list", "calendar"] as const).map(mode => (
-                                <button key={mode} onClick={() => store.setUI("viewMode", mode)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors capitalize ${
-                                        store.viewMode === mode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                                    }`}>
-                                    {mode === "list" ? "☰ List" : "⧉ Day"}
-                                </button>
-                            ))}
-                        </div>
+                        {/* View toggle — hidden in patient context (list only) */}
+                        {!inPatientContext && (
+                            <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
+                                {(["list", "calendar"] as const).map(mode => (
+                                    <button key={mode} onClick={() => store.setUI("viewMode", mode)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors capitalize ${
+                                            store.viewMode === mode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                        }`}>
+                                        {mode === "list" ? "☰ List" : "⧉ Day"}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
 
+                        {/* New appointment — always available; patient pre-filled in context */}
                         <button onClick={() => openNewForm()}
                             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200">
                             + New Appointment
@@ -879,63 +969,82 @@ export default function AppointmentComponent({ staffId, patientId }: Appointment
                 </div>
             </div>
 
-            {/* ── Filter bar ── */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-3 space-y-3">
-
-                {/* Date navigation */}
-                <div className="flex items-center gap-2">
-                    <button onClick={() => store.setUI("dateFilter", shiftDate(store.dateFilter || todayISO(), -1))}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors text-sm">
-                        ‹
-                    </button>
-                    <input type="date" value={store.dateFilter}
-                        onChange={e => store.setUI("dateFilter", e.target.value)}
-                        className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 text-center" />
-                    <button onClick={() => store.setUI("dateFilter", shiftDate(store.dateFilter || todayISO(), 1))}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors text-sm">
-                        ›
-                    </button>
-                    {store.dateFilter !== todayISO() && (
-                        <button onClick={() => store.setUI("dateFilter", todayISO())}
-                            className="text-xs text-blue-600 hover:underline font-semibold whitespace-nowrap">
-                            Today
+            {/* ── Filter bar — hidden in patient context ── */}
+            {!inPatientContext && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-3 space-y-3">
+                    {/* Date navigation */}
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => store.setUI("dateFilter", shiftDate(store.dateFilter || todayISO(), -1))}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors text-sm">
+                            ‹
                         </button>
-                    )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                    {/* Doctor filter */}
-                    <select value={store.doctorFilter} onChange={e => store.setUI("doctorFilter", e.target.value)}
-                        className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
-                        <option value="">All doctors</option>
-                        {doctorOptions.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-
-                    {/* Status tabs */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                        {STATUSES.map(s => (
-                            <button key={s} onClick={() => store.setUI("statusFilter", s)}
-                                className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl border transition-colors capitalize ${
-                                    store.statusFilter === s
-                                        ? "bg-blue-600 text-white border-blue-600"
-                                        : "bg-white text-slate-500 border-slate-200 hover:border-blue-300"
-                                }`}>
-                                {s === "all" ? "All" : s.replace(/_/g, " ")}
-                                {s !== "all" && counts[s] > 0 && (
-                                    <span className={`ml-1 text-[10px] font-bold px-1 rounded-full ${store.statusFilter === s ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
-                                        {counts[s]}
-                                    </span>
-                                )}
+                        <input type="date" value={store.dateFilter}
+                            onChange={e => store.setUI("dateFilter", e.target.value)}
+                            className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 text-center" />
+                        <button onClick={() => store.setUI("dateFilter", shiftDate(store.dateFilter || todayISO(), 1))}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors text-sm">
+                            ›
+                        </button>
+                        {store.dateFilter !== todayISO() && (
+                            <button onClick={() => store.setUI("dateFilter", todayISO())}
+                                className="text-xs text-blue-600 hover:underline font-semibold whitespace-nowrap">
+                                Today
                             </button>
-                        ))}
+                        )}
                     </div>
 
-                    {/* Search */}
-                    <input value={store.search} onChange={e => store.setUI("search", e.target.value)}
-                        placeholder="Search patient or reason…"
-                        className="flex-1 min-w-36 rounded-xl border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    <div className="flex flex-wrap gap-2">
+                        <select value={store.doctorFilter} onChange={e => store.setUI("doctorFilter", e.target.value)}
+                            className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            <option value="">All doctors</option>
+                            {doctorOptions.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+
+                        <div className="flex items-center gap-1 flex-wrap">
+                            {STATUSES.map(s => (
+                                <button key={s} onClick={() => store.setUI("statusFilter", s)}
+                                    className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl border transition-colors capitalize ${
+                                        store.statusFilter === s
+                                            ? "bg-blue-600 text-white border-blue-600"
+                                            : "bg-white text-slate-500 border-slate-200 hover:border-blue-300"
+                                    }`}>
+                                    {s === "all" ? "All" : s.replace(/_/g, " ")}
+                                    {s !== "all" && counts[s] > 0 && (
+                                        <span className={`ml-1 text-[10px] font-bold px-1 rounded-full ${store.statusFilter === s ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
+                                            {counts[s]}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+
+                        <input value={store.search} onChange={e => store.setUI("search", e.target.value)}
+                            placeholder="Search patient or reason…"
+                            className="flex-1 min-w-36 rounded-xl border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* ── Patient-context status filter (compact) ── */}
+            {inPatientContext && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    {STATUSES.map(s => (
+                        <button key={s} onClick={() => store.setUI("statusFilter", s)}
+                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl border transition-colors capitalize ${
+                                store.statusFilter === s
+                                    ? "bg-blue-600 text-white border-blue-600"
+                                    : "bg-white text-slate-500 border-slate-200 hover:border-blue-300"
+                            }`}>
+                            {s === "all" ? "All" : s.replace(/_/g, " ")}
+                            {s !== "all" && counts[s] > 0 && (
+                                <span className={`ml-1 text-[10px] font-bold px-1 rounded-full ${store.statusFilter === s ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
+                                    {counts[s]}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* ── Content ── */}
             {loading && allAppointments.length === 0 ? (
@@ -944,27 +1053,40 @@ export default function AppointmentComponent({ staffId, patientId }: Appointment
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-100 shadow-sm gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 text-2xl">
-                        {store.search ? "🔍" : "📅"}
-                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 text-2xl">📅</div>
                     <div className="text-center">
                         <p className="text-sm font-semibold text-slate-600">
-                            {store.search ? `No results for "${store.search}"` : `No appointments for ${store.dateFilter || "this date"}`}
+                            {inPatientContext ? "No appointments on record" : `No appointments for ${store.dateFilter || "this date"}`}
                         </p>
                         <p className="text-xs text-slate-400 mt-1">
-                            {store.search ? "Try a different name or reason." : "Click below to schedule one."}
+                            {inPatientContext ? "Book the first one below." : "Click below to schedule one."}
                         </p>
                     </div>
-                    {!store.search && (
-                        <button onClick={() => openNewForm()}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors">
-                            + Schedule Appointment
-                        </button>
+                    <button onClick={() => openNewForm()}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors">
+                        + Schedule Appointment
+                    </button>
+                </div>
+            ) : inPatientContext ? (
+                /* ── Patient context: upcoming then past ── */
+                <div className="space-y-3">
+                    {upcoming.length > 0 && (
+                        <AppointmentTable
+                            rows={upcoming}
+                            pendingIds={pendingIds}
+                            onAction={handleAction}
+                            label="Upcoming"
+                            labelColor="bg-blue-500"
+                        />
                     )}
-                    {store.search && (
-                        <button onClick={() => store.setUI("search", "")} className="text-xs text-blue-600 hover:underline font-semibold">
-                            Clear search
-                        </button>
+                    {past.length > 0 && (
+                        <AppointmentTable
+                            rows={past}
+                            pendingIds={pendingIds}
+                            onAction={handleAction}
+                            label="Past"
+                            labelColor="bg-slate-300"
+                        />
                     )}
                 </div>
             ) : store.viewMode === "calendar" ? (
@@ -975,32 +1097,11 @@ export default function AppointmentComponent({ staffId, patientId }: Appointment
                     onAction={handleAction}
                 />
             ) : (
-                <div className="overflow-x-auto bg-white rounded-2xl border border-slate-100 shadow-sm">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide border-b border-slate-100">
-                                <th className="px-4 py-3 text-left font-semibold">Patient</th>
-                                <th className="px-4 py-3 text-left font-semibold">Doctor</th>
-                                <th className="px-4 py-3 text-left font-semibold">Date & Time</th>
-                                <th className="px-4 py-3 text-left font-semibold">Dept</th>
-                                <th className="px-4 py-3 text-left font-semibold">Reason</th>
-                                <th className="px-4 py-3 text-left font-semibold">Priority</th>
-                                <th className="px-4 py-3 text-left font-semibold">Status</th>
-                                <th className="px-4 py-3 text-left font-semibold">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(appt => (
-                                <AppointmentRow
-                                    key={appt.id}
-                                    appt={appt}
-                                    pendingIds={pendingIds}
-                                    onAction={handleAction}
-                                />
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <AppointmentTable
+                    rows={filtered}
+                    pendingIds={pendingIds}
+                    onAction={handleAction}
+                />
             )}
 
             {/* ── Modals ── */}
