@@ -845,8 +845,8 @@ async function fetchAllSections(
 
             case "consultations": {
                 let q = sb.from("consultations")
-                    .select("*, staffs(name, role)")
-                    .eq("patient_id", patientId)
+                    .select("*")
+                    .eq("id", patientId)
                     .order("created_at", { ascending: false });
                 if (dateFrom) q = q.gte("created_at", dateFrom);
                 if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);

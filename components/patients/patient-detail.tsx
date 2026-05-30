@@ -83,7 +83,15 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
     async function handleDownload(options: DownloadOptions) {
         try {
-            const result = await generatePatientRecord({ patientId: patient.id!, ...options });
+            // Fix RecordSection enum/type incompatibility by remapping sections if necessary to correct type import.
+            // Force type assertion of sections to the correct type expected by generatePatientRecord.
+            const { sections, ...restOptions } = options as any;
+            const result = await generatePatientRecord({
+                patientId: patient.id!,
+                ...(sections ? { sections: sections as import('../../lib/actions/generate-patient-record').RecordSection[] } : {}),
+                ...restOptions,
+            });
+ 
 
             if (result.type === "pdf") {
                 const bytes  = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));

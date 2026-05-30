@@ -7,6 +7,7 @@ import { Download, Printer, Stamp, CalendarRange, LayoutList } from "lucide-reac
 
 export type RecordSection =
     | "demographics"
+    | "vitals"
     | "consultations"
     | "lab_results"
     | "radiology"
@@ -16,7 +17,8 @@ export type RecordSection =
     | "payments";
 
 const SECTION_META: Record<RecordSection, { label: string; icon: string }> = {
-    demographics:   { label: "Patient Demographics",  icon: "👤" },
+    demographics: { label: "Patient Demographics", icon: "👤" },
+    vitals: { label: "Vitals", icon: "🩺" },
     consultations:  { label: "Consultation Notes",     icon: "🩺" },
     lab_results:    { label: "Lab Results",            icon: "🧪" },
     radiology:      { label: "Radiology Reports",      icon: "📡" },
