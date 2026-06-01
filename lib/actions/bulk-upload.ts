@@ -45,7 +45,7 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
         case "patients":
             return {
                 name:                     str("name"),
-                date_of_birth:            str("date_of_birth") || null,
+                date_of_birth:            str("birth_date") || null,
                 gender:                   str("gender").toLowerCase(),
                 phone:                    str("phone"),
                 address:                  str("address") || null,
