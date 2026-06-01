@@ -11,21 +11,21 @@ const CHUNK_SIZE = 25;
 const UPLOAD_TYPE_LABELS: Record<UploadType, string> = {
     patients:  "Patients",
     drug_inventory:     "Pharmacy Drugs",
-    lab_tests: "Lab Tests",
+    lab_test_catalog: "Lab Tests",
 };
 
 // All columns (for template download)
 const EXPECTED_HEADERS: Record<UploadType, string[]> = {
     patients:  ["name", "date_of_birth", "gender", "phone", "address", "blood_group", "genotype", "next_of_kin_name", "next_of_kin_phone"],
     drug_inventory:     ["drug_name", "generic_name", "category", "unit", "reorder_level", "unit_price", "status"],
-    lab_tests: ["test_name", "test_code", "category", "normal_range", "unit", "price"],
+    lab_test_catalog: ["test_name", "test_code", "category", "normal_range", "unit", "price"],
 };
 
 // Only these block upload
 const REQUIRED_HEADERS: Record<UploadType, string[]> = {
     patients:  ["name", "date_of_birth", "gender", "phone"],
     drug_inventory:     ["drug_name", "generic_name", "category", "unit"],
-    lab_tests: ["test_name", "test_code"],
+    lab_test_catalog: ["test_name", "test_code"],
 };
 
 const VALID_DRUG_CATEGORIES = ["TABLET", "INJECTION", "SYRUP", "TOPICAL", "CONSUMABLE"];
@@ -35,14 +35,14 @@ const DRUG_CATEGORIES_LABEL = VALID_DRUG_CATEGORIES.join(", ");
 const DUPE_KEY: Record<UploadType, string> = {
     patients:  "phone",
     drug_inventory:     "drug_name",
-    lab_tests: "test_code",
+    lab_test_catalog: "test_code",
 };
 
 // One example data row per type (for template)
 const TEMPLATE_EXAMPLE: Record<UploadType, string> = {
     patients:  "Jane Doe,1990-06-15,female,+2348012345678,12 Aso Drive Abuja,A+,AA,John Doe,+2348098765432",
     drug_inventory:     "Amoxicillin 500mg,Amoxicillin,TABLET,Pack,5,0,ACTIVE",
-    lab_tests: "Full Blood Count (FBC),T1,Haematology,,,0",
+    lab_test_catalog: "Full Blood Count (FBC),T1,Haematology,,,0",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ function validateRows(rows: Record<string, string>[], type: UploadType): Validat
             if (row.status && !["ACTIVE", "INACTIVE"].includes(row.status.toUpperCase()))
                 errors.push({ row: i + 2, field: "status", message: 'Must be "ACTIVE" or "INACTIVE"' });
         }
-        if (type === "lab_tests" && row.price && isNaN(Number(row.price)))
+        if (type === "lab_test_catalog" && row.price && isNaN(Number(row.price)))
             errors.push({ row: i + 2, field: "price", message: "Must be a number" });
     });
     return errors;

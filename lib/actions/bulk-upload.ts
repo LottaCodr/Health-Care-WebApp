@@ -6,10 +6,10 @@ import { createClient } from "@/utils/supabase/server";
 const TABLES = {
     patients:  "patients",
     drug_inventory:     "drug_inventory",       // pharmacy drug catalog
-    lab_tests: "lab_tests",   // lab test catalog
+    lab_test_catalog: "lab_test_catalog",   // lab test catalog
 } as const;
 
-export type UploadType = "patients" | "drug_inventory" | "lab_tests";
+export type UploadType = "patients" | "drug_inventory" | "lab_test_catalog";
 
 export interface ChunkResult {
     success: number;
@@ -67,7 +67,7 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
                 is_active:     str("status", "ACTIVE").toUpperCase() !== "INACTIVE",
             };
 
-        case "lab_tests":
+        case "lab_test_catalog":
             return {
                 test_name:    str("test_name"),
                 test_code:    str("test_code"),
