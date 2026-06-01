@@ -5,11 +5,11 @@ import { createClient } from "@/utils/supabase/server";
 // ── Table names — update if your schema differs ───────────────────────────────
 const TABLES = {
     patients:  "patients",
-    drugs:     "drugs",       // pharmacy drug catalog
+    drug_inventory:     "drug_inventory",       // pharmacy drug catalog
     lab_tests: "lab_tests",   // lab test catalog
 } as const;
 
-export type UploadType = "patients" | "drugs" | "lab_tests";
+export type UploadType = "patients" | "drug_inventory" | "lab_tests";
 
 export interface ChunkResult {
     success: number;
@@ -25,7 +25,7 @@ export async function checkExistingRecords(
 ): Promise<string[]> {
     if (!values.length) return [];
     const sb    = await createClient();
-    const field = type === "patients" ? "phone" : type === "drugs" ? "drug_name" : "test_code";
+    const field = type === "patients" ? "phone" : type === "drug_inventory" ? "drug_name" : "test_code";
 
     const { data } = await sb
         .from(TABLES[type])
@@ -56,7 +56,7 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
                 status:                   "registered",
             };
 
-        case "drugs":
+        case "drug_inventory":
             return {
                 drug_name:     str("drug_name"),
                 generic_name:  str("generic_name") || null,
