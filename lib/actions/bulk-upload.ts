@@ -63,7 +63,7 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
                 category:      str("category").toUpperCase(),
                 unit:          str("unit") || "Pack",
                 reorder_level: num("reorder_level", 3),
-                unit_price:    num("price", 0),
+                price:    num("price", 0),
                 is_active:     str("status", "TRUE").toUpperCase() !== "FALSE",
             };
 
