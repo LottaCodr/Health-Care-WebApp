@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useConsultationStore, RequestPriority } from "@/store/consultation-store";
 import { useAuth } from "@/context/auth-provider";
@@ -14,12 +14,8 @@ import {
     useCreateLabRequest,
     useCreateRadiologyRequest,
     useActiveLabTests,
-    // useActiveRadiologyTests,
-    useDrugInventory
 } from "@/hooks/emr/use-emr";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-
-// NEW: Import Checkbox and cn for MultiSelect
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
@@ -88,38 +84,6 @@ const REFERRAL_OPTIONS = [
     },
 ] as const;
 
-// Use active lab tests for lab and radiology options
-const { data: labCatalog } = useActiveLabTests();
-
-// Grab all test strings from active lab tests for multi-select
-const LAB_TESTS: string[] = React.useMemo(() => {
-    if (!labCatalog) return [];
-    return Object.values(labCatalog)
-        .flat()
-        .filter(t => !(
-            t.category?.toLowerCase().includes("radiology") ||
-            t.test_name?.toLowerCase().includes("x-ray") ||
-            t.test_name?.toLowerCase().includes("ct") ||
-            t.test_name?.toLowerCase().includes("mri") ||
-            t.test_name?.toLowerCase().includes("ultrasound")
-        ))
-        .map(t => t.test_name);
-}, [labCatalog]);
-
-const RADIOLOGY_TESTS: string[] = React.useMemo(() => {
-    if (!labCatalog) return [];
-    return Object.values(labCatalog)
-        .flat()
-        .filter(t =>
-            t.category?.toLowerCase().includes("radiology") ||
-            t.test_name?.toLowerCase().includes("x-ray") ||
-            t.test_name?.toLowerCase().includes("ct") ||
-            t.test_name?.toLowerCase().includes("mri") ||
-            t.test_name?.toLowerCase().includes("ultrasound")
-        )
-        .map(t => t.test_name);
-}, [labCatalog]);
-
 const PATIENT_STATUSES = [
     { value: "sent-to-nurse", label: "Sent to Nurse" },
     { value: "sent-to-lab", label: "Sent to Lab" },
@@ -183,7 +147,6 @@ function MultiSelect({ options, selected, onChange, placeholder, label }: MultiS
                                 <Checkbox
                                     className="w-4 h-4"
                                     checked={selected.includes(opt)}
-                                    // @ts-ignore (ui component prop)
                                     tabIndex={-1}
                                     aria-label={'checkbox'}
                                 />
@@ -271,11 +234,41 @@ export default function ConsultationForm({
     const { mutate: updateStatus } = useUpdatePatientStatus();
     const { mutate: createLabRequest, isPending: lLoading } = useCreateLabRequest();
     const { mutate: createRadRequest, isPending: rLoading } = useCreateRadiologyRequest();
+    const { data: labCatalog } = useActiveLabTests();
 
     const loading = cLoading || lLoading || rLoading;
 
     const isChild = isPaed(patientAge);
     const isFem = isFemale(patientGender);
+
+    // Derive lab and radiology test lists from live catalog
+    const LAB_TESTS: string[] = useMemo(() => {
+        if (!labCatalog) return [];
+        return Object.values(labCatalog)
+            .flat()
+            .filter(t => !(
+                t.category?.toLowerCase().includes("radiology") ||
+                t.test_name?.toLowerCase().includes("x-ray") ||
+                t.test_name?.toLowerCase().includes("ct") ||
+                t.test_name?.toLowerCase().includes("mri") ||
+                t.test_name?.toLowerCase().includes("ultrasound")
+            ))
+            .map(t => t.test_name);
+    }, [labCatalog]);
+
+    const RADIOLOGY_TESTS: string[] = useMemo(() => {
+        if (!labCatalog) return [];
+        return Object.values(labCatalog)
+            .flat()
+            .filter(t =>
+                t.category?.toLowerCase().includes("radiology") ||
+                t.test_name?.toLowerCase().includes("x-ray") ||
+                t.test_name?.toLowerCase().includes("ct") ||
+                t.test_name?.toLowerCase().includes("mri") ||
+                t.test_name?.toLowerCase().includes("ultrasound")
+            )
+            .map(t => t.test_name);
+    }, [labCatalog]);
 
     // ── Store ────────────────────────────────────────────────────────────────
     const {
@@ -368,19 +361,18 @@ export default function ConsultationForm({
                             patientId,
                             requestedBy: doctorId,
                             testType: labTestType.join(", "),
-                            priority: labPriority,   // typed as RequestPriority — no cast needed
+                            priority: labPriority,
                             notes: labNotes || undefined,
                             status: "pending",
                         });
                     }
 
                     if (referredTo === "radiology") {
-                        // Use the dedicated radiology service — it prepends "[RADIOLOGY] " automatically
                         createRadRequest({
                             patientId,
                             requestedBy: doctorId,
-                            testType: radTestType.join(", "),   // service adds the prefix
-                            priority: radPriority,   // typed as RequestPriority — no cast needed
+                            testType: radTestType.join(", "),
+                            priority: radPriority,
                             notes: radNotes || undefined,
                         });
                     }
