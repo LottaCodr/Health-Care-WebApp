@@ -16,7 +16,7 @@ const UPLOAD_TYPE_LABELS: Record<UploadType, string> = {
 
 // All columns (for template download)
 const EXPECTED_HEADERS: Record<UploadType, string[]> = {
-    patients:  ["name", "date_of_birth", "gender", "phone", "address", "blood_group", "genotype", "next_of_kin_name", "next_of_kin_phone"],
+    patients:  ["name", "birth_date", "gender", "phone", "address", "blood_group", "genotype", "next_of_kin_name", "next_of_kin_phone"],
     drug_inventory:     ["drug_name", "generic_name", "category", "unit", "reorder_level", "price", "is_active"],
     lab_test_catalog: ["test_name", "test_code", "category", "normal_range", "unit", "price"],
 };
@@ -80,8 +80,8 @@ function validateRows(rows: Record<string, string>[], type: UploadType): Validat
         if (type === "patients") {
             if (row.gender && !["male", "female"].includes(row.gender.toLowerCase()))
                 errors.push({ row: i + 2, field: "gender", message: 'Must be "male" or "female"' });
-            if (row.date_of_birth && isNaN(Date.parse(row.date_of_birth)))
-                errors.push({ row: i + 2, field: "date_of_birth", message: "Invalid date — use YYYY-MM-DD" });
+            if (row.birth_date && isNaN(Date.parse(row.birth_date)))
+                errors.push({ row: i + 2, field: "birth_date", message: "Invalid date — use YYYY-MM-DD" });
         }
         if (type === "drug_inventory") {
             if (row.category && !VALID_DRUG_CATEGORIES.includes(row.category.toUpperCase()))
