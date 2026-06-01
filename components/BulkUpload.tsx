@@ -24,7 +24,7 @@ const EXPECTED_HEADERS: Record<UploadType, string[]> = {
 // Only these block upload
 const REQUIRED_HEADERS: Record<UploadType, string[]> = {
     patients:  ["name", "birth_date", "gender", "phone"],
-    drug_inventory:     ["drug_name", "generic_name", "category", "unit"],
+    drug_inventory:     ["drug_name", "generic_name", "category", "unit", "reorder_level", "price", "is_active"],
     lab_test_catalog: ["test_name", "test_code"],
 };
 
