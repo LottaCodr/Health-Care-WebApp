@@ -154,12 +154,12 @@ export default function DoctorDashboard() {
                         {/* Queue */}
                         {activeTab === "queue" && (
                             <>
-                                {awaitingPatients.loading && <LoadingSkeleton rows={4} />}
+                                {awaitingPatients.isLoading && <LoadingSkeleton rows={4} />}
                                 {awaitingPatients.error && !dismissedErrors.includes("queue") && (
                                     <ErrorAlert error={awaitingPatients.error}
                                         onDismiss={() => setDismissedErrors((p) => [...p, "queue"])} />
                                 )}
-                                {!awaitingPatients.loading && queueCount === 0 && (
+                                {!awaitingPatients.isLoading && queueCount === 0 && (
                                     <EmptyState title="Queue is clear" description="No patients waiting for consultation" icon="✓" />
                                 )}
                                 {awaitingPatients.data?.map((p, i) => (
@@ -171,8 +171,8 @@ export default function DoctorDashboard() {
                         {/* In progress */}
                         {activeTab === "in-progress" && (
                             <>
-                                {myConsultations.loading && <LoadingSkeleton rows={4} />}
-                                {!myConsultations.loading && inProgressCount === 0 && (
+                                {myConsultations.isLoading && <LoadingSkeleton rows={4} />}
+                                {!myConsultations.isLoading && inProgressCount === 0 && (
                                     <EmptyState title="No active consultations" description="Consultations you start will appear here" icon="📋" />
                                 )}
                                 {myConsultations.data?.filter((c) => c.status !== "Completed").map((c) => (
@@ -184,8 +184,8 @@ export default function DoctorDashboard() {
                         {/* Completed */}
                         {activeTab === "completed" && (
                             <>
-                                {myConsultations.loading && <LoadingSkeleton rows={4} />}
-                                {!myConsultations.loading && completedCount === 0 && (
+                                {myConsultations.isLoading && <LoadingSkeleton rows={4} />}
+                                {!myConsultations.isLoading && completedCount === 0 && (
                                     <EmptyState title="No completed consultations" description="Completed consultations will appear here" icon="✓" />
                                 )}
                                 {myConsultations.data?.filter((c) => c.status === "Completed").map((c) => (
