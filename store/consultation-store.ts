@@ -39,13 +39,15 @@ export interface ConsultationState {
     referredTo: string;
     statusOverride: string;
     
-    labTestType: string;
+    labTestType: string[];
     labPriority: RequestPriority;
     labNotes: string;
     
-    radTestType: string;
+    radTestType: string[];
     radPriority: RequestPriority;
     radNotes: string;
+
+    drugItems: string[];
     
     loading: boolean;
 }
@@ -92,13 +94,15 @@ const initialState: ConsultationState = {
     referredTo: "",
     statusOverride: "",
     
-    labTestType: "",
+    labTestType: [],
     labPriority: "routine",
     labNotes: "",
     
-    radTestType: "",
+    radTestType: [],
     radPriority: "routine",
     radNotes: "",
+
+    drugItems: [],
     
     loading: false,
 };

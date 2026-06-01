@@ -12,9 +12,16 @@ import {
     useCreateConsultation,
     useUpdatePatientStatus,
     useCreateLabRequest,
-    useCreateRadiologyRequest,       // ← dedicated radiology hook
+    useCreateRadiologyRequest,
+    useActiveLabTests,
+    // useActiveRadiologyTests,
+    useDrugInventory
 } from "@/hooks/emr/use-emr";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+
+// NEW: Import Checkbox and cn for MultiSelect
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 const AIClinicalAssistant = dynamic(
     () => import("@/components/ai/AIClinicalAssistant"),
@@ -30,7 +37,6 @@ import {
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 
 interface Props {
     patientId: string;
@@ -82,26 +88,37 @@ const REFERRAL_OPTIONS = [
     },
 ] as const;
 
-const LAB_TESTS = [
-    "Full Blood Count (FBC)", "Malaria Parasite Test", "Urinalysis",
-    "Blood Sugar (Fasting)", "Blood Sugar (Random)", "Liver Function Test (LFT)",
-    "Kidney Function Test (KFT)", "Widal Test (Typhoid)", "HIV Screening",
-    "Hepatitis B Surface Ag", "HBA1c", "Thyroid Function Test",
-    "Lipid Profile", "Electrolytes & Urea", "Blood Culture & Sensitivity",
-    "Pregnancy Test", "Stool Microscopy", "Sputum AFB",
-    "Blood Group & Crossmatch", "Genotype", "ECG",
-    "Other (specify in notes)",
-];
+// Use active lab tests for lab and radiology options
+const { data: labCatalog } = useActiveLabTests();
 
-const RADIOLOGY_TESTS = [
-    "Chest X-Ray (PA)", "Abdominal X-Ray", "Skull X-Ray",
-    "Cervical Spine X-Ray", "Thoracic Spine X-Ray", "Lumbar Spine X-Ray",
-    "Pelvic X-Ray", "Limbs X-Ray", "Ultrasound Scan (Abdomen/Pelvis)",
-    "Obstetric Ultrasound", "Breast Ultrasound", "Cranial Ultrasound",
-    "CT Scan — Brain", "CT Scan — Chest", "CT Scan — Abdomen/Pelvis",
-    "MRI — Brain", "MRI — Spine", "Echocardiogram",
-    "Doppler Studies", "Fluoroscopy", "Other (specify in notes)",
-];
+// Grab all test strings from active lab tests for multi-select
+const LAB_TESTS: string[] = React.useMemo(() => {
+    if (!labCatalog) return [];
+    return Object.values(labCatalog)
+        .flat()
+        .filter(t => !(
+            t.category?.toLowerCase().includes("radiology") ||
+            t.test_name?.toLowerCase().includes("x-ray") ||
+            t.test_name?.toLowerCase().includes("ct") ||
+            t.test_name?.toLowerCase().includes("mri") ||
+            t.test_name?.toLowerCase().includes("ultrasound")
+        ))
+        .map(t => t.test_name);
+}, [labCatalog]);
+
+const RADIOLOGY_TESTS: string[] = React.useMemo(() => {
+    if (!labCatalog) return [];
+    return Object.values(labCatalog)
+        .flat()
+        .filter(t =>
+            t.category?.toLowerCase().includes("radiology") ||
+            t.test_name?.toLowerCase().includes("x-ray") ||
+            t.test_name?.toLowerCase().includes("ct") ||
+            t.test_name?.toLowerCase().includes("mri") ||
+            t.test_name?.toLowerCase().includes("ultrasound")
+        )
+        .map(t => t.test_name);
+}, [labCatalog]);
 
 const PATIENT_STATUSES = [
     { value: "sent-to-nurse", label: "Sent to Nurse" },
@@ -111,6 +128,74 @@ const PATIENT_STATUSES = [
     { value: "under-observation", label: "Under Observation" },
     { value: "discharged", label: "Discharged" },
 ];
+
+// ─── MultiSelect Sub-component ────────────────────────────────────────────────
+
+type MultiSelectProps = {
+    options: string[];
+    selected: string[];
+    onChange: (selected: string[]) => void;
+    placeholder?: string;
+    label?: string;
+};
+
+function MultiSelect({ options, selected, onChange, placeholder, label }: MultiSelectProps) {
+    const [open, setOpen] = useState(false);
+
+    const handleToggle = (value: string) => {
+        if (selected.includes(value)) {
+            onChange(selected.filter((item) => item !== value));
+        } else {
+            onChange([...selected, value]);
+        }
+    };
+
+    const display =
+        selected.length > 0
+            ? selected.join(", ")
+            : placeholder || "Select...";
+
+    return (
+        <div className="w-full relative">
+            <button
+                type="button"
+                className={cn(
+                    "w-full h-10 px-3 flex justify-between items-center rounded-xl border border-gray-200 bg-white text-sm",
+                    "focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 transition-all"
+                )}
+                onClick={() => setOpen(v => !v)}
+            >
+                <span className={cn(selected.length === 0 ? "text-gray-400" : "text-gray-900")}>{display}</span>
+                <ChevronDown size={16} className="text-gray-400 ml-2" />
+            </button>
+            {open && (
+                <div className="absolute z-30 mt-1 left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                    <ul className="p-2 space-y-1">
+                        {options.map((opt) => (
+                            <li
+                                key={opt}
+                                className={cn(
+                                    "flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-50",
+                                    selected.includes(opt) ? "bg-gray-100 font-semibold" : "",
+                                )}
+                                onClick={() => handleToggle(opt)}
+                            >
+                                <Checkbox
+                                    className="w-4 h-4"
+                                    checked={selected.includes(opt)}
+                                    // @ts-ignore (ui component prop)
+                                    tabIndex={-1}
+                                    aria-label={'checkbox'}
+                                />
+                                <span className="text-sm">{opt}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -258,8 +343,8 @@ export default function ConsultationForm({
 
         if (!presentingComplaint.trim()) { toast.error("Presenting complaint is required."); return; }
         if (!assessment.trim()) { toast.error("Assessment / diagnosis is required."); return; }
-        if (referredTo === "lab-tech" && !labTestType) { toast.error("Select a lab test type."); return; }
-        if (referredTo === "radiology" && !radTestType) { toast.error("Select a radiology investigation type."); return; }
+        if (referredTo === "lab-tech" && (!labTestType || labTestType.length === 0)) { toast.error("Select at least one lab test type."); return; }
+        if (referredTo === "radiology" && (!radTestType || radTestType.length === 0)) { toast.error("Select a radiology investigation type."); return; }
 
         const doctorId = user?.id ?? user?.$id ?? "";
 
@@ -282,7 +367,7 @@ export default function ConsultationForm({
                         createLabRequest({
                             patientId,
                             requestedBy: doctorId,
-                            testType: labTestType,
+                            testType: labTestType.join(", "),
                             priority: labPriority,   // typed as RequestPriority — no cast needed
                             notes: labNotes || undefined,
                             status: "pending",
@@ -294,7 +379,7 @@ export default function ConsultationForm({
                         createRadRequest({
                             patientId,
                             requestedBy: doctorId,
-                            testType: radTestType,   // service adds the prefix
+                            testType: radTestType.join(", "),   // service adds the prefix
                             priority: radPriority,   // typed as RequestPriority — no cast needed
                             notes: radNotes || undefined,
                         });
@@ -547,14 +632,12 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel required>Test Type</FieldLabel>
-                                    <Select onValueChange={(v) => setField("labTestType", v)} value={labTestType}>
-                                        <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
-                                            <SelectValue placeholder="Select test..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white shadow-xl rounded-xl max-h-60">
-                                            {LAB_TESTS.map(t => <SelectItem key={t} value={t} className="text-sm">{t}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <MultiSelect
+                                        options={LAB_TESTS}
+                                        selected={labTestType}
+                                        onChange={(newSelected) => setField("labTestType", newSelected)}
+                                        placeholder="Select test(s)..."
+                                    />
                                 </div>
                                 <div className="space-y-1.5">
                                     <FieldLabel>Priority</FieldLabel>
@@ -590,14 +673,12 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel required>Investigation Type</FieldLabel>
-                                    <Select onValueChange={(v) => setField("radTestType", v)} value={radTestType}>
-                                        <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
-                                            <SelectValue placeholder="Select investigation..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white shadow-xl rounded-xl max-h-60">
-                                            {RADIOLOGY_TESTS.map(t => <SelectItem key={t} value={t} className="text-sm">{t}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <MultiSelect
+                                        options={RADIOLOGY_TESTS}
+                                        selected={radTestType}
+                                        onChange={(newSelected) => setField("radTestType", newSelected)}
+                                        placeholder="Select radiology investigation(s)..."
+                                    />
                                 </div>
                                 <div className="space-y-1.5">
                                     <FieldLabel>Priority</FieldLabel>
