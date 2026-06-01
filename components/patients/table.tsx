@@ -1,12 +1,18 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Droplets, Pill, Calendar, ChevronRight } from "lucide-react";
+import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw } from "lucide-react";
+import ReturnPatient from "./return-patient";
+import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+import {
+    Dialog,
+    DialogContent,
+} from "@/components/ui/dialog";
 import {
     useAllPatients,
     usePatientsByStatus,
@@ -24,18 +30,20 @@ import type { Patient } from "@/types/models";
 // ══════════════════════════════════════════════════════════════════════════════
 
 const ROLE_STATUSES: Record<string, string[] | null> = {
-    Frontdesk: null,    // null = all patients
-    Admin: null,
-    Doctor: ["awaiting-consultation", "under-consultation"],
-    Nurse: ["sent-to-nurse", "under-observation", "admitted"],
-    LabTechnician: ["sent-to-lab"],
-    Pharmacist: ["sent-to-pharmacy"],
-    Radiologist: ["sent-to-radiology"],
+     Frontdesk: ["awaiting-consultation", "under-consultation", "sent-to-pharmacy", "sent-to-lab", "sent-to-radiology", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-pharmacy"],
+    // Admin: null,
+    Doctor: ["awaiting-consultation", "under-consultation", "sent-to-pharmacy", "sent-to-lab", "sent-to-radiology"],
+    Nurse: ["sent-to-nurse", "under-observation", "admitted", "sent-to-pharmacy", "sent-to-lab", "sent-to-radiology"],
+    LabTechnician: ["sent-to-lab", "sent-to-pharmacy", "sent-to-radiology", "awaiting-consultation", "under-consultation"],
+    Pharmacist: ["sent-to-pharmacy", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-radiology", "awaiting-consultation", "under-consultation"],
+    Radiologist: ["sent-to-radiology", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-pharmacy", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-pharmacy"],
+    Admin: ["awaiting-consultation", "under-consultation", "sent-to-pharmacy", "sent-to-lab", "sent-to-radiology", "awaiting-consultation", "under-consultation", "sent-to-lab", "sent-to-pharmacy"],
 };
 
 // Role → destination route on card click
 const ROLE_ROUTES: Record<string, (id: string) => string> = {
-    // Frontdesk: (id) => `/front-desk/patient/${id}`,
+    Frontdesk: (id) => `/front-desk/patient/${id}`,
+    FrontDesk: (id) => `/front-desk/patient/${id}`,
     Doctor: (id) => `/doctor/patients/${id}`,
     Nurse: (id) => `/nurse/queue/patient/${id}`,
     Labtech: (id) => `/lab-tech/requests/patient/${id}`,
@@ -54,7 +62,7 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> =
     "sent-to-lab": { bg: "bg-indigo-50", text: "text-indigo-700", dot: "bg-indigo-500" },
     "sent-to-pharmacy": { bg: "bg-pink-50", text: "text-pink-700", dot: "bg-pink-500" },
     "sent-to-radiology": { bg: "bg-cyan-50", text: "text-cyan-700", dot: "bg-cyan-500" },
-    "awaiting-payment": { bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500" },
+    "awaiting-payment": { bg: "bg-orange-50", text: "text-orange-700 ", dot: "bg-orange-500" },
     "admitted": { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
     "under-observation": { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
     "discharged": { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
@@ -77,6 +85,7 @@ function StatusBadge({ status }: { status: string }) {
 const containerVariants = {
     hidden: {},
     visible: { transition: { staggerChildren: 0.05 } },
+
 };
 
 const cardVariants = {
@@ -121,6 +130,10 @@ function PatientGrid({
 }) {
     const router = useRouter();
     const qc = useQueryClient();
+    const { user } = useAuth();
+    const [returnPatient, setReturnPatient] = useState<Patient | null>(null);
+    const staffId = user?.$id ?? user?.id ?? "";
+    const canReturn = role === "Frontdesk" || role === "FrontDesk" || role === "Admin";
 
     const navigate = (id: string) => {
         const route = ROLE_ROUTES[role]?.(id);
@@ -146,6 +159,7 @@ function PatientGrid({
     );
 
     return (
+        <>
         <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6"
             variants={containerVariants}
@@ -227,8 +241,20 @@ function PatientGrid({
                                 </div>
 
                                 {/* Status */}
-                                <div className="mt-auto pt-1">
+                                <div className="mt-auto pt-1 flex items-center justify-between gap-2">
                                     <StatusBadge status={patient.status ?? "no-status"} />
+                                    {canReturn && patient.status === "discharged" && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setReturnPatient(patient);
+                                            }}
+                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-100"
+                                        >
+                                            <RotateCcw size={11} /> Return
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>
@@ -236,6 +262,23 @@ function PatientGrid({
                 })}
             </AnimatePresence>
         </motion.div>
+
+        <Dialog open={!!returnPatient} onOpenChange={(o) => !o && setReturnPatient(null)}>
+            <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none">
+                {returnPatient?.id && (
+                    <ReturnPatient
+                        patientId={returnPatient.id}
+                        patientName={returnPatient.name ?? "Patient"}
+                        staffId={staffId}
+                        onReturn={async (input) => {
+                            await processReturnVisit(input);
+                        }}
+                        onCancel={() => setReturnPatient(null)}
+                    />
+                )}
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
 

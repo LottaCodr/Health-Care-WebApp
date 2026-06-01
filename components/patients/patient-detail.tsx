@@ -7,13 +7,23 @@ import { useConsultationStore } from "@/store/consultation-store";
 import PatientDetailsSkeleton from "./skeleton";
 import { Patient, PatientStatus } from "@/types/models";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-provider";
+import ReturnPatient from "./return-patient";
+import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
+import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import {
     User, Mail, Phone, MapPin, Briefcase, ShieldAlert, CheckCircle,
     ClipboardList, Activity, Heart, Building2, CreditCard, Copy,
     Check, ChevronRight, ArrowLeft, AlertTriangle, Dna, Droplets,
-    Baby, BookUser, Pill, History, Syringe,
+    Baby, BookUser, Pill, History, Syringe, Download,
 } from "lucide-react";
-// Patient import already at line 8
 
 const PatientDetailTabs = dynamic(() => import("./patient-detail-tabs"), {
   loading: () => (
@@ -28,14 +38,24 @@ interface Props {
     patient: Patient;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 export default function PatientDetailsComponent({ patient }: Props) {
-    const patientStore = usePatientStore();
+    const patientStore      = usePatientStore();
     const consultationStore = useConsultationStore();
+    const { user }          = useAuth();
 
-    const [showCopied, setShowCopied] = useState(false);
-    const [activeGroup, setActiveGroup] = useState("basic");
+    const [showCopied,   setShowCopied]   = useState(false);
+    const [activeGroup,  setActiveGroup]  = useState("basic");
+    const [returnOpen,   setReturnOpen]   = useState(false);
+    const [downloadOpen, setDownloadOpen] = useState(false);
+
+    const role         = (user?.role ?? "").toLowerCase();
+    const isFrontDesk  = role.includes("front");
+    const isAdmin      = role.includes("admin");
+    const canDownload  = isFrontDesk || isAdmin || role.includes("doc");
+    const isDischarged =
+        patient.status === PatientStatus.Discharged ||
+        String(patient.status).toLowerCase() === "discharged";
+    const staffId = user?.$id ?? user?.id ?? "";
 
     useEffect(() => {
         if (patient) {
@@ -61,6 +81,47 @@ export default function PatientDetailsComponent({ patient }: Props) {
         if (window.history.length > 1) window.history.back();
     }, []);
 
+    async function handleDownload(options: DownloadOptions) {
+        try {
+            // Fix RecordSection enum/type incompatibility by remapping sections if necessary to correct type import.
+            // Force type assertion of sections to the correct type expected by generatePatientRecord.
+            const { sections, ...restOptions } = options as any;
+            const result = await generatePatientRecord({
+                patientId: patient.id!,
+                ...(sections ? { sections: sections as import('../../lib/actions/generate-patient-record').RecordSection[] } : {}),
+                ...restOptions,
+            });
+ 
+
+            if (result.type === "pdf") {
+                const bytes  = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
+                const blob   = new Blob([bytes], { type: "application/pdf" });
+                const url    = URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href     = url;
+                anchor.download = result.filename;
+                anchor.click();
+                URL.revokeObjectURL(url);
+            } else {
+                const win = window.open("", "_blank", "width=1000,height=760,scrollbars=yes");
+                if (win) {
+                    win.document.write(result.html);
+                    win.document.close();
+                } else {
+                    const blob = new Blob([result.html], { type: "text/html" });
+                    const url  = URL.createObjectURL(blob);
+                    window.open(url, "_blank");
+                    URL.revokeObjectURL(url);
+                }
+            }
+
+            toast({ title: "Record ready", description: "Patient record generated successfully." });
+        } catch {
+            toast({ variant: "destructive", title: "Export failed", description: "Could not generate patient record." });
+            throw new Error("Export failed");
+        }
+    }
+
     if (consultationStore.loading) return <PatientDetailsSkeleton />;
 
     if (!patientStore.patient?.length) {
@@ -84,6 +145,63 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
     return (
         <main className="max-w-full px-2 md:px-6 py-10 space-y-8">
+
+            {/* Return visit banner */}
+            {isFrontDesk && isDischarged && patient.id && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-teal-50 border border-teal-100">
+                    <p className="text-sm text-teal-800 font-medium">
+                        This patient is discharged. Start a return visit to check them in again.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setReturnOpen(true)}
+                        className="shrink-0 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold"
+                    >
+                        Return visit
+                    </button>
+                </div>
+            )}
+
+            {/* Return visit dialog */}
+            <Dialog open={returnOpen} onOpenChange={setReturnOpen}>
+                <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none">
+                    <ReturnPatient
+                        patientId={patient.id!}
+                        patientName={patient.name ?? "Patient"}
+                        staffId={staffId}
+                        onReturn={async (input) => { await processReturnVisit(input); }}
+                        onCancel={() => setReturnOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
+
+            {/* Download dialog */}
+            <Dialog open={downloadOpen} onOpenChange={setDownloadOpen}>
+                <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                    <DialogHeader className="pb-2 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                                <Download size={16} className="text-blue-600" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-sm font-bold text-gray-900">
+                                    Download Patient Record
+                                </DialogTitle>
+                                <p className="text-xs text-gray-400 mt-0.5">{patient.name}</p>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="pt-2">
+                        <PatientRecordDownload
+                            patientId={patient.id!}
+                            patientName={patient.name ?? "Patient"}
+                            onDownload={handleDownload}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Profile card */}
             <PatientProfile
                 patient={currentPatient}
                 status={patientStore.status}
@@ -91,7 +209,10 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 showCopied={showCopied}
                 activeGroup={activeGroup}
                 setActiveGroup={setActiveGroup}
+                canDownload={canDownload}
+                onDownload={() => setDownloadOpen(true)}
             />
+
             <PatientDetailTabs patient={patient} />
         </main>
     );
@@ -100,23 +221,26 @@ export default function PatientDetailsComponent({ patient }: Props) {
 // ─── Group definitions ────────────────────────────────────────────────────────
 
 const GROUPS = [
-    { id: "basic",     label: "Personal",   icon: User        },
-    { id: "emergency", label: "Emergency",  icon: ShieldAlert },
-    { id: "medical",   label: "Medical",    icon: Activity    },
-    { id: "insurance", label: "Insurance",  icon: CreditCard  },
+    { id: "basic",     label: "Personal",  icon: User        },
+    { id: "emergency", label: "Emergency", icon: ShieldAlert },
+    { id: "medical",   label: "Medical",   icon: Activity    },
+    { id: "insurance", label: "Insurance", icon: CreditCard  },
 ];
 
 // ─── Patient profile ──────────────────────────────────────────────────────────
 
 function PatientProfile({
     patient, status, onCopyId, showCopied, activeGroup, setActiveGroup,
+    canDownload, onDownload,
 }: {
-    patient: Patient;
-    status: PatientStatus;
-    onCopyId: () => void;
-    showCopied: boolean;
-    activeGroup: string;
-    setActiveGroup: (id: string) => void;
+    patient:          Patient;
+    status:           PatientStatus;
+    onCopyId:         () => void;
+    showCopied:       boolean;
+    activeGroup:      string;
+    setActiveGroup:   (id: string) => void;
+    canDownload:      boolean;
+    onDownload:       () => void;
 }) {
     const p = patient as any;
 
@@ -150,55 +274,55 @@ function PatientProfile({
             },
         ],
         emergency: [
-            { label: "Name", icon: <User size={14} />, value: patient.emergency_contact_name },
-            { label: "Phone", icon: <Phone size={14} />, value: patient.emergency_contact_number },
+            { label: "Name",         icon: <User size={14} />,     value: patient.emergency_contact_name },
+            { label: "Phone",        icon: <Phone size={14} />,    value: patient.emergency_contact_number },
             { label: "Relationship", icon: <BookUser size={14} />, value: patient.emergency_contact_relationship },
-            { label: "Email", icon: <Mail size={14} />, value: patient.emergency_contact_email },
-            { label: "Address", icon: <MapPin size={14} />, value: patient.emergency_contact_address },
+            { label: "Email",        icon: <Mail size={14} />,     value: patient.emergency_contact_email },
+            { label: "Address",      icon: <MapPin size={14} />,   value: patient.emergency_contact_address },
         ],
         medical: [
-            { label: "Allergies",                    icon: <ShieldAlert size={14} />, value: patient.allergies },
-            { label: "Blood Group",                  icon: <Droplets size={14} />,   value: patient.blood_group },
-            { label: "Genotype",                     icon: <Dna size={14} />,        value: patient.geno_type },
-            { label: "Current Medication",           icon: <Pill size={14} />,       value: patient.current_medication },
-            { label: "Long-Term Medication", icon: <Pill size={14} />, value: patient.long_term_medication },
-            { label: "Significant Med. History",     icon: <History size={14} />,    value: patient.significant_medication_history },
-            { label: "Covid Vaccination", icon: <Syringe size={14} />, value: patient.covid_vaccination_options },
+            { label: "Allergies",                icon: <ShieldAlert size={14} />, value: patient.allergies },
+            { label: "Blood Group",              icon: <Droplets size={14} />,   value: patient.blood_group },
+            { label: "Genotype",                 icon: <Dna size={14} />,        value: patient.geno_type },
+            { label: "Current Medication",       icon: <Pill size={14} />,       value: patient.current_medication },
+            { label: "Long-Term Medication",     icon: <Pill size={14} />,       value: patient.long_term_medication },
+            { label: "Significant Med. History", icon: <History size={14} />,    value: patient.significant_medication_history },
+            { label: "Covid Vaccination",        icon: <Syringe size={14} />,    value: patient.covid_vaccination_options },
         ],
         insurance: [
-            { label: "HMO", icon: <Building2 size={14} />, value: patient.hmo ? "Yes" : "No" },
-            { label: "HMO Name", icon: <Building2 size={14} />, value: patient.hmo_name },
-            { label: "Policy Number", icon: <CreditCard size={14} />, value: patient.policy_number },
-            { label: "Company", icon: <Building2 size={14} />, value: patient.company ? "Yes" : "No" },
-            { label: "Company Name", icon: <Building2 size={14} />, value: patient.company_name },
-            { label: "Private Client", icon: <CheckCircle size={14} />, value: patient.private_client ? "Yes" : "No" },
+            { label: "HMO",            icon: <Building2 size={14} />,  value: patient.hmo ? "Yes" : "No" },
+            { label: "HMO Name",       icon: <Building2 size={14} />,  value: patient.hmo_name },
+            { label: "Policy Number",  icon: <CreditCard size={14} />, value: patient.policy_number },
+            { label: "Company",        icon: <Building2 size={14} />,  value: patient.company ? "Yes" : "No" },
+            { label: "Company Name",   icon: <Building2 size={14} />,  value: patient.company_name },
+            { label: "Private Client", icon: <CheckCircle size={14} />,value: patient.private_client ? "Yes" : "No" },
         ],
     };
 
     const statusColors: Record<string, string> = {
-        registered:           "bg-gray-100 text-gray-600",
+        registered:              "bg-gray-100 text-gray-600",
         "awaiting-consultation": "bg-yellow-50 text-yellow-700",
         "under-consultation":    "bg-blue-50 text-blue-700",
-        "sent-to-nurse":          "bg-teal-50 text-teal-700",
-        "sent-to-lab":            "bg-indigo-50 text-indigo-700",
-        "sent-to-pharmacy":       "bg-violet-50 text-violet-700",
+        "sent-to-nurse":         "bg-teal-50 text-teal-700",
+        "sent-to-lab":           "bg-indigo-50 text-indigo-700",
+        "sent-to-pharmacy":      "bg-violet-50 text-violet-700",
         "awaiting-payment":      "bg-orange-50 text-orange-700",
-        admitted:             "bg-red-50 text-red-700",
+        admitted:                "bg-red-50 text-red-700",
         "under-observation":     "bg-cyan-50 text-cyan-700",
-        discharged:           "bg-green-50 text-green-700",
-        "sent-to-radiology":      "bg-cyan-50 text-cyan-700",
-        "no-status":          "bg-gray-100 text-gray-600",
+        discharged:              "bg-green-50 text-green-700",
+        "sent-to-radiology":     "bg-cyan-50 text-cyan-700",
+        "no-status":             "bg-gray-100 text-gray-600",
     };
 
-    const statusClass = statusColors[status] || "bg-gray-100 text-gray-600";
+    const statusClass  = statusColors[status] || "bg-gray-100 text-gray-600";
     const activeFields = groups[activeGroup] ?? [];
 
     return (
         <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
 
-            {/* ── Hero header ── */}
+            {/* ── Hero header ─────────────────────────────────────────────────── */}
             <div className="relative px-6 pt-8 pb-6 bg-gradient-to-br from-blue-700 to-blue-900 overflow-hidden">
-                {/* decorative circles */}
+                {/* Decorative circles */}
                 <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5" />
                 <div className="absolute top-8 -right-4 w-28 h-28 rounded-full bg-white/5" />
 
@@ -226,31 +350,42 @@ function PatientProfile({
                         </div>
                     </div>
 
-                    {/* Status badge */}
-                    <div className="shrink-0">
+                    {/* Right-side actions: status + download */}
+                    <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${statusClass}`}>
                             <span className="w-1.5 h-1.5 rounded-full bg-current" />
                             {status || "No Status"}
                         </span>
+
+                        {canDownload && (
+                            <button
+                                type="button"
+                                onClick={onDownload}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all backdrop-blur-sm"
+                            >
+                                <Download size={12} />
+                                Download Record
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* ── Group tab nav ── */}
+            {/* ── Group tab nav ─────────────────────────────────────────────────── */}
             <div className="flex border-b border-gray-100 px-2 overflow-x-auto scrollbar-hide">
                 {GROUPS.map((g) => {
-                    const Icon = g.icon;
+                    const Icon     = g.icon;
                     const isActive = activeGroup === g.id;
                     return (
                         <button
                             key={g.id}
                             type="button"
                             onClick={() => setActiveGroup(g.id)}
-                            className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all duration-150
-                                ${isActive
+                            className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all duration-150 ${
+                                isActive
                                     ? "border-blue-700 text-blue-700"
                                     : "border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-200"
-                                }`}
+                            }`}
                         >
                             <Icon size={15} />
                             {g.label}
@@ -259,7 +394,7 @@ function PatientProfile({
                 })}
             </div>
 
-            {/* ── Fields grid ── */}
+            {/* ── Fields grid ───────────────────────────────────────────────────── */}
             <div className="px-6 py-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {activeFields.map((field) => (
@@ -273,17 +408,8 @@ function PatientProfile({
 
 // ─── Info item ────────────────────────────────────────────────────────────────
 
-function InfoItem({
-    label,
-    value,
-    icon,
-}: {
-    label: string;
-    value: ReactNode;
-    icon: ReactNode;
-}) {
+function InfoItem({ label, value, icon }: { label: string; value: ReactNode; icon: ReactNode }) {
     const isEmpty = value === null || value === undefined || value === "";
-
     return (
         <div className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-3.5 hover:border-blue-100 hover:bg-blue-50/30 transition-colors group">
             <div className="mt-0.5 w-7 h-7 rounded-lg bg-white border border-gray-100 flex items-center justify-center shrink-0 text-gray-400 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shadow-sm">

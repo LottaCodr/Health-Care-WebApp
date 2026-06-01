@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useNotifications, Notification } from "@/hooks/use-notifications";
+import { useNotifications } from "@/hooks/use-notifications";
+import { Notification } from "@/types/models";
 import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle2, Zap, X } from "lucide-react";
 
 // ─── Type config ──────────────────────────────────────────────────────────────

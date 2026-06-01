@@ -19,6 +19,7 @@ import {
     ScrollText,
     LucideIcon,
     Radio,
+    Calendar,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -44,7 +45,8 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Dashboard", url: "/front-desk/dashboard", icon: LayoutDashboard },
             { title: "Register", url: "/front-desk/patient/new", icon: UserPlus },
             { title: "Patients", url: "/front-desk/patient", icon: Users },
-            { title: "Queue", url: "/front-desk/queue", icon: Clock },
+            // { title: "Queue", url: "/front-desk/queue", icon: Clock },
+            { title: "Appointments", url: "/front-desk/appointment-booking", icon: Calendar },
             { title: "Payments", url: "/front-desk/payment", icon: CreditCard },
         ],
         secondary: [
@@ -57,6 +59,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Dashboard", url: "/doctor/dashboard", icon: LayoutDashboard },
             { title: "Patients", url: "/doctor/patients", icon: Stethoscope },
             { title: "Records", url: "/doctor/health-records", icon: ClipboardList },
+            { title: "Appointments", url: "/doctor/appointments", icon: Calendar },
         ],
         secondary: [
             { title: "Settings", url: "/doctor/settings", icon: Settings },

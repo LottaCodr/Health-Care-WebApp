@@ -206,6 +206,7 @@ export interface Appointment {
     notes: string;
     created_at?: string;
     updated_at?: string;
+    
 }
 
 // Nursing Action entity

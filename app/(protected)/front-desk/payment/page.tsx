@@ -2,7 +2,9 @@
 
 import PaymentConfirmation from "@/components/front-desk/PaymentSuite";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Wallet } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Wallet, History } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function PaymentPage() {
@@ -19,7 +21,36 @@ export default function PaymentPage() {
                 </span>
             </div>
 
-            <PaymentConfirmation />
+            <Tabs defaultValue="checkout" className="space-y-6">
+                <TabsList className="bg-white border border-gray-100 rounded-2xl p-1">
+                    <TabsTrigger value="checkout" className="rounded-xl text-sm font-semibold gap-2">
+                        <Wallet size={14} /> Checkout Queue
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="rounded-xl text-sm font-semibold gap-2">
+                        <History size={14} /> Patient History
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="checkout" className="mt-0">
+                    <PaymentConfirmation />
+                </TabsContent>
+
+                <TabsContent value="history" className="mt-0">
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-3">
+                        <h3 className="text-sm font-bold text-gray-900">Per-patient payment history</h3>
+                        <p className="text-sm text-gray-500">
+                            Open a patient from the registry, then use the <strong>Billing</strong> tab on their
+                            profile (for patients awaiting payment or discharged).
+                        </p>
+                        <Link
+                            href="/front-desk/patient"
+                            className="inline-flex text-sm font-semibold text-blue-600 hover:text-blue-800"
+                        >
+                            Go to Patient Registry →
+                        </Link>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

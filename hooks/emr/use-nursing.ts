@@ -20,6 +20,16 @@ export function usePendingNursingActions() {
     });
 }
 
+export function useCompletedNursingActions() {
+    return useQuery({
+        queryKey: nursingKeys.completed(),
+        queryFn: NS.listCompletedNursingActions,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
 export function useNursingActionsByPatient(
     patientId: string,
     opts?: { enabled?: boolean }
