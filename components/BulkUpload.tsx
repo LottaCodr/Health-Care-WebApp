@@ -556,8 +556,7 @@ export default function BulkUploadComponent() {
         const key       = DUPE_KEY[uploadType];
         const values    = allRows.map(r => r[key]).filter(Boolean);
         const existing  = values.length > 0 ? await checkExistingRecords(uploadType, values) : [];
-        const existSet  = new Set((existing as string[]).map((v: string) => v.toLowerCase().trim()));
-   
+        const existSet  = new Set(existing.map(v => v.toLowerCase().trim()));
         const uploadRows = allRows.filter(r => !existSet.has((r[key] ?? "").toLowerCase().trim()));
         const skippedN  = allRows.length - uploadRows.length;
 
