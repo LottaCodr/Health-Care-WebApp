@@ -10,21 +10,21 @@ const CHUNK_SIZE = 25;
 
 const UPLOAD_TYPE_LABELS: Record<UploadType, string> = {
     patients:  "Patients",
-    drugs:     "Pharmacy Drugs",
+    drug_inventory:     "Pharmacy Drugs",
     lab_tests: "Lab Tests",
 };
 
 // All columns (for template download)
 const EXPECTED_HEADERS: Record<UploadType, string[]> = {
     patients:  ["name", "date_of_birth", "gender", "phone", "address", "blood_group", "genotype", "next_of_kin_name", "next_of_kin_phone"],
-    drugs:     ["drug_name", "generic_name", "category", "unit", "reorder_level", "unit_price", "status"],
+    drug_inventory:     ["drug_name", "generic_name", "category", "unit", "reorder_level", "unit_price", "status"],
     lab_tests: ["test_name", "test_code", "category", "normal_range", "unit", "price"],
 };
 
 // Only these block upload
 const REQUIRED_HEADERS: Record<UploadType, string[]> = {
     patients:  ["name", "date_of_birth", "gender", "phone"],
-    drugs:     ["drug_name", "generic_name", "category", "unit"],
+    drug_inventory:     ["drug_name", "generic_name", "category", "unit"],
     lab_tests: ["test_name", "test_code"],
 };
 
@@ -34,14 +34,14 @@ const DRUG_CATEGORIES_LABEL = VALID_DRUG_CATEGORIES.join(", ");
 // Duplicate-check key per type
 const DUPE_KEY: Record<UploadType, string> = {
     patients:  "phone",
-    drugs:     "drug_name",
+    drug_inventory:     "drug_name",
     lab_tests: "test_code",
 };
 
 // One example data row per type (for template)
 const TEMPLATE_EXAMPLE: Record<UploadType, string> = {
     patients:  "Jane Doe,1990-06-15,female,+2348012345678,12 Aso Drive Abuja,A+,AA,John Doe,+2348098765432",
-    drugs:     "Amoxicillin 500mg,Amoxicillin,TABLET,Pack,5,0,ACTIVE",
+    drug_inventory:     "Amoxicillin 500mg,Amoxicillin,TABLET,Pack,5,0,ACTIVE",
     lab_tests: "Full Blood Count (FBC),T1,Haematology,,,0",
 };
 
@@ -83,7 +83,7 @@ function validateRows(rows: Record<string, string>[], type: UploadType): Validat
             if (row.date_of_birth && isNaN(Date.parse(row.date_of_birth)))
                 errors.push({ row: i + 2, field: "date_of_birth", message: "Invalid date — use YYYY-MM-DD" });
         }
-        if (type === "drugs") {
+        if (type === "drug_inventory") {
             if (row.category && !VALID_DRUG_CATEGORIES.includes(row.category.toUpperCase()))
                 errors.push({ row: i + 2, field: "category", message: `Must be one of: ${DRUG_CATEGORIES_LABEL}` });
             if (row.unit_price && isNaN(Number(row.unit_price)))
@@ -204,7 +204,7 @@ function StepSelect({
                 </div>
                 <p className="text-[10px] text-slate-400">
                     <span className="text-blue-600 font-bold">*</span> Required · others optional
-                    {uploadType === "drugs" && <> · category: {DRUG_CATEGORIES_LABEL}</>}
+                    {uploadType === "drug_inventory" && <> · category: {DRUG_CATEGORIES_LABEL}</>}
                 </p>
             </div>
 
