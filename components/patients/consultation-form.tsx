@@ -12,7 +12,10 @@ import {
     useCreateConsultation,
     useUpdatePatientStatus,
     useCreateLabRequest,
-    useCreateRadiologyRequest,       // ← dedicated radiology hook
+    useCreateRadiologyRequest,
+    useActiveLabTests,
+    // useActiveRadiologyTests,
+    useDrugInventory 
 } from "@/hooks/emr/use-emr";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
@@ -92,6 +95,20 @@ const LAB_TESTS = [
     "Blood Group & Crossmatch", "Genotype", "ECG",
     "Other (specify in notes)",
 ];
+
+const { data: labCatalog } = useActiveLabTests();
+const { data: drugInventory } = useDrugInventory();
+
+const labTests = Object.values(labCatalog ?? {}).flat();
+const radiologyTests = labTests.filter(t =>
+    t.category?.toLowerCase().includes("radiology") ||
+    t.test_name?.toLowerCase().includes("x-ray") ||
+    t.test_name?.toLowerCase().includes("ct") ||
+    t.test_name?.toLowerCase().includes("mri") ||
+    t.test_name?.toLowerCase().includes("ultrasound")
+);
+
+const drugs = drugInventory ?? [];
 
 const RADIOLOGY_TESTS = [
     "Chest X-Ray (PA)", "Abdominal X-Ray", "Skull X-Ray",
@@ -282,7 +299,7 @@ export default function ConsultationForm({
                         createLabRequest({
                             patientId,
                             requestedBy: doctorId,
-                            testType: labTestType,
+                            testType: labTestType.join(", "),
                             priority: labPriority,   // typed as RequestPriority — no cast needed
                             notes: labNotes || undefined,
                             status: "pending",
@@ -294,7 +311,7 @@ export default function ConsultationForm({
                         createRadRequest({
                             patientId,
                             requestedBy: doctorId,
-                            testType: radTestType,   // service adds the prefix
+                            testType: radTestType.join(", "),   // service adds the prefix
                             priority: radPriority,   // typed as RequestPriority — no cast needed
                             notes: radNotes || undefined,
                         });
@@ -547,7 +564,7 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel required>Test Type</FieldLabel>
-                                    <Select onValueChange={(v) => setField("labTestType", v)} value={labTestType}>
+                                    <Select onValueChange={(v) => setField("labTestType", v.split(", "))} value={labTestType.join(", ")}>
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
                                             <SelectValue placeholder="Select test..." />
                                         </SelectTrigger>
@@ -590,7 +607,7 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel required>Investigation Type</FieldLabel>
-                                    <Select onValueChange={(v) => setField("radTestType", v)} value={radTestType}>
+                                    <Select onValueChange={(v) => setField("radTestType", v.split(", "))} value={radTestType.join(", ")}>
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
                                             <SelectValue placeholder="Select investigation..." />
                                         </SelectTrigger>
