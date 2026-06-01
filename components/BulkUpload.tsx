@@ -17,13 +17,13 @@ const UPLOAD_TYPE_LABELS: Record<UploadType, string> = {
 // All columns (for template download)
 const EXPECTED_HEADERS: Record<UploadType, string[]> = {
     patients:  ["name", "date_of_birth", "gender", "phone", "address", "blood_group", "genotype", "next_of_kin_name", "next_of_kin_phone"],
-    drug_inventory:     ["drug_name", "generic_name", "category", "unit", "reorder_level", "unit_price", "status"],
+    drug_inventory:     ["drug_name", "generic_name", "category", "unit", "reorder_level", "price", "is_active"],
     lab_test_catalog: ["test_name", "test_code", "category", "normal_range", "unit", "price"],
 };
 
 // Only these block upload
 const REQUIRED_HEADERS: Record<UploadType, string[]> = {
-    patients:  ["name", "date_of_birth", "gender", "phone"],
+    patients:  ["name", "birth_date", "gender", "phone"],
     drug_inventory:     ["drug_name", "generic_name", "category", "unit"],
     lab_test_catalog: ["test_name", "test_code"],
 };
