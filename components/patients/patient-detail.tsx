@@ -24,6 +24,7 @@ import {
     Check, ChevronRight, ArrowLeft, AlertTriangle, Dna, Droplets,
     Baby, BookUser, Pill, History, Syringe, Download,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const PatientDetailTabs = dynamic(() => import("./patient-detail-tabs"), {
   loading: () => (
@@ -41,7 +42,9 @@ interface Props {
 export default function PatientDetailsComponent({ patient }: Props) {
     const patientStore      = usePatientStore();
     const consultationStore = useConsultationStore();
-    const { user }          = useAuth();
+    const { user } = useAuth();
+    
+
 
     const [showCopied,   setShowCopied]   = useState(false);
     const [activeGroup,  setActiveGroup]  = useState("basic");
@@ -316,7 +319,7 @@ function PatientProfile({
 
     const statusClass  = statusColors[status] || "bg-gray-100 text-gray-600";
     const activeFields = groups[activeGroup] ?? [];
-
+    const router = useRouter();
     return (
         <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
 
@@ -368,6 +371,15 @@ function PatientProfile({
                             </button>
                         )}
                     </div>
+
+                    <button
+    type="button"
+    onClick={() => router.push(`/patient-timeline/${patient.id}`)}
+    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all"
+>
+    <History size={12} />
+    View Timeline
+</button>
                 </div>
             </div>
 
