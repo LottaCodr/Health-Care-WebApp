@@ -361,6 +361,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
           </TabsContent>
 
           {/* ── Billing ── */}
+          {canViewBilling && (
           <TabsContent value="billing" className="mt-0">
             <div className="space-y-4">
               <SectionHeader icon={CreditCard} color="text-orange-600" bg="bg-orange-50"
@@ -379,7 +380,9 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               />
             </div>
           </TabsContent>
+          )}
 
+          
           {/* ── Appointments — visible to all roles, patient context ── */}
           <TabsContent value="appointments" className="mt-0">
             <AppointmentComponent
