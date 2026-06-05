@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Activity, Pill, Stethoscope, FlaskConical, AlertCircle, CheckCircle2,
-  Radio, Syringe, Droplets, ClipboardCheck, CreditCard, Calendar,
+  Radio, Syringe, Droplets, ClipboardCheck, CreditCard, Calendar, FolderOpen,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -42,6 +42,7 @@ const FluidBalanceChart          = dynamic(() => import("../nurse/FluidBalanceCh
 const DischargeNoteForm          = dynamic(() => import("../doctor/DischargeNoteForm"),    { loading: () => <TabChunkSkeleton /> });
 const PaymentHistory             = dynamic(() => import("./payment-history"),              { loading: () => <TabChunkSkeleton /> });
 const AppointmentComponent       = dynamic(() => import("../front-desk/AppointmentComponent"), { loading: () => <TabChunkSkeleton /> });
+const PatientDocumentsTab        = dynamic(() => import("./patient-documents-tab"),                      { loading: () => <TabChunkSkeleton /> });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,18 +52,14 @@ type TabDef = {
   icon:      React.ElementType;
   accent:    string;
   activeBar: string;
-  // Optional: Whether the tab is read only, set per tab per role.
-  readOnly?: boolean;
 };
 
 const BASE_TABS: TabDef[] = [
-  { value: "vitals",        label: "Vitals",        icon: Activity,    accent: "text-blue-600",   activeBar: "bg-blue-500"   },
-  { value: "drug-chart",    label: "Drug Chart",    icon: Syringe,     accent: "text-teal-600",   activeBar: "bg-teal-500"   },
-  { value: "fluid-balance", label: "Fluid Balance", icon: Droplets,    accent: "text-sky-600",    activeBar: "bg-sky-500"    },
-  { value: "consultations", label: "Consultations", icon: Stethoscope, accent: "text-red-600",    activeBar: "bg-red-500"    },
-  { value: "prescriptions", label: "Prescriptions", icon: Pill,        accent: "text-violet-600", activeBar: "bg-violet-500" },
-  { value: "lab",           label: "Lab Results",   icon: FlaskConical,accent: "text-indigo-600", activeBar: "bg-indigo-500" },
-  { value: "radiology",     label: "Radiology",     icon: Radio,       accent: "text-cyan-600",   activeBar: "bg-cyan-500"   },
+  { value: "vitals",        label: "Vitals",        icon: Activity,      accent: "text-blue-600",   activeBar: "bg-blue-500"   },
+  { value: "consultations", label: "Consultations", icon: Stethoscope,   accent: "text-red-600",    activeBar: "bg-red-500"    },
+  { value: "prescriptions", label: "Prescriptions", icon: Pill,          accent: "text-violet-600", activeBar: "bg-violet-500" },
+  { value: "lab",           label: "Lab Results",   icon: FlaskConical,  accent: "text-indigo-600", activeBar: "bg-indigo-500" },
+  { value: "radiology",     label: "Radiology",     icon: Radio,         accent: "text-cyan-600",   activeBar: "bg-cyan-500"   },
 ];
 
 const NURSE_CHART_STATUSES = new Set([
@@ -181,7 +178,18 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     const extra: TabDef[] = [];
 
     const conditionalDefs = [
-      // Drug chart and Fluid balance are now always in BASE_TABS in correct position, so not duplicated here.
+      {
+        // Drug chart — always visible; nurses can write, everyone else read-only
+        value: "drug-chart", label: "Drug Chart", icon: Syringe,
+        accent: "text-teal-600", activeBar: "bg-teal-500",
+        show: true,
+      },
+      {
+        // Fluid balance — always visible; nurses can write, everyone else read-only
+        value: "fluid-balance", label: "Fluid Balance", icon: Droplets,
+        accent: "text-sky-600", activeBar: "bg-sky-500",
+        show: true,
+      },
       {
         value: "discharge", label: "Discharge", icon: ClipboardCheck,
         accent: "text-emerald-600", activeBar: "bg-emerald-500",
@@ -192,8 +200,8 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         accent: "text-orange-600", activeBar: "bg-orange-500",
         show: canViewBilling,
       },
-      // Appointments — always visible to all roles
       {
+        // Appointments — always visible to all roles
         value: "appointments", label: "Appointments", icon: Calendar,
         accent: "text-blue-600", activeBar: "bg-blue-500",
         show: true,
@@ -281,32 +289,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         </div>
       </TabsContent>
 
-      {/* ── Drug Chart ── */}
-      <TabsContent value="drug-chart" className="mt-0">
-        {patient.id ? (
-          <DrugChart
-            patientId={patient.id}
-            staffId={staffId}
-            readOnly={role !== "Nurse"}
-          />
-        ) : (
-          <NoPatient icon={Syringe} label="Select a patient to view or update the drug chart" />
-        )}
-      </TabsContent>
-
-      {/* ── Fluid Balance ── */}
-      <TabsContent value="fluid-balance" className="mt-0">
-        {patient.id ? (
-          <FluidBalanceChart
-            patientId={patient.id}
-            staffId={staffId}
-            readOnly={role !== "Nurse"}
-          />
-        ) : (
-          <NoPatient icon={Droplets} label="Select a patient to view or update fluid balance" />
-        )}
-      </TabsContent>
-      
       {/* ── Consultations ── */}
       <TabsContent value="consultations" className="mt-0">
         <div className="space-y-5">
@@ -361,6 +343,14 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
       {patient.id && (
         <>
+          {/* ── Nurse charts ── */}
+          <TabsContent value="drug-chart" className="mt-0">
+            <DrugChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
+          </TabsContent>
+          <TabsContent value="fluid-balance" className="mt-0">
+            <FluidBalanceChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
+          </TabsContent>
+
           {/* ── Discharge ── */}
           <TabsContent value="discharge" className="mt-0">
             <div className="space-y-4">
@@ -372,7 +362,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
           </TabsContent>
 
           {/* ── Billing ── */}
-          {canViewBilling && (
           <TabsContent value="billing" className="mt-0">
             <div className="space-y-4">
               <SectionHeader icon={CreditCard} color="text-orange-600" bg="bg-orange-50"
@@ -391,7 +380,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               />
             </div>
           </TabsContent>
-          )}
 
           {/* ── Appointments — visible to all roles, patient context ── */}
           <TabsContent value="appointments" className="mt-0">
@@ -399,6 +387,15 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               staffId={staffId}
               patientId={patient.id}
               inPatientContext
+            />
+          </TabsContent>
+
+          {/* ── Documents — upload: FrontDesk/Admin; view: all roles ── */}
+          <TabsContent value="documents" className="mt-0">
+            <PatientDocumentsTab
+              patientId={patient.id}
+              staffId={staffId}
+              canUpload={canManageBilling}
             />
           </TabsContent>
         </>
