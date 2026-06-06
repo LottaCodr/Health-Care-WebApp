@@ -3,12 +3,20 @@
 import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { processReturnVisit, type ReadmissionType } from "@/lib/actions/patient-workflow.actions";
+import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+import { type ReadmissionType } from "@/lib/services/process-return-visit.service";
 import {
     UserCheck, Stethoscope, AlertTriangle,
     BedDouble, Pill, Loader2, ClipboardList,
 } from "lucide-react";
 
+interface Props {
+    patientId:    string;
+    patientName:  string;
+    staffId:      string;
+    onSuccess?:   () => void;
+    onCancel?:    () => void;
+}
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const VISIT_TYPES = [
