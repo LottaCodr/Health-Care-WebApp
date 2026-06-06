@@ -56,7 +56,7 @@ const REFERRAL_OPTIONS = [
     },
     {
         value: "lab-tech",
-        label: "Lab Technician",
+        label: "Laboratory Scientist",
         desc:  "Request laboratory investigations",
         icon:  FlaskConical,
         status:"sent-to-lab" as PatientStatus,
@@ -64,7 +64,7 @@ const REFERRAL_OPTIONS = [
     },
     {
         value: "radiology",
-        label: "Radiology",
+        label: "Radiologist",
         desc:  "Imaging investigations",
         icon:  Radio,
         status:"sent-to-radiology" as PatientStatus,
