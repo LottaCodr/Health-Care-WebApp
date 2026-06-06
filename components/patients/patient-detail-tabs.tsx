@@ -206,6 +206,12 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         accent: "text-blue-600", activeBar: "bg-blue-500",
         show: true,
       },
+      {
+        // Appointments — always visible to all roles
+        value: "documents", label: "Documents", icon: FolderOpen,
+        accent: "text-blue-600", activeBar: "bg-blue-500",
+        show: true,
+      },
     ] as const;
 
     for (const d of conditionalDefs) {
