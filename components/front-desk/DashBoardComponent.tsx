@@ -155,7 +155,7 @@ export default function FrontDeskDashboard() {
                     ) : undefined}>
                     {registered.data?.slice(0, 5).map(p => (
                         <PatientRow key={p.id} patient={p}
-                            action={{ label: "Check In", href: `/front-desk/patients/${p.id}`, color: "bg-blue-600 hover:bg-blue-700" }} />
+                            action={{ label: "Check In", href: `/front-desk/patient/${p.id}`, color: "bg-blue-600 hover:bg-blue-700" }} />
                     ))}
                     <Link href="/front-desk/patient/new" className="block mt-1">
                         <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 text-gray-400 hover:text-blue-600 text-xs font-bold uppercase tracking-widest transition-all">
@@ -212,9 +212,9 @@ export default function FrontDeskDashboard() {
                     empty={discharged.data?.length === 0 ? (
                         <p className="text-sm text-gray-400 text-center py-8">No recently discharged patients</p>
                     ) : undefined}>
-                    {discharged.data?.slice(0, 5).map(p => (
+                    {dispcharged.data?.slice(0, 5).map(p => (
                         <PatientRow key={p.id} patient={p}
-                            action={{ label: "Re-admit", href: `/front-desk/patients/${p.id}?readmit=1`, color: "bg-green-600 hover:bg-green-700" }} />
+                            action={{ label: "Re-admit", href: `/front-desk/patient/${p.id}?readmit=1`, color: "bg-green-600 hover:bg-green-700" }} />
                     ))}
                 </Section>
             </div>
