@@ -3,80 +3,86 @@
 import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+import { processReturnVisit } from "@/lib/services/process-return-visit.service";
 import { type ReadmissionType } from "@/lib/services/process-return-visit.service";
 import {
     UserCheck, Stethoscope, AlertTriangle,
     BedDouble, Pill, Loader2, ClipboardList,
+    ArrowRight, CheckCircle2,
 } from "lucide-react";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface Props {
-    patientId:    string;
-    patientName:  string;
-    staffId:      string;
-    onSuccess?:   () => void;
-    onCancel?:    () => void;
+    patientId:   string;
+    patientName: string;
+    staffId:     string;
+    onSuccess?:  () => void;
+    onCancel?:   () => void;
 }
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const VISIT_TYPES = [
     {
-        id:          "followup" as ReadmissionType,
-        label:       "Follow-up Visit",
-        desc:        "Returning for a scheduled or unscheduled outpatient review",
-        icon:        Stethoscope,
-        color:       "text-blue-600",
-        bg:          "bg-blue-50",
-        border:      "border-blue-300",
-        routesTo:    "Consultation Queue",
+        id:       "followup" as ReadmissionType,
+        label:    "Follow-up Visit",
+        desc:     "Returning for outpatient review",
+        icon:     Stethoscope,
+        color:    "text-blue-600",
+        bg:       "bg-blue-50",
+        activeBg: "bg-blue-600",
+        border:   "border-blue-500",
+        ring:     "ring-blue-200",
+        dot:      "bg-blue-500",
+        routesTo: "Consultation Queue",
     },
     {
-        id:          "emergency" as ReadmissionType,
-        label:       "Emergency Return",
-        desc:        "Urgent or emergency re-presentation",
-        icon:        AlertTriangle,
-        color:       "text-red-600",
-        bg:          "bg-red-50",
-        border:      "border-red-300",
-        routesTo:    "Consultation Queue (Urgent)",
+        id:       "emergency" as ReadmissionType,
+        label:    "Emergency Return",
+        desc:     "Urgent or acute re-presentation",
+        icon:     AlertTriangle,
+        color:    "text-red-600",
+        bg:       "bg-red-50",
+        activeBg: "bg-red-600",
+        border:   "border-red-500",
+        ring:     "ring-red-200",
+        dot:      "bg-red-500",
+        routesTo: "Consultation Queue (Urgent)",
     },
     {
-        id:          "readmission" as ReadmissionType,
-        label:       "Re-admission",
-        desc:        "Patient requires inpatient admission again",
-        icon:        BedDouble,
-        color:       "text-amber-600",
-        bg:          "bg-amber-50",
-        border:      "border-amber-300",
-        routesTo:    "Admitted",
+        id:       "readmission" as ReadmissionType,
+        label:    "Re-admission",
+        desc:     "Requires inpatient care again",
+        icon:     BedDouble,
+        color:    "text-amber-600",
+        bg:       "bg-amber-50",
+        activeBg: "bg-amber-600",
+        border:   "border-amber-500",
+        ring:     "ring-amber-200",
+        dot:      "bg-amber-500",
+        routesTo: "Admitted — front desk assigns ward",
     },
     {
-        id:          "pharmacy" as ReadmissionType,
-        label:       "Pharmacy Only",
-        desc:        "Collecting a prescription or repeat medication",
-        icon:        Pill,
-        color:       "text-violet-600",
-        bg:          "bg-violet-50",
-        border:      "border-violet-300",
-        routesTo:    "Pharmacy Queue",
+        id:       "pharmacy" as ReadmissionType,
+        label:    "Pharmacy Only",
+        desc:     "Collecting repeat prescription",
+        icon:     Pill,
+        color:    "text-violet-600",
+        bg:       "bg-violet-50",
+        activeBg: "bg-violet-600",
+        border:   "border-violet-500",
+        ring:     "ring-violet-200",
+        dot:      "bg-violet-500",
+        routesTo: "Pharmacy Queue",
     },
 ] as const;
 
 const PRIORITIES = [
-    { value: "routine",   label: "Routine",   dot: "bg-gray-400"   },
-    { value: "urgent",    label: "Urgent",    dot: "bg-amber-500"  },
-    { value: "emergency", label: "Emergency", dot: "bg-red-500"    },
+    { value: "routine",   label: "Routine",   dot: "bg-gray-400",   active: "bg-gray-700  text-white border-gray-700"   },
+    { value: "urgent",    label: "Urgent",    dot: "bg-amber-500",  active: "bg-amber-600 text-white border-amber-600"  },
+    { value: "emergency", label: "Emergency", dot: "bg-red-500",    active: "bg-red-600   text-white border-red-600"    },
 ] as const;
-
-// ─── Props ────────────────────────────────────────────────────────────────────
-
-interface Props {
-    patientId:    string;
-    patientName:  string;
-    staffId:      string;
-    onSuccess?:   () => void;
-    onCancel?:    () => void;
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -90,146 +96,178 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
     const [loading,   setLoading]   = useState(false);
 
     const selected = VISIT_TYPES.find(v => v.id === visitType);
+    const canSubmit = !!visitType && reason.trim().length > 0 && !loading;
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!visitType)        { toast.error("Select a visit type."); return; }
-        if (!reason.trim())    { toast.error("Reason for return is required."); return; }
+        if (!canSubmit) return;
 
         setLoading(true);
         try {
             await processReturnVisit({
                 patientId,
-                visitType,
+                visitType:    visitType!,
                 reason:       reason.trim(),
                 priority,
                 notes:        notes.trim() || undefined,
                 registeredBy: staffId,
             });
 
-            // Invalidate all patient-related queries so dashboards refresh
             await qc.invalidateQueries({ queryKey: ["patients"] });
-
-            toast.success(`${patientName} re-admitted. Routed to ${selected?.routesTo}.`);
+            toast.success(`${patientName} re-admitted → ${selected?.routesTo}`);
             onSuccess?.();
         } catch (err: any) {
-            toast.error(err?.message ?? "Failed to re-admit patient.");
+            toast.error(err?.message ?? "Failed to re-admit patient. Please try again.");
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* Patient banner */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 rounded-xl border border-blue-100">
-                <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center font-black text-blue-700 text-sm shrink-0">
-                    {patientName[0]?.toUpperCase()}
+        <div className="bg-white rounded-2xl overflow-hidden">
+            {/* ── Colour header ── */}
+            <div className={`px-6 py-5 transition-colors duration-300 ${
+                selected ? `${selected.bg} border-b ${selected.border.replace("border-", "border-b-")}` : "bg-gray-50 border-b border-gray-100"
+            }`}>
+                <div className="flex items-center gap-3">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-lg shrink-0 transition-colors duration-300 ${
+                        selected ? `${selected.activeBg} text-white` : "bg-white text-gray-500 border border-gray-200"
+                    }`}>
+                        {patientName[0]?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-gray-900 truncate">{patientName}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+                            <UserCheck size={11} />
+                            Existing patient · records preserved
+                        </p>
+                    </div>
+                    {selected && (
+                        <div className={`shrink-0 flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${selected.bg} ${selected.color} border ${selected.border}`}>
+                            <ArrowRight size={10} /> {selected.routesTo}
+                        </div>
+                    )}
                 </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+
+                {/* ── Visit type ── */}
                 <div>
-                    <p className="text-sm font-bold text-blue-900">{patientName}</p>
-                    <p className="text-xs text-blue-600 mt-0.5">
-                        Returning patient · records preserved · no re-registration needed
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2.5">
+                        Visit Type <span className="text-red-400">*</span>
                     </p>
+                    <div className="grid grid-cols-2 gap-2.5">
+                        {VISIT_TYPES.map(vt => {
+                            const Icon       = vt.icon;
+                            const isSelected = visitType === vt.id;
+                            return (
+                                <button key={vt.id} type="button"
+                                    onClick={() => setVisitType(isSelected ? null : vt.id)}
+                                    className={`relative flex items-start gap-3 p-3.5 rounded-2xl border-2 text-left transition-all duration-200 ${
+                                        isSelected
+                                            ? `${vt.border} ${vt.bg} ring-2 ${vt.ring}`
+                                            : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
+                                    }`}>
+                                    {/* Selected checkmark */}
+                                    {isSelected && (
+                                        <div className={`absolute top-2.5 right-2.5 w-4 h-4 rounded-full ${vt.activeBg} flex items-center justify-center`}>
+                                            <CheckCircle2 size={10} className="text-white" />
+                                        </div>
+                                    )}
+                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                                        isSelected ? `${vt.activeBg}` : `bg-white border border-gray-100`
+                                    }`}>
+                                        <Icon size={16} className={isSelected ? "text-white" : "text-gray-400"} />
+                                    </div>
+                                    <div className="min-w-0 pt-0.5">
+                                        <p className={`text-xs font-bold leading-tight ${isSelected ? "text-gray-900" : "text-gray-600"}`}>
+                                            {vt.label}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{vt.desc}</p>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-                <UserCheck size={16} className="text-blue-400 ml-auto shrink-0" />
-            </div>
 
-            {/* Visit type selection */}
-            <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
-                    Reason for Return *
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                    {VISIT_TYPES.map(vt => {
-                        const Icon       = vt.icon;
-                        const isSelected = visitType === vt.id;
-                        return (
-                            <button key={vt.id} type="button"
-                                onClick={() => setVisitType(vt.id)}
-                                className={`flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                                    isSelected
-                                        ? `${vt.border} ${vt.bg}`
-                                        : "border-gray-100 bg-gray-50 hover:border-gray-200"
+                {/* ── Reason ── */}
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                        Reason for Return <span className="text-red-400">*</span>
+                    </p>
+                    <textarea
+                        rows={3}
+                        value={reason}
+                        onChange={e => setReason(e.target.value)}
+                        placeholder="e.g. Wound review after surgery · Fever not resolving · Repeat prescription collection…"
+                        className="w-full text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:bg-white placeholder:text-gray-300 transition-all" />
+                    <p className="text-[10px] text-gray-400 mt-1">{reason.length} characters</p>
+                </div>
+
+                {/* ── Priority ── */}
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Priority</p>
+                    <div className="flex items-center gap-2">
+                        {PRIORITIES.map(p => (
+                            <button key={p.value} type="button"
+                                onClick={() => setPriority(p.value)}
+                                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                                    priority === p.value ? p.active : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50"
                                 }`}>
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                    isSelected ? vt.bg : "bg-white border border-gray-100"
-                                }`}>
-                                    <Icon size={15} className={isSelected ? vt.color : "text-gray-400"} />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className={`text-xs font-bold truncate ${isSelected ? "text-gray-900" : "text-gray-600"}`}>
-                                        {vt.label}
-                                    </p>
-                                    <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{vt.desc}</p>
-                                </div>
+                                <span className={`w-2 h-2 rounded-full ${priority === p.value ? "bg-white" : p.dot}`} />
+                                {p.label}
                             </button>
-                        );
-                    })}
+                        ))}
+                    </div>
                 </div>
-                {selected && (
-                    <p className="text-[11px] text-gray-500 mt-2 pl-1">
-                        → Patient will be routed to <span className="font-bold text-gray-700">{selected.routesTo}</span>
+
+                {/* ── Notes (optional) ── */}
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                        Notes
+                        <span className="text-gray-300 font-normal normal-case tracking-normal ml-1.5">optional</span>
                     </p>
-                )}
-            </div>
-
-            {/* Reason */}
-            <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
-                    Clinical Reason / Complaint *
-                </p>
-                <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
-                    placeholder="e.g. Wound review after surgery · Persistent fever since discharge · Repeat prescription pick-up…"
-                    className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 placeholder:text-gray-300 transition-all" />
-            </div>
-
-            {/* Priority */}
-            <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Priority</p>
-                <div className="flex items-center gap-2">
-                    {PRIORITIES.map(p => (
-                        <button key={p.value} type="button"
-                            onClick={() => setPriority(p.value)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
-                                priority === p.value
-                                    ? "border-gray-800 bg-gray-800 text-white"
-                                    : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
-                            }`}>
-                            <span className={`w-2 h-2 rounded-full ${p.dot}`} />
-                            {p.label}
-                        </button>
-                    ))}
+                    <input
+                        value={notes}
+                        onChange={e => setNotes(e.target.value)}
+                        placeholder="Any additional context for the receiving clinician…"
+                        className="w-full h-10 px-3.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:bg-white placeholder:text-gray-300 transition-all" />
                 </div>
-            </div>
 
-            {/* Optional notes */}
-            <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
-                    Additional Notes <span className="text-gray-300 font-normal normal-case">optional</span>
-                </p>
-                <input value={notes} onChange={e => setNotes(e.target.value)}
-                    placeholder="Any additional context for the receiving clinician…"
-                    className="w-full h-9 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:bg-white transition-all placeholder:text-gray-300" />
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-1">
-                {onCancel && (
-                    <button type="button" onClick={onCancel} disabled={loading}
-                        className="px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
-                        Cancel
-                    </button>
+                {/* ── Routing preview ── */}
+                {selected && (
+                    <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl ${selected.bg} border ${selected.border} transition-all`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${selected.dot} shrink-0`} />
+                        <p className="text-xs text-gray-700 font-medium">
+                            {patientName} will be routed to{" "}
+                            <span className="font-black text-gray-900">{selected.routesTo}</span>
+                        </p>
+                    </div>
                 )}
-                <button type="submit" disabled={loading || !visitType || !reason.trim()}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-blue-200">
-                    {loading
-                        ? <><Loader2 size={14} className="animate-spin" /> Re-admitting…</>
-                        : <><ClipboardList size={14} /> Re-admit Patient</>
-                    }
-                </button>
-            </div>
-        </form>
+
+                {/* ── Actions ── */}
+                <div className="flex gap-2.5 pt-1">
+                    {onCancel && (
+                        <button type="button" onClick={onCancel} disabled={loading}
+                            className="px-5 py-3 text-sm text-gray-500 hover:text-gray-800 font-semibold transition-colors rounded-xl border border-gray-200 hover:border-gray-300 bg-white disabled:opacity-50">
+                            Cancel
+                        </button>
+                    )}
+                    <button type="submit" disabled={!canSubmit}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${
+                            selected
+                                ? `${selected.activeBg} text-white hover:opacity-90 ${selected.ring.replace("ring-", "shadow-")} shadow-sm`
+                                : "bg-gray-800 text-white hover:bg-gray-900"
+                        }`}>
+                        {loading
+                            ? <><Loader2 size={15} className="animate-spin" /> Re-admitting…</>
+                            : <><ClipboardList size={15} /> Re-admit Patient</>
+                        }
+                    </button>
+                </div>
+            </form>
+        </div>
     );
 }

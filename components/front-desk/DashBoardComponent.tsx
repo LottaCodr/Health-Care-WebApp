@@ -212,7 +212,7 @@ export default function FrontDeskDashboard() {
                     empty={discharged.data?.length === 0 ? (
                         <p className="text-sm text-gray-400 text-center py-8">No recently discharged patients</p>
                     ) : undefined}>
-                    {dispcharged.data?.slice(0, 5).map(p => (
+                    {discharged.data?.slice(0, 5).map(p => (
                         <PatientRow key={p.id} patient={p}
                             action={{ label: "Re-admit", href: `/front-desk/patient/${p.id}?readmit=1`, color: "bg-green-600 hover:bg-green-700" }} />
                     ))}

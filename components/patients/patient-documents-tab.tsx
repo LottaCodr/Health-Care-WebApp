@@ -2,8 +2,8 @@
 
 import React, { useState, useRef } from "react";
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument } from "@/hooks/emr/use-patient-document";
-import { DOCUMENT_TYPE_LABELS } from "@/lib/services/patient-documents.service";
-import type { DocumentType, PatientDocument } from "@/lib/services/patient-documents.service";
+import { DOCUMENT_TYPE_LABELS } from "@/lib/patient-documents.types";
+import type { DocumentType, PatientDocument } from "@/lib/patient-documents.types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

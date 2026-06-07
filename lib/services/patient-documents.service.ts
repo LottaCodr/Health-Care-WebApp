@@ -1,66 +1,29 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import type { DocumentType, PatientDocument } from "@/lib/patient-documents.types";
 
 const BUCKET = "patient-documents";
-
-export interface PatientDocument {
-    id:             string;
-    patient_id:     string;
-    file_name:      string;
-    file_type:      string;
-    storage_path:   string;
-    file_size:      number | null;
-    description:    string | null;
-    source_hospital:string | null;
-    document_type:  string;
-    uploaded_by:    string | null;
-    created_at:     string;
-    signed_url?:    string;
-}
-
-export type DocumentType =
-    | "general"
-    | "lab_report"
-    | "scan"
-    | "referral_letter"
-    | "discharge_summary"
-    | "operative_report"
-    | "prescription"
-    | "insurance";
-
-export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
-    general:           "General",
-    lab_report:        "Lab Report",
-    scan:              "Scan / Radiology",
-    referral_letter:   "Referral Letter",
-    discharge_summary: "Discharge Summary",
-    operative_report:  "Operative Report",
-    prescription:      "Prescription",
-    insurance:         "Insurance Document",
-};
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
 
 export async function uploadPatientDocument(input: {
-    patientId:      string;
-    fileBase64:     string;
-    fileName:       string;
-    mimeType:       string;
-    fileSize:       number;
-    description?:   string;
-    sourceHospital?:string;
-    documentType:   DocumentType;
-    uploadedBy:     string;
+    patientId:       string;
+    fileBase64:      string;
+    fileName:        string;
+    mimeType:        string;
+    fileSize:        number;
+    description?:    string;
+    sourceHospital?: string;
+    documentType:    DocumentType;
+    uploadedBy:      string;
 }): Promise<PatientDocument> {
     const sb = await createClient();
 
-    // Convert base64 → Uint8Array
     const binary = Uint8Array.from(atob(input.fileBase64), c => c.charCodeAt(0));
 
-    // Storage path: patientId/timestamp_filename
-    const safe    = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path    = `${input.patientId}/${Date.now()}_${safe}`;
+    const safe = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${input.patientId}/${Date.now()}_${safe}`;
 
     const { error: uploadError } = await sb.storage
         .from(BUCKET)
@@ -68,7 +31,6 @@ export async function uploadPatientDocument(input: {
 
     if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
 
-    // Save metadata
     const { data, error: dbError } = await sb
         .from("patient_documents")
         .insert([{
@@ -77,8 +39,8 @@ export async function uploadPatientDocument(input: {
             file_type:       input.mimeType,
             storage_path:    path,
             file_size:       input.fileSize,
-            description:     input.description    ?? null,
-            source_hospital: input.sourceHospital ?? null,
+            description:     input.description     ?? null,
+            source_hospital: input.sourceHospital  ?? null,
             document_type:   input.documentType,
             uploaded_by:     input.uploadedBy,
         }])
@@ -86,7 +48,6 @@ export async function uploadPatientDocument(input: {
         .single();
 
     if (dbError) {
-        // Clean up storage if DB insert fails
         await sb.storage.from(BUCKET).remove([path]);
         throw new Error(`Database insert failed: ${dbError.message}`);
     }
@@ -108,7 +69,6 @@ export async function listPatientDocuments(patientId: string): Promise<PatientDo
     if (error) throw error;
     if (!data?.length) return [];
 
-    // Generate signed URLs (valid 1 hour)
     const withUrls = await Promise.all(
         (data as PatientDocument[]).map(async doc => {
             const { data: urlData } = await sb.storage
