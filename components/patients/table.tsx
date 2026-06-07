@@ -271,9 +271,9 @@ function PatientGrid({
                         patientId={returnPatient.id}
                         patientName={returnPatient.name ?? "Patient"}
                         staffId={staffId}
-                        onReturn={async (input) => {
-                            await processReturnVisit(input);
-                        }}
+                        // onReturn={async (input) => {
+                        //     await processReturnVisit(input);
+                        // }}
                         onCancel={() => setReturnPatient(null)}
                     />
                 )}

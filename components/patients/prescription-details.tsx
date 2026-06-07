@@ -151,7 +151,7 @@ function DrugAutocomplete({
                                     {/* Price + stock */}
                                     <div className="text-right shrink-0 space-y-0.5">
                                         <p className="text-xs font-extrabold text-gray-800">
-                                            ₦{Number(item.unit_price).toLocaleString("en-NG")}
+                                            ₦{Number(item.price).toLocaleString("en-NG")}
                                         </p>
                                         <div className="flex items-center gap-1 justify-end">
                                             <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
@@ -230,8 +230,8 @@ function FieldInput({
 
 export default function PrescriptionDetails({ patientId, patient, onSuccess }: Props) {
     const { user } = useAuth();
-    const { mutate: createPrescription, loading: creating } = useCreatePrescription();
-    const { data: inventory = [], loading: loadingInv } = useDrugInventory();
+    const { mutate: createPrescription, isPending: creating } = useCreatePrescription();
+    const { data: inventory = [], isLoading: loadingInv } = useDrugInventory();
 
     const [medications, setMedications] = useState<MedicationInput[]>([{ ...BLANK }]);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -255,7 +255,7 @@ export default function PrescriptionDetails({ patientId, patient, onSuccess }: P
             next[idx] = {
                 ...next[idx],
                 drugName: item.drug_name,
-                price: String(item.unit_price),
+                price: String(item.price),
                 unit: item.unit,
                 inventoryItemId: item.id,
                 stockQty: item.quantity,

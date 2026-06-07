@@ -3,12 +3,12 @@
 import { createPatient, updatePatientStatus } from "@/lib/services/patient.service";
 import { createAppointment } from "@/lib/services/appointment.service";
 import { PatientStatus } from "@/types/models";
-import type { ReturnPatientInput } from "@/components/patients/return-patient";
+import type { ReturnPatientProps } from "@/components/patients/return-patient"; 
 import type { UploadType } from "@/store/bulk-upload-store";
 import { DownloadOptions } from "@/components/patients/patient-record-download";
 
-export async function processReturnVisit(input: ReturnPatientInput) {
-    const statusByType: Record<ReturnPatientInput["returnType"], PatientStatus> = {
+export async function processReturnVisit(input: Props) {
+    const statusByType: Record<Props["returnType"], PatientStatus> = { 
         outpatient: PatientStatus.AwaitingConsultation,
         inpatient: PatientStatus.Admitted,
         emergency: PatientStatus.AwaitingConsultation,
