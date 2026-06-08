@@ -322,11 +322,11 @@ export default function PatientsComponent() {
                             <DialogTitle>Bulk patient import</DialogTitle>
                         </DialogHeader>
                         <BulkUploadComponent
-                            onUpload={async (type, rows) => {
-                                const result = await bulkUploadRows(type, rows);
-                                if (result.success > 0) refetch();
-                                return result;
-                            }}
+                            // onUpload={async (type, rows) => {
+                            //     const result = await bulkUploadRows(type, rows);
+                            //     if (result.success > 0) refetch();
+                            //     return result;
+                            // }}
                         />
                     </DialogContent>
                 </Dialog>

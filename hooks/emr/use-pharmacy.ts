@@ -58,6 +58,7 @@ export function useCreatePrescription() {
                 queryKey: pharmacyKeys.prescriptionsByPatient(prescription.id),
             });
             qc.invalidateQueries({ queryKey: pharmacyKeys.prescriptionsPending() });
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
         },
     });
 }

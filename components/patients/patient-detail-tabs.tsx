@@ -144,9 +144,11 @@ function Panel({ accent, label, children }: { accent: string; label: string; chi
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PatientDetailTabs({ patient }: { patient: Patient }) {
+  // Storing previous patient id to avoid unnecessary store updates and effects.
   const [tab, setTab]                   = useState("vitals");
   const [formError, setFormError]       = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const prevPatientIdRef = useRef<string | null>(null);
 
   const consultationStore = useConsultationStore();
   const patientStore      = usePatientStore();
@@ -207,7 +209,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         show: true,
       },
       {
-        // Appointments — always visible to all roles
+        // Documents — always visible to all roles
         value: "documents", label: "Documents", icon: FolderOpen,
         accent: "text-blue-600", activeBar: "bg-blue-500",
         show: true,
@@ -223,22 +225,42 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
+  // Avoid infinite update loop: Only update the stores if the patient id actually changes
   useEffect(() => {
-    if (patient) {
+    const id = patient?.id ?? null;
+    if (id && prevPatientIdRef.current !== id) {
       patientStore.setPatient([patient]);
       patientStore.updateNotes(patient.notes || "");
       patientStore.setStatus((patient.status as PatientStatus) || "no-status");
       consultationStore.resetForm();
+      prevPatientIdRef.current = id;
+    } else if (!id) {
+      prevPatientIdRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patient]);
+  }, [patient?.id]); // Only depend on patient.id
 
+  // Only open the discharge form if the tab changes to 'discharge' & only once per patient id
+  const prevOpenedDischargePatientIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (tab === "discharge" && patient.id) dischargeStore.openForm(patient.id);
+    if (
+      tab === "discharge" &&
+      patient.id &&
+      prevOpenedDischargePatientIdRef.current !== patient.id
+    ) {
+      dischargeStore.openForm(patient.id);
+      prevOpenedDischargePatientIdRef.current = patient.id;
+    }
+    if (tab !== "discharge") {
+      prevOpenedDischargePatientIdRef.current = null;
+    }
   }, [tab, patient.id, dischargeStore]);
 
+  // Reset the tab if not in the list, but do not call setTab if already "vitals"
   useEffect(() => {
-    if (!visibleTabs.some(t => t.value === tab)) setTab("vitals");
+    if (!visibleTabs.some(t => t.value === tab)) {
+      if (tab !== "vitals") setTab("vitals");
+    }
   }, [visibleTabs, tab]);
 
   useEffect(() => {

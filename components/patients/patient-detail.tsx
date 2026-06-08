@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
 import ReturnPatient from "./return-patient";
 import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
-import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+// import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import {
     Dialog,

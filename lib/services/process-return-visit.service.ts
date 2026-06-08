@@ -21,7 +21,7 @@ export interface ReadmissionInput {
 const STATUS_MAP: Record<ReadmissionType, string> = {
     followup:    "awaiting-consultation",
     emergency:   "awaiting-consultation",
-    readmission: "sent-to-nurse",
+    readmission: "admitted",
     pharmacy:    "sent-to-pharmacy",
 };
 
