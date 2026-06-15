@@ -119,3 +119,12 @@ export const staffKeys = {
     byRole: (r: string) => ["staff", "role", r] as const,
     detail: (id: string) => ["staff", "detail", id] as const,
 };
+
+// ─── Admissions ────────────────────────────────────────────────────────────────────
+
+
+export const admissionKeys = {
+    all:       ()              => ["admissions"]                           as const,
+    active:    ()              => ["admissions", "active"]                 as const,
+    byPatient: (id: string)   => ["admissions", "patient", id]            as const,
+};

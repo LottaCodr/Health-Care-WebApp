@@ -45,7 +45,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Dashboard", url: "/front-desk/dashboard", icon: LayoutDashboard },
             { title: "Register", url: "/front-desk/patient/new", icon: UserPlus },
             { title: "Patients", url: "/front-desk/patient", icon: Users },
-            // { title: "Queue", url: "/front-desk/queue", icon: Clock },
+                        { title: "Admissions", url: "/front-desk/admissions", icon: Clock },
             { title: "Appointments", url: "/front-desk/appointment-booking", icon: Calendar },
             { title: "Payments", url: "/front-desk/payment", icon: CreditCard },
         ],

@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
 import ReturnPatient from "./return-patient";
 import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
-import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+// import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import {
     Dialog,
@@ -153,14 +153,17 @@ export default function PatientDetailsComponent({ patient }: Props) {
             {isFrontDesk && isDischarged && patient.id && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-teal-50 border border-teal-100">
                     <p className="text-sm text-teal-800 font-medium">
-                        This patient is discharged. Start a return visit to check them in again.
+                        This patient is discharged. Start a re-encounter to check them in again.
+                   
                     </p>
                     <button
                         type="button"
                         onClick={() => setReturnOpen(true)}
                         className="shrink-0 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold"
                     >
-                        Return visit
+                        Start Re-encounter
+                   
+                   
                     </button>
                 </div>
             )}

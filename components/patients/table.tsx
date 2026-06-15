@@ -8,7 +8,7 @@ import { useAuth } from "@/context/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw } from "lucide-react";
 import ReturnPatient from "./return-patient";
-import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+// import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
 import {
     Dialog,
     DialogContent,
@@ -253,7 +253,7 @@ function PatientGrid({
                                             }}
                                             className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-100"
                                         >
-                                            <RotateCcw size={11} /> Return
+                                            <RotateCcw size={11} /> Re-encounter
                                         </button>
                                     )}
                                 </div>
