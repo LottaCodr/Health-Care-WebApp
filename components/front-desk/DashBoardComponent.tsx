@@ -13,6 +13,13 @@ import {
 import Link from "next/link";
 import PaymentConfirmation from "./PaymentSuite";
 import { usePatientsByStatus } from "@/hooks/emr/use-patients";
+import {
+    useActiveAdmissions,
+    usePatientAdmissions,
+    useCreateAdmission,
+    useAssignWard,
+    useDischargeFromWard,
+} from "@/hooks/emr/use-admissions";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,14 +114,18 @@ export default function FrontDeskDashboard() {
     const awaitingConsult     = usePatientsByStatus(PatientStatus.AwaitingConsultation);
     const awaitingPayment     = usePatientsByStatus(PatientStatus.AwaitingPayment);
     const discharged          = usePatientsByStatus(PatientStatus.Discharged);
-    const admitted            = usePatientsByStatus(PatientStatus.Admitted);
+    // Use useActiveAdmissions for admitted/admitted patients
+    const activeAdmissions    = useActiveAdmissions();
 
     if (!authorized) return null;
+
+    const admittedPatients = activeAdmissions.data || [];
+    const admittedPatientsLength = admittedPatients.length;
 
     const stats = [
         { label: "New Arrivals",     value: registered.data?.length      ?? 0, icon: Users,         color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100"   },
         { label: "In Queue",         value: awaitingConsult.data?.length  ?? 0, icon: ClipboardList,  color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
-        { label: "Admitted",         value: admitted.data?.length         ?? 0, icon: BedDouble,      color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
+        { label: "Admitted",         value: admittedPatientsLength        ?? 0, icon: BedDouble,      color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
         { label: "Pending Payment",  value: awaitingPayment.data?.length  ?? 0, icon: Wallet,         color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100"    },
         { label: "Discharged Today", value: discharged.data?.length       ?? 0, icon: LogOut,         color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
     ];
@@ -164,20 +175,20 @@ export default function FrontDeskDashboard() {
                     </Link>
                 </Section>
 
-                {/* Admitted patients — doctor routed here */}
+                {/* Admitted patients — doctor routed here (using useActiveAdmissions) */}
                 <Section
                     icon={BedDouble} iconBg="bg-indigo-50" iconColor="text-indigo-600"
                     title="Admitted Patients" subtitle="Awaiting bed / ward assignment"
-                    badge={admitted.data?.length} badgeColor="bg-indigo-50 text-indigo-700 border-indigo-100"
+                    badge={admittedPatientsLength} badgeColor="bg-indigo-50 text-indigo-700 border-indigo-100"
                     href="/front-desk/admissions" hrefLabel="Manage"
-                    loading={admitted.isLoading}
-                    empty={admitted.data?.length === 0 ? (
+                    loading={activeAdmissions.isLoading}
+                    empty={admittedPatientsLength === 0 ? (
                         <div className="flex flex-col items-center justify-center py-10 gap-2">
                             <BedDouble size={20} className="text-gray-200" />
                             <p className="text-sm text-gray-400">No patients awaiting admission</p>
                         </div>
                     ) : undefined}>
-                    {admitted.data?.slice(0, 5).map(p => (
+                    {admittedPatients.slice(0, 5).map(p => (
                         <PatientRow key={p.id} patient={p}
                             action={{ label: "Assign Bed", href: `/front-desk/admissions/${p.id}`, color: "bg-indigo-600 hover:bg-indigo-700" }} />
                     ))}
