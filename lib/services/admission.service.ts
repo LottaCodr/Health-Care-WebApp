@@ -20,7 +20,7 @@ export async function getActiveAdmissions(): Promise<PatientAdmission[]> {
     const { data, error } = await sb
         .from("patient_admissions")
         .select(SELECT_FIELDS)
-        .eq("status", "active")
+        .eq("status", "pending")
         .order("admitted_at", { ascending: true });   // longest waiting first
 
     if (error) throw new Error(error.message);
