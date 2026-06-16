@@ -17,6 +17,8 @@ import {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
+// Updated routing per instructions.
+// Most patients except "readmission" and "pharmacy" go to "sent-to-nurse" first.
 const VISIT_TYPES = [
     {
         id:       "followup"    as ReadmissionType,
@@ -29,7 +31,8 @@ const VISIT_TYPES = [
         border:   "border-blue-500",
         ring:     "ring-blue-200",
         dot:      "bg-blue-500",
-        routesTo: "Consultation Queue",
+        // ROUTING UPDATE
+        routesTo: "Nurse Triage (Vitals & Pre-Assessment)",
     },
     {
         id:       "emergency"   as ReadmissionType,
@@ -42,7 +45,8 @@ const VISIT_TYPES = [
         border:   "border-red-500",
         ring:     "ring-red-200",
         dot:      "bg-red-500",
-        routesTo: "Consultation Queue (Urgent)",
+        // ROUTING UPDATE
+        routesTo: "Nurse Triage (Vitals & Pre-Assessment)",
     },
     {
         id:       "readmission" as ReadmissionType,
@@ -55,6 +59,7 @@ const VISIT_TYPES = [
         border:   "border-amber-500",
         ring:     "ring-amber-200",
         dot:      "bg-amber-500",
+        // ROUTING unchanged
         routesTo: "Admitted — front desk assigns ward",
     },
     {
@@ -68,7 +73,8 @@ const VISIT_TYPES = [
         border:   "border-violet-500",
         ring:     "ring-violet-200",
         dot:      "bg-violet-500",
-        routesTo: "Pharmacy Queue",
+        // ROUTING UPDATE
+        routesTo: "Sent to Pharmacy Queue",
     },
 ] as const;
 
@@ -228,6 +234,7 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
             });
 
             await qc.invalidateQueries({ queryKey: ["patients"] });
+            // ROUTING: Adjusted toast logic to match frontend label for recipient queue
             toast.success(`${patientName} re-encountered → ${selected?.routesTo}`);
             onSuccess?.();
         } catch (err: any) {
