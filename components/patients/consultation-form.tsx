@@ -23,6 +23,9 @@ import {
     Building2, Plus, Trash2, Search,
 } from "lucide-react";
 
+// Import useAdmission (assume the location for now)
+import { useAdmission } from "@/hooks/emr/use-admissions";
+
 const AIClinicalAssistant = dynamic(
     () => import("@/components/ai/AIClinicalAssistant"),
     { loading: () => <div className="animate-pulse h-32 bg-gray-50 rounded-2xl" /> }
@@ -391,7 +394,10 @@ export default function ConsultationForm({
     const { mutate: createPrescription }                        = useCreatePrescription();
     const { data: labCatalog }                                  = useActiveLabTests();
 
-    const loading  = cLoading || lLoading || rLoading;
+    // Instantiate useAdmission hook (mutation)
+    const { mutate: createAdmission, isPending: admissionLoading } = useAdmission();
+
+    const loading  = cLoading || lLoading || rLoading || admissionLoading;
     const isChild  = isPaed(patientAge);
     const isFem    = isFemale(patientGender);
 
@@ -423,6 +429,8 @@ export default function ConsultationForm({
         labTestType, labPriority, labNotes,
         radTestType, radPriority, radNotes,
         setField, resetForm,
+        // admission fields below belong to the store:
+        admissionType, admissionUrgency, admissionWard, admissionIndication, admissionNotes,
     } = store;
 
     useEffect(() => {
@@ -439,7 +447,7 @@ export default function ConsultationForm({
         aetiology               ? `Aetiology/Cause:\n${aetiology}` : "",
         historyComplications    ? `History of Complications:\n${historyComplications}` : "",
         historyTreatment        ? `History of Treatment:\n${historyTreatment}` : "",
-        isChild && antenatalHistory        ? `Antenatal/Delivery History:\n${antenatalHistory}` : "",
+        isChild && antenatalHistory        ? `Antenatal/Delivery History:\n${antentalHistory}` : "",
         isChild && nutritionalHistory      ? `Nutritional History:\n${nutritionalHistory}` : "",
         isChild && developmentalMilestones ? `Developmental Milestones:\n${developmentalMilestones}` : "",
         isChild && immunisationHistory     ? `Immunisation History:\n${immunisationHistory}` : "",
@@ -478,8 +486,8 @@ export default function ConsultationForm({
         if (!assessment.trim())          { toast.error("Assessment / diagnosis is required."); return; }
         if (referredTo === "lab-tech"   && (!labTestType  || labTestType.length  === 0)) { toast.error("Select at least one lab test."); return; }
         if (referredTo === "radiology"  && (!radTestType  || radTestType.length  === 0)) { toast.error("Select a radiology investigation."); return; }
-        if (referredTo === "front-desk" && !store.admissionType)                         { toast.error("Select an admission type."); return; }
-        if (referredTo === "front-desk" && !store.admissionIndication.trim())            { toast.error("Clinical indication for admission is required."); return; }
+        if (referredTo === "front-desk" && !admissionType)                         { toast.error("Select an admission type."); return; }
+        if (referredTo === "front-desk" && !admissionIndication?.trim())            { toast.error("Clinical indication for admission is required."); return; }
 
         const doctorId = user?.id ?? user?.$id ?? "";
 
@@ -520,7 +528,46 @@ export default function ConsultationForm({
                         });
                     }
 
-                    // Patient status
+                    // Front desk - admission workflow
+                    if (referredTo === "front-desk") {
+                        createAdmission(
+                            {
+                                patientId,
+                                admissionType,
+                                urgency: admissionUrgency,
+                                ward: admissionWard || undefined,
+                                clinicalIndication: admissionIndication,
+                                notes: admissionNotes || undefined,
+                                status: "admitted",
+                            },
+                            {
+                                onError: (err: any) => {
+                                    toast.error(
+                                        err?.message
+                                            ? `Consultation saved. Admission not created: ${err.message}`
+                                            : "Consultation saved, but patient was not admitted."
+                                    );
+                                },
+                                onSuccess: () => {
+                                    const resolvedStatus = statusOverride
+                                        ? (statusOverride as PatientStatus)
+                                        : ("admitted" as PatientStatus);
+
+                                    updateStatus(
+                                        { id: patientId, status: resolvedStatus },
+                                        { onError: () => toast.error("Admission saved but status could not be updated.") }
+                                    );
+                                    toast.success("Consultation saved. Admission created and patient routed to Front Desk.");
+                                    resetForm();
+                                    onSuccess?.();
+                                },
+                            }
+                        );
+                        // Skip the rest of onSuccess: updateStatus, toast, resetForm, onSuccess
+                        return;
+                    }
+
+                    // Patient status (for all except admission/front-desk)
                     const resolvedStatus = statusOverride
                         ? (statusOverride as PatientStatus)
                         : nextStatus;
