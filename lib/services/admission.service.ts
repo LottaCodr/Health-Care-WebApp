@@ -15,16 +15,36 @@ const SELECT_FIELDS = `
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
+/**
+ * Returns all active admission records from patient_admissions.
+ * This covers:
+ *  - Patients routed via the consultation "Front Desk" option
+ *  - Patients re-encountered as "readmission"
+ * Both paths now create a patient_admissions record, so this is the
+ * single source of truth for the admissions queue.
+ */
 export async function getActiveAdmissions(): Promise<PatientAdmission[]> {
     const sb = await createClient();
     const { data, error } = await sb
         .from("patient_admissions")
         .select(SELECT_FIELDS)
-        .eq("status", "pending")
+        .eq("status", "active")
         .order("admitted_at", { ascending: true });   // longest waiting first
 
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as PatientAdmission[];
+}
+
+export async function getAdmissionById(admissionId: string): Promise<PatientAdmission | null> {
+    const sb = await createClient();
+    const { data, error } = await sb
+        .from("patient_admissions")
+        .select(SELECT_FIELDS)
+        .eq("id", admissionId)
+        .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return data as unknown as PatientAdmission | null;
 }
 
 export async function getAdmissionsByPatient(patientId: string): Promise<PatientAdmission[]> {
@@ -39,8 +59,10 @@ export async function getAdmissionsByPatient(patientId: string): Promise<Patient
     return (data ?? []) as unknown as PatientAdmission[];
 }
 
-// ─── Mutations ────────────────────────────────────────────────────────────────
-
+/**
+ * Called from the consultation form when a doctor routes a patient to "admitted".
+ * Creates a pending admission record so it appears in the front-desk queue.
+ */
 export async function createAdmission(input: CreateAdmissionInput): Promise<PatientAdmission> {
     const sb = await createClient();
     const { data, error } = await sb
@@ -84,10 +106,26 @@ export async function assignWard(input: AssignWardInput): Promise<PatientAdmissi
 
 export async function dischargeFromWard(admissionId: string): Promise<void> {
     const sb = await createClient();
+
+    // Get patient_id first so we can update patient status
+    const { data: admission } = await sb
+        .from("patient_admissions")
+        .select("patient_id")
+        .eq("id", admissionId)
+        .single();
+
     const { error } = await sb
         .from("patient_admissions")
         .update({ status: "discharged", discharged_at: new Date().toISOString() })
         .eq("id", admissionId);
 
     if (error) throw new Error(error.message);
+
+    // Update patient status to awaiting-payment on ward discharge
+    if (admission?.patient_id) {
+        await sb
+            .from("patients")
+            .update({ status: "awaiting-payment", updated_at: new Date().toISOString() })
+            .eq("id", admission.patient_id);
+    }
 }
