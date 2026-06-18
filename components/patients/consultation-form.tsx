@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 // Import useAdmission (assume the location for now)
-import { useAdmission } from "@/hooks/emr/use-admissions";
+import { useCreateAdmission } from "@/hooks/emr/use-admissions";
 
 const AIClinicalAssistant = dynamic(
     () => import("@/components/ai/AIClinicalAssistant"),
@@ -394,8 +394,8 @@ export default function ConsultationForm({
     const { mutate: createPrescription }                        = useCreatePrescription();
     const { data: labCatalog }                                  = useActiveLabTests();
 
-    // Instantiate useAdmission hook (mutation)
-    const { mutate: createAdmission, isPending: admissionLoading } = useAdmission();
+    // Instantiate useCreateAdmission hook (mutation)
+    const { mutate: createAdmission, isPending: admissionLoading } = useCreateAdmission();
 
     const loading  = cLoading || lLoading || rLoading || admissionLoading;
     const isChild  = isPaed(patientAge);
