@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { useConsultationStore, RequestPriority, PrescriptionItem, AdmissionType, type ConsultationStore } from "@/store/consultation-store";
+import { useConsultationStore, RequestPriority, PrescriptionItem } from "@/store/consultation-store";
 import { useAuth } from "@/context/auth-provider";
 import { PatientStatus } from "@/types/models";
 import { Staff } from "@/actions/staff/types";
@@ -16,15 +16,13 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { createAdmission } from "@/lib/services/admission.service";
 import {
     Stethoscope, ClipboardList, Pill, ArrowRight, Loader2, CheckCircle2,
     ChevronRight, FlaskConical, UserCog, Baby, User, Heart, Brain,
     Activity, FileText, Zap, Radio, ChevronDown,
     Building2, Plus, Trash2, Search,
 } from "lucide-react";
-
-// Import useAdmission (assume the location for now)
-import { useCreateAdmission } from "@/hooks/emr/use-admissions";
 
 const AIClinicalAssistant = dynamic(
     () => import("@/components/ai/AIClinicalAssistant"),
@@ -59,7 +57,7 @@ const REFERRAL_OPTIONS = [
     },
     {
         value: "lab-tech",
-        label: "Laboratory Scientist",
+        label: "Lab Technician",
         desc:  "Request laboratory investigations",
         icon:  FlaskConical,
         status:"sent-to-lab" as PatientStatus,
@@ -67,7 +65,7 @@ const REFERRAL_OPTIONS = [
     },
     {
         value: "radiology",
-        label: "Radiologist",
+        label: "Radiology",
         desc:  "Imaging investigations",
         icon:  Radio,
         status:"sent-to-radiology" as PatientStatus,
@@ -173,7 +171,7 @@ function MultiSelect({ options, selected, onChange, placeholder }: {
 
 // ─── Admission panel ──────────────────────────────────────────────────────────
 
-function AdmissionPanel({ store }: { store: ConsultationStore }) {
+function AdmissionPanel({ store }: { store: ReturnType<typeof useConsultationStore> }) {
     return (
         <div className="rounded-2xl border-2 border-slate-200 bg-slate-50/40 p-4 space-y-4">
             <div className="flex items-center gap-2">
@@ -185,7 +183,7 @@ function AdmissionPanel({ store }: { store: ConsultationStore }) {
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                     <FieldLabel required>Admission Type</FieldLabel>
-                    <Select value={store.admissionType} onValueChange={v => store.setField("admissionType", v as AdmissionType)}>
+                    <Select value={store.admissionType} onValueChange={v => store.setField("admissionType", v as any)}>
                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
                             <SelectValue placeholder="Select type…" />
                         </SelectTrigger>
@@ -249,7 +247,7 @@ function AdmissionPanel({ store }: { store: ConsultationStore }) {
 
 // ─── Doctor prescription panel ────────────────────────────────────────────────
 
-function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
+function DoctorPrescriptionPanel({ store }: { store: ReturnType<typeof useConsultationStore> }) {
     const { data: inventory = [] } = useDrugInventory();
     const [queries, setQueries] = useState<Record<string, string>>({});
     const [openId,  setOpenId]  = useState<string | null>(null);
@@ -394,10 +392,8 @@ export default function ConsultationForm({
     const { mutate: createPrescription }                        = useCreatePrescription();
     const { data: labCatalog }                                  = useActiveLabTests();
 
-    // Instantiate useCreateAdmission hook (mutation)
-    const { mutate: createAdmission, isPending: admissionLoading } = useCreateAdmission();
-
-    const loading  = cLoading || lLoading || rLoading || admissionLoading;
+    const [admissionSaving, setAdmissionSaving] = useState(false);
+    const loading  = cLoading || lLoading || rLoading || admissionSaving;
     const isChild  = isPaed(patientAge);
     const isFem    = isFemale(patientGender);
 
@@ -429,8 +425,6 @@ export default function ConsultationForm({
         labTestType, labPriority, labNotes,
         radTestType, radPriority, radNotes,
         setField, resetForm,
-        // admission fields below belong to the store:
-        admissionType, admissionUrgency, admissionWard, admissionIndication, admissionNotes,
     } = store;
 
     useEffect(() => {
@@ -447,7 +441,7 @@ export default function ConsultationForm({
         aetiology               ? `Aetiology/Cause:\n${aetiology}` : "",
         historyComplications    ? `History of Complications:\n${historyComplications}` : "",
         historyTreatment        ? `History of Treatment:\n${historyTreatment}` : "",
-        isChild && antenatalHistory        ? `Antenatal/Delivery History:\n${antentalHistory}` : "",
+        isChild && antenatalHistory        ? `Antenatal/Delivery History:\n${antenatalHistory}` : "",
         isChild && nutritionalHistory      ? `Nutritional History:\n${nutritionalHistory}` : "",
         isChild && developmentalMilestones ? `Developmental Milestones:\n${developmentalMilestones}` : "",
         isChild && immunisationHistory     ? `Immunisation History:\n${immunisationHistory}` : "",
@@ -480,16 +474,44 @@ export default function ConsultationForm({
             ? `Admission Notes:\n${store.admissionNotes}` : "",
     ].filter(Boolean).join("\n\n");
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!presentingComplaint.trim()) { toast.error("Presenting complaint is required."); return; }
         if (!assessment.trim())          { toast.error("Assessment / diagnosis is required."); return; }
         if (referredTo === "lab-tech"   && (!labTestType  || labTestType.length  === 0)) { toast.error("Select at least one lab test."); return; }
         if (referredTo === "radiology"  && (!radTestType  || radTestType.length  === 0)) { toast.error("Select a radiology investigation."); return; }
-        if (referredTo === "front-desk" && !admissionType)                         { toast.error("Select an admission type."); return; }
-        if (referredTo === "front-desk" && !admissionIndication?.trim())            { toast.error("Clinical indication for admission is required."); return; }
+        if (referredTo === "front-desk" && !store.admissionType)                         { toast.error("Select an admission type."); return; }
+        if (referredTo === "front-desk" && !store.admissionIndication.trim())            { toast.error("Clinical indication for admission is required."); return; }
 
         const doctorId = user?.id ?? user?.$id ?? "";
+
+        // Front Desk — BLOCKING, and done FIRST: if the admission record can't
+        // be written, we stop here entirely. Nothing is saved, nothing is
+        // half-done, and the doctor's retry click is a clean single attempt
+        // with no duplicate consultation notes left behind.
+        if (referredTo === "front-desk" && store.admissionType) {
+            setAdmissionSaving(true);
+            try {
+                await createAdmission({
+                    patient_id:     patientId,
+                    admission_type: store.admissionType as any,
+                    urgency:        store.admissionUrgency,
+                    ward_name:      store.admissionWard       || undefined,
+                    indication:     store.admissionIndication || undefined,
+                    notes:          store.admissionNotes      || undefined,
+                    assigned_by:    doctorId,
+                });
+            } catch (err: any) {
+                setAdmissionSaving(false);
+                toast.error(
+                    err?.message ??
+                    "Failed to create the admission record. Nothing has been saved yet — click Submit again to retry.",
+                    { duration: 8000 }
+                );
+                return;   // ── stop here: consultation is never submitted
+            }
+            setAdmissionSaving(false);
+        }
 
         createConsultation(
             {
@@ -528,46 +550,7 @@ export default function ConsultationForm({
                         });
                     }
 
-                    // Front desk - admission workflow
-                    if (referredTo === "front-desk") {
-                        createAdmission(
-                            {
-                                patientId,
-                                admissionType,
-                                urgency: admissionUrgency,
-                                ward: admissionWard || undefined,
-                                clinicalIndication: admissionIndication,
-                                notes: admissionNotes || undefined,
-                                status: "admitted",
-                            },
-                            {
-                                onError: (err: any) => {
-                                    toast.error(
-                                        err?.message
-                                            ? `Consultation saved. Admission not created: ${err.message}`
-                                            : "Consultation saved, but patient was not admitted."
-                                    );
-                                },
-                                onSuccess: () => {
-                                    const resolvedStatus = statusOverride
-                                        ? (statusOverride as PatientStatus)
-                                        : ("admitted" as PatientStatus);
-
-                                    updateStatus(
-                                        { id: patientId, status: resolvedStatus },
-                                        { onError: () => toast.error("Admission saved but status could not be updated.") }
-                                    );
-                                    toast.success("Consultation saved. Admission created and patient routed to Front Desk.");
-                                    resetForm();
-                                    onSuccess?.();
-                                },
-                            }
-                        );
-                        // Skip the rest of onSuccess: updateStatus, toast, resetForm, onSuccess
-                        return;
-                    }
-
-                    // Patient status (for all except admission/front-desk)
+                    // Patient status — admission record (if any) already exists by this point
                     const resolvedStatus = statusOverride
                         ? (statusOverride as PatientStatus)
                         : nextStatus;

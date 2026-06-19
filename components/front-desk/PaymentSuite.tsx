@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     BadgeDollarSign, CheckCircle2, Clock,
     Loader2, RefreshCcw, AlertTriangle, Receipt,
@@ -18,29 +17,152 @@ const METHOD_CONFIG = {
     transfer: { label: "Transfer", icon: ArrowLeftRight, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-300" },
 } as const;
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── PaymentList ──────────────────────────────────────────────────────────────
+
+interface PaymentListProps {
+    payments: any[];
+    isConfirming: string | null;
+    methodMap: Record<string, string>;
+    setMethodMap: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+    onConfirm: (id: string, amount: number, name: string) => void;
+}
+
+const PaymentList: React.FC<PaymentListProps> = ({
+    payments,
+    isConfirming,
+    methodMap,
+    setMethodMap,
+    onConfirm,
+}) => {
+    return (
+        <div className="divide-y divide-gray-50">
+            {payments.map((payment: any) => {
+                const confirming = isConfirming === payment.id;
+                const amount = Number(payment.amount ?? 0);
+                const patientName = payment.patients?.name ?? `Patient #${payment.patient_id?.slice(-6) ?? "—"}`;
+                const patientPhone = payment.patients?.phone;
+                const selectedMethod = methodMap[payment.id] ?? payment.method ?? "cash";
+                const methodCfg = METHOD_CONFIG[selectedMethod as keyof typeof METHOD_CONFIG] ?? METHOD_CONFIG.cash;
+                const MethodIcon = methodCfg.icon;
+
+                // Parse what they're paying for from the description
+                const [descLabel, descDetail] = (payment.description ?? "Prescription dispensed").split(": ");
+
+                return (
+                    <div key={payment.id} className="px-6 py-5 hover:bg-gray-50/30 transition-colors">
+                        <div className="flex items-start gap-4">
+
+                            {/* Patient avatar */}
+                            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 font-black text-gray-500 text-sm mt-0.5">
+                                {patientName?.[0]?.toUpperCase() ?? <User size={16} />}
+                            </div>
+
+                            {/* Info + method picker */}
+                            <div className="flex-1 min-w-0 space-y-3">
+
+                                {/* Patient name + phone */}
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">{patientName}</p>
+                                    {patientPhone && (
+                                        <p className="text-xs text-gray-400 mt-0.5">{patientPhone}</p>
+                                    )}
+                                </div>
+
+                                {/* What they're paying for */}
+                                <div className="flex items-start gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
+                                    <Receipt size={12} className="text-gray-400 shrink-0 mt-0.5" />
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{descLabel}</p>
+                                        {descDetail && (
+                                            <p className="text-xs font-medium text-gray-700 truncate mt-0.5">{descDetail}</p>
+                                        )}
+                                        <div className="flex items-center gap-1 mt-1">
+                                            <Clock size={9} className="text-gray-300" />
+                                            <p className="text-[10px] text-gray-400">
+                                                {payment.created_at
+                                                    ? new Date(payment.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                                                    : "Just now"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Method selector */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                        Method:
+                                    </p>
+                                    <div className="flex items-center gap-1.5">
+                                        {Object.entries(METHOD_CONFIG).map(([key, cfg]) => {
+                                            const Icon = cfg.icon;
+                                            const isActive = selectedMethod === key;
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    onClick={() => setMethodMap((p) => ({ ...p, [payment.id]: key }))}
+                                                    disabled={confirming}
+                                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all
+                                                        ${isActive
+                                                            ? `${cfg.bg} ${cfg.color} ${cfg.border}`
+                                                            : "bg-white text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600"
+                                                        }`}
+                                                >
+                                                    <Icon size={11} /> {cfg.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Amount + confirm */}
+                            <div className="flex flex-col items-end gap-3 shrink-0">
+                                <div className="text-right">
+                                    <p className="text-lg font-extrabold text-gray-900">
+                                        ₦{amount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                                    </p>
+                                    <div className={`flex items-center justify-end gap-1 mt-0.5 ${methodCfg.color}`}>
+                                        <MethodIcon size={10} />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest">
+                                            {methodCfg.label}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => onConfirm(payment.id, amount, patientName)}
+                                    disabled={confirming}
+                                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+                                >
+                                    {confirming
+                                        ? <><Loader2 size={12} className="animate-spin" /> Confirming...</>
+                                        : <><CheckCircle2 size={13} /> Confirm Payment</>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+// ─── Main PaymentConfirmation Component ──────────────────────────────────────
 
 export default function PaymentConfirmation() {
     const [confirmingId, setConfirmingId] = useState<string | null>(null);
     const [methodMap, setMethodMap] = useState<Record<string, string>>({});
     const { data: payments, isLoading, isError, refetch } = usePendingPayments();
-    const {mutate: confirm, isPending} = useConfirmPayment();
-
-    
-
-    // const { mutate: confirm } = useMutation({
-    //     mutationFn: (paymentId: string) => confirmPayment(paymentId),
-    //     onMutate: (id) => setConfirmingId(id),
-    //     onSuccess: () => {
-    //         toast.success("Payment confirmed. Patient discharged.");
-    //         queryClient.invalidateQueries({ queryKey: ["pending-payments"] });
-    //     },
-    //     onError: () => toast.error("Failed to confirm payment."),
-    //     onSettled: () => setConfirmingId(null),
-    // });
+    const { mutate: confirm, isPending } = useConfirmPayment();
 
     const handleConfirm = (id: string, amount: number, name: string) => {
         if (isPending) return;
+        const method = methodMap[id] ?? "cash";
+        if (!window.confirm(`Confirm ₦${amount.toLocaleString()} payment from ${name} via ${method}?`)) {
+            return;
+        }
         setConfirmingId(id);
 
         confirm(
@@ -53,12 +175,7 @@ export default function PaymentConfirmation() {
                 onError: () => toast.error("Failed to confirm payment."),
                 onSettled: () => setConfirmingId(null),
             }
-        )
-
-        const method = methodMap[id] ?? "cash";
-        if (window.confirm(`Confirm ₦${amount.toLocaleString()} payment from ${name} via ${method}?`)) {
-            confirm(id);
-        }
+        );
     };
 
     // ── Loading ──
@@ -134,118 +251,13 @@ export default function PaymentConfirmation() {
 
             {/* ── Rows ── */}
             {payments && payments.length > 0 && (
-                <div className="divide-y divide-gray-50">
-                    {payments.map((payment: any) => {
-                        const isConfirming = confirmingId === payment.id;
-                        const amount = Number(payment.amount ?? 0);
-                        const patientName = payment.patients?.name ?? `Patient #${payment.patient_id?.slice(-6) ?? "—"}`;
-                        const patientPhone = payment.patients?.phone;
-                        const selectedMethod = methodMap[payment.id] ?? payment.method ?? "cash";
-                        const methodCfg = METHOD_CONFIG[selectedMethod as keyof typeof METHOD_CONFIG] ?? METHOD_CONFIG.cash;
-                        const MethodIcon = methodCfg.icon;
-
-                        // Parse what they're paying for from the description
-                        // e.g. "Prescription: Paracetamol 500mg — 1 tablet every 8h"
-                        const [descLabel, descDetail] = (payment.description ?? "Prescription dispensed").split(": ");
-
-                        return (
-                            <div key={payment.id} className="px-6 py-5 hover:bg-gray-50/30 transition-colors">
-                                <div className="flex items-start gap-4">
-
-                                    {/* Patient avatar */}
-                                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 font-black text-gray-500 text-sm mt-0.5">
-                                        {patientName?.[0]?.toUpperCase() ?? <User size={16} />}
-                                    </div>
-
-                                    {/* Info + method picker */}
-                                    <div className="flex-1 min-w-0 space-y-3">
-
-                                        {/* Patient name + phone */}
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">{patientName}</p>
-                                            {patientPhone && (
-                                                <p className="text-xs text-gray-400 mt-0.5">{patientPhone}</p>
-                                            )}
-                                        </div>
-
-                                        {/* What they're paying for */}
-                                        <div className="flex items-start gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
-                                            <Receipt size={12} className="text-gray-400 shrink-0 mt-0.5" />
-                                            <div className="min-w-0">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{descLabel}</p>
-                                                {descDetail && (
-                                                    <p className="text-xs font-medium text-gray-700 truncate mt-0.5">{descDetail}</p>
-                                                )}
-                                                <div className="flex items-center gap-1 mt-1">
-                                                    <Clock size={9} className="text-gray-300" />
-                                                    <p className="text-[10px] text-gray-400">
-                                                        {payment.created_at
-                                                            ? new Date(payment.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
-                                                            : "Just now"}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Method selector */}
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                                Method:
-                                            </p>
-                                            <div className="flex items-center gap-1.5">
-                                                {Object.entries(METHOD_CONFIG).map(([key, cfg]) => {
-                                                    const Icon = cfg.icon;
-                                                    const isActive = selectedMethod === key;
-                                                    return (
-                                                        <button
-                                                            key={key}
-                                                            type="button"
-                                                            onClick={() => setMethodMap((p) => ({ ...p, [payment.id]: key }))}
-                                                            disabled={isConfirming}
-                                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all
-                                                                ${isActive
-                                                                    ? `${cfg.bg} ${cfg.color} ${cfg.border}`
-                                                                    : "bg-white text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600"
-                                                                }`}
-                                                        >
-                                                            <Icon size={11} /> {cfg.label}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Amount + confirm */}
-                                    <div className="flex flex-col items-end gap-3 shrink-0">
-                                        <div className="text-right">
-                                            <p className="text-lg font-extrabold text-gray-900">
-                                                ₦{amount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
-                                            </p>
-                                            <div className={`flex items-center justify-end gap-1 mt-0.5 ${methodCfg.color}`}>
-                                                <MethodIcon size={10} />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest">
-                                                    {methodCfg.label}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={() => handleConfirm(payment.id, amount, patientName)}
-                                            disabled={isConfirming}
-                                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
-                                        >
-                                            {isConfirming
-                                                ? <><Loader2 size={12} className="animate-spin" /> Confirming...</>
-                                                : <><CheckCircle2 size={13} /> Confirm Payment</>
-                                            }
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                <PaymentList
+                    payments={payments}
+                    isConfirming={confirmingId}
+                    methodMap={methodMap}
+                    setMethodMap={setMethodMap}
+                    onConfirm={handleConfirm}
+                />
             )}
         </div>
     );

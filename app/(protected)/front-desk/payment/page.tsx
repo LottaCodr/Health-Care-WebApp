@@ -1,14 +1,26 @@
 "use client";
 
-import PaymentConfirmation from "@/components/front-desk/PaymentSuite";
+import PaymentSuite from "@/components/front-desk/PaymentSuite";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Wallet, History } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+    usePendingPayments,
+    usePaymentsByPatient,
+    useCreatePayment,
+    useConfirmPayment
+} from "@/hooks/emr/use-payment";
 
 export default function PaymentPage() {
     const router = useRouter();
+
+    // Use payment hooks
+    const pendingPaymentsQuery = usePendingPayments();
+    // NOTE: Assuming patientId is available for demonstration; in this file, use as needed.
+    // const paymentsByPatientQuery = usePaymentsByPatient(patientId);
+    // (createPaymentMutation and confirmPaymentMutation are left in case needed for other tabs)
 
     return (
         <div className="max-w-6xl mx-auto px-4 py-8">
@@ -32,7 +44,7 @@ export default function PaymentPage() {
                 </TabsList>
 
                 <TabsContent value="checkout" className="mt-0">
-                    <PaymentConfirmation />
+                    <PaymentSuite />
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-0">
