@@ -43,6 +43,27 @@ interface Props {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// ─── Obstetric calculations (Naegele's rule) ─────────────────────────────────
+
+function calcEDD(lmpDate: string): string {
+    if (!lmpDate) return "";
+    const lmp = new Date(lmpDate);
+    if (isNaN(lmp.getTime())) return "";
+    const edd = new Date(lmp.getTime() + 280 * 86_400_000);   // LMP + 280 days
+    return edd.toISOString().split("T")[0];
+}
+
+function calcEGA(lmpDate: string): string {
+    if (!lmpDate) return "";
+    const lmp = new Date(lmpDate);
+    if (isNaN(lmp.getTime())) return "";
+    const days  = Math.floor((Date.now() - lmp.getTime()) / 86_400_000);
+    if (days < 0) return "";
+    const weeks = Math.floor(days / 7);
+    const rem   = days % 7;
+    return rem === 0 ? `${weeks} weeks` : `${weeks} weeks + ${rem} day${rem > 1 ? "s" : ""}`;
+}
+
 const isPaed    = (age?: number)    => age !== undefined && age <= 12;
 const isFemale  = (gender?: string) => ["female", "f"].includes((gender ?? "").toLowerCase());
 
@@ -651,20 +672,58 @@ export default function ConsultationForm({
                                 <p className="text-[10px] font-black uppercase tracking-widest text-pink-600">Obstetric History</p>
                             </div>
                             <div className="pl-3 border-l-2 border-pink-100 grid grid-cols-2 gap-3">
-                                {[
-                                    { label: "IMP (Impression)",           val: imp,      key: "imp",      type: "text", ph: "e.g. G3P2 at 32 weeks" },
-                                    { label: "LMP (Last Menstrual Period)", val: lmp,      key: "lmp",      type: "date", ph: "" },
-                                    { label: "EGA (Gestational Age)",       val: ega,      key: "ega",      type: "text", ph: "e.g. 32 weeks + 4 days" },
-                                    { label: "EOD (Expected Delivery)",     val: eod,      key: "eod",      type: "date", ph: "" },
-                                    { label: "Gravidity (G)",               val: gravidity,key: "gravidity",type: "number",ph: "Total pregnancies" },
-                                    { label: "Parity (P)",                  val: parity,   key: "parity",   type: "text", ph: "e.g. P2+0" },
-                                ].map(({ label, val, key, type, ph }) => (
-                                    <div key={label} className="space-y-1.5">
-                                        <FieldLabel>{label}</FieldLabel>
-                                        <input type={type} value={val} onChange={e => setField(key as any, e.target.value)} placeholder={ph} className={inputCls} />
-                                    </div>
-                                ))}
+                                {/* IMP — manual text */}
+                                <div className="space-y-1.5">
+                                    <FieldLabel>IMP (Impression)</FieldLabel>
+                                    <input type="text" value={imp} onChange={e => setField("imp", e.target.value)}
+                                        placeholder="e.g. G3P2 at 32 weeks" className={inputCls} />
+                                </div>
+
+                                {/* LMP — drives EGA + EDD auto-calc */}
+                                <div className="space-y-1.5">
+                                    <FieldLabel>LMP (Last Menstrual Period)</FieldLabel>
+                                    <input type="date" value={lmp}
+                                        onChange={e => {
+                                            const newLmp = e.target.value;
+                                            setField("lmp", newLmp);
+                                            setField("ega", calcEGA(newLmp));
+                                            setField("eod", calcEDD(newLmp));
+                                        }}
+                                        className={inputCls} />
+                                </div>
+
+                                {/* EGA — auto-calculated on LMP entry, but editable for ultrasound override */}
+                                <div className="space-y-1.5">
+                                    <FieldLabel>EGA (Gestational Age) <span className="text-pink-400 font-normal normal-case">· auto-calculated</span></FieldLabel>
+                                    <input type="text" value={ega} onChange={e => setField("ega", e.target.value)}
+                                        placeholder="Enter LMP to auto-calculate, or override here"
+                                        className={`${inputCls} bg-pink-50/50`} />
+                                </div>
+
+                                {/* EDD — auto-calculated on LMP entry, but editable for ultrasound override */}
+                                <div className="space-y-1.5">
+                                    <FieldLabel>EDD (Expected Date of Delivery) <span className="text-pink-400 font-normal normal-case">· auto-calculated</span></FieldLabel>
+                                    <input type="date" value={eod} onChange={e => setField("eod", e.target.value)}
+                                        className={`${inputCls} bg-pink-50/50`} />
+                                </div>
+
+                                {/* Gravidity — manual */}
+                                <div className="space-y-1.5">
+                                    <FieldLabel>Gravidity (G)</FieldLabel>
+                                    <input type="number" value={gravidity} onChange={e => setField("gravidity", e.target.value)}
+                                        placeholder="Total pregnancies" className={inputCls} />
+                                </div>
+
+                                {/* Parity — manual */}
+                                <div className="space-y-1.5">
+                                    <FieldLabel>Parity (P)</FieldLabel>
+                                    <input type="text" value={parity} onChange={e => setField("parity", e.target.value)}
+                                        placeholder="e.g. P2+0" className={inputCls} />
+                                </div>
                             </div>
+                            <p className="text-[10px] text-pink-400 pl-3">
+                                EGA and EDD are calculated automatically from LMP using Naegele's rule (LMP + 280 days). Override manually if ultrasound dating differs.
+                            </p>
                         </div>
                     )}
                 </Section>
@@ -710,10 +769,21 @@ export default function ConsultationForm({
                 {/* ── F. Management ── */}
                 <Section id="management" icon={Zap} title="F. Management" badge="Section F" color="text-green-600" bg="bg-green-50">
                     <div className="space-y-4">
+                        {/* Investigations are now requested via the structured, multi-select
+                            Lab / Radiology panels in the Routing section below — not here.
+                            Having both a free-text box and a structured selector caused
+                            confusion in practice (duplicate, inconsistent data entry). */}
+                        <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-green-50/60 border border-green-100 rounded-xl">
+                            <FlaskConical size={13} className="text-green-500 shrink-0 mt-0.5" />
+                            <p className="text-xs text-green-700 leading-relaxed">
+                                To request lab tests or imaging, select <span className="font-semibold">Lab Technician</span> or{" "}
+                                <span className="font-semibold">Radiology</span> in Patient Routing below — you can select multiple tests at once.
+                            </p>
+                        </div>
+
                         {[
-                            { label: "I. Investigations Planned", val: investigations,  key: "investigations",  ph: "Planned lab tests, imaging, other investigations...", rows: 2 },
-                            { label: "II. Treatment Plan",        val: prescriptions,   key: "prescriptions",   ph: "Medications, dosages, frequency, duration...", rows: 3 },
-                            { label: "Recommendations",           val: recommendations, key: "recommendations", ph: "Follow-up, lifestyle advice, return instructions...", rows: 2 },
+                            { label: "I. Treatment Plan",  val: prescriptions,   key: "prescriptions",   ph: "Medications, dosages, frequency, duration...", rows: 3 },
+                            { label: "Recommendations",    val: recommendations, key: "recommendations", ph: "Follow-up, lifestyle advice, return instructions...", rows: 2 },
                         ].map(({ label, val, key, ph, rows }) => (
                             <div key={label} className="space-y-1.5">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-green-600">{label}</p>

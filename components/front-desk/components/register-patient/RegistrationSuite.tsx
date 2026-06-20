@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle2, AlertCircle, ChevronLeft, ChevronRight,
   Loader2, User, Phone, Heart, Shield, Stethoscope, Baby,
+  Building2, Wallet, HeartHandshake, Pencil,
 } from "lucide-react";
 import { Form, FormControl } from "@/components/ui/form";
 import CustomFormField from "@/components/CustomFormField";
@@ -48,6 +49,10 @@ function safeScrollToTop() {
   if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+// ─── Religion options ─────────────────────────────────────────────────────────
+
+const RELIGION_OPTIONS = ["Christianity", "Islam", "Traditional", "Other"] as const;
+
 // ─── Step config ──────────────────────────────────────────────────────────────
 
 const STEPS = [
@@ -57,13 +62,38 @@ const STEPS = [
   { label: "Insurance", description: "Coverage information", icon: Shield },
 ];
 
-// These must exactly match the keys in PatientFormValidation / PatientFormDefaultValues
+// Step 0–2 fields are static. Step 3 (Insurance) is computed dynamically —
+// see getInsuranceFields() below — because only ONE of HMO / Company /
+// Private applies at a time, and we must never block submission on fields
+// that don't apply to the selected payment type.
 const STEP_FIELDS = [
   ["name", "email", "phone", "birthDate", "religion", "gender", "address", "occupation"],
   ["emergencyContactName", "emergencyContactNumber", "emergencyContactRelationship", "emergencyContactEmail", "emergencyContactAddress"],
   ["allergies", "significantMedicationHistory", "longTermMedication", "covidVaccinationOptions", "bloodGroup", "genoType"],
-  ["policyNumber", "hmo", "hmoName", "company", "companyName", "privateClient"],
 ];
+
+type PaymentType = "hmo" | "company" | "private" | null;
+
+function getPaymentType(values: { hmo?: boolean; company?: boolean; privateClient?: boolean }): PaymentType {
+  if (values.privateClient) return "private";
+  if (values.hmo)           return "hmo";
+  if (values.company)       return "company";
+  return null;
+}
+
+// Only validate the field that's actually relevant to the selected payment type.
+// Self-pay needs nothing extra; HMO needs hmoName; Company needs companyName.
+function getInsuranceFields(values: any): string[] {
+  const type = getPaymentType(values);
+  if (type === "hmo")     return ["hmoName"];
+  if (type === "company") return ["companyName"];
+  return [];   // private or unselected — nothing extra required
+}
+
+function getStepFields(step: number, values: any): string[] {
+  if (step === 3) return getInsuranceFields(values);
+  return STEP_FIELDS[step] ?? [];
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -153,6 +183,121 @@ function MobileProgress({ currentStep }: { currentStep: number }) {
   );
 }
 
+// ─── Religion field — dropdown with "Other" free-text fallback ───────────────
+
+function ReligionField({ field }: { field: { value: string; onChange: (v: string) => void } }) {
+  const isPreset = (RELIGION_OPTIONS as readonly string[]).includes(field.value);
+  const [customMode, setCustomMode] = useState(!isPreset && !!field.value);
+
+  if (customMode) {
+    return (
+      <div className="space-y-1.5">
+        <input
+          autoFocus
+          value={field.value}
+          onChange={e => field.onChange(e.target.value)}
+          placeholder="Enter religion"
+          className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all"
+        />
+        <button type="button"
+          onClick={() => { setCustomMode(false); field.onChange(""); }}
+          className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
+          <ChevronLeft size={12} /> Choose from list instead
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {RELIGION_OPTIONS.map(opt => {
+        const isSelected = field.value === opt && opt !== "Other";
+        return (
+          <button key={opt} type="button"
+            onClick={() => {
+              if (opt === "Other") { setCustomMode(true); field.onChange(""); }
+              else field.onChange(opt);
+            }}
+            className={`h-10 px-3 rounded-xl border text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+              isSelected
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-white"
+            }`}>
+            {opt === "Other" && <Pencil size={11} />}
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Payment type selector — mutually exclusive HMO / Company / Private ──────
+
+function PaymentTypeSelector({ form }: { form: any }) {
+  const hmo     = useWatch({ control: form.control, name: "hmo" as any });
+  const company = useWatch({ control: form.control, name: "company" as any });
+  const priv    = useWatch({ control: form.control, name: "privateClient" as any });
+
+  const current: PaymentType = getPaymentType({
+    hmo: typeof hmo === "boolean" ? hmo : false,
+    company: typeof company === "boolean" ? company : false,
+    privateClient: typeof priv === "boolean" ? priv : false,
+  });
+
+  function select(type: PaymentType) {
+    form.setValue("hmo",           type === "hmo");
+    form.setValue("company",       type === "company");
+    form.setValue("privateClient", type === "private");
+    // Clear the field that no longer applies, so stale data never gets submitted
+    if (type !== "hmo")     form.setValue("hmoName", "");
+    if (type !== "company") form.setValue("companyName", "");
+    // Re-run validation for the (now possibly empty) insurance fields so any
+    // stale error clears immediately instead of lingering until next trigger.
+    form.clearErrors(["hmoName", "companyName"]);
+  }
+
+  const OPTIONS: { type: PaymentType; label: string; desc: string; icon: any }[] = [
+    { type: "hmo",     label: "HMO Coverage",        desc: "Health insurance via HMO",       icon: HeartHandshake },
+    { type: "company", label: "Company Insurance",   desc: "Covered by employer",             icon: Building2      },
+    { type: "private", label: "Private (Self-Pay)",  desc: "Patient pays directly — no HMO",  icon: Wallet         },
+  ];
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-semibold text-gray-600">Payment Type <span className="text-red-500">*</span></p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        {OPTIONS.map(opt => {
+          const Icon       = opt.icon;
+          const isSelected = current === opt.type;
+          return (
+            <button key={opt.type} type="button"
+              onClick={() => select(opt.type)}
+              className={`flex items-start gap-2.5 p-3.5 rounded-xl border-2 text-left transition-all ${
+                isSelected
+                  ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
+                  : "border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white"
+              }`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                isSelected ? "bg-blue-600" : "bg-white border border-gray-100"
+              }`}>
+                <Icon size={14} className={isSelected ? "text-white" : "text-gray-400"} />
+              </div>
+              <div>
+                <p className={`text-xs font-bold ${isSelected ? "text-gray-900" : "text-gray-600"}`}>{opt.label}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{opt.desc}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {current === null && (
+        <p className="text-[11px] text-amber-600 font-medium pt-1">Select a payment type to continue.</p>
+      )}
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function RegistrationSuite() {
@@ -178,7 +323,17 @@ export default function RegistrationSuite() {
 
   const validateStep = async () => {
     setValidatingStep(true);
-    const ok = await form.trigger(STEP_FIELDS[currentStep] as any, { shouldFocus: true });
+    const fields = getStepFields(currentStep, form.getValues());
+    const ok = await form.trigger(fields as any, { shouldFocus: true });
+
+    // Insurance step also requires a payment type to be selected at all —
+    // Zod alone can't express "exactly one of these three booleans is true"
+    // without seeing the schema, so we enforce it here at the UI layer.
+    if (currentStep === 3) {
+      const type = getPaymentType(form.getValues());
+      if (!type) { setValidatingStep(false); toast.error("Please select a payment type."); return false; }
+    }
+
     setValidatingStep(false);
     return ok;
   };
@@ -194,10 +349,7 @@ export default function RegistrationSuite() {
     if (submitting) return;
     setSubmitError(null);
 
-    setValidatingStep(true);
-    const ok = await form.trigger(STEP_FIELDS[currentStep] as any, { shouldFocus: true });
-    setValidatingStep(false);
-
+    const ok = await validateStep();
     if (!ok) { safeScrollToTop(); toast.error("Please fill all required fields."); return; }
 
     const v = form.getValues();
@@ -232,9 +384,9 @@ export default function RegistrationSuite() {
         // Insurance
         policy_number: v.policyNumber,
         hmo: v.hmo,
-        hmo_name: v.hmoName,
+        hmo_name: v.hmo ? v.hmoName : null,
         company: v.company,
-        company_name: v.companyName,
+        company_name: v.company ? v.companyName : null,
         private_client: v.privateClient,
         // Meta
         user_id: user?.id ?? null,
@@ -266,6 +418,8 @@ export default function RegistrationSuite() {
   }, [submitted, form, router]);
 
   const inputCls = "w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all";
+
+  const paymentType = getPaymentType(form.getValues());
 
   return (
     <div className="min-h-screen bg-gray-50/60 py-8 px-4">
@@ -339,7 +493,15 @@ export default function RegistrationSuite() {
                           <SectionTitle title="Personal Information" description="Basic details about the patient" />
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="name" label="Full Name" placeholder="John Doe" required />
-                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="religion" label="Religion" placeholder="Christianity, Islam, etc." required />
+
+                            {/* Religion — dropdown, not free text */}
+                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="religion" label="Religion" required
+                              renderSkeleton={field => (
+                                <FormControl>
+                                  <ReligionField field={field} />
+                                </FormControl>
+                              )} />
+
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="email" label="Email Address" placeholder="patient@example.com" required />
                             <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="phone" label="Phone Number" placeholder="+234 800 000 0000" required />
 
@@ -457,20 +619,35 @@ export default function RegistrationSuite() {
                       {currentStep === 3 && (
                         <section className="space-y-5">
                           <SectionTitle title="Insurance Information" description="Medical coverage and payment details" />
-                          <div className="space-y-5">
-                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="policyNumber" label="Policy Number" placeholder="ABC123456789" />
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                              <div className="space-y-4">
-                                <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="hmo" label="Covered by HMO" />
-                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="hmoName" label="HMO Provider Name" placeholder="Enter HMO name" />
-                              </div>
-                              <div className="space-y-4">
-                                <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="company" label="Company Insurance" />
-                                <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="companyName" label="Company Name" placeholder="Enter company name" />
-                              </div>
+
+                          <PaymentTypeSelector form={form} />
+
+                          {/* Only the field relevant to the selected payment type renders.
+                              This is what actually fixes the self-pay blocking bug —
+                              hmoName/companyName never get validated or submitted
+                              unless their corresponding payment type is selected. */}
+                          {paymentType === "hmo" && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
+                              <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="hmoName" label="HMO Provider Name" placeholder="Enter HMO name" required />
+                              <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="policyNumber" label="Policy Number" placeholder="ABC123456789" />
                             </div>
-                            <CustomFormField fieldType={FormFieldType.CHECKBOX} control={form.control} name="privateClient" label="Private Client (Self-Pay)" />
-                          </div>
+                          )}
+
+                          {paymentType === "company" && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
+                              <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="companyName" label="Company Name" placeholder="Enter company name" required />
+                              <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="policyNumber" label="Policy Number" placeholder="ABC123456789" />
+                            </div>
+                          )}
+
+                          {paymentType === "private" && (
+                            <div className="flex items-center gap-2.5 px-4 py-3 bg-green-50 border border-green-100 rounded-xl">
+                              <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                              <p className="text-xs text-green-700 font-medium">
+                                No insurance details needed — patient will pay directly at checkout.
+                              </p>
+                            </div>
+                          )}
                         </section>
                       )}
 
