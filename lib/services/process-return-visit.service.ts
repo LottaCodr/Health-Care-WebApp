@@ -2,8 +2,6 @@
 
 import { createClient } from "@/utils/supabase/server";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export type ReadmissionType = "followup" | "emergency" | "readmission" | "pharmacy";
 
 export interface ReadmissionInput {
@@ -17,61 +15,40 @@ export interface ReadmissionInput {
 
 export interface PatientEncounterHistory {
     totalVisits:      number;
-    lastDischargedAt: string | null;   // ISO string
+    lastDischargedAt: string | null;
     lastReason:       string | null;
     lastDiagnosis:    string | null;
     lastWard:         string | null;
 }
 
+// ─── Routing ──────────────────────────────────────────────────────────────────
+// Every re-encounter starts at the nurse for triage + vitals first.
+// Readmission goes to admitted (ward assignment), pharmacy goes direct.
+
 const STATUS_MAP: Record<ReadmissionType, string> = {
-    followup:    "awaiting-consultation",
-    emergency:   "awaiting-consultation",
-    readmission: "admitted",
-    pharmacy:    "sent-to-pharmacy",
+    followup:    "sent-to-nurse",      // nurse triage → doctor
+    emergency:   "sent-to-nurse",      // nurse triage → doctor (urgent)
+    readmission: "admitted",           // front desk assigns ward
+    pharmacy:    "sent-to-pharmacy",   // collect repeat prescription
 };
 
-// ─── Get encounter history (shown in the re-encounter form) ───────────────────
+// ─── Encounter history ────────────────────────────────────────────────────────
 
 export async function getPatientEncounterHistory(
     patientId: string
 ): Promise<PatientEncounterHistory> {
     const sb = await createClient();
 
-    // Count all past readmissions
-    const { count } = await sb
-        .from("patient_readmissions")
-        .select("id", { count: "exact", head: true })
-        .eq("patient_id", patientId);
-
-    // Last readmission record
-    const { data: lastVisit } = await sb
-        .from("patient_readmissions")
-        .select("reason, created_at")
-        .eq("patient_id", patientId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    // Last discharge note for diagnosis
-    const { data: lastDischarge } = await sb
-        .from("discharge_notes")
-        .select("final_diagnosis, created_at")
-        .eq("patient_id", patientId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-    // Last ward assignment
-    const { data: lastAdmission } = await sb
-        .from("patient_admissions")
-        .select("ward_name, discharged_at")
-        .eq("patient_id", patientId)
-        .order("admitted_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    const [{ count }, { data: lastVisit }, { data: lastDischarge }, { data: lastAdmission }] =
+        await Promise.all([
+            sb.from("patient_readmissions").select("id", { count: "exact", head: true }).eq("patient_id", patientId),
+            sb.from("patient_readmissions").select("reason, created_at").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+            sb.from("discharge_notes").select("final_diagnosis, created_at").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+            sb.from("patient_admissions").select("ward_name, discharged_at").eq("patient_id", patientId).order("admitted_at", { ascending: false }).limit(1).maybeSingle(),
+        ]);
 
     return {
-        totalVisits:      count ?? 0,
+        totalVisits:      count     ?? 0,
         lastDischargedAt: lastAdmission?.discharged_at ?? lastVisit?.created_at ?? null,
         lastReason:       lastVisit?.reason             ?? null,
         lastDiagnosis:    lastDischarge?.final_diagnosis ?? null,
@@ -87,6 +64,7 @@ export async function processReturnVisit(
     const sb        = await createClient();
     const newStatus = STATUS_MAP[input.visitType];
 
+    // 1 — Reactivate patient with new status
     const { error: patientError } = await sb
         .from("patients")
         .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -94,7 +72,25 @@ export async function processReturnVisit(
 
     if (patientError) throw new Error(`Failed to update patient: ${patientError.message}`);
 
-    // Log for encounter history + readmission rate analytics
+    // 2 — If readmission, create a pending admission record so the queue sees it immediately
+    if (input.visitType === "readmission") {
+        const { error: admissionError } = await sb
+            .from("patient_admissions")
+            .insert([{
+                patient_id:     input.patientId,
+                admission_type: "readmission",
+                urgency:        input.priority,
+                indication:     input.reason,
+                notes:          input.notes ?? null,
+                assigned_by:    input.registeredBy,
+                status:         "active",
+                admitted_at:    new Date().toISOString(),
+            }]);
+
+        if (admissionError) console.error("Admission record creation failed (non-fatal):", admissionError.message);
+    }
+
+    // 3 — Log re-encounter episode
     const { error: logError } = await sb
         .from("patient_readmissions")
         .insert([{
