@@ -25,10 +25,18 @@ const FIELD_CONFIG = [
     { key: "spo2", label: "Oxygen Saturation (SpO₂ %)", placeholder: "98", required: false, type: "number" },
     { key: "weight", label: "Weight (kg)", placeholder: "65", required: false, type: "number" },
     { key: "height", label: "Height (cm)", placeholder: "170", required: false, type: "number" },
-    { key: "bmi", label: "BMI (auto-calculated)", placeholder: "", required: false, type: "number", disabled: true },
+    { key: "bmi", label: "BMI (auto-calculated)", placeholder: "Enter weight & height", required: false, type: "number", disabled: true },
 ];
 
+// ─── BMI helper ───────────────────────────────────────────────────────────────
 
+function calcBMI(weightKg: string, heightCm: string): string {
+    const w = parseFloat(weightKg);
+    const h = parseFloat(heightCm);
+    if (!w || !h || h <= 0) return "";
+    const heightM = h / 100;
+    return (w / (heightM * heightM)).toFixed(1);
+}
 
 export default function VitalsCheckinAdvancedComponent(props: {
     patientId: string;
@@ -50,9 +58,19 @@ export default function VitalsCheckinAdvancedComponent(props: {
     const [success, setSuccess] = useState<string | null>(null);
 
     const createActionMutation = useCreateNursingAction();
-    const {mutate: updateActionMutation, isPending} = useUpdateNursingAction();
+    const { mutate: updateActionMutation, isPending } = useUpdateNursingAction();
     const updatePatientStatusMutation = useUpdatePatientStatus();
-    const age = calculateAge(patient?.birth_date!)
+    const age = patient?.birth_date ? calculateAge(patient.birth_date) : undefined;
+
+    // ── BMI auto-calculation ────────────────────────────────────────────────────
+    // The field was labelled "auto-calculated" but nothing was actually
+    // computing it — it sat permanently blank. Recalculates live whenever
+    // weight or height changes.
+    useEffect(() => {
+        const computed = calcBMI(form.weight, form.height);
+        if (computed !== form.bmi) setField("bmi", computed);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.weight, form.height]);
 
     if (!authorized) return null;
 
@@ -74,6 +92,9 @@ export default function VitalsCheckinAdvancedComponent(props: {
         if (e) e.preventDefault();
         setSubmitting(true);
 
+        // Only true vitals are mandatory. Nursing care notes are documentation,
+        // not a blocker — a nurse doing a quick vitals-only check should never
+        // be stuck unable to save because they haven't written a care plan.
         const requiredFields = ["bloodPressure", "temperature", "pulse"];
         for (const field of requiredFields) {
             if (!(form[field as keyof typeof form] ?? "").toString().trim()) {
@@ -123,9 +144,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
 
             updatePatientStatusMutation.mutate({
                 id: patientId,
-                
-                    status: "awaiting-consultation" as any,
-                
+                status: "awaiting-consultation" as any,
             });
 
             setSuccess("Vitals documentation finalized successfully.");
@@ -148,7 +167,14 @@ export default function VitalsCheckinAdvancedComponent(props: {
     return (
         <div className="space-y-8">
             {success && <SuccessAlert message={success} />}
-            {/* {patient && <PatientInfoCard patient={patient} />} */}
+
+            {/* Re-enabled: a nurse must see exactly who they're charting vitals
+                for before entering numbers — this was previously commented out. */}
+            {patient && (
+                <div className="max-w-3xl mx-auto">
+                    <PatientInfoCard patient={patient} />
+                </div>
+            )}
 
             <form
                 onSubmit={handleSubmit}
@@ -175,6 +201,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
                                 disabled={!!field.disabled || submitting}
                                 required={field.required}
                                 inputMode={field.type === "number" ? "decimal" : undefined}
+                                className={field.key === "bmi" ? "bg-blue-50/50 font-semibold text-blue-700" : undefined}
                             />
                         </div>
                     ))}
@@ -183,16 +210,18 @@ export default function VitalsCheckinAdvancedComponent(props: {
                 <div className="space-y-2">
                     <Label htmlFor="treatment" className="text-sm font-bold text-gray-700 uppercase tracking-wider">
                         Clinical Treatment / Nursing Care
+                        <span className="text-gray-300 font-normal normal-case ml-1.5">optional</span>
                     </Label>
                     <Textarea
                         id="treatment"
                         name="treatment"
-                        placeholder="Describe clinical actions taken..."
+                        placeholder="Describe clinical actions taken... (optional — leave blank for vitals-only checks)"
                         value={form.treatment}
                         onChange={handleChange}
                         rows={3}
                         disabled={submitting}
-                        required
+                        // NOT required — a quick vitals check should never be blocked
+                        // by needing a full nursing care plan written out.
                     />
                 </div>
 
@@ -221,7 +250,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
             </form>
 
             <AITriageScore bloodPressure={form.bloodPressure} temperature={form.temperature}
-    pulse={form.pulse} patientAge={age} patientGender={patient?.gender} />
+                pulse={form.pulse} patientAge={age} patientGender={patient?.gender} />
         </div>
     );
 }
