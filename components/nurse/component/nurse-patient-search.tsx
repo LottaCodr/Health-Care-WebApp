@@ -20,7 +20,7 @@ interface NursePatientSearchProps {
     basePath?: string;
 }
 
-export default function NursePatientSearch({ basePath = "/nurse/patient" }: NursePatientSearchProps) {
+export default function NursePatientSearch({ basePath = "/nurse/queue/patient" }: NursePatientSearchProps) {
     const [query, setQuery] = useState("");
     const { data: results = [], isLoading } = useSearchPatients(query);
 
