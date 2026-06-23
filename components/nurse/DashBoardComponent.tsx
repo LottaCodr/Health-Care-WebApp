@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePatientsByStatus, usePendingNursingActions } from "@/hooks/emr/use-emr";
+import NursePatientSearch from "././component/nurse-patient-search";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -153,6 +154,9 @@ export default function NurseDashboard() {
 
     return (
         <div className="space-y-5">
+
+            {/* ── Patient search — pull up ANY patient, not just your queue ── */}
+            <NursePatientSearch />
 
             {/* ── Stats row ── */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
