@@ -157,6 +157,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const [tab, setTab] = useState("vitals");
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [dischargeOpenFor, setDischargeOpenFor] = useState<string | null>(null);
 
   const consultationStore = useConsultationStore();
   const patientStore = usePatientStore();
@@ -168,16 +169,19 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const role = normalizeRole(user?.role);
   const staffId = user?.$id ?? user?.id ?? "";
   const status = normalizeStatus(patient.status ?? patientStore.status);
-  const canManageBilling= role === "FrontDesk" || role === "Admin";
+  const canManageBilling = role === "FrontDesk" || role === "Admin";
   const canViewBilling = canManageBilling || role === "Doctor";
 
   const { data: staff = [] } = useQuery({ queryKey: ["staffs"], queryFn: getAllStaffs });
 
-  const availableStaff = useMemo(() =>
-    staff.filter((s: Staff) =>
-      s.role && consultationStore.referredTo &&
-      s.role.toLowerCase() === consultationStore.referredTo
-    ),
+  const availableStaff = useMemo(
+    () =>
+      staff.filter(
+        (s: Staff) =>
+          s.role &&
+          consultationStore.referredTo &&
+          s.role.toLowerCase() === consultationStore.referredTo
+      ),
     [staff, consultationStore.referredTo]
   );
 
@@ -189,44 +193,36 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
     const conditionalDefs = [
       {
-        // Drug chart — Nursing group; nurses can write, everyone else read-only
         value: "drug-chart", label: "Drug Chart", icon: Syringe,
         accent: "text-teal-600", activeBar: "bg-teal-500",
         group: "nursing" as TabGroup,
         show: true,
       },
       {
-        // Fluid balance — Nursing group; nurses can write, everyone else read-only
         value: "fluid-balance", label: "Fluid Balance", icon: Droplets,
         accent: "text-sky-600", activeBar: "bg-sky-500",
         group: "nursing" as TabGroup,
         show: true,
       },
       {
-        // Discharge — Doctor group; only doctors see this tab at all
         value: "discharge", label: "Discharge", icon: ClipboardCheck,
         accent: "text-emerald-600", activeBar: "bg-emerald-500",
         group: "doctor" as TabGroup,
         show: role === "Doctor" && DISCHARGE_STATUSES.has(status as PatientStatus),
       },
       {
-        // Billing — its own group; visible to FrontDesk/Admin (who settle
-        // payments) and Doctor (who needs visibility into payment status
-        // before discharge). Not shown to Nurse / Lab / Radiology / Pharmacist.
         value: "billing", label: "Billing", icon: CreditCard,
         accent: "text-orange-600", activeBar: "bg-orange-500",
         group: "billing" as TabGroup,
         show: canViewBilling,
       },
       {
-        // Appointments — General group, always visible to all roles
         value: "appointments", label: "Appointments", icon: Calendar,
         accent: "text-blue-600", activeBar: "bg-blue-500",
         group: "general" as TabGroup,
         show: true,
       },
       {
-        // Documents — General group; upload: FrontDesk/Admin; view: all roles
         value: "documents", label: "Documents", icon: FolderOpen,
         accent: "text-amber-600", activeBar: "bg-amber-500",
         group: "general" as TabGroup,
@@ -242,8 +238,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   }, [role, status, canViewBilling]);
 
   // Group tabs by department for the segmented TabsList layout below.
-  // Empty groups (e.g. "Doctor" for a non-doctor role with no visible
-  // doctor-only tabs) are simply omitted — no empty section renders.
   const groupedTabs = useMemo(() => {
     const order: TabGroup[] = ["nursing", "doctor", "billing", "general"];
     return order
@@ -263,9 +257,22 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient]);
 
+  // Fix maximum update depth: only call openForm when necessary and not on every render
   useEffect(() => {
-    if (tab === "discharge" && patient.id) dischargeStore.openForm(patient.id);
-  }, [tab, patient.id, dischargeStore]);
+    if (
+      tab === "discharge" &&
+      !!patient.id &&
+      dischargeOpenFor !== patient.id
+    ) {
+      dischargeStore.openForm(patient.id);
+      setDischargeOpenFor(patient.id);
+    } else if (tab !== "discharge" && dischargeOpenFor !== null) {
+      // If leaving the discharge tab, reset so we can re-trigger openForm on return
+      setDischargeOpenFor(null);
+    }
+    // Only depend on tab, patient.id, dischargeStore, dischargeOpenFor
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, patient.id, dischargeStore, dischargeOpenFor]);
 
   useEffect(() => {
     if (!visibleTabs.some(t => t.value === tab)) setTab("vitals");
