@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import {
   Activity, Pill, Stethoscope, FlaskConical, AlertCircle, CheckCircle2,
   Radio, Syringe, Droplets, ClipboardCheck, CreditCard, Calendar, FolderOpen,
@@ -21,6 +22,7 @@ import { useConfirmPayment } from "@/hooks/emr/use-payment";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
 
+// Skeleton and dynamic imports
 function TabChunkSkeleton() {
   return (
     <div className="animate-pulse space-y-4">
@@ -44,16 +46,34 @@ const PaymentHistory = dynamic(() => import("./payment-history"), { loading: () 
 const AppointmentComponent = dynamic(() => import("../front-desk/AppointmentComponent"), { loading: () => <TabChunkSkeleton /> });
 const PatientDocumentsTab = dynamic(() => import("./patient-documents-tab"), { loading: () => <TabChunkSkeleton /> });
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────
 
 type TabGroup = "nursing" | "doctor" | "billing" | "general";
+
+type TabColor =
+  | "blue" | "red" | "violet" | "indigo" | "cyan"
+  | "teal" | "sky" | "emerald" | "orange" | "amber";
+
+// Per-tab colour identity for the active state. Every class string is a literal
+// so Tailwind's JIT can see and keep it — never assemble these names dynamically.
+const TAB_COLORS: Record<TabColor, { text: string; activeBg: string; activeBorder: string }> = {
+  blue:    { text: "text-blue-600",    activeBg: "bg-blue-50",    activeBorder: "border-blue-200" },
+  red:     { text: "text-red-600",     activeBg: "bg-red-50",     activeBorder: "border-red-200" },
+  violet:  { text: "text-violet-600",  activeBg: "bg-violet-50",  activeBorder: "border-violet-200" },
+  indigo:  { text: "text-indigo-600",  activeBg: "bg-indigo-50",  activeBorder: "border-indigo-200" },
+  cyan:    { text: "text-cyan-600",    activeBg: "bg-cyan-50",    activeBorder: "border-cyan-200" },
+  teal:    { text: "text-teal-600",    activeBg: "bg-teal-50",    activeBorder: "border-teal-200" },
+  sky:     { text: "text-sky-600",     activeBg: "bg-sky-50",     activeBorder: "border-sky-200" },
+  emerald: { text: "text-emerald-600", activeBg: "bg-emerald-50", activeBorder: "border-emerald-200" },
+  orange:  { text: "text-orange-600",  activeBg: "bg-orange-50",  activeBorder: "border-orange-200" },
+  amber:   { text: "text-amber-600",   activeBg: "bg-amber-50",   activeBorder: "border-amber-200" },
+};
 
 type TabDef = {
   value: string;
   label: string;
   icon: React.ElementType;
-  accent: string;
-  activeBar: string;
+  color: TabColor;
   group: TabGroup;
 };
 
@@ -64,12 +84,15 @@ const GROUP_LABELS: Record<TabGroup, string> = {
   general: "General",
 };
 
+// Subtle fade + lift when a tab panel mounts.
+const TAB_CONTENT_CLS = "mt-0 animate-in fade-in-50 slide-in-from-bottom-1 duration-300";
+
 const BASE_TABS: TabDef[] = [
-  { value: "vitals", label: "Vitals", icon: Activity, accent: "text-blue-600", activeBar: "bg-blue-500", group: "nursing" },
-  { value: "consultations", label: "Consultations", icon: Stethoscope, accent: "text-red-600", activeBar: "bg-red-500", group: "doctor" },
-  { value: "prescriptions", label: "Prescriptions", icon: Pill, accent: "text-violet-600", activeBar: "bg-violet-500", group: "general" },
-  { value: "lab", label: "Lab Results", icon: FlaskConical, accent: "text-indigo-600", activeBar: "bg-indigo-500", group: "general" },
-  { value: "radiology", label: "Radiology", icon: Radio, accent: "text-cyan-600", activeBar: "bg-cyan-500", group: "general" },
+  { value: "vitals", label: "Vitals", icon: Activity, color: "blue", group: "nursing" },
+  { value: "consultations", label: "Consultations", icon: Stethoscope, color: "red", group: "doctor" },
+  { value: "prescriptions", label: "Prescriptions", icon: Pill, color: "violet", group: "general" },
+  { value: "lab", label: "Lab Results", icon: FlaskConical, color: "indigo", group: "general" },
+  { value: "radiology", label: "Radiology", icon: Radio, color: "cyan", group: "general" },
 ];
 
 const NURSE_CHART_STATUSES = new Set([
@@ -82,7 +105,7 @@ const DISCHARGE_STATUSES = new Set([
   "under-consultation", "admitted", "awaiting-payment",
 ]);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────
 
 function normalizeRole(role?: string) {
   const r = (role ?? "").toLowerCase();
@@ -97,7 +120,7 @@ function normalizeStatus(status?: string) {
   return String(status ?? "").toLowerCase().replace(/_/g, "-").trim();
 }
 
-// ─── Small UI pieces ──────────────────────────────────────────────────────────
+// ─── Small UI pieces ──────────────────────────────────────────────
 
 function AlertBanner({ type, message }: { type: "error" | "success"; message: string }) {
   const isError = type === "error";
@@ -151,7 +174,7 @@ function Panel({ accent, label, children }: { accent: string; label: string; chi
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main component ──────────────────────────────────────────────────
 
 export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const [tab, setTab] = useState("vitals");
@@ -169,8 +192,12 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const role = normalizeRole(user?.role);
   const staffId = user?.$id ?? user?.id ?? "";
   const status = normalizeStatus(patient.status ?? patientStore.status);
+
+  // Updated: canManageBilling, canViewBilling
+  // Previously: Only FrontDesk and Admin could upload documents; now, also Doctor.
   const canManageBilling = role === "FrontDesk" || role === "Admin";
   const canViewBilling = canManageBilling || role === "Doctor";
+  const canUploadDocuments = canManageBilling || role === "Doctor";
 
   const { data: staff = [] } = useQuery({ queryKey: ["staffs"], queryFn: getAllStaffs });
 
@@ -187,51 +214,51 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
   const age = calculateAge(patient?.birth_date!);
 
-  // ── Role-conditional extra tabs ────────────────────────────────────────────
+  // ── Role-conditional extra tabs ─────────────────────────────
   const visibleTabs = useMemo(() => {
     const extra: TabDef[] = [];
 
     const conditionalDefs = [
       {
         value: "drug-chart", label: "Drug Chart", icon: Syringe,
-        accent: "text-teal-600", activeBar: "bg-teal-500",
+        color: "teal" as TabColor,
         group: "nursing" as TabGroup,
         show: true,
       },
       {
         value: "fluid-balance", label: "Fluid Balance", icon: Droplets,
-        accent: "text-sky-600", activeBar: "bg-sky-500",
+        color: "sky" as TabColor,
         group: "nursing" as TabGroup,
         show: true,
       },
       {
         value: "discharge", label: "Discharge", icon: ClipboardCheck,
-        accent: "text-emerald-600", activeBar: "bg-emerald-500",
+        color: "emerald" as TabColor,
         group: "doctor" as TabGroup,
         show: role === "Doctor" && DISCHARGE_STATUSES.has(status as PatientStatus),
       },
       {
         value: "billing", label: "Billing", icon: CreditCard,
-        accent: "text-orange-600", activeBar: "bg-orange-500",
+        color: "orange" as TabColor,
         group: "billing" as TabGroup,
         show: canViewBilling,
       },
       {
         value: "appointments", label: "Appointments", icon: Calendar,
-        accent: "text-blue-600", activeBar: "bg-blue-500",
+        color: "blue" as TabColor,
         group: "general" as TabGroup,
         show: true,
       },
       {
         value: "documents", label: "Documents", icon: FolderOpen,
-        accent: "text-amber-600", activeBar: "bg-amber-500",
+        color: "amber" as TabColor,
         group: "general" as TabGroup,
         show: true,
       },
     ] as const;
 
     for (const d of conditionalDefs) {
-      if (d.show) extra.push({ value: d.value, label: d.label, icon: d.icon, accent: d.accent, activeBar: d.activeBar, group: d.group });
+      if (d.show) extra.push({ value: d.value, label: d.label, icon: d.icon, color: d.color, group: d.group });
     }
 
     return [...BASE_TABS, ...extra];
@@ -245,7 +272,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       .filter(g => g.tabs.length > 0);
   }, [visibleTabs]);
 
-  // ── Effects ────────────────────────────────────────────────────────────────
+  // ── Effects ──────────────────────────────────────────────────
 
   useEffect(() => {
     if (patient) {
@@ -288,44 +315,51 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
   const billingReadOnly = !canManageBilling;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="w-full space-y-5">
-      <TabsList className="flex flex-wrap items-start w-full h-auto bg-white border border-gray-100 rounded-2xl p-2.5 shadow-sm gap-x-1 gap-y-2">
+      <TabsList className="flex w-full h-auto items-start justify-start bg-white border border-gray-100 rounded-2xl p-2.5 shadow-sm gap-x-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {groupedTabs.map(({ group, tabs }, groupIdx) => (
           <Fragment key={group}>
-            <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex flex-col gap-1.5 shrink-0">
               <p className="text-[9px] font-black uppercase tracking-widest text-gray-300 px-1">
                 {GROUP_LABELS[group]}
               </p>
-              <div className="flex flex-wrap gap-1">
-                {tabs.map(({ value, label, icon: Icon, accent, activeBar }) => {
+              <div className="flex gap-1">
+                {tabs.map(({ value, label, icon: Icon, color }) => {
+                  const c = TAB_COLORS[color];
                   const isActive = tab === value;
                   return (
                     <TabsTrigger key={value} value={value}
-                      className={`relative flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 min-w-[7rem] ${
+                      className={cn(
+                        "group relative flex shrink-0 items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all duration-200",
                         isActive
-                          ? `bg-gray-50 border border-gray-100 shadow-sm ${accent}`
-                          : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/60"
-                      }`}>
-                      {isActive && <span className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${activeBar}`} />}
-                      <Icon size={14} className="shrink-0" />
-                      <span className="truncate">{label}</span>
+                          ? cn(c.activeBg, c.activeBorder, c.text, "shadow-sm")
+                          : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                      )}>
+                      <Icon
+                        size={14}
+                        className={cn(
+                          "shrink-0 transition-colors",
+                          isActive ? c.text : "text-gray-300 group-hover:text-gray-500"
+                        )}
+                      />
+                      <span className="whitespace-nowrap">{label}</span>
                     </TabsTrigger>
                   );
                 })}
               </div>
             </div>
             {groupIdx < groupedTabs.length - 1 && (
-              <div className="hidden sm:block w-px self-stretch bg-gray-100 mx-1.5 mt-4" />
+              <div className="hidden sm:block w-px self-stretch bg-gray-100 mx-1 mt-[26px] shrink-0" />
             )}
           </Fragment>
         ))}
       </TabsList>
 
       {/* ── Vitals ── */}
-      <TabsContent value="vitals" className="mt-0">
+      <TabsContent value="vitals" className={TAB_CONTENT_CLS}>
         <div className="space-y-5">
           <SectionHeader icon={Activity} color="text-blue-600" bg="bg-blue-50"
             title="Vitals Recording" subtitle="Patient measurements and clinical observations" />
@@ -347,7 +381,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       </TabsContent>
 
       {/* ── Consultations ── */}
-      <TabsContent value="consultations" className="mt-0">
+      <TabsContent value="consultations" className={TAB_CONTENT_CLS}>
         <div className="space-y-5">
           <SectionHeader icon={Stethoscope} color="text-red-600" bg="bg-red-50"
             title="Consultations" subtitle="Clinical findings and patient routing" />
@@ -373,7 +407,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       </TabsContent>
 
       {/* ── Prescriptions ── */}
-      <TabsContent value="prescriptions" className="mt-0">
+      <TabsContent value="prescriptions" className={TAB_CONTENT_CLS}>
         <div className="space-y-5">
           <SectionHeader icon={Pill} color="text-violet-600" bg="bg-violet-50"
             title="Prescriptions" subtitle="Medication records and dispensing history" />
@@ -395,21 +429,21 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       </TabsContent>
 
       {/* ── Lab ── */}
-      <TabsContent value="lab" className="mt-0"><LabTab patient={patient} userRole={user?.role} /></TabsContent>
-      <TabsContent value="radiology" className="mt-0"><RadiologyTab patient={patient} userRole={user?.role} /></TabsContent>
+      <TabsContent value="lab" className={TAB_CONTENT_CLS}><LabTab patient={patient} userRole={user?.role} /></TabsContent>
+      <TabsContent value="radiology" className={TAB_CONTENT_CLS}><RadiologyTab patient={patient} userRole={user?.role} /></TabsContent>
 
       {patient.id && (
         <>
           {/* ── Nurse charts ── */}
-          <TabsContent value="drug-chart" className="mt-0">
+          <TabsContent value="drug-chart" className={TAB_CONTENT_CLS}>
             <DrugChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
           </TabsContent>
-          <TabsContent value="fluid-balance" className="mt-0">
+          <TabsContent value="fluid-balance" className={TAB_CONTENT_CLS}>
             <FluidBalanceChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
           </TabsContent>
 
           {/* ── Discharge ── */}
-          <TabsContent value="discharge" className="mt-0">
+          <TabsContent value="discharge" className={TAB_CONTENT_CLS}>
             <div className="space-y-4">
               <SectionHeader icon={ClipboardCheck} color="text-emerald-600" bg="bg-emerald-50"
                 title="Discharge Summary" subtitle="Complete before sending patient to billing" />
@@ -419,7 +453,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
           </TabsContent>
 
           {/* ── Billing ── */}
-          <TabsContent value="billing" className="mt-0">
+          <TabsContent value="billing" className={TAB_CONTENT_CLS}>
             <div className="space-y-4">
               <SectionHeader icon={CreditCard} color="text-orange-600" bg="bg-orange-50"
                 title="Payment History"
@@ -439,7 +473,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
           </TabsContent>
 
           {/* ── Appointments — all roles, patient-scoped ── */}
-          <TabsContent value="appointments" className="mt-0">
+          <TabsContent value="appointments" className={TAB_CONTENT_CLS}>
             <AppointmentComponent
               staffId={staffId}
               patientId={patient.id}
@@ -447,12 +481,12 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
             />
           </TabsContent>
 
-          {/* ── Documents — upload: FrontDesk/Admin; view: all roles ── */}
-          <TabsContent value="documents" className="mt-0">
+          {/* ── Documents — upload: FrontDesk/Admin/Doctor; view: all roles ── */}
+          <TabsContent value="documents" className={TAB_CONTENT_CLS}>
             <PatientDocumentsTab
               patientId={patient.id}
               staffId={staffId}
-              canUpload={canManageBilling}
+              canUpload={canUploadDocuments}
             />
           </TabsContent>
         </>

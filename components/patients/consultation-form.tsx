@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { useConsultationStore, RequestPriority, PrescriptionItem } from "@/store/consultation-store";
+import { useConsultationStore, RequestPriority, PrescriptionItem, ConsultationStore } from "@/store/consultation-store";
 import { useAuth } from "@/context/auth-provider";
 import { PatientStatus } from "@/types/models";
 import { Staff } from "@/actions/staff/types";
@@ -32,13 +32,13 @@ const AIClinicalAssistant = dynamic(
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
-    patientId:             string;
-    availableStaff:        Staff[];
-    onSuccess?:            () => void;
-    patientAge?:           number;
-    patientGender?:        string;
+    patientId: string;
+    availableStaff: Staff[];
+    onSuccess?: () => void;
+    patientAge?: number;
+    patientGender?: string;
     patientMedicalHistory?:string;
-    patientAllergies?:     string;
+    patientAllergies?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ function calcEDD(lmpDate: string): string {
     if (!lmpDate) return "";
     const lmp = new Date(lmpDate);
     if (isNaN(lmp.getTime())) return "";
-    const edd = new Date(lmp.getTime() + 280 * 86_400_000);   // LMP + 280 days
+    const edd = new Date(lmp.getTime() + 280 * 86_400_000); // LMP + 280 days
     return edd.toISOString().split("T")[0];
 }
 
@@ -57,67 +57,67 @@ function calcEGA(lmpDate: string): string {
     if (!lmpDate) return "";
     const lmp = new Date(lmpDate);
     if (isNaN(lmp.getTime())) return "";
-    const days  = Math.floor((Date.now() - lmp.getTime()) / 86_400_000);
+    const days = Math.floor((Date.now() - lmp.getTime()) / 86_400_000);
     if (days < 0) return "";
     const weeks = Math.floor(days / 7);
-    const rem   = days % 7;
+    const rem = days % 7;
     return rem === 0 ? `${weeks} weeks` : `${weeks} weeks + ${rem} day${rem > 1 ? "s" : ""}`;
 }
 
-const isPaed    = (age?: number)    => age !== undefined && age <= 12;
-const isFemale  = (gender?: string) => ["female", "f"].includes((gender ?? "").toLowerCase());
+const isPaed = (age?: number) => age !== undefined && age <= 12;
+const isFemale = (gender?: string) => ["female", "f"].includes((gender ?? "").toLowerCase());
 
 const REFERRAL_OPTIONS = [
     {
         value: "nurse",
         label: "Nurse",
-        desc:  "Post-consultation nursing care",
-        icon:  UserCog,
+        desc: "Post-consultation nursing care",
+        icon: UserCog,
         status:"sent-to-nurse" as PatientStatus,
         color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-400",
     },
     {
         value: "lab-tech",
         label: "Lab Technician",
-        desc:  "Request laboratory investigations",
-        icon:  FlaskConical,
+        desc: "Request laboratory investigations",
+        icon: FlaskConical,
         status:"sent-to-lab" as PatientStatus,
         color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-400",
     },
     {
         value: "radiology",
         label: "Radiology",
-        desc:  "Imaging investigations",
-        icon:  Radio,
+        desc: "Imaging investigations",
+        icon: Radio,
         status:"sent-to-radiology" as PatientStatus,
         color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-400",
     },
     {
         value: "pharmacist",
         label: "Pharmacist",
-        desc:  "Prescribe & dispense medications",
-        icon:  Pill,
+        desc: "Prescribe & dispense medications",
+        icon: Pill,
         status:"sent-to-pharmacy" as PatientStatus,
         color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-400",
     },
     {
         value: "front-desk",
         label: "Front Desk",
-        desc:  "Admission / ward / surgery",
-        icon:  Building2,
+        desc: "Admission / ward / surgery",
+        icon: Building2,
         status:"admitted" as PatientStatus,
         color: "text-slate-700", bg: "bg-slate-100", border: "border-slate-400",
     },
 ] as const;
 
 const PATIENT_STATUSES = [
-    { value: "sent-to-nurse",     label: "Sent to Nurse"     },
-    { value: "sent-to-lab",       label: "Sent to Lab"        },
-    { value: "sent-to-pharmacy",  label: "Sent to Pharmacy"   },
-    { value: "sent-to-radiology", label: "Sent to Radiology"  },
-    { value: "under-observation", label: "Under Observation"  },
-    { value: "admitted",          label: "Admitted"           },
-    { value: "discharged",        label: "Discharged"         },
+    { value: "sent-to-nurse", label: "Sent to Nurse" },
+    { value: "sent-to-lab", label: "Sent to Lab" },
+    { value: "sent-to-pharmacy", label: "Sent to Pharmacy" },
+    { value: "sent-to-radiology", label: "Sent to Radiology" },
+    { value: "under-observation", label: "Under Observation" },
+    { value: "admitted", label: "Admitted" },
+    { value: "discharged", label: "Discharged" },
 ];
 
 const FREQUENCIES = ["OD", "BD", "TDS", "QDS", "PRN", "STAT", "nocte", "mane"];
@@ -192,7 +192,7 @@ function MultiSelect({ options, selected, onChange, placeholder }: {
 
 // ─── Admission panel ──────────────────────────────────────────────────────────
 
-function AdmissionPanel({ store }: { store: ReturnType<typeof useConsultationStore> }) {
+function AdmissionPanel({ store }: { store: ConsultationStore }) {
     return (
         <div className="rounded-2xl border-2 border-slate-200 bg-slate-50/40 p-4 space-y-4">
             <div className="flex items-center gap-2">
@@ -268,10 +268,10 @@ function AdmissionPanel({ store }: { store: ReturnType<typeof useConsultationSto
 
 // ─── Doctor prescription panel ────────────────────────────────────────────────
 
-function DoctorPrescriptionPanel({ store }: { store: ReturnType<typeof useConsultationStore> }) {
+function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
     const { data: inventory = [] } = useDrugInventory();
     const [queries, setQueries] = useState<Record<string, string>>({});
-    const [openId,  setOpenId]  = useState<string | null>(null);
+    const [openId, setOpenId] = useState<string | null>(null);
 
     function getFiltered(id: string) {
         const q = (queries[id] ?? "").toLowerCase();
@@ -406,17 +406,17 @@ export default function ConsultationForm({
 }: Props) {
     const { user } = useAuth();
 
-    const { mutate: createConsultation,  isPending: cLoading } = useCreateConsultation();
-    const { mutate: updateStatus }                              = useUpdatePatientStatus();
-    const { mutate: createLabRequest,    isPending: lLoading } = useCreateLabRequest();
-    const { mutate: createRadRequest,    isPending: rLoading } = useCreateRadiologyRequest();
-    const { mutate: createPrescription }                        = useCreatePrescription();
-    const { data: labCatalog }                                  = useActiveLabTests();
+    const { mutate: createConsultation, isPending: cLoading } = useCreateConsultation();
+    const { mutate: updateStatus } = useUpdatePatientStatus();
+    const { mutate: createLabRequest, isPending: lLoading } = useCreateLabRequest();
+    const { mutate: createRadRequest, isPending: rLoading } = useCreateRadiologyRequest();
+    const { mutate: createPrescription } = useCreatePrescription();
+    const { data: labCatalog } = useActiveLabTests();
 
     const [admissionSaving, setAdmissionSaving] = useState(false);
-    const loading  = cLoading || lLoading || rLoading || admissionSaving;
-    const isChild  = isPaed(patientAge);
-    const isFem    = isFemale(patientGender);
+    const loading = cLoading || lLoading || rLoading || admissionSaving;
+    const isChild = isPaed(patientAge);
+    const isFem = isFemale(patientGender);
 
     const LAB_TESTS: string[] = useMemo(() => {
         if (!labCatalog) return [];
@@ -452,42 +452,42 @@ export default function ConsultationForm({
         if (patientMedicalHistory && !pastMedicalHistory) setField("pastMedicalHistory", patientMedicalHistory);
     }, [patientMedicalHistory]);
 
-    const referralOption  = REFERRAL_OPTIONS.find(r => r.value === referredTo);
+    const referralOption = REFERRAL_OPTIONS.find(r => r.value === referredTo);
     const nextStatusLabel = referralOption?.label ?? "Nurse";
-    const nextStatus      = referralOption?.status ?? ("sent-to-nurse" as PatientStatus);
+    const nextStatus = referralOption?.status ?? ("sent-to-nurse" as PatientStatus);
 
     const buildSymptoms = () => [
         `Presenting Complaint:\n${presentingComplaint}`,
-        symptomsAnalysis        ? `Analysis of Symptoms:\n${symptomsAnalysis}` : "",
-        aetiology               ? `Aetiology/Cause:\n${aetiology}` : "",
-        historyComplications    ? `History of Complications:\n${historyComplications}` : "",
-        historyTreatment        ? `History of Treatment:\n${historyTreatment}` : "",
-        isChild && antenatalHistory        ? `Antenatal/Delivery History:\n${antenatalHistory}` : "",
-        isChild && nutritionalHistory      ? `Nutritional History:\n${nutritionalHistory}` : "",
+        symptomsAnalysis ? `Analysis of Symptoms:\n${symptomsAnalysis}` : "",
+        aetiology ? `Aetiology/Cause:\n${aetiology}` : "",
+        historyComplications ? `History of Complications:\n${historyComplications}` : "",
+        historyTreatment ? `History of Treatment:\n${historyTreatment}` : "",
+        isChild && antenatalHistory ? `Antenatal/Delivery History:\n${antenatalHistory}` : "",
+        isChild && nutritionalHistory ? `Nutritional History:\n${nutritionalHistory}` : "",
         isChild && developmentalMilestones ? `Developmental Milestones:\n${developmentalMilestones}` : "",
-        isChild && immunisationHistory     ? `Immunisation History:\n${immunisationHistory}` : "",
-        pastMedicalHistory      ? `Past Medical & Surgical History:\n${pastMedicalHistory}` : "",
-        drugHistory             ? `Drug History:\n${drugHistory}` : "",
-        familySocialHistory     ? `Family & Social History:\n${familySocialHistory}` : "",
-        isFem && imp     ? `IMP: ${imp}` : "",
-        isFem && lmp     ? `LMP: ${lmp}` : "",
-        isFem && ega     ? `EGA: ${ega} weeks` : "",
-        isFem && eod     ? `EOD: ${eod}` : "",
+        isChild && immunisationHistory ? `Immunisation History:\n${immunisationHistory}` : "",
+        pastMedicalHistory ? `Past Medical & Surgical History:\n${pastMedicalHistory}` : "",
+        drugHistory ? `Drug History:\n${drugHistory}` : "",
+        familySocialHistory ? `Family & Social History:\n${familySocialHistory}` : "",
+        isFem && imp ? `IMP: ${imp}` : "",
+        isFem && lmp ? `LMP: ${lmp}` : "",
+        isFem && ega ? `EGA: ${ega} weeks` : "",
+        isFem && eod ? `EOD: ${eod}` : "",
         isFem && gravidity ? `Gravidity: G${gravidity}` : "",
-        isFem && parity    ? `Parity: P${parity}` : "",
+        isFem && parity ? `Parity: P${parity}` : "",
     ].filter(Boolean).join("\n\n");
 
     const buildDiagnosis = () => [
-        generalExam     ? `General Examination:\n${generalExam}` : "",
-        respiratory     ? `Respiratory System:\n${respiratory}` : "",
-        cardiovascular  ? `Cardiovascular System:\n${cardiovascular}` : "",
+        generalExam ? `General Examination:\n${generalExam}` : "",
+        respiratory ? `Respiratory System:\n${respiratory}` : "",
+        cardiovascular ? `Cardiovascular System:\n${cardiovascular}` : "",
         gastrointestinal? `GI System:\n${gastrointestinal}` : "",
-        summary         ? `Summary:\n${summary}` : "",
+        summary ? `Summary:\n${summary}` : "",
     ].filter(Boolean).join("\n\n");
 
     const buildRecommendations = () => [
-        assessment      ? `Assessment:\n${assessment}` : "",
-        investigations  ? `Investigations:\n${investigations}` : "",
+        assessment ? `Assessment:\n${assessment}` : "",
+        investigations ? `Investigations:\n${investigations}` : "",
         recommendations ? `Recommendations:\n${recommendations}` : "",
         referredTo === "front-desk" && store.admissionIndication
             ? `Admission Indication:\n${store.admissionIndication}` : "",
@@ -498,11 +498,11 @@ export default function ConsultationForm({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!presentingComplaint.trim()) { toast.error("Presenting complaint is required."); return; }
-        if (!assessment.trim())          { toast.error("Assessment / diagnosis is required."); return; }
-        if (referredTo === "lab-tech"   && (!labTestType  || labTestType.length  === 0)) { toast.error("Select at least one lab test."); return; }
-        if (referredTo === "radiology"  && (!radTestType  || radTestType.length  === 0)) { toast.error("Select a radiology investigation."); return; }
-        if (referredTo === "front-desk" && !store.admissionType)                         { toast.error("Select an admission type."); return; }
-        if (referredTo === "front-desk" && !store.admissionIndication.trim())            { toast.error("Clinical indication for admission is required."); return; }
+        if (!assessment.trim()) { toast.error("Assessment / diagnosis is required."); return; }
+        if (referredTo === "lab-tech" && (!labTestType || labTestType.length === 0)) { toast.error("Select at least one lab test."); return; }
+        if (referredTo === "radiology" && (!radTestType || radTestType.length === 0)) { toast.error("Select a radiology investigation."); return; }
+        if (referredTo === "front-desk" && !store.admissionType) { toast.error("Select an admission type."); return; }
+        if (referredTo === "front-desk" && !store.admissionIndication.trim()) { toast.error("Clinical indication for admission is required."); return; }
 
         const doctorId = user?.id ?? user?.$id ?? "";
 
@@ -514,13 +514,13 @@ export default function ConsultationForm({
             setAdmissionSaving(true);
             try {
                 await createAdmission({
-                    patient_id:     patientId,
+                    patient_id: patientId,
                     admission_type: store.admissionType as any,
-                    urgency:        store.admissionUrgency,
-                    ward_name:      store.admissionWard       || undefined,
-                    indication:     store.admissionIndication || undefined,
-                    notes:          store.admissionNotes      || undefined,
-                    assigned_by:    doctorId,
+                    urgency: store.admissionUrgency,
+                    ward_name: store.admissionWard || undefined,
+                    indication: store.admissionIndication || undefined,
+                    notes: store.admissionNotes || undefined,
+                    assigned_by: doctorId,
                 });
             } catch (err: any) {
                 setAdmissionSaving(false);
@@ -529,7 +529,7 @@ export default function ConsultationForm({
                     "Failed to create the admission record. Nothing has been saved yet — click Submit again to retry.",
                     { duration: 8000 }
                 );
-                return;   // ── stop here: consultation is never submitted
+                return; // ── stop here: consultation is never submitted
             }
             setAdmissionSaving(false);
         }
@@ -537,22 +537,45 @@ export default function ConsultationForm({
         createConsultation(
             {
                 patientId, doctorId,
-                symptoms:        buildSymptoms(),
-                diagnosis:       buildDiagnosis(),
-                prescriptions:   prescriptions || undefined,
+                symptoms: buildSymptoms(),
+                diagnosis: buildDiagnosis(),
+                prescriptions: prescriptions || undefined,
                 recommendations: buildRecommendations(),
-                referredTo:      referredTo || undefined,
-                status:          "underConsultation",
+                referredTo: referredTo || undefined,
+                status: "underConsultation",
             },
             {
                 onSuccess: () => {
-                    // Lab request
+                    // Lab request — ONE ROW PER TEST, not one joined string.
+                    // Previously all selected tests were comma-joined into a
+                    // single request ("CBC, Malaria Parasite, Urinalysis"),
+                    // which meant the Lab Tech dashboard's pending count
+                    // undercounted actual workload (3 tests = "1 pending"),
+                    // and there was no way to mark individual tests complete
+                    // independently of the others.
                     if (referredTo === "lab-tech") {
-                        createLabRequest({ patientId, requestedBy: doctorId, testType: labTestType.join(", "), priority: labPriority, notes: labNotes || undefined, status: "pending" });
+                        labTestType.forEach(test => {
+                            createLabRequest({
+                                patientId,
+                                requestedBy: doctorId,
+                                testType: test,
+                                priority: labPriority,
+                                notes: labNotes || undefined,
+                                status: "pending",
+                            });
+                        });
                     }
-                    // Radiology request
+                    // Radiology request — same fix, same reasoning.
                     if (referredTo === "radiology") {
-                        createRadRequest({ patientId, requestedBy: doctorId, testType: radTestType.join(", "), priority: radPriority, notes: radNotes || undefined });
+                        radTestType.forEach(test => {
+                            createRadRequest({
+                                patientId,
+                                requestedBy: doctorId,
+                                testType: test,
+                                priority: radPriority,
+                                notes: radNotes || undefined,
+                            });
+                        });
                     }
                     // Structured prescriptions
                     if (referredTo === "pharmacist" && store.prescriptionItems.length > 0) {
@@ -561,12 +584,12 @@ export default function ConsultationForm({
                             createPrescription({
                                 patientId,
                                 pharmacistId: undefined,
-                                drugName:     item.drugName,
-                                dosage:       `${item.dosage} ${item.frequency}`.trim(),
-                                duration:     item.duration || undefined,
-                                price:        0,
-                                notes:        item.notes || undefined,
-                                dispensed:    false,
+                                drugName: item.drugName,
+                                dosage: `${item.dosage} ${item.frequency}`.trim(),
+                                duration: item.duration || undefined,
+                                price: 0,
+                                notes: item.notes || undefined,
+                                dispensed: false,
                             });
                         });
                     }
@@ -617,10 +640,10 @@ export default function ConsultationForm({
                     <div className="pl-3 border-l-2 border-red-100 space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-red-400">A2 · History of Presenting Complaints</p>
                         {[
-                            { label: "Analysis of Symptoms",       val: symptomsAnalysis,     key: "symptomsAnalysis",     ph: "Onset, duration, character, radiation, aggravating/relieving factors..." },
-                            { label: "Aetiology / Cause",          val: aetiology,             key: "aetiology",             ph: "Possible cause or predisposing factors..." },
-                            { label: "History of Complications",   val: historyComplications,  key: "historyComplications",  ph: "Any complications arising from this condition..." },
-                            { label: "History of Treatment",       val: historyTreatment,      key: "historyTreatment",      ph: "Treatments tried before — medications, procedures, outcomes..." },
+                            { label: "Analysis of Symptoms", val: symptomsAnalysis, key: "symptomsAnalysis", ph: "Onset, duration, character, radiation, aggravating/relieving factors..." },
+                            { label: "Aetiology / Cause", val: aetiology, key: "aetiology", ph: "Possible cause or predisposing factors..." },
+                            { label: "History of Complications", val: historyComplications, key: "historyComplications", ph: "Any complications arising from this condition..." },
+                            { label: "History of Treatment", val: historyTreatment, key: "historyTreatment", ph: "Treatments tried before — medications, procedures, outcomes..." },
                         ].map(({ label, val, key, ph }) => (
                             <div key={label} className="space-y-1.5">
                                 <FieldLabel>{label}</FieldLabel>
@@ -637,10 +660,10 @@ export default function ConsultationForm({
                             </div>
                             <div className="pl-3 border-l-2 border-blue-100 space-y-4">
                                 {[
-                                    { label: "A3 · Antenatal / Delivery History", val: antenatalHistory,        key: "antenatalHistory",        ph: "Pregnancy complications, mode of delivery, birth weight, APGAR score..." },
-                                    { label: "A4 · Nutritional History",          val: nutritionalHistory,       key: "nutritionalHistory",       ph: "Breastfeeding, weaning, current diet..." },
-                                    { label: "A5 · Developmental Milestones",     val: developmentalMilestones,  key: "developmentalMilestones",  ph: "Motor, language, social milestones — achieved or delayed..." },
-                                    { label: "A6 · Immunisation History",         val: immunisationHistory,      key: "immunisationHistory",      ph: "BCG, OPV, DPT, Hepatitis B, Measles..." },
+                                    { label: "A3 · Antenatal / Delivery History", val: antenatalHistory, key: "antenatalHistory", ph: "Pregnancy complications, mode of delivery, birth weight, APGAR score..." },
+                                    { label: "A4 · Nutritional History", val: nutritionalHistory, key: "nutritionalHistory", ph: "Breastfeeding, weaning, current diet..." },
+                                    { label: "A5 · Developmental Milestones", val: developmentalMilestones, key: "developmentalMilestones", ph: "Motor, language, social milestones — achieved or delayed..." },
+                                    { label: "A6 · Immunisation History", val: immunisationHistory, key: "immunisationHistory", ph: "BCG, OPV, DPT, Hepatitis B, Measles..." },
                                 ].map(({ label, val, key, ph }) => (
                                     <div key={label} className="space-y-1.5">
                                         <FieldLabel>{label}</FieldLabel>
@@ -654,9 +677,9 @@ export default function ConsultationForm({
                     <div className="pl-3 border-l-2 border-red-100 space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-red-400">A7–A9 · General History</p>
                         {[
-                            { label: "A7 · Past Medical & Surgical History", val: pastMedicalHistory,  key: "pastMedicalHistory",  ph: "Previous illnesses, hospitalisations, operations..." },
-                            { label: "A8 · Drug History",                    val: drugHistory,          key: "drugHistory",          ph: "Current medications, allergies to drugs..." },
-                            { label: "A9 · Family & Social History",         val: familySocialHistory,  key: "familySocialHistory",  ph: "Family illnesses, smoking, alcohol, occupation..." },
+                            { label: "A7 · Past Medical & Surgical History", val: pastMedicalHistory, key: "pastMedicalHistory", ph: "Previous illnesses, hospitalisations, operations..." },
+                            { label: "A8 · Drug History", val: drugHistory, key: "drugHistory", ph: "Current medications, allergies to drugs..." },
+                            { label: "A9 · Family & Social History", val: familySocialHistory, key: "familySocialHistory", ph: "Family illnesses, smoking, alcohol, occupation..." },
                         ].map(({ label, val, key, ph }) => (
                             <div key={label} className="space-y-1.5">
                                 <FieldLabel>{label}</FieldLabel>
@@ -739,8 +762,8 @@ export default function ConsultationForm({
                 <Section id="systemic" icon={Stethoscope} title="C. Systemic Examination" badge="Section C" color="text-teal-600" bg="bg-teal-50">
                     <div className="space-y-4">
                         {[
-                            { label: "I. Respiratory System",      val: respiratory,      key: "respiratory",      ph: "Inspection, palpation, percussion, auscultation..." },
-                            { label: "II. Cardiovascular System",  val: cardiovascular,   key: "cardiovascular",   ph: "Heart sounds, murmurs, apex beat, JVP, peripheral pulses..." },
+                            { label: "I. Respiratory System", val: respiratory, key: "respiratory", ph: "Inspection, palpation, percussion, auscultation..." },
+                            { label: "II. Cardiovascular System", val: cardiovascular, key: "cardiovascular", ph: "Heart sounds, murmurs, apex beat, JVP, peripheral pulses..." },
                             { label: "III. Gastrointestinal System",val: gastrointestinal, key: "gastrointestinal", ph: "Abdomen — inspection, bowel sounds, tenderness, organomegaly..." },
                         ].map(({ label, val, key, ph }) => (
                             <div key={label} className="pl-3 border-l-2 border-teal-100 space-y-1.5">
@@ -782,8 +805,8 @@ export default function ConsultationForm({
                         </div>
 
                         {[
-                            { label: "I. Treatment Plan",  val: prescriptions,   key: "prescriptions",   ph: "Medications, dosages, frequency, duration...", rows: 3 },
-                            { label: "Recommendations",    val: recommendations, key: "recommendations", ph: "Follow-up, lifestyle advice, return instructions...", rows: 2 },
+                            { label: "I. Treatment Plan", val: prescriptions, key: "prescriptions", ph: "Medications, dosages, frequency, duration...", rows: 3 },
+                            { label: "Recommendations", val: recommendations, key: "recommendations", ph: "Follow-up, lifestyle advice, return instructions...", rows: 2 },
                         ].map(({ label, val, key, ph, rows }) => (
                             <div key={label} className="space-y-1.5">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-green-600">{label}</p>
@@ -808,7 +831,7 @@ export default function ConsultationForm({
                     {/* Referral cards — 3 per row on mobile, all 5 in one row on larger */}
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                         {REFERRAL_OPTIONS.map((opt) => {
-                            const Icon       = opt.icon;
+                            const Icon = opt.icon;
                             const isSelected = referredTo === opt.value;
                             return (
                                 <button key={opt.value} type="button"
