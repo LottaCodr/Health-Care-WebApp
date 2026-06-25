@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { createAdmission } from "@/lib/services/admission.service";
 import {
-    Stethoscope, ClipboardList, Pill, ArrowRight, Loader2, CheckCircle2,
+    Stethoscope, ClipboardList, Pill, ArrowRight, Loader2, CheckCircle2, Check,
     ChevronRight, FlaskConical, UserCog, Baby, User, Heart, Brain,
     Activity, FileText, Zap, Radio, ChevronDown,
     Building2, Plus, Trash2, Search,
