@@ -121,7 +121,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
             }
 
             // ── Move patient into the billing queue ─────────────────────────────
-            updateStatus(
+            updateStatus.mutateAsync(
                 { id: store.patientId, status: "awaiting-payment" as any },
                 { onError: () => toast.error("Discharge note saved, but patient status could not be updated. Please update manually.") }
             );
