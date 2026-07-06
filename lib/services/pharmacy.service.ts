@@ -91,6 +91,12 @@ export async function updatePrescription(
         .single();
 
     if (error) { console.error("[pharmacy] updatePrescription:", error); throw error; }
+
+    // Auto-route patient to front desk when dispensed
+    if (updates.dispensed === true && data?.patient_id) {
+         await supabase.from("patients").update({ status: "awaiting-payment" }).eq("id", data.patient_id);
+    }
+
     return data as unknown as Prescription;
 }
 
