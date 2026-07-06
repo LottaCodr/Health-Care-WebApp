@@ -72,11 +72,6 @@ const BASE_TABS: TabDef[] = [
   { value: "radiology", label: "Radiology", icon: Radio, accent: "text-cyan-600", activeBar: "bg-cyan-500", group: "general" },
 ];
 
-const NURSE_CHART_STATUSES = new Set([
-  PatientStatus.SentToNurse, PatientStatus.UnderObservation, PatientStatus.Admitted,
-  "sent-to-nurse", "under-observation", "admitted",
-]);
-
 const DISCHARGE_STATUSES = new Set([
   PatientStatus.UnderConsultation, PatientStatus.Admitted, PatientStatus.AwaitingPayment,
   "under-consultation", "admitted", "awaiting-payment",
@@ -168,7 +163,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const role = normalizeRole(user?.role);
   const staffId = user?.$id ?? user?.id ?? "";
   const status = normalizeStatus(patient.status ?? patientStore.status);
-  const canManageBilling= role === "FrontDesk" || role === "Admin";
+  const canManageBilling = role === "FrontDesk" || role === "Admin";
   const canViewBilling = canManageBilling || role === "Doctor";
 
   const { data: staff = [] } = useQuery({ queryKey: ["staffs"], queryFn: getAllStaffs });
@@ -263,9 +258,16 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient]);
 
+  // FIX: Extract openForm as a stable reference before using it as a dependency.
+  // Passing the entire `dischargeStore` object caused an infinite render loop
+  // because Zustand returns a new object reference on every store update,
+  // which triggered the effect continuously. The action functions themselves
+  // (like openForm) are stable and safe to use as dependencies.
+  const openDischargeForm = dischargeStore.openForm;
   useEffect(() => {
-    if (tab === "discharge" && patient.id) dischargeStore.openForm(patient.id);
-  }, [tab, patient.id, dischargeStore]);
+    if (tab === "discharge" && patient.id) openDischargeForm(patient.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, patient.id, openDischargeForm]);
 
   useEffect(() => {
     if (!visibleTabs.some(t => t.value === tab)) setTab("vitals");

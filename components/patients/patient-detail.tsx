@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
 import ReturnPatient from "./return-patient";
 import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
-// import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
+// processReturnVisit is called internally by ReturnPatient — no import needed here.
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import {
     Dialog,
@@ -175,8 +175,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                         patientId={patient.id!}
                         patientName={patient.name ?? "Patient"}
                         staffId={staffId}
-                        onReturn={async (input) => { await processReturnVisit(input); }}
-                        onCancel={() => setReturnOpen(false)}
+                        onSuccess={() => setReturnOpen(false)}
                     />
                 </DialogContent>
             </Dialog>
