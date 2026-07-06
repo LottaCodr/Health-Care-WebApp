@@ -120,5 +120,14 @@ export async function submitRadiologyReport(
         .select(SELECT)
         .single();
     if (error) throw error;
+    
+    // Auto-route patient back to doctor queue when report submitted
+    if (report.status === "completed" && data?.visit_id) {
+        await sb
+            .from("patients")
+            .update({ status: "under-observation" })
+            .eq("id", data.visit_id);
+    }
+
     return data;
 }
