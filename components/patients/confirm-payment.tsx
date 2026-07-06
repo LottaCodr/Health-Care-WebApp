@@ -24,7 +24,7 @@ interface PaymentListProps {
     isConfirming: string | null;
     methodMap: Record<string, string>;
     setMethodMap: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-    onConfirm: (id: string, amount: number, name: string) => void;
+    onConfirm: (id: string, amount: number, name: string, method: string) => void;
 }
 
 const PaymentList: React.FC<PaymentListProps> = ({
@@ -45,22 +45,18 @@ const PaymentList: React.FC<PaymentListProps> = ({
                 const methodCfg = METHOD_CONFIG[selectedMethod as keyof typeof METHOD_CONFIG] ?? METHOD_CONFIG.cash;
                 const MethodIcon = methodCfg.icon;
 
-                // Parse what they're paying for from the description
                 const [descLabel, descDetail] = (payment.description ?? "Prescription dispensed").split(": ");
 
                 return (
                     <div key={payment.id} className="px-6 py-5 hover:bg-gray-50/30 transition-colors">
                         <div className="flex items-start gap-4">
 
-                            {/* Patient avatar */}
                             <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 font-black text-gray-500 text-sm mt-0.5">
                                 {patientName?.[0]?.toUpperCase() ?? <User size={16} />}
                             </div>
 
-                            {/* Info + method picker */}
                             <div className="flex-1 min-w-0 space-y-3">
 
-                                {/* Patient name + phone */}
                                 <div>
                                     <p className="text-sm font-bold text-gray-900">{patientName}</p>
                                     {patientPhone && (
@@ -68,7 +64,6 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                     )}
                                 </div>
 
-                                {/* What they're paying for */}
                                 <div className="flex items-start gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
                                     <Receipt size={12} className="text-gray-400 shrink-0 mt-0.5" />
                                     <div className="min-w-0">
@@ -87,7 +82,6 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Method selector */}
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                         Method:
@@ -116,7 +110,6 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                 </div>
                             </div>
 
-                            {/* Amount + confirm */}
                             <div className="flex flex-col items-end gap-3 shrink-0">
                                 <div className="text-right">
                                     <p className="text-lg font-extrabold text-gray-900">
@@ -131,7 +124,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                 </div>
 
                                 <button
-                                    onClick={() => onConfirm(payment.id, amount, patientName)}
+                                    onClick={() => onConfirm(payment.id, amount, patientName, selectedMethod)}
                                     disabled={confirming}
                                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
                                 >
@@ -157,19 +150,21 @@ export default function PaymentConfirmation() {
     const { data: payments, isLoading, isError, refetch } = usePendingPayments();
     const { mutate: confirm, isPending } = useConfirmPayment();
 
-    const handleConfirm = (id: string, amount: number, name: string) => {
+    // FIXED: the selected method is now actually passed through to the
+    // server and persisted — previously the method picker was decorative
+    // because only the payment id was ever sent.
+    const handleConfirm = (id: string, amount: number, name: string, method: string) => {
         if (isPending) return;
-        const method = methodMap[id] ?? "cash";
         if (!window.confirm(`Confirm ₦${amount.toLocaleString()} payment from ${name} via ${method}?`)) {
             return;
         }
         setConfirmingId(id);
 
         confirm(
-            { id, method: method as "cash" | "card" | "transfer" },
+            { id, method },
             {
                 onSuccess: () => {
-                    toast.success("Payment confirmed. Patient discharged.");
+                    toast.success("Payment confirmed.");
                     refetch();
                 },
                 onError: () => toast.error("Failed to confirm payment."),
@@ -178,7 +173,6 @@ export default function PaymentConfirmation() {
         );
     };
 
-    // ── Loading ──
     if (isLoading) return (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex items-center justify-center py-16 gap-3">
             <Loader2 size={18} className="text-green-500 animate-spin" />
@@ -186,7 +180,6 @@ export default function PaymentConfirmation() {
         </div>
     );
 
-    // ── Error ──
     if (isError) return (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-16 gap-4">
             <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center">
@@ -205,7 +198,6 @@ export default function PaymentConfirmation() {
     return (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
 
-            {/* ── Header ── */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
@@ -236,7 +228,6 @@ export default function PaymentConfirmation() {
                 </div>
             </div>
 
-            {/* ── Empty ── */}
             {(!payments || payments.length === 0) && (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
@@ -249,7 +240,6 @@ export default function PaymentConfirmation() {
                 </div>
             )}
 
-            {/* ── Rows ── */}
             {payments && payments.length > 0 && (
                 <PaymentList
                     payments={payments}

@@ -1,12 +1,12 @@
 "use client";
 
-import React from "react";
-import { useLabRequestsByPatient } from "@/hooks/emr/use-emr";
-import { LabResultUploadForm } from "@/components/lab-tech/lab-result-upload-form";
-// import { Patient } from "@/context/patients/types";
+import React, { useState } from "react";
+import { useAuth } from "@/context/auth-provider";
+import { toast } from "sonner";
+import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/emr/use-emr";
 import {
     FlaskConical, ClipboardList, CheckCircle2,
-    Clock, Loader2, AlertTriangle,
+    Clock, Loader2, AlertTriangle, FileText,
 } from "lucide-react";
 import { Patient } from "@/types/models";
 import { AILabInterpretation } from "@/components/ai/AIComponents";
@@ -33,12 +33,9 @@ function PriorityBadge({ priority }: { priority?: string }) {
 // ─── Completed result card ────────────────────────────────────────────────────
 
 function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
-
-    const age = calculateAge(patient?.birth_date!)
+    const age = patient?.birth_date ? calculateAge(patient.birth_date) : undefined;
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
@@ -62,7 +59,6 @@ function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
                 </div>
             </div>
 
-            {/* Result body */}
             <div className="px-5 py-4 space-y-3">
                 {req.result ? (
                     <>
@@ -73,10 +69,8 @@ function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
                         <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 rounded-xl border border-gray-100 px-4 py-3">
                             {req.result}
                         </pre>
-
                         <AILabInterpretation testType={req.test_type} result={req.result}
-                            patientAge={age}
-                            patientGender={patient?.gender} />
+                            patientAge={age} patientGender={patient?.gender} />
                     </>
                 ) : (
                     <p className="text-xs text-gray-400 italic">No result text recorded.</p>
@@ -94,7 +88,7 @@ function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
     );
 }
 
-// ─── Pending card (non-lab-tech view) ─────────────────────────────────────────
+// ─── Pending row (read-only — non-lab-tech roles) ─────────────────────────────
 
 function PendingCard({ req }: { req: any }) {
     return (
@@ -133,6 +127,88 @@ function PendingCard({ req }: { req: any }) {
     );
 }
 
+// ─── Pending row WITH inline result entry (lab-tech role) ─────────────────────
+// Previously this entire pending list collapsed into a single shared
+// <LabResultUploadForm patientId=.../> with no request id attached — so a
+// lab tech viewing 3 pending tests for one patient had no way to tell which
+// test they were entering a result for. This mirrors RadiologyTab's already-
+// correct per-request inline form pattern, fixing that mismatch.
+
+function LabTechPendingRow({ req, onSubmitted }: { req: any; onSubmitted: () => void }) {
+    const { user } = useAuth();
+    const { mutate: updateLabRequest, isPending: saving } = useUpdateLabRequest();
+    const [open, setOpen] = useState(false);
+    const [result, setResult] = useState("");
+
+    function handleSubmit() {
+        if (!result.trim()) { toast.error("Enter the test result before submitting."); return; }
+        updateLabRequest(
+            {
+                id: req.id,
+                updates: {
+                    status: "completed",
+                    result: result.trim(),
+                    completed_by: user?.$id ?? user?.id,
+                    completed_at: new Date().toISOString(),
+                },
+            },
+            {
+                onSuccess: () => { toast.success("Result submitted."); setOpen(false); setResult(""); onSubmitted(); },
+                onError: () => toast.error("Failed to submit result."),
+            }
+        );
+    }
+
+    return (
+        <div className={`rounded-2xl border overflow-hidden transition-all ${
+            open ? "border-indigo-200 bg-indigo-50/30" : "border-amber-100 bg-white"
+        }`}>
+            <div className="flex items-center gap-3 px-5 py-4">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                    <Clock size={15} className="text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800">{req.test_type ?? "Lab Test"}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p className="text-xs text-gray-400">
+                            Requested {req.created_at ? new Date(req.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                        </p>
+                        {req.notes && <p className="text-xs text-blue-600 italic">"{req.notes}"</p>}
+                    </div>
+                </div>
+                <PriorityBadge priority={req.priority} />
+                <button onClick={() => setOpen(v => !v)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
+                        open ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-200"
+                    }`}>
+                    <FileText size={11} /> {open ? "Cancel" : "Enter Result"}
+                </button>
+            </div>
+
+            {open && (
+                <div className="px-5 pb-5 pt-1 space-y-3 border-t border-indigo-100">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        Result for {req.test_type}
+                    </label>
+                    <textarea rows={4} value={result} onChange={e => setResult(e.target.value)}
+                        placeholder="Enter detailed test results here..."
+                        className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all" />
+                    <div className="flex justify-end gap-2">
+                        <button onClick={() => { setOpen(false); setResult(""); }}
+                            className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
+                            Cancel
+                        </button>
+                        <button onClick={handleSubmit} disabled={saving || !result.trim()}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            {saving ? <><Loader2 size={12} className="animate-spin" /> Submitting...</> : <><CheckCircle2 size={13} /> Submit Result</>}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -143,7 +219,7 @@ interface Props {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function LabTab({ patient, userRole }: Props) {
-    const { data: labRequests, isLoading: loading, error } = useLabRequestsByPatient(patient.id ?? "");
+    const { data: labRequests, isLoading: loading, error, refetch } = useLabRequestsByPatient(patient.id ?? "");
 
     const isLabTech = userRole === "Labtech" || userRole === "LabTechnician";
     const pendingRequests = labRequests?.filter((r: any) => r.status === "pending") ?? [];
@@ -216,10 +292,17 @@ export default function LabTab({ patient, userRole }: Props) {
                 <div className="space-y-3">
                     <div className="flex items-center gap-2">
                         <Clock size={12} className="text-amber-500" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Pending Tests</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            Pending Tests {isLabTech && `(${pendingRequests.length})`}
+                        </p>
                     </div>
+                    {/* One row, one inline result-entry form, PER pending test —
+                        matches RadiologyTab's pattern and tallies 1:1 with what
+                        the doctor selected in the consultation form. */}
                     {isLabTech
-                        ? <LabResultUploadForm patientId={patient.id ?? ""} />
+                        ? pendingRequests.map((req: any) => (
+                              <LabTechPendingRow key={req.id} req={req} onSubmitted={() => refetch()} />
+                          ))
                         : pendingRequests.map((req: any) => <PendingCard key={req.id} req={req} />)
                     }
                 </div>
