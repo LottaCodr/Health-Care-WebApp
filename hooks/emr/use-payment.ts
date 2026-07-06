@@ -42,6 +42,7 @@ export function useCreatePayment() {
             PS.createPayment(data),
 
         onSuccess: (payment) => {
+            qc.invalidateQueries({ queryKey: paymentKeys.all() });
             qc.invalidateQueries({ queryKey: paymentKeys.pending() });
             // FIXED: was paymentKeys.byPatient(payment.id) — the payment's own
             // id, not the patient's. That key matched nothing else in the
@@ -63,8 +64,8 @@ export function useConfirmPayment() {
     const qc = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, method }: { id: string; method?: string }) =>
-            PS.confirmPayment(id, method),
+        mutationFn: (input: PS.ConfirmPaymentInput) =>
+            PS.confirmPayment(input),
 
         // Optimistic: remove from pending list immediately
         onMutate: async ({ id }) => {
@@ -81,6 +82,7 @@ export function useConfirmPayment() {
         },
 
         onSettled: (data) => {
+            qc.invalidateQueries({ queryKey: paymentKeys.all() });
             qc.invalidateQueries({ queryKey: paymentKeys.pending() });
             if (data?.patient_id) {
                 qc.invalidateQueries({ queryKey: patientKeys.detail(data.patient_id) });

@@ -173,17 +173,26 @@ export interface LabRequest {
 // Payment entity
 export interface Payment {
     id: string;
-    patientId: string;
+    patientId?: string;
     patient_id?: string;
     amount: number;
-    paymentMethod: "Cash" | "Card" | "Transfer" | "Cheque";
+    amount_kobo?: number;
+    amount_paid_kobo?: number;
+    paymentMethod?: "Cash" | "Card" | "Transfer" | "Cheque";
     payment_method?: string;
-    status: "Pending" | "Completed" | "Failed" | "Refunded";
+    method?: "cash" | "card" | "transfer" | "cheque" | string;
+    status:
+        | "pending" | "partial" | "paid" | "waived" | "refunded" | "failed"
+        | "Pending" | "Completed" | "Failed" | "Refunded";
+    category?: "consultation" | "lab" | "radiology" | "pharmacy" | "procedure" | "admission" | "other" | string;
     description: string;
-    processedBy: string; // Staff ID (Front Desk)
+    processedBy?: string; // Staff ID (Front Desk/cashier)
     processed_by?: string;
-    processedDate: string;
+    processedDate?: string;
     processed_date?: string;
+    paid_at?: string;
+    invoice_no?: string;
+    notes?: string;
     created_at?: string;
     updated_at?: string;
 }
