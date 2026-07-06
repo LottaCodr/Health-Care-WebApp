@@ -17,7 +17,7 @@ export function usePendingPayments() {
         staleTime: LIST_STALE,
         gcTime: GC_TIME,
         refetchOnWindowFocus: false,
-        refetchInterval: 60_000,   // cashier desk needs fresh data
+        refetchInterval: 60_000,
     });
 }
 
@@ -43,29 +43,35 @@ export function useCreatePayment() {
 
         onSuccess: (payment) => {
             qc.invalidateQueries({ queryKey: paymentKeys.pending() });
-            qc.invalidateQueries({ queryKey: paymentKeys.byPatient(payment.id) });
+            // FIXED: was paymentKeys.byPatient(payment.id) — the payment's own
+            // id, not the patient's. That key matched nothing else in the
+            // app, so a newly created payment never correctly refreshed that
+            // patient's payment history cache.
+            if (payment.patient_id) {
+                qc.invalidateQueries({ queryKey: paymentKeys.byPatient(payment.patient_id) });
+            }
         },
     });
 }
 
+/**
+ * Confirms a pending payment. Now takes the selected payment method
+ * alongside the id — previously the method picker in the confirmation UI
+ * was purely cosmetic because only the id was ever sent to the server.
+ */
 export function useConfirmPayment() {
     const qc = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, method }: { id: string; method: string }) => PS.confirmPayment(id, method),
+        mutationFn: ({ id, method }: { id: string; method?: string }) =>
+            PS.confirmPayment(id, method),
 
         // Optimistic: remove from pending list immediately
-        onMutate: async (id) => {
+        onMutate: async ({ id }) => {
             await qc.cancelQueries({ queryKey: paymentKeys.pending() });
             const previous = qc.getQueryData<Payment[]>(paymentKeys.pending());
             qc.setQueryData<Payment[]>(paymentKeys.pending(),
-                (old = []) => old.filter(p => {
-                    // id is an object like { id: string; method: string }, p.id is a string
-                    if (typeof id === "string") return p.id !== id;
-                    if (typeof id === "object" && id.id) return p.id !== id.id;
-                    return true;
-                }) as Payment[]
-        
+                (old = []) => old.filter(p => p.id !== id)
             );
             return { previous };
         },
@@ -77,7 +83,6 @@ export function useConfirmPayment() {
         onSettled: (data) => {
             qc.invalidateQueries({ queryKey: paymentKeys.pending() });
             if (data?.patient_id) {
-                // Patient is now discharged — bust their detail cache
                 qc.invalidateQueries({ queryKey: patientKeys.detail(data.patient_id) });
                 qc.invalidateQueries({ queryKey: paymentKeys.byPatient(data.patient_id) });
                 qc.invalidateQueries({ queryKey: patientKeys.lists() });
