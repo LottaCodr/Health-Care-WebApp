@@ -108,6 +108,15 @@ export async function updateLabRequest(
         .single();
 
     if (error) { console.error("[lab] updateRequest:", error); throw error; }
+
+    // Auto-route patient back to doctor queue when tests complete
+    if (updates.status === "completed" && data?.visit_id) {
+        await supabase
+            .from("patients")
+            .update({ status: "under-observation" })
+            .eq("id", data.visit_id);
+    }
+
     return data as unknown as LabRequest;
 }
 
