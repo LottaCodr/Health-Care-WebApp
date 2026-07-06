@@ -1,6 +1,10 @@
 "use client";
 
 import { usePrescriptionsByPatient } from "@/hooks/emr/use-emr";
+import { useAuth } from "@/context/auth-provider";
+import { useUpdatePrescription, useCreateDispensingRecord } from "@/hooks/emr/use-pharmacy";
+import { toast } from "sonner";
+import { useState } from "react";
 import {
   Pill, Eye, DownloadCloud, ClipboardList,
   Clock, CheckCircle2, XCircle, Loader2,
@@ -34,6 +38,45 @@ interface Props {
 
 export default function PrescriptionHistory({ patientId }: Props) {
   const { data: prescriptions, isLoading: loading, error } = usePrescriptionsByPatient(patientId);
+  const { user } = useAuth();
+  const role = user?.role?.toLowerCase();
+  const isPharmacist = role === "pharmacist" || role === "admin";
+  const [dispensingId, setDispensingId] = useState<string | null>(null);
+
+  const { mutate: updatePx } = useUpdatePrescription();
+  const { mutate: logDispense } = useCreateDispensingRecord();
+
+  const handleDispense = (prescriptionId: string) => {
+      setDispensingId(prescriptionId);
+      try {
+          updatePx({
+              id: prescriptionId,
+              updates: {
+                  updated_at: new Date().toISOString(),
+                  status: "Dispensed",
+                  dispensed: true,
+              }
+          }, {
+              onSuccess: () => {
+                  logDispense({
+                      prescription_id: prescriptionId,
+                      patient_id: patientId,
+                      dispensed_by: user?.id ?? user?.$id ?? null,
+                      dispensed_at: new Date().toISOString(),
+                  });
+                  toast.success("Drug dispensed. Patient routed to billing.");
+                  setDispensingId(null);
+              },
+              onError: (err) => {
+                  toast.error("Failed to dispense.");
+                  setDispensingId(null);
+              }
+          });
+      } catch (err: any) {
+          toast.error(err?.message ?? "Failed to dispense.");
+          setDispensingId(null);
+      }
+  };
 
   // ── Loading ──
   if (loading) {
@@ -161,6 +204,16 @@ export default function PrescriptionHistory({ patientId }: Props) {
                 </td>
                 <td className="px-5 py-3.5">
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                    {isPharmacist && !rx.dispensed && (
+                        <button
+                          onClick={() => handleDispense(rx.id ?? rx.$id)}
+                          disabled={dispensingId === (rx.id ?? rx.$id)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold transition-colors disabled:opacity-50"
+                        >
+                          {dispensingId === (rx.id ?? rx.$id) ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                          Dispense
+                        </button>
+                    )}
                     <button
                       aria-label="View prescription"
                       className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-colors"
