@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirmPayment, usePendingPayments } from "@/hooks/emr/use-payment";
+import { useAuth } from "@/context/auth-provider";
 
 // ─── Method config ────────────────────────────────────────────────────────────
 
@@ -149,6 +150,8 @@ export default function PaymentConfirmation() {
     const [methodMap, setMethodMap] = useState<Record<string, string>>({});
     const { data: payments, isLoading, isError, refetch } = usePendingPayments();
     const { mutate: confirm, isPending } = useConfirmPayment();
+    const { user } = useAuth();
+    const cashierId = user?.$id ?? user?.id ?? "";
 
     // FIXED: the selected method is now actually passed through to the
     // server and persisted — previously the method picker was decorative
@@ -161,10 +164,10 @@ export default function PaymentConfirmation() {
         setConfirmingId(id);
 
         confirm(
-            { id, method },
+            { id, method, cashierId },
             {
                 onSuccess: () => {
-                    toast.success("Payment confirmed.");
+                    toast.success("Payment confirmed by cashier.");
                     refetch();
                 },
                 onError: () => toast.error("Failed to confirm payment."),

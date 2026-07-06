@@ -84,7 +84,7 @@ export function useFrontDeskRealtime() {
             })
             .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, (payload: any) => {
                 queryClient.invalidateQueries({ queryKey: ["payments"] });
-                queryClient.invalidateQueries({ queryKey: ["pending-payments"] });
+                queryClient.invalidateQueries({ queryKey: ["payments", "pending"] });
 
                 if (payload.eventType === "INSERT") {
                     toast.info("New payment pending confirmation.");
@@ -285,38 +285,38 @@ export function useRoleRealtime(role?: string) {
     useEffect(() => {
         if (!role) return;
 
-        const ROLE_TABLE_MAP: Record<string, { table: string; keys: string[] }[]> = {
+        const ROLE_TABLE_MAP: Record<string, { table: string; keys: readonly unknown[][] }[]> = {
             Frontdesk: [
-                { table: "patients",  keys: ["patients", "patients-by-status"] },
-                { table: "payments",  keys: ["payments", "pending-payments"]    },
+                { table: "patients",  keys: [["patients"], ["patients-by-status"]] },
+                { table: "payments",  keys: [["payments"], ["payments", "pending"]] },
             ],
             Doctor: [
-                { table: "patients",      keys: ["patients", "patients-by-status"] },
-                { table: "consultations", keys: ["consultations"]                  },
-                { table: "lab_requests",  keys: ["lab-requests"]                   },
+                { table: "patients",      keys: [["patients"], ["patients-by-status"]] },
+                { table: "consultations", keys: [["consultations"]] },
+                { table: "lab_requests",  keys: [["lab-requests"]] },
             ],
             Nurse: [
-                { table: "patients",        keys: ["patients", "patients-by-status"] },
-                { table: "nursing_actions", keys: ["nursing-actions"]                },
+                { table: "patients",        keys: [["patients"], ["patients-by-status"]] },
+                { table: "nursing_actions", keys: [["nursing-actions"]] },
             ],
             Labtech: [
-                { table: "lab_requests", keys: ["lab-requests", "pending-lab-requests"] },
+                { table: "lab_requests", keys: [["lab-requests"], ["pending-lab-requests"]] },
             ],
             Radiologist: [
-                { table: "lab_requests", keys: ["lab-requests", "pending-lab-requests"] },
+                { table: "lab_requests", keys: [["lab-requests"], ["pending-lab-requests"]] },
             ],
             Pharmacist: [
-                { table: "prescriptions",  keys: ["prescriptions", "pending-prescriptions"] },
-                { table: "drug_inventory", keys: ["drug-inventory"]                         },
+                { table: "prescriptions",  keys: [["prescriptions"], ["pending-prescriptions"]] },
+                { table: "drug_inventory", keys: [["drug-inventory"]] },
             ],
             Admin: [
-                { table: "patients",        keys: ["patients"]          },
-                { table: "consultations",   keys: ["consultations"]     },
-                { table: "prescriptions",   keys: ["prescriptions"]     },
-                { table: "lab_requests",    keys: ["lab-requests"]      },
-                { table: "payments",        keys: ["payments"]          },
-                { table: "nursing_actions", keys: ["nursing-actions"]   },
-                { table: "drug_inventory",  keys: ["drug-inventory"]    },
+                { table: "patients",        keys: [["patients"]] },
+                { table: "consultations",   keys: [["consultations"]] },
+                { table: "prescriptions",   keys: [["prescriptions"]] },
+                { table: "lab_requests",    keys: [["lab-requests"]] },
+                { table: "payments",        keys: [["payments"], ["payments", "pending"]] },
+                { table: "nursing_actions", keys: [["nursing-actions"]] },
+                { table: "drug_inventory",  keys: [["drug-inventory"]] },
             ],
         };
 
@@ -328,8 +328,8 @@ export function useRoleRealtime(role?: string) {
         tables.forEach(({ table }) => {
             channel.on("postgres_changes", { event: "*", schema: "public", table }, (payload: any) => {
                 const entry = tables.find(t => t.table === table);
-                entry?.keys.forEach(key => {
-                    queryClient.invalidateQueries({ queryKey: [key] });
+                entry?.keys.forEach(queryKey => {
+                    queryClient.invalidateQueries({ queryKey });
                 });
 
                 // Smart toast messages

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirmPayment, usePendingPayments } from "@/hooks/emr/use-payment";
+import { useAuth } from "@/context/auth-provider";
 
 // ─── Method config ────────────────────────────────────────────────────────────
 
@@ -156,6 +157,8 @@ export default function PaymentConfirmation() {
     const [methodMap, setMethodMap] = useState<Record<string, string>>({});
     const { data: payments, isLoading, isError, refetch } = usePendingPayments();
     const { mutate: confirm, isPending } = useConfirmPayment();
+    const { user } = useAuth();
+    const cashierId = user?.$id ?? user?.id ?? "";
 
     const handleConfirm = (id: string, amount: number, name: string) => {
         if (isPending) return;
@@ -166,10 +169,10 @@ export default function PaymentConfirmation() {
         setConfirmingId(id);
 
         confirm(
-            { id, method: method as "cash" | "card" | "transfer" },
+            { id, method: method as "cash" | "card" | "transfer", cashierId },
             {
                 onSuccess: () => {
-                    toast.success("Payment confirmed. Patient discharged.");
+                    toast.success("Payment confirmed by cashier.");
                     refetch();
                 },
                 onError: () => toast.error("Failed to confirm payment."),
