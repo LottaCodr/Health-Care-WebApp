@@ -166,7 +166,7 @@ export default function PaymentConfirmation() {
         setConfirmingId(id);
 
         confirm(
-            id,
+            { id, method: method as "cash" | "card" | "transfer" },
             {
                 onSuccess: () => {
                     toast.success("Payment confirmed. Patient discharged.");

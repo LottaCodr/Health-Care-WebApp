@@ -29,7 +29,7 @@ export async function getPaymentById(id: string): Promise<Payment | null> {
     return data as unknown as Payment;
 }
 
-export async function confirmPayment(id: string): Promise<Payment> {
+export async function confirmPayment(id: string, method: string): Promise<Payment> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("payments")

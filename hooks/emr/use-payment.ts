@@ -52,14 +52,20 @@ export function useConfirmPayment() {
     const qc = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => PS.confirmPayment(id),
+        mutationFn: ({ id, method }: { id: string; method: string }) => PS.confirmPayment(id, method),
 
         // Optimistic: remove from pending list immediately
         onMutate: async (id) => {
             await qc.cancelQueries({ queryKey: paymentKeys.pending() });
             const previous = qc.getQueryData<Payment[]>(paymentKeys.pending());
             qc.setQueryData<Payment[]>(paymentKeys.pending(),
-                (old = []) => old.filter(p => p.id !== id)
+                (old = []) => old.filter(p => {
+                    // id is an object like { id: string; method: string }, p.id is a string
+                    if (typeof id === "string") return p.id !== id;
+                    if (typeof id === "object" && id.id) return p.id !== id.id;
+                    return true;
+                }) as Payment[]
+        
             );
             return { previous };
         },
