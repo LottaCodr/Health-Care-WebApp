@@ -70,9 +70,9 @@ export function useCreateRadiologyRequest() {
             RS.createRadiologyRequest(input),
 
         onSuccess: (request) => {
-            qc.setQueryData(radiologyKeys.detail(request), request);
+            qc.setQueryData(radiologyKeys.detail(request.id), request);
             // Bust the patient's radiology list and the pending queue
-            qc.invalidateQueries({ queryKey: radiologyKeys.byPatient(request) });
+            qc.invalidateQueries({ queryKey: radiologyKeys.byPatient(request.visit_id) });
             qc.invalidateQueries({ queryKey: radiologyKeys.pending() });
             // Patient status likely changed (sent-to-radiology)
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
@@ -120,7 +120,7 @@ export function useSubmitRadiologyReport() {
 
         onSuccess: (updated) => {
             // Seed the detail cache with the returned record
-            qc.setQueryData(radiologyKeys.detail(updated), updated);
+            qc.setQueryData(radiologyKeys.detail(updated.id), updated);
 
             // Add to the completed list inline (no extra request)
             qc.setQueryData<any[]>(radiologyKeys.completed(), (old = []) =>
@@ -129,7 +129,7 @@ export function useSubmitRadiologyReport() {
 
             // Bust the patient's radiology tab
             qc.invalidateQueries({
-                queryKey: radiologyKeys.byPatient(updated),
+                queryKey: radiologyKeys.byPatient(updated.visit_id),
             });
 
             // After a report is filed, patient returns to the doctor
