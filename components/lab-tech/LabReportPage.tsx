@@ -90,7 +90,7 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
 
 export default function LabReportsPage() {
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
-    const { data: results, loading, error, refetch } = useCompletedLabRequests();
+    const { data: results, isLoading: loading, error, refetch } = useCompletedLabRequests();
 
     const {
         reportSearch: search, setField, reportPriority: priority,

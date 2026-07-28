@@ -92,6 +92,8 @@ export interface Consultation {
     // Identity fields
     id: string;                  // Unique identifier
     patient_id: string;          // Patient's ID
+    patient_name?: string;       // Denormalized patient name (when joined/denormalized)
+    patientName?: string;        // camelCase variant
     doctor_id: string;           // Doctor's ID
 
     // Clinical content
@@ -136,6 +138,7 @@ export interface Prescription {
     medications: PrescriptionMedication[];
     instructions: string;
     status: "Active" | "Dispensed" | "Completed";
+    dispensed?: boolean;         // Tracks whether the prescription has been dispensed
     createdDate: string;
     created_date?: string;
     created_at?: string;

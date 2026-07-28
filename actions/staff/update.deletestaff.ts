@@ -1,12 +1,12 @@
 import supabase from "@/utils/supabase/client";
-import { StaffRole } from "./types";
+import { Staff } from "@/types/models";
 
 /**
  * Update a staff record by its id using Supabase.
  * @param id The id of the staff to update.
  * @param updates Partial staff record with fields to change
  */
-export async function updateStaff(id: string, updates: Partial<StaffRole>) {
+export async function updateStaff(id: string, updates: Partial<Staff>) {
     try {
         const { data, error } = await supabase
             .from("staffs")

@@ -16,7 +16,7 @@ There is no test runner configured.
 
 Next.js 16 (App Router), React 19, TypeScript, Tailwind + shadcn/ui (Radix), Supabase (auth + Postgres + Realtime), TanStack Query, Zustand. Path alias `@/*` maps to the repo root.
 
-> Several dependencies are vestigial and **not** the active path: `next-auth`, `appwrite`/`node-appwrite`, and `app/api/auth/[...nextauth]`. Auth is **Supabase Auth**. Type comments referencing "Appwrite collections" are stale. Server actions in `actions/login.ts` and `actions/patient.actions.ts` are commented out — real data access happens client-side (see below).
+> `next-auth`, `appwrite`/`node-appwrite`, and `@clerk/nextjs` have been **removed** (along with the dead `app/api/auth/[...nextauth]` route and the legacy Appwrite action files). Auth is **Supabase Auth** only. Any remaining type comments referencing "Appwrite collections" are stale and should be deleted.
 
 ## Architecture
 
@@ -33,11 +33,15 @@ The role → dashboard mapping lives in `lib/role-dashboard.ts`. `UserRole` and 
 - **`context/auth-provider.tsx`** is the client-side auth source of truth: `useAuth()` exposes `user`, `login`, `logout`. On login it fetches the staff profile via `fetchStaffProfile` and refuses to authenticate a user with no staff row/role. `logout()` clears TanStack Query cache **and resets every Zustand store**.
 - `lib/auth-utils.ts` holds Zod schemas, an in-memory `RateLimiter`, and password helpers (largely standalone utilities).
 
-### Data layer (client-side, not server actions)
-Despite the `actions/` directory name, these are **client-side functions** that call the **browser** Supabase client (`@/utils/supabase/client`, default export `supabase`). They are not `"use server"`. Pattern: each domain has `actions/<domain>/` with fetch/mutation functions, and components call them through TanStack Query hooks.
+### Data layer
+There are two layers; **`lib/services/*` is the canonical service layer** and is what the app's hooks actually consume:
 
-- `utils/supabase/client.ts` — browser client (used by actions/components/realtime)
-- `utils/supabase/server.ts` — SSR client (`createClient()`, used by `proxy.ts` and `lib/auth-utils`/`hooks/use-auth.ts`)
+- `lib/services/*.service.ts` — Supabase-backed modules marked `"use server"` (e.g. `radiology.service.ts`, `patient.service.ts`, `staff.service.ts`). They use the **server** Supabase client (`@/utils/supabase/server`).
+- `hooks/emr/*` — TanStack Query hooks (`useLabRequest`, `useUpdatePatientStatus`, `useConsultationsByDoctor`, …) that wrap the `lib/services` modules and expose them to components. **Prefer these.**
+- `actions/*` — *legacy* client-side helpers that call the **browser** Supabase client (`@/utils/supabase/client`, default export `supabase`). Some are still imported by components (e.g. `auth-provider` → `actions/staff/staff`, `actions/front-desk/patients`); many others are dead and have been removed. New code should go through `lib/services` + `hooks/emr`.
+
+- `utils/supabase/client.ts` — browser client (used by legacy actions/components/realtime)
+- `utils/supabase/server.ts` — SSR client (`createClient()`, used by `proxy.ts` and the `lib/services` modules)
 - TanStack Query is configured in `context/provider.tsx` (`staleTime` 30s, `refetchOnWindowFocus` false, 1 retry). Query keys are plain string arrays like `["patients"]`, `["lab-requests"]`, `["prescriptions"]`.
 
 ### Realtime

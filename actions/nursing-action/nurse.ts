@@ -1,8 +1,8 @@
 import supabase from "@/utils/supabase/client";
 import { NursingAction } from "./types";
-import { parseStringify } from "@/app/lib/utils";
+import { parseStringify } from "@/utils/utils";
 
-export async function getAssignedPatient(nurseId: string): Promise<NursingAction[] | null> {
+export async function getAssignedPatient(nurseId: string): Promise<NursingAction[]> {
     try {
         const { data, error } = await supabase
             .from('visits')
@@ -12,13 +12,14 @@ export async function getAssignedPatient(nurseId: string): Promise<NursingAction
             console.error("Error fetching patients:", error.message);
             return [];
         }
-        return parseStringify(data)
+        return parseStringify(data) as NursingAction[];
     } catch (error) {
-        console.error("Unexpected error fetching patients:", error)
+        console.error("Unexpected error fetching patients:", error);
+        return [];
     }
 }
 
-export async function submitVitalsRecording(patient: []) {
+export async function submitVitalsRecording(patient: Record<string, unknown>) {
     try {
         const { data, error } = await supabase
             .from('vitals')
@@ -26,17 +27,14 @@ export async function submitVitalsRecording(patient: []) {
             .select()
             .single();
 
-        console.log("Submitting patient vital recordings:", patient)
-
         if (error) {
-            console.log("Error submitting patient vitals:", error.message)
+            console.error("Error submitting patient vitals:", error.message);
+            return null;
         }
 
-        if (!data) { return null }
-
-
-
+        return data;
     } catch (error) {
-        console.error("Unexpected error submiting nurse recordings:", error)
+        console.error("Unexpected error submitting nurse recordings:", error);
+        return null;
     }
 }
