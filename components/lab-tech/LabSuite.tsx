@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
-import { useLabRequestsByPatient, useUpdateLabRequest, useUpdatePatientStatus } from "@/hooks/emr/use-emr";
+import { useLabRequest, useUpdateLabRequest, useUpdatePatientStatus } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton, ErrorAlert, SuccessAlert, PatientInfoCard } from "@/components/emr";
 import { Button } from "@/components/ui/button";
 import { Beaker, FileText, CheckCircle } from "lucide-react";
@@ -17,12 +17,13 @@ interface LabSuiteProps {
 export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
     const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
-    const { data: request, isLoading: requestLoading, isError: requestError } = useLabRequestsByPatient(requestId);
+    const { data: request, isLoading: requestLoading, isError: requestError } = useLabRequest(requestId);
 
     const [results, setResults] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
     const updatePatientStatusMutation = useUpdatePatientStatus();
+    const updateLabRequestMutation = useUpdateLabRequest();
 
     if (!authorized) return null;
 
@@ -30,20 +31,21 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
         e.preventDefault();
         setSubmitting(true);
         try {
-            useUpdateLabRequest(  requestId, {
-                status: "Completed",
-                completed_by: user?.$id,
-                completed_at: new Date().toISOString(),
-                result: ""
+            updateLabRequestMutation.mutate({
+                id: requestId,
+                updates: {
+                    status: "Completed",
+                    completed_by: user?.$id,
+                    completed_at: new Date().toISOString(),
+                    result: "",
+                },
             });
 
-            if (request?.patientId) {
+            if (request?.patient_id) {
                 // Determine next status - usually back to doctor for review
-                 updatePatientStatusMutation({
-                    id: request.patientId,
-                    updates: {
-                        status: PatientStatus.AwaitingConsultation,
-                    }
+                updatePatientStatusMutation.mutate({
+                    id: request.patient_id,
+                    status: PatientStatus.AwaitingConsultation,
                 });
             }
 
@@ -65,9 +67,9 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                 <div className="bg-white p-6 rounded-3xl border border-blue-100 shadow-sm">
                     <div className="flex items-center gap-3 mb-4">
                         <Beaker className="text-blue-600" />
-                        <h3 className="text-xl font-bold text-gray-900">{request.testType}</h3>
+                        <h3 className="text-xl font-bold text-gray-900">{request?.test_type}</h3>
                     </div>
-                    <p className="text-gray-600 font-medium">{request.testDescription}</p>
+                    <p className="text-gray-600 font-medium">{request?.notes}</p>
                 </div>
             )}
 

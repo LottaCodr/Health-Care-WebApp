@@ -94,7 +94,11 @@ function AccountSettings() {
 
     const onSubmit = async (data: z.infer<typeof accountSchema>) => {
         try {
-            await updateStaff(user?.$id || "", data);
+            await updateStaff(user?.$id || "", {
+                name: data.full_name,
+                email: data.email,
+                phone_number: data.phone_number,
+            });
             toast.success("Profile updated successfully.");
         } catch {
             toast.error("Failed to update profile. Please try again.");

@@ -44,6 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (r.includes("nurse")) return "Nurse";
         if (r.includes("lab")) return "LabTechnician";
         if (r.includes("pharm")) return "Pharmacist";
+        if (r.includes("radio")) return "Radiologist";
+        if (r.includes("admin")) return "Admin";
         return role;
     };
 

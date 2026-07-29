@@ -21,7 +21,7 @@ export default function QueueSuite() {
 
     const handleMoveToQueue = async (patientId: string, name: string) => {
         try {
-            await updatePatientStatusMutation.mutate(patientId, PatientStatus.AwaitingConsultation);
+            await updatePatientStatusMutation.mutate({ id: patientId, status: PatientStatus.AwaitingConsultation });
             setSuccessMessage(`${name} moved to consultation queue.`);
             setTimeout(() => setSuccessMessage(null), 3000);
         } catch (error) {
@@ -35,20 +35,20 @@ export default function QueueSuite() {
 
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Arrivals Lounge (Unprocessed)</h3>
-                {registeredPatients.loading && <LoadingSkeleton rows={3} />}
+                {registeredPatients.isLoading && <LoadingSkeleton rows={3} />}
                 <div className="space-y-4">
                     {registeredPatients.data?.map(p => (
                         <div key={p.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-gray-100">
                             <div className="flex-1">
                                 <p className="font-bold text-gray-900">{p.name}</p>
-                                <p className="text-sm text-gray-500">Arrived: {new Date(p.registrationDate).toLocaleTimeString()}</p>
+                                <p className="text-sm text-gray-500">Arrived: {new Date(p.created_at ?? "").toLocaleTimeString()}</p>
                             </div>
                             <button onClick={() => handleMoveToQueue(p.id, p.name)} className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold shadow-md shadow-blue-100 transition-all">
                                 Move to Queue
                             </button>
                         </div>
                     ))}
-                    {!registeredPatients.loading && registeredPatients.data?.length === 0 && (
+                    {!registeredPatients.isLoading && registeredPatients.data?.length === 0 && (
                         <EmptyState title="Lounge Empty" description="No new arrivals awaiting triage" icon="✓" />
                     )}
                 </div>
@@ -67,7 +67,7 @@ export default function QueueSuite() {
                             <span className="text-sm font-semibold text-blue-700 px-3 py-1 bg-white rounded-full border border-blue-100 shadow-sm">Waiting</span>
                         </div>
                     ))}
-                    {!awaitingConsultationPatients.loading && awaitingConsultationPatients.data?.length === 0 && (
+                    {!awaitingConsultationPatients.isLoading && awaitingConsultationPatients.data?.length === 0 && (
                         <EmptyState title="Queue Empty" description="Consultation rooms are ready" icon="🥼" />
                     )}
                 </div>
