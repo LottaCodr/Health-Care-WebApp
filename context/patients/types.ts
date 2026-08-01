@@ -1,6 +1,9 @@
 import { Staff } from "@/actions/staff/types";
 import { Patient, PatientStatus } from "@/types/models";
 
+// Re-export domain types so legacy importers can keep using this barrel.
+export type { Patient, PatientStatus } from "@/types/models";
+
 
 
 export interface SortConfig {

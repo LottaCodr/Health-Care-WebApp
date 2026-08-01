@@ -51,7 +51,11 @@ export default function AccountSettings() {
     const onSubmit = async (data: FormData) => {
         try {
 
-            await updateStaff(user?.$id || "", data);
+            await updateStaff(user?.$id || "", {
+                name: data.full_name,
+                email: data.email,
+                phone_number: data.phone_number,
+            });
 
             toast({
                 title: "Profile updated",

@@ -8,7 +8,12 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    // Surface type errors at build time (previously masked, hiding 53 errors).
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    // Lint is run explicitly via `npm run lint`; don't fail production builds on it.
+    ignoreDuringBuilds: true,
   },
   headers: async () => [
     {

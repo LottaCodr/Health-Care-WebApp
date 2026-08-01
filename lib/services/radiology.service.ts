@@ -22,6 +22,22 @@ const SELECT = `
     )
 `.trim();
 
+// Shape of a radiology row (a `[RADIOLOGY]`-prefixed lab_request).
+export interface RadiologyRequest {
+    id: string;
+    visit_id: string;
+    test_type?: string;
+    priority?: string | null;
+    notes?: string | null;
+    result?: string | null;
+    status: string;
+    requested_by?: string;
+    completed_by?: string;
+    completed_at?: string;
+    created_at?: string;
+    patients?: unknown;
+}
+
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function listPendingRadiologyRequests() {
@@ -33,7 +49,7 @@ export async function listPendingRadiologyRequests() {
         .eq("status", "pending")
         .order("created_at", { ascending: true });
     if (error) throw error;
-    return data ?? [];
+    return (data as unknown as RadiologyRequest[]) ?? [];
 }
 
 export async function listCompletedRadiologyRequests() {
@@ -45,7 +61,7 @@ export async function listCompletedRadiologyRequests() {
         .eq("status", "completed")
         .order("completed_at", { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data as unknown as RadiologyRequest[]) ?? [];
 }
 
 export async function listRadiologyRequestsByPatient(patientId: string) {
@@ -57,7 +73,7 @@ export async function listRadiologyRequestsByPatient(patientId: string) {
         .eq("visit_id", patientId)
         .order("created_at", { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data as unknown as RadiologyRequest[]) ?? [];
 }
 
 export async function getRadiologyRequestById(id: string) {
@@ -68,7 +84,7 @@ export async function getRadiologyRequestById(id: string) {
         .eq("id", id)
         .single();
     if (error) throw error;
-    return data;
+    return data as unknown as RadiologyRequest;
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
@@ -98,7 +114,7 @@ export async function createRadiologyRequest(input: CreateRadiologyRequestInput)
         .select(SELECT)
         .single();
     if (error) throw error;
-    return data;
+    return data as unknown as RadiologyRequest;
 }
 
 export interface SubmitRadiologyReportInput {
@@ -120,14 +136,16 @@ export async function submitRadiologyReport(
         .select(SELECT)
         .single();
     if (error) throw error;
-    
+
+    const result = data as unknown as RadiologyRequest;
+
     // Auto-route patient back to doctor queue when report submitted
-    if (report.status === "completed" && data?.visit_id) {
+    if (report.status === "completed" && result.visit_id) {
         await sb
             .from("patients")
             .update({ status: "under-observation" })
-            .eq("id", data.visit_id);
+            .eq("id", result.visit_id);
     }
 
-    return data;
+    return result;
 }

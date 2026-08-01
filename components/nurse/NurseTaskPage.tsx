@@ -226,12 +226,6 @@ export default function NurseTasksPage() {
         refetchCompleted();
     };
 
-    if (!authorized) return null;
-
-    const pending = tasks.filter((t: any) => t.status === "Pending");
-    const inProgress = tasks.filter((t: any) => t.status === "InProgress");
-    const completed = tasks.filter((t: any) => t.status === "Completed");
-
     const filtered = useMemo(() => {
         return tasks.filter((t: any) => {
             const q = search.toLowerCase();
@@ -244,6 +238,12 @@ export default function NurseTasksPage() {
             return matchSearch && matchStatus;
         });
     }, [tasks, search, statusFilter]);
+
+    if (!authorized) return null;
+
+    const pending = tasks.filter((t: any) => t.status === "Pending");
+    const inProgress = tasks.filter((t: any) => t.status === "InProgress");
+    const completed = tasks.filter((t: any) => t.status === "Completed");
 
     const handleStatusChange = async (taskId: string, newStatus: string) => {
         setUpdatingId(taskId);

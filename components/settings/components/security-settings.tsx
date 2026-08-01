@@ -21,12 +21,13 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
 import { useState, useEffect } from "react";
+import supabase from "@/utils/supabase/client";
 import {
     passwordSchema,
     validatePasswordStrength,
     logSecurityEvent,
-    authService
 } from "@/lib/auth-utils";
+import { authService } from "@/lib/auth-service";
 import { Badge } from "@/components/ui/badge";
 // import { Progress } from "@/components/ui/progress";
 
@@ -52,6 +53,7 @@ export default function SecuritySettings() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: [] as string[] });
     const [activeSessions, setActiveSessions] = useState(0);
+    const [session, setSession] = useState<any>(null);
 
     const form = useForm<ChangePasswordFormData>({
         resolver: zodResolver(changePasswordSchema),
@@ -77,6 +79,11 @@ export default function SecuritySettings() {
     // Get active sessions count
     useEffect(() => {
         setActiveSessions(authService.getActiveSessionsCount());
+    }, []);
+
+    // Load the current auth session for display
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data }) => setSession(data.session));
     }, []);
 
     const onSubmit = async (values: ChangePasswordFormData) => {
@@ -336,7 +343,7 @@ export default function SecuritySettings() {
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                             <div>
                                 <p className="text-sm font-medium">Current Session</p>
-                                <p className="text-xs text-gray-600">Started {session ? new Date(session.createdAt).toLocaleString() : 'Unknown'}</p>
+                                <p className="text-xs text-gray-600">Started {session ? new Date(session.created_at ?? session.createdAt).toLocaleString() : "Unknown"}</p>
                             </div>
                             <Badge variant="secondary">Active</Badge>
                         </div>

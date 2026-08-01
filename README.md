@@ -42,7 +42,7 @@ Other services: `patient`, `consultation`, `nursing`, `payment`, `radiology`, `a
 | Client state | [Zustand](https://zustand.docs.pmnd.dev/) (`store/`) |
 | Data fetching (UI) | [TanStack Query](https://tanstack.com/query) |
 | Auth (route guard) | Supabase session via `proxy.ts` |
-| Legacy / hybrid | Some flows still reference Appwrite env vars (`NEXT_PUBLIC_DATABASE_ID`, collection IDs) |
+| Legacy / hybrid | None — `next-auth`, `appwrite`/`node-appwrite`, and `@clerk/nextjs` have been removed; Supabase is the only backend. |
 
 ---
 
@@ -85,10 +85,6 @@ Create `.env.local` in the project root:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Optional — Appwrite / legacy collections where still used
-NEXT_PUBLIC_DATABASE_ID=
-NEXT_PUBLIC_PATIENT_COLLECTION_ID=
 ```
 
 ### Run locally

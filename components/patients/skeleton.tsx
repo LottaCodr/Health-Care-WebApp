@@ -2,11 +2,11 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { FaUserMd, FaNotesMedical, FaHeartbeat, FaPills } from "react-icons/fa";
 import { MdOutlineMedication } from "react-icons/md";
 
-const shimmerVariants = {
+const shimmerVariants: Variants = {
   animate: {
     backgroundPosition: ["-200% 0", "200% 0"],
     transition: {

@@ -1,6 +1,4 @@
-import { Appointment } from '@/actions/appointments/types';
-
-// export function exportToCSV(appointments: Appointment[]): void {
+// export function exportToCSV(appointments: any[]): void {
 //     // Implement CSV export logic here
 //     console.log('Exporting to CSV', appointments);
 // }

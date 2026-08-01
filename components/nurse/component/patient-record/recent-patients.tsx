@@ -11,7 +11,7 @@ import {
     CardFooter,
 } from "@/components/ui/card";
 import { Patient } from "@/context/patients/types";
-import { getAllPatients } from "@/actions/front-desk/get.patients";
+import { getAllPatients } from "@/actions/front-desk/patients";
 import { useQuery } from "@tanstack/react-query";
 
 
