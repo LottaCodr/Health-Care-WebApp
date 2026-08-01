@@ -14,7 +14,6 @@ import {
     useActiveLabTests, useCreatePrescription, useDrugInventory,
 } from "@/hooks/emr/use-emr";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { createAdmission } from "@/lib/services/admission.service";
 import {
@@ -179,7 +178,16 @@ function MultiSelect({ options, selected, onChange, placeholder }: {
                         {options.map(opt => (
                             <li key={opt} onClick={() => toggle(opt)}
                                 className={cn("flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-50", selected.includes(opt) ? "bg-gray-100 font-semibold" : "")}>
-                                <Checkbox className="w-4 h-4" checked={selected.includes(opt)} tabIndex={-1} aria-label="checkbox" />
+                                <div className={cn(
+                                    "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                    selected.includes(opt)
+                                        ? "bg-indigo-600 border-indigo-600"
+                                        : "border-gray-300 bg-white"
+                                )}>
+                                    {selected.includes(opt) && (
+                                        <Check size={10} className="text-white" strokeWidth={3} />
+                                    )}
+                                </div>
                                 <span className="text-sm">{opt}</span>
                             </li>
                         ))}
