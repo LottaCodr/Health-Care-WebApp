@@ -293,20 +293,18 @@ export default function PrescriptionDetails({ patientId, patient, onSuccess }: P
 
         setSubmitting(true);
         try {
-            await Promise.all(
-                medications.map((med) =>
-                    createPrescriptionAsync({
-                        patientId,
-                        pharmacistId: user?.$id,
-                        drugName: med.drugName,
-                        dosage: med.dosage,
-                        duration: med.duration || undefined,
-                        price: parseFloat(med.price),
-                        notes: med.notes || undefined,
-                        dispensed: true,
-                    })
-                )
-            );
+            for (const med of medications) {
+                await createPrescriptionAsync({
+                    patientId,
+                    pharmacistId: user?.$id,
+                    drugName: med.drugName,
+                    dosage: med.dosage,
+                    duration: med.duration || undefined,
+                    price: parseFloat(med.price),
+                    notes: med.notes || undefined,
+                    dispensed: true,
+                });
+            }
 
             toast.success(`${medications.length} prescription${medications.length > 1 ? "s" : ""} dispensed. Payment pending front desk confirmation.`);
             setMedications([{ ...BLANK }]);
