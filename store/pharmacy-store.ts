@@ -33,7 +33,7 @@ export interface PharmacyState {
     restockQty: string;
     restocking: boolean;
     
-    // PhaarmacistInventory
+    // PharmacistInventory
     viewMode: ViewMode;
     search: string;
     category: string;
