@@ -408,9 +408,9 @@ export default function ConsultationForm({
 
     const { mutate: createConsultation, isPending: cLoading } = useCreateConsultation();
     const { mutate: updateStatus } = useUpdatePatientStatus();
-    const { mutate: createLabRequest, isPending: lLoading } = useCreateLabRequest();
-    const { mutate: createRadRequest, isPending: rLoading } = useCreateRadiologyRequest();
-    const { mutate: createPrescription } = useCreatePrescription();
+    const { mutateAsync: createLabRequestAsync, isPending: lLoading } = useCreateLabRequest();
+    const { mutateAsync: createRadRequestAsync, isPending: rLoading } = useCreateRadiologyRequest();
+    const { mutateAsync: createPrescriptionAsync } = useCreatePrescription();
     const { data: labCatalog } = useActiveLabTests();
 
     const [admissionSaving, setAdmissionSaving] = useState(false);
@@ -545,7 +545,7 @@ export default function ConsultationForm({
                 status: "underConsultation",
             },
             {
-                onSuccess: () => {
+                onSuccess: async () => {
                     // Lab request — ONE ROW PER TEST, not one joined string.
                     // Previously all selected tests were comma-joined into a
                     // single request ("CBC, Malaria Parasite, Urinalysis"),
@@ -554,44 +554,50 @@ export default function ConsultationForm({
                     // and there was no way to mark individual tests complete
                     // independently of the others.
                     if (referredTo === "lab-tech") {
-                        labTestType.forEach(test => {
-                            createLabRequest({
-                                patientId,
-                                requestedBy: doctorId,
-                                testType: test,
-                                priority: labPriority,
-                                notes: labNotes || undefined,
-                                status: "pending",
-                            });
-                        });
+                        await Promise.all(
+                            labTestType.map(test =>
+                                createLabRequestAsync({
+                                    patientId,
+                                    requestedBy: doctorId,
+                                    testType: test,
+                                    priority: labPriority,
+                                    notes: labNotes || undefined,
+                                    status: "pending",
+                                })
+                            )
+                        );
                     }
                     // Radiology request — same fix, same reasoning.
                     if (referredTo === "radiology") {
-                        radTestType.forEach(test => {
-                            createRadRequest({
-                                patientId,
-                                requestedBy: doctorId,
-                                testType: test,
-                                priority: radPriority,
-                                notes: radNotes || undefined,
-                            });
-                        });
+                        await Promise.all(
+                            radTestType.map(test =>
+                                createRadRequestAsync({
+                                    patientId,
+                                    requestedBy: doctorId,
+                                    testType: test,
+                                    priority: radPriority,
+                                    notes: radNotes || undefined,
+                                })
+                            )
+                        );
                     }
                     // Structured prescriptions
                     if (referredTo === "pharmacist" && store.prescriptionItems.length > 0) {
-                        store.prescriptionItems.forEach(item => {
-                            if (!item.drugName.trim() || !item.dosage.trim()) return;
-                            createPrescription({
-                                patientId,
-                                pharmacistId: undefined,
-                                drugName: item.drugName,
-                                dosage: `${item.dosage} ${item.frequency}`.trim(),
-                                duration: item.duration || undefined,
-                                price: 0,
-                                notes: item.notes || undefined,
-                                dispensed: false,
-                            });
-                        });
+                        await Promise.all(
+                            store.prescriptionItems.map(item => {
+                                if (!item.drugName.trim() || !item.dosage.trim()) return Promise.resolve();
+                                return createPrescriptionAsync({
+                                    patientId,
+                                    pharmacistId: undefined,
+                                    drugName: item.drugName,
+                                    dosage: `${item.dosage} ${item.frequency}`.trim(),
+                                    duration: item.duration || undefined,
+                                    price: 0,
+                                    notes: item.notes || undefined,
+                                    dispensed: false,
+                                });
+                            })
+                        );
                     }
 
                     // Patient status — admission record (if any) already exists by this point
