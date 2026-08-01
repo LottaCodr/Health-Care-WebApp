@@ -554,7 +554,7 @@ export default function ConsultationForm({
                     // and there was no way to mark individual tests complete
                     // independently of the others.
                     if (referredTo === "lab-tech") {
-                        await Promise.all(
+                        Promise.all(
                             labTestType.map(test =>
                                 createLabRequestAsync({
                                     patientId,
@@ -565,11 +565,11 @@ export default function ConsultationForm({
                                     status: "pending",
                                 })
                             )
-                        );
+                        ).catch((err: any) => console.error("Lab request error:", err));
                     }
                     // Radiology request — same fix, same reasoning.
                     if (referredTo === "radiology") {
-                        await Promise.all(
+                        Promise.all(
                             radTestType.map(test =>
                                 createRadRequestAsync({
                                     patientId,
@@ -579,11 +579,11 @@ export default function ConsultationForm({
                                     notes: radNotes || undefined,
                                 })
                             )
-                        );
+                        ).catch((err: any) => console.error("Radiology request error:", err));
                     }
                     // Structured prescriptions
                     if (referredTo === "pharmacist" && store.prescriptionItems.length > 0) {
-                        await Promise.all(
+                        Promise.all(
                             store.prescriptionItems.map(item => {
                                 if (!item.drugName.trim() || !item.dosage.trim()) return Promise.resolve();
                                 return createPrescriptionAsync({
@@ -597,7 +597,7 @@ export default function ConsultationForm({
                                     dispensed: false,
                                 });
                             })
-                        );
+                        ).catch((err: any) => console.error("Prescription error:", err));
                     }
 
                     // Patient status — admission record (if any) already exists by this point
