@@ -301,7 +301,7 @@ export default function LabTab({ patient, userRole }: Props) {
                         the doctor selected in the consultation form. */}
                     {isLabTech
                         ? pendingRequests.map((req: any) => (
-                              <LabTechPendingRow key={req.id} req={req} onSubmitted={() => refetch()} />
+                              <LabTechPendingRow key={req.id} req={req} onSubmitted={() => setTimeout(() => refetch(), 0)} />
                           ))
                         : pendingRequests.map((req: any) => <PendingCard key={req.id} req={req} />)
                     }
