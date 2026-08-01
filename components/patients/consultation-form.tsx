@@ -545,7 +545,7 @@ export default function ConsultationForm({
                 status: "underConsultation",
             },
             {
-                onSuccess: () => {
+                onSuccess: async () => {
                     // Lab request — ONE ROW PER TEST, not one joined string.
                     // Previously all selected tests were comma-joined into a
                     // single request ("CBC, Malaria Parasite, Urinalysis"),
