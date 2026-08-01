@@ -230,7 +230,7 @@ function FieldInput({
 
 export default function PrescriptionDetails({ patientId, patient, onSuccess }: Props) {
     const { user } = useAuth();
-    const { mutate: createPrescription, isPending: creating } = useCreatePrescription();
+    const { mutateAsync: createPrescriptionAsync, isPending: creating } = useCreatePrescription();
     const { data: inventory = [], isLoading: loadingInv } = useDrugInventory();
 
     const [medications, setMedications] = useState<MedicationInput[]>([{ ...BLANK }]);
@@ -295,7 +295,7 @@ export default function PrescriptionDetails({ patientId, patient, onSuccess }: P
         try {
             await Promise.all(
                 medications.map((med) =>
-                    createPrescription({
+                    createPrescriptionAsync({
                         patientId,
                         pharmacistId: user?.$id,
                         drugName: med.drugName,
