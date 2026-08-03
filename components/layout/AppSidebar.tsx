@@ -12,6 +12,7 @@ import { NAV_CONFIG } from "./config";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, ChevronRight } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
+import Link from "next/link";
 
 // ─── Role config ──────────────────────────────────────────────────────────────
 // Keys must match the exact DB values from staffs.role (case-sensitive in Postgres).
@@ -69,9 +70,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         <SidebarMenuButton
                             size="lg"
                             className="h-auto p-0 hover:bg-transparent"
-                            onClick={() => router.push("/")}
+                            asChild
                         >
-                            <div className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/5 active:bg-white/8 transition-all duration-200 group cursor-pointer">
+                            <Link href="/" className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/5 active:bg-white/8 transition-all duration-200 group cursor-pointer">
 
                                 {/* Logo mark with online indicator */}
                                 <div className="relative shrink-0">
@@ -110,7 +111,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                                         strokeLinejoin="round"
                                     />
                                 </svg>
-                            </div>
+                            </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
@@ -142,7 +143,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                             key={item.url}
                             item={item}
                             isActive={pathname.startsWith(item.url)}
-                            onClick={() => router.push(item.url)}
                         />
                     ))}
                 </NavSection>
@@ -153,7 +153,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                             key={item.url}
                             item={item}
                             isActive={pathname.startsWith(item.url)}
-                            onClick={() => router.push(item.url)}
                         />
                     ))}
                 </NavSection>
@@ -230,17 +229,16 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
 // ─── Nav item ─────────────────────────────────────────────────────────────────
 
 function NavItem({
-    item, isActive, onClick,
+    item, isActive,
 }: {
     item: { icon: React.ElementType; title: string; url: string; badge?: number };
     isActive: boolean;
-    onClick: () => void;
 }) {
     const Icon = item.icon;
     return (
         <li>
-            <button
-                onClick={onClick}
+            <Link
+                href={item.url}
                 className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150
                     ${isActive ? "text-white" : "text-white/35 hover:text-white/65 hover:bg-white/4"}`}
             >
@@ -269,7 +267,7 @@ function NavItem({
                 )}
 
                 {isActive && <ChevronRight size={12} className="relative text-white/20 shrink-0" />}
-            </button>
+            </Link>
         </li>
     );
 }

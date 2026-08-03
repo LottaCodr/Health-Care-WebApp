@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { LabRequest } from "@/types/models";
+import { createNotification } from "./notification.service";
 
 // ─── Lab Requests ─────────────────────────────────────────────────────────────
 
@@ -32,6 +33,14 @@ export async function createLabRequest(
         .single();
 
     if (error) { console.error("[lab] createRequest:", error); throw error; }
+
+    await createNotification({
+        role: "LabTechnician",
+        title: "New Lab Request",
+        message: `A new ${input.priority === "urgent" || input.priority === "stat" ? "urgent " : ""}lab test (${input.testType}) has been requested.`,
+        type: input.priority === "stat" ? "alert" : "info"
+    });
+
     return data as unknown as LabRequest;
 }
 
@@ -115,6 +124,14 @@ export async function updateLabRequest(
             .from("patients")
             .update({ status: "under-observation" })
             .eq("id", data.visit_id);
+
+        await createNotification({
+            recipient_id: data.requested_by ?? undefined,
+            role: data.requested_by ? undefined : "Doctor",
+            title: "Lab Result Ready",
+            message: `Results for ${data.test_type} are now available.`,
+            type: "success"
+        });
     }
 
     return data as unknown as LabRequest;

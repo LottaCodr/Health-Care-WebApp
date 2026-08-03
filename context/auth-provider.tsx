@@ -90,7 +90,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const initSession = async () => {
-            setIsLoading(true);
+            // Optimistic Auth Hydration: Read cache for instant paint
+            if (typeof window !== "undefined") {
+                const cached = localStorage.getItem("nile_user_profile");
+                if (cached) {
+                    try {
+                        setUser(JSON.parse(cached));
+                        setIsLoading(false);
+                    } catch {
+                        localStorage.removeItem("nile_user_profile");
+                    }
+                } else {
+                    setIsLoading(true);
+                }
+            } else {
+                setIsLoading(true);
+            }
+
             try {
                 const authUser = await getAuthUserSafely();
 
@@ -98,12 +114,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const staff = await fetchStaffProfile(authUser.id);
                     const profile = buildProfile(authUser, staff?.profile);
                     setUser(profile);
+                    if (typeof window !== "undefined" && profile) {
+                        localStorage.setItem("nile_user_profile", JSON.stringify(profile));
+                    }
                 } else {
                     setUser(null);
+                    if (typeof window !== "undefined") {
+                        localStorage.removeItem("nile_user_profile");
+                    }
                 }
             } catch (error) {
                 console.error("Session init error:", error);
                 setUser(null);
+                if (typeof window !== "undefined") {
+                    localStorage.removeItem("nile_user_profile");
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -124,8 +149,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const staff = await fetchStaffProfile(authUser.id);
                     const profile = buildProfile(authUser, staff?.profile);
                     setUser(profile);
+                    if (typeof window !== "undefined" && profile) {
+                        localStorage.setItem("nile_user_profile", JSON.stringify(profile));
+                    }
                 } else {
                     setUser(null);
+                    if (typeof window !== "undefined") {
+                        localStorage.removeItem("nile_user_profile");
+                    }
                 }
                 
                 if (event === "SIGNED_OUT") {
@@ -166,6 +197,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 const profile = buildProfile(data.user, staffResult.profile);
                 setUser(profile);
+                if (typeof window !== "undefined" && profile) {
+                    localStorage.setItem("nile_user_profile", JSON.stringify(profile));
+                }
 
                 console.log("staff detail", staffResult, profile);
 
@@ -188,6 +222,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             // 1. Immediate redirect and UI reset for instant feedback
+            if (typeof window !== "undefined") {
+                localStorage.removeItem("nile_user_profile");
+            }
             router.replace("/login");
             setUser(null);
             

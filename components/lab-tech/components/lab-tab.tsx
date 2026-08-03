@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
-import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/emr/use-emr";
+import { useLabRequestsByPatient, useUpdateLabRequest, useCreatePayment } from "@/hooks/emr/use-emr";
 import {
     FlaskConical, ClipboardList, CheckCircle2,
     Clock, Loader2, AlertTriangle, FileText,
@@ -134,11 +134,13 @@ function PendingCard({ req }: { req: any }) {
 // test they were entering a result for. This mirrors RadiologyTab's already-
 // correct per-request inline form pattern, fixing that mismatch.
 
-function LabTechPendingRow({ req, onSubmitted }: { req: any; onSubmitted: () => void }) {
+function LabTechPendingRow({ req, patientId, onSubmitted }: { req: any; patientId: string; onSubmitted: () => void }) {
     const { user } = useAuth();
     const { mutate: updateLabRequest, isPending: saving } = useUpdateLabRequest();
+    const { mutate: createPayment } = useCreatePayment();
     const [open, setOpen] = useState(false);
     const [result, setResult] = useState("");
+    const [price, setPrice] = useState("");
 
     function handleSubmit() {
         if (!result.trim()) { toast.error("Enter the test result before submitting."); return; }
@@ -153,7 +155,23 @@ function LabTechPendingRow({ req, onSubmitted }: { req: any; onSubmitted: () => 
                 },
             },
             {
-                onSuccess: () => { toast.success("Result submitted."); setOpen(false); setResult(""); onSubmitted(); },
+                onSuccess: () => { 
+                    if (Number(price) > 0) {
+                        createPayment({
+                            patient_id: patientId,
+                            amount: Number(price),
+                            description: `Lab Test: ${req.test_type ?? "Unknown"}`,
+                            category: "lab",
+                            status: "pending",
+                            processed_by: user?.$id ?? user?.id,
+                        });
+                    }
+                    toast.success("Result submitted."); 
+                    setOpen(false); 
+                    setResult(""); 
+                    setPrice("");
+                    onSubmitted(); 
+                },
                 onError: () => toast.error("Failed to submit result."),
             }
         );
@@ -193,8 +211,16 @@ function LabTechPendingRow({ req, onSubmitted }: { req: any; onSubmitted: () => 
                     <textarea rows={4} value={result} onChange={e => setResult(e.target.value)}
                         placeholder="Enter detailed test results here..."
                         className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all" />
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            Test Price (NGN) <span className="text-gray-300 font-normal normal-case">(Optional)</span>
+                        </label>
+                        <input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)}
+                            placeholder="e.g. 5000"
+                            className="w-1/3 text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all" />
+                    </div>
                     <div className="flex justify-end gap-2">
-                        <button onClick={() => { setOpen(false); setResult(""); }}
+                        <button onClick={() => { setOpen(false); setResult(""); setPrice(""); }}
                             className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
                             Cancel
                         </button>
@@ -301,7 +327,7 @@ export default function LabTab({ patient, userRole }: Props) {
                         the doctor selected in the consultation form. */}
                     {isLabTech
                         ? pendingRequests.map((req: any) => (
-                              <LabTechPendingRow key={req.id} req={req} onSubmitted={() => setTimeout(() => refetch(), 0)} />
+                              <LabTechPendingRow key={req.id} req={req} patientId={patient.id} onSubmitted={() => setTimeout(() => refetch(), 0)} />
                           ))
                         : pendingRequests.map((req: any) => <PendingCard key={req.id} req={req} />)
                     }

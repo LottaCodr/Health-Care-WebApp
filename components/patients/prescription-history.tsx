@@ -42,12 +42,14 @@ export default function PrescriptionHistory({ patientId }: Props) {
   const role = user?.role?.toLowerCase();
   const isPharmacist = role === "pharmacist" || role === "admin";
   const [dispensingId, setDispensingId] = useState<string | null>(null);
+  const [prices, setPrices] = useState<Record<string, string>>({});
 
   const { mutate: updatePx } = useUpdatePrescription();
   const { mutate: logDispense } = useCreateDispensingRecord();
 
-  const handleDispense = (prescriptionId: string) => {
+  const handleDispense = (prescriptionId: string, currentPrice?: number) => {
       setDispensingId(prescriptionId);
+      const finalPrice = prices[prescriptionId] !== undefined ? Number(prices[prescriptionId]) : (currentPrice ?? 0);
       try {
           updatePx({
               id: prescriptionId,
@@ -55,6 +57,7 @@ export default function PrescriptionHistory({ patientId }: Props) {
                   updated_at: new Date().toISOString(),
                   status: "Dispensed",
                   dispensed: true,
+                  price: finalPrice, // pass the updated price
               }
           }, {
               onSuccess: () => {
@@ -162,7 +165,7 @@ export default function PrescriptionHistory({ patientId }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-50">
-              {["Date", "Medication", "Dosage", "Route", "Duration", "Notes", "Status", ""].map((h) => (
+              {["Date", "Medication", "Dosage", "Route", "Duration", "Notes", "Price (NGN)", "Status", ""].map((h) => (
                 <th
                   key={h}
                   className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap"
@@ -200,13 +203,29 @@ export default function PrescriptionHistory({ patientId }: Props) {
                   {rx.notes ?? rx.note ?? "—"}
                 </td>
                 <td className="px-5 py-3.5 whitespace-nowrap">
+                  {isPharmacist && !rx.dispensed ? (
+                    <input
+                      type="number"
+                      min="0"
+                      value={prices[rx.id ?? rx.$id] ?? rx.price ?? ""}
+                      onChange={(e) => setPrices({ ...prices, [rx.id ?? rx.$id]: e.target.value })}
+                      placeholder="Price"
+                      className="w-20 px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-400 bg-gray-50 focus:bg-white transition-colors"
+                    />
+                  ) : (
+                    <span className="text-xs font-semibold text-gray-600">
+                      {new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(rx.price ?? 0)}
+                    </span>
+                  )}
+                </td>
+                <td className="px-5 py-3.5 whitespace-nowrap">
                   <StatusBadge status={rx.status ?? "Active"} />
                 </td>
                 <td className="px-5 py-3.5">
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                     {isPharmacist && !rx.dispensed && (
                         <button
-                          onClick={() => handleDispense(rx.id ?? rx.$id)}
+                          onClick={() => handleDispense(rx.id ?? rx.$id, rx.price)}
                           disabled={dispensingId === (rx.id ?? rx.$id)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold transition-colors disabled:opacity-50"
                         >
