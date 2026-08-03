@@ -143,6 +143,7 @@ export interface Prescription {
     created_date?: string;
     created_at?: string;
     updated_at?: string;
+    price?: number;
 }
 
 // Prescription Medication details
