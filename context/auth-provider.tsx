@@ -268,6 +268,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Fallback: still try to send them to login
             setUser(null);
             router.replace("/login");
+        } finally {
+            // Always clear the overlay flag, otherwise the LogoutOverlay stays
+            // mounted (and blocks the screen) on the login page if navigation
+            // fails or if signOut errors after the flag was set.
+            setIsLoggingOut(false);
         }
     }, [queryClient, router]);
 
