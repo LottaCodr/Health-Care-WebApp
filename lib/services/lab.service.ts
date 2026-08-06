@@ -53,7 +53,14 @@ export async function getLabRequestById(id: string): Promise<LabRequest | null> 
         .single();
 
     if (error) { console.error("[lab] getById:", error); return null; }
-    return data as unknown as LabRequest;
+    if (!data) return null;
+    // Attach patient for richer UI
+    const { data: patient } = await supabase
+        .from("patients")
+        .select("id, name, phone, gender, birth_date, blood_group, geno_type, address, email")
+        .eq("id", (data as any).visit_id)
+        .maybeSingle();
+    return { ...(data as any), patients: patient ?? null } as unknown as LabRequest;
 }
 
 export async function listLabRequestsByPatient(
@@ -77,11 +84,19 @@ export async function listPendingLabRequests(): Promise<LabRequest[]> {
         .from("lab_requests")
         .select("*")
         .eq("status", "pending")
-        .not("test_type", "like", "[RADIOLOGY]%")   // ← exclude radiology rows
-        .order("created_at", { ascending: true });   // oldest first → FIFO queue
+        .not("test_type", "like", "[RADIOLOGY]%")
+        .order("created_at", { ascending: true });
 
     if (error) { console.error("[lab] listPending:", error); return []; }
-    return data as unknown as LabRequest[];
+    if (!data || data.length === 0) return [];
+    // Enrich with patient details for dashboard
+    const ids = [...new Set(data.map((r: any) => r.visit_id).filter(Boolean))];
+    const { data: patients } = await supabase
+        .from("patients")
+        .select("id, name, phone, gender, birth_date, blood_group, geno_type")
+        .in("id", ids);
+    const patientMap = Object.fromEntries((patients ?? []).map((pt: any) => [pt.id, pt]));
+    return data.map((r: any) => ({ ...r, patients: patientMap[r.visit_id] ?? null })) as unknown as LabRequest[];
 }
 
 export async function listCompletedLabRequests(): Promise<LabRequest[]> {
@@ -90,11 +105,18 @@ export async function listCompletedLabRequests(): Promise<LabRequest[]> {
         .from("lab_requests")
         .select("*")
         .eq("status", "completed")
-        .not("test_type", "like", "[RADIOLOGY]%")   // ← exclude radiology rows
+        .not("test_type", "like", "[RADIOLOGY]%")
         .order("completed_at", { ascending: false });
 
     if (error) { console.error("[lab] listCompleted:", error); return []; }
-    return data as unknown as LabRequest[];
+    if (!data || data.length === 0) return [];
+    const ids = [...new Set(data.map((r: any) => r.visit_id).filter(Boolean))];
+    const { data: patients } = await supabase
+        .from("patients")
+        .select("id, name, phone, gender, birth_date, blood_group, geno_type")
+        .in("id", ids);
+    const patientMap = Object.fromEntries((patients ?? []).map((pt: any) => [pt.id, pt]));
+    return data.map((r: any) => ({ ...r, patients: patientMap[r.visit_id] ?? null })) as unknown as LabRequest[];
 }
 
 export async function updateLabRequest(

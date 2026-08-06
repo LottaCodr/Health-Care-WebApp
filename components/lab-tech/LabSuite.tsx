@@ -6,9 +6,10 @@ import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
 import { useLabRequest, useUpdateLabRequest, useUpdatePatientStatus } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton, SuccessAlert } from "@/components/emr";
-import { Beaker, Clock, User, Calendar, FileText, AlertTriangle } from "lucide-react";
+import { Beaker, Clock, User, Calendar, FileText, AlertTriangle, Phone, Hash, Droplets, FlaskConical } from "lucide-react";
 import TestTemplateForm from "./TestTemplateForm";
 import { findTemplate } from "./test-templates";
+import { calculateAge } from "@/utils/export";
 
 interface LabSuiteProps {
     requestId: string;
@@ -33,7 +34,7 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
             updateLabRequestMutation.mutate({
                 id: requestId,
                 updates: {
-                    status: "Completed",
+                    status: "completed",
                     completed_by: user?.$id,
                     completed_at: new Date().toISOString(),
                     result: resultString,
@@ -59,84 +60,129 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
     if (requestLoading) return <LoadingSkeleton rows={5} />;
 
     const template = findTemplate(request?.test_type);
+    const patient: any = (request as any)?.patients ?? null;
+    const patientName = patient?.name ?? null;
+    const patientAge = patient?.birth_date ? calculateAge(patient.birth_date) : null;
 
     return (
         <div className="space-y-6">
             {success && <SuccessAlert message={success} />}
 
-            {/* Request info card */}
+            {/* Patient + Request info card - properly arranged */}
             {request && (
-                <div className="bg-white p-6 rounded-3xl border border-blue-100 shadow-sm">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                                <Beaker className="text-indigo-600" size={20} />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900">{request?.test_type ?? "Lab Test"}</h3>
-                                <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                    {/* Category badge from template */}
-                                    {template && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                            {template.category}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                    {/* Patient header - important details at top */}
+                    {patient && (
+                        <div className="px-6 py-5 bg-gradient-to-br from-indigo-50 to-blue-50 border-b border-indigo-100">
+                            <div className="flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center shrink-0 text-white font-black shadow-sm">
+                                    {patientName ? patientName.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase() : <User size={20} />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="text-base font-bold text-gray-900">{patientName}</h3>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-indigo-100 text-[10px] font-mono font-bold text-indigo-700">
+                                            <Hash size={10} /> #{(request.visit_id ?? request.patient_id ?? "").slice(-8).toUpperCase()}
                                         </span>
-                                    )}
-                                    {!template && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
-                                            <AlertTriangle size={9} />
-                                            No template – free text
-                                        </span>
-                                    )}
-                                    {request.priority && (
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                            request.priority === "stat" ? "bg-red-50 text-red-700 border border-red-100" :
-                                            request.priority === "urgent" ? "bg-amber-50 text-amber-700 border border-amber-100" :
-                                            "bg-gray-50 text-gray-600 border border-gray-100"
-                                        }`}>
-                                            <Clock size={9} />
-                                            {request.priority.toUpperCase()}
-                                        </span>
-                                    )}
+                                        {patient?.gender && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patient.gender}</span>
+                                        )}
+                                        {patientAge !== null && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patientAge} yrs</span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-600">
+                                        {patient?.phone && <span className="flex items-center gap-1"><Phone size={11} className="text-gray-400" /> {patient.phone}</span>}
+                                        {patient?.blood_group && <span className="flex items-center gap-1 font-semibold text-red-700"><Droplets size={11} /> {patient.blood_group}</span>}
+                                        {patient?.geno_type && <span className="text-gray-500">Genotype: {patient.geno_type}</span>}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Doctor's notes */}
-                    {request.notes && (
-                        <div className="mt-4 px-4 py-3 bg-blue-50/60 border border-blue-100 rounded-xl">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <FileText size={11} className="text-blue-500" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Doctor&apos;s Note</p>
-                            </div>
-                            <p className="text-sm text-blue-800">{request.notes}</p>
-                        </div>
                     )}
 
-                    {/* Meta strip */}
-                    <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100 flex-wrap">
-                        {request.visit_id && (
-                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                <User size={11} className="text-gray-400" />
-                                <span className="font-mono font-bold">#{request.visit_id.slice(-8)}</span>
+                    <div className="p-6">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                                    <Beaker className="text-indigo-600" size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">{request?.test_type ?? "Lab Test"}</h3>
+                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                        {template && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                <FlaskConical size={10} /> {template.category}
+                                            </span>
+                                        )}
+                                        {!template && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                                                <AlertTriangle size={9} />
+                                                No template – free text
+                                            </span>
+                                        )}
+                                        {request.priority && (
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                                request.priority === "stat" ? "bg-red-50 text-red-700 border-red-100" :
+                                                request.priority === "urgent" ? "bg-amber-50 text-amber-700 border-amber-100" :
+                                                "bg-gray-50 text-gray-600 border-gray-100"
+                                            }`}>
+                                                <Clock size={9} />
+                                                {request.priority.toUpperCase()}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Doctor's notes */}
+                        {request.notes && (
+                            <div className="mt-4 px-4 py-3 bg-blue-50/60 border border-blue-100 rounded-xl">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <FileText size={11} className="text-blue-500" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Doctor&apos;s Note</p>
+                                </div>
+                                <p className="text-sm text-blue-800 leading-relaxed">{request.notes}</p>
                             </div>
                         )}
-                        {request.created_at && (
-                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                <Calendar size={11} className="text-gray-400" />
-                                <span>Requested {new Date(request.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+
+                        {/* Meta strip - properly arranged */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
+                            <div className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Patient ID</p>
+                                <p className="text-xs font-mono font-bold text-gray-800 mt-1">#{(request.visit_id ?? request.patient_id ?? "—").slice(-8).toUpperCase()}</p>
                             </div>
-                        )}
+                            <div className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Requested</p>
+                                <p className="text-xs font-semibold text-gray-800 mt-1">{request.created_at ? new Date(request.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Priority</p>
+                                <p className="text-xs font-bold text-gray-800 mt-1 capitalize">{request.priority ?? "Routine"}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Template-based form */}
-            <TestTemplateForm
-                testType={request?.test_type ?? ""}
-                onSubmit={handleTemplateSubmit}
-                submitting={submitting}
-            />
+            {/* Template-based form - properly arranged with patient context */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-50">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                        <FileText size={13} className="text-indigo-600" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-gray-500">Lab Result Entry</p>
+                        <p className="text-xs text-gray-400">Structured template • reference ranges • interpretation guides</p>
+                    </div>
+                </div>
+                <TestTemplateForm
+                    testType={request?.test_type ?? ""}
+                    onSubmit={handleTemplateSubmit}
+                    submitting={submitting}
+                />
+            </div>
         </div>
     );
 }

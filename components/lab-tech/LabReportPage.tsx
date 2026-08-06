@@ -8,9 +8,10 @@ import {
     FlaskConical, Search, RefreshCcw, CheckCircle2,
     Clock, Calendar, User, X, ChevronDown,
     Microscope, Loader2, AlertTriangle, FileText,
-    Filter,
+    Phone, Hash, Droplets, Beaker,
 } from "lucide-react";
 import { useLabStore } from "@/store/lab-store";
+import { calculateAge } from "@/utils/export";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,35 +24,81 @@ function fmtTime(iso?: string) {
     return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-    routine: { label: "Routine", color: "text-gray-600", bg: "bg-gray-100", dot: "bg-gray-400" },
-    urgent: { label: "Urgent", color: "text-amber-700", bg: "bg-amber-50", dot: "bg-amber-500" },
-    stat: { label: "STAT", color: "text-red-700", bg: "bg-red-50", dot: "bg-red-500" },
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {
+    routine: { label: "Routine", color: "text-gray-600", bg: "bg-gray-100", dot: "bg-gray-400", border: "border-gray-200" },
+    urgent: { label: "Urgent", color: "text-amber-700", bg: "bg-amber-50", dot: "bg-amber-500", border: "border-amber-200" },
+    stat: { label: "STAT", color: "text-red-700", bg: "bg-red-50", dot: "bg-red-500", border: "border-red-200" },
 };
 
 function PriorityBadge({ priority }: { priority?: string }) {
     const cfg = PRIORITY_CONFIG[priority ?? "routine"] ?? PRIORITY_CONFIG.routine;
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${cfg.bg} ${cfg.color}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} /> {cfg.label}
         </span>
     );
 }
 
+function getInitials(name?: string) {
+    if (!name) return "?";
+    return name.split(" ").map(n=>n[0]).slice(0,2).join("").toUpperCase();
+}
+
+function parseStructuredResult(result?: string) {
+    if (!result) return null;
+    const lines = result.split("\n");
+    const headerIdx = lines.findIndex(l => l.includes("TEST NAME") && l.includes("RESULT"));
+    if (headerIdx === -1) {
+        return { type: "free" as const, text: result };
+    }
+    const category = lines[0]?.trim() ?? "";
+    const name = lines[1]?.trim() ?? "";
+    const rows: { label: string; value: string; ref: string; unit: string }[] = [];
+    let note: string | null = null;
+    for (let i = headerIdx + 2; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line || line.startsWith("─")) continue;
+        if (line.startsWith("Note:")) { note = line.replace("Note:", "").trim(); break; }
+        if (line.includes("Additional Notes")) { note = lines.slice(i).join("\n"); break; }
+        const parts = lines[i].split("\t");
+        if (parts.length >= 2) {
+            rows.push({
+                label: parts[0]?.trim() ?? "",
+                value: parts[1]?.trim() ?? "",
+                ref: parts[2]?.trim() ?? "—",
+                unit: parts[3]?.trim() ?? "",
+            });
+        }
+    }
+    const additionalIdx = lines.findIndex(l => l.includes("Additional Notes"));
+    if (additionalIdx !== -1) {
+        note = (note ? note + "\n\n" : "") + lines.slice(additionalIdx).join("\n");
+    }
+    return { type: "structured" as const, category, name, rows, note };
+}
+
 // ─── Result detail panel ──────────────────────────────────────────────────────
 
 function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
+    const patient = req.patients ?? {};
+    const patientName = patient?.name ?? null;
+    const patientPhone = patient?.phone;
+    const patientGender = patient?.gender;
+    const patientAge = patient?.birth_date ? calculateAge(patient.birth_date) : null;
+    const parsed = parseStructuredResult(req.result);
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 bg-gradient-to-r from-green-50/60 to-white">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center">
-                        <CheckCircle2 size={15} className="text-green-600" />
+                    <div className="w-9 h-9 rounded-xl bg-green-500 flex items-center justify-center shadow-sm">
+                        <CheckCircle2 size={16} className="text-white" />
                     </div>
                     <div>
                         <p className="text-sm font-bold text-gray-900">{req.test_type ?? "Lab Test"}</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
+                        <p className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1.5">
                             Completed {fmt(req.completed_at)} · {fmtTime(req.completed_at)}
+                            <span className="hidden sm:inline">•</span>
+                            <span className="hidden sm:inline font-mono">ID: {req.visit_id?.slice(-8).toUpperCase() ?? req.id.slice(-6).toUpperCase()}</span>
                         </p>
                     </div>
                 </div>
@@ -61,24 +108,87 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                 </button>
             </div>
             <div className="px-5 py-4 space-y-4">
-                <div className="flex items-center gap-3 flex-wrap">
+                {/* Patient details - important */}
+                {patientName && (
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-indigo-50/50 border border-indigo-100">
+                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center text-white font-black text-xs shrink-0">
+                            {getInitials(patientName)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-gray-900">{patientName}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white border border-indigo-100 text-indigo-700">
+                                    <Hash size={10} /> {req.visit_id?.slice(-8).toUpperCase() ?? "—"}
+                                </span>
+                                {patientAge !== null && <span className="text-xs text-gray-600">{patientAge} yrs</span>}
+                                {patientGender && <span className="text-xs text-gray-600">• {patientGender}</span>}
+                                {patientPhone && <span className="text-xs text-gray-600 flex items-center gap-1">• <Phone size={10} /> {patientPhone}</span>}
+                                {patient?.blood_group && <span className="text-xs font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-100"><Droplets size={10} className="inline" /> {patient.blood_group}</span>}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <div className="flex items-center gap-2 flex-wrap">
                     <PriorityBadge priority={req.priority} />
-                    <span className="text-xs text-gray-500">Patient: <span className="font-mono font-bold">{req.visit_id?.slice(-8) ?? "—"}</span></span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <Hash size={11} className="text-gray-400" /> Patient: <span className="font-mono font-bold">{req.visit_id?.slice(-8) ?? req.id.slice(-6)}</span>
+                    </span>
                     {req.completed_by && (
                         <span className="text-xs text-gray-500">By: <span className="font-mono">{req.completed_by?.slice(0, 8)}</span></span>
                     )}
                 </div>
                 {req.notes && (
                     <div className="px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
-                        <p className="text-xs text-blue-700"><span className="font-bold">Doctor's note:</span> {req.notes}</p>
+                        <p className="text-xs text-blue-700"><span className="font-bold">Doctor&apos;s note:</span> {req.notes}</p>
                     </div>
                 )}
                 {req.result && (
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Result</p>
-                        <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 rounded-xl border border-gray-100 px-4 py-3">
-                            {req.result}
-                        </pre>
+                        <div className="flex items-center gap-2 mb-2">
+                            <Beaker size={12} className="text-indigo-500" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Structured Result</p>
+                        </div>
+                        {parsed?.type === "structured" && parsed.rows.length > 0 ? (
+                            <div className="space-y-3">
+                                {(parsed.category || parsed.name) && (
+                                    <div className="flex items-center gap-2">
+                                        {parsed.category && <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">{parsed.category}</span>}
+                                        <span className="text-xs font-bold text-gray-800">{parsed.name}</span>
+                                    </div>
+                                )}
+                                <div className="overflow-hidden rounded-xl border border-gray-200">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="bg-gray-50 border-b border-gray-200">
+                                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Test</th>
+                                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Result</th>
+                                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500 hidden sm:table-cell">Ref.</th>
+                                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Unit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 bg-white">
+                                            {parsed.rows.map((r, i) => (
+                                                <tr key={i} className="hover:bg-gray-50/50">
+                                                    <td className="px-3 py-2 font-semibold text-gray-800">{r.label}</td>
+                                                    <td className="px-3 py-2 font-bold text-indigo-700">{r.value || "—"}</td>
+                                                    <td className="px-3 py-2 text-gray-500 hidden sm:table-cell">{r.ref}</td>
+                                                    <td className="px-3 py-2 text-gray-500 font-mono text-[11px]">{r.unit || "—"}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {parsed.note && (
+                                    <div className="px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
+                                        <p className="text-xs text-blue-800 whitespace-pre-wrap leading-relaxed">{parsed.note}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 rounded-xl border border-gray-100 px-4 py-3">
+                                {req.result}
+                            </pre>
+                        )}
                     </div>
                 )}
             </div>
@@ -87,7 +197,6 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-
 export default function LabReportsPage() {
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
     const { data: results, isLoading: loading, error, refetch } = useCompletedLabRequests();
@@ -101,10 +210,12 @@ export default function LabReportsPage() {
         if (!results) return [];
         const now = new Date();
         return results.filter((r: any) => {
+            const patientName = r.patients?.name ?? "";
             const matchSearch = !search ||
                 (r.test_type ?? "").toLowerCase().includes(search.toLowerCase()) ||
                 (r.result ?? "").toLowerCase().includes(search.toLowerCase()) ||
-                (r.visit_id ?? "").toLowerCase().includes(search.toLowerCase());
+                (r.visit_id ?? "").toLowerCase().includes(search.toLowerCase()) ||
+                patientName.toLowerCase().includes(search.toLowerCase());
             const matchPriority = priority === "all" || r.priority === priority;
             const completedAt = r.completed_at ? new Date(r.completed_at) : null;
             let matchDate = true;
@@ -161,7 +272,7 @@ export default function LabReportsPage() {
                             </div>
                             <div>
                                 <h2 className="text-base font-bold text-gray-800 leading-tight">Lab Reports</h2>
-                                <p className="text-xs text-gray-400 mt-0.5">{filtered.length} of {statCount} results</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{filtered.length} of {statCount} results • patient details included</p>
                             </div>
                         </div>
                         <button onClick={() => refetch()}
@@ -175,7 +286,7 @@ export default function LabReportsPage() {
                         <div className="relative flex-1 min-w-[180px]">
                             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                             <input value={search} onChange={(e) => setField("reportSearch", e.target.value)}
-                                placeholder="Search test, result, patient..."
+                                placeholder="Search test, patient, result..."
                                 className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 focus:bg-white transition-all" />
                             {search && <button onClick={() => setField("reportSearch", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={13} /></button>}
                         </div>
@@ -223,36 +334,50 @@ export default function LabReportsPage() {
                                 <p className="text-sm font-semibold text-gray-500">No reports found</p>
                                 <p className="text-xs text-gray-400">Try adjusting your filters</p>
                             </div>
-                        ) : filtered.map((req: any) => (
-                            <button key={req.id} onClick={() => setField("reportSelected", selected?.id === req.id ? null : req)}
-                                className={`w-full text-left flex items-center gap-4 p-4 rounded-2xl border transition-all
-                                    ${selected?.id === req.id
-                                        ? "border-indigo-200 bg-indigo-50/50"
-                                        : "border-gray-100 bg-gray-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-sm"
-                                    }`}>
-                                <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-                                    <CheckCircle2 size={14} className="text-green-600" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-sm font-bold text-gray-800">{req.test_type ?? "Lab Test"}</p>
-                                        <PriorityBadge priority={req.priority} />
+                        ) : filtered.map((req: any) => {
+                            const patient = req.patients ?? {};
+                            const patientName = patient?.name ?? `Patient #${req.visit_id?.slice(-6) ?? req.id.slice(-6)}`;
+                            const patientIdShort = req.visit_id?.slice(-6).toUpperCase() ?? req.id.slice(-6).toUpperCase();
+                            return (
+                                <button key={req.id} onClick={() => setField("reportSelected", selected?.id === req.id ? null : req)}
+                                    className={`w-full text-left p-4 rounded-2xl border transition-all
+                                        ${selected?.id === req.id
+                                            ? "border-indigo-200 bg-indigo-50/50"
+                                            : "border-gray-100 bg-gray-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-sm"
+                                        }`}>
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center shrink-0 mt-0.5">
+                                            <CheckCircle2 size={14} className="text-green-600" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="text-sm font-bold text-gray-800">{req.test_type ?? "Lab Test"}</p>
+                                                <PriorityBadge priority={req.priority} />
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700">
+                                                    <User size={11} className="text-gray-400" /> {patientName}
+                                                </span>
+                                                <span className="text-xs text-gray-400 font-mono bg-white border border-gray-200 px-1.5 py-0.5 rounded">#{patientIdShort}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-gray-400">{fmt(req.completed_at)}</span>
+                                                <span className="text-xs text-gray-300">•</span>
+                                                <span className="text-xs text-gray-400">{fmtTime(req.completed_at)}</span>
+                                            </div>
+                                        </div>
+                                        <FileText size={14} className={`shrink-0 mt-1 ${selected?.id === req.id ? "text-indigo-500" : "text-gray-300"}`} />
                                     </div>
-                                    <div className="flex items-center gap-3 mt-0.5">
-                                        <span className="text-xs text-gray-400 font-mono">#{req.visit_id?.slice(-6)}</span>
-                                        <span className="text-xs text-gray-400">{fmt(req.completed_at)}</span>
-                                    </div>
-                                </div>
-                                <FileText size={14} className={selected?.id === req.id ? "text-indigo-500" : "text-gray-300"} />
-                            </button>
-                        ))}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
                 {/* Detail panel */}
                 {selected && (
                     <div className="space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">Result Details</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">Result Details • Properly Arranged</p>
                         <ResultPanel req={selected} onClose={() => setField("reportSelected", null)} />
                     </div>
                 )}

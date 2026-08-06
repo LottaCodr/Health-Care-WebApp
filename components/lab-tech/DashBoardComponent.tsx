@@ -3,15 +3,18 @@
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/emr/use-emr";
+import { usePendingLabRequests, useCompletedLabRequests, useUpdateLabRequest } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton } from "@/components/emr";
 import {
     FlaskConical, CheckCircle2, Clock,
     RefreshCcw, FileText, AlertTriangle, User,
+    Phone, Calendar, Droplets, Beaker, Hash,
+    ChevronDown, ChevronUp, Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLabStore } from "@/store/lab-store";
 import TestTemplateForm from "./TestTemplateForm";
+import { calculateAge } from "@/utils/export";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,28 +30,47 @@ function fmtTime(iso?: string) {
     if (!iso) return "";
     return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
+function fmtDate(iso?: string) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-    routine: { label: "Routine", color: "text-gray-600",  bg: "bg-gray-100",  dot: "bg-gray-400"  },
-    urgent:  { label: "Urgent",  color: "text-amber-700", bg: "bg-amber-50",  dot: "bg-amber-500" },
-    stat:    { label: "STAT",    color: "text-red-700",   bg: "bg-red-50",    dot: "bg-red-500"   },
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {
+    routine: { label: "Routine", color: "text-gray-600",  bg: "bg-gray-100",  dot: "bg-gray-400", border: "border-gray-200"  },
+    urgent:  { label: "Urgent",  color: "text-amber-700", bg: "bg-amber-50",  dot: "bg-amber-500", border: "border-amber-200" },
+    stat:    { label: "STAT",    color: "text-red-700",   bg: "bg-red-50",    dot: "bg-red-500", border: "border-red-200"   },
 };
 
 function PriorityBadge({ priority }: { priority?: string }) {
     const cfg = PRIORITY_CONFIG[priority ?? "routine"] ?? PRIORITY_CONFIG.routine;
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${cfg.bg} ${cfg.color}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} /> {cfg.label}
         </span>
     );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+function getInitials(name?: string) {
+    if (!name) return "?";
+    return name.split(" ").map(n=>n[0]).slice(0,2).join("").toUpperCase();
+}
 
+// ─── Result preview parser for completed ─────────────────────────────────────
+function parseResultPreview(result?: string, maxLen = 80) {
+    if (!result) return "Result recorded";
+    // Try to extract first meaningful lines after header
+    const lines = result.split("\n").filter(l => l.trim() && !l.includes("TEST NAME") && !l.includes("─") && !l.startsWith("Note:") && l.trim() !== "");
+    // Skip category and name lines if they look like headers
+    const meaningful = lines.slice(2).join(" • ") || result;
+    return meaningful.slice(0, maxLen) + (meaningful.length > maxLen ? "…" : "");
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function LabTechDashboard() {
     const { user }   = useAuth();
     const { authorized } = useRoleProtection([UserRole.LabTechnician, UserRole.Admin]);
-    const { data: requests = [], isLoading, refetch } = usePendingLabRequests();
+    const { data: pendingData = [], isLoading: pendingLoading, refetch: refetchPending } = usePendingLabRequests();
+    const { data: completedData = [], isLoading: completedLoading, refetch: refetchCompleted } = useCompletedLabRequests();
 
     const {
         dashboardActiveId:     activeId,
@@ -62,8 +84,8 @@ export default function LabTechDashboard() {
 
     if (!authorized) return null;
 
-    const pending   = (requests as any[]).filter(r => r.status === "pending");
-    const completed = (requests as any[]).filter(r => r.status === "completed");
+    const pending   = (pendingData as any[]).filter(r => r.status === "pending");
+    const completed = (completedData as any[]);
 
     const handleSubmitResult = (reqId: string, resultOverride?: string) => {
         const result = resultOverride ?? resultText[reqId]?.trim();
@@ -84,7 +106,8 @@ export default function LabTechDashboard() {
                     toast.success("Result submitted.");
                     setDashboardResultText(reqId, "");
                     setField("dashboardActiveId", null);
-                    refetch();
+                    refetchPending();
+                    refetchCompleted();
                 },
                 onError:   () => toast.error("Failed to submit result."),
                 onSettled: () => setField("dashboardSubmittingId", null),
@@ -92,11 +115,13 @@ export default function LabTechDashboard() {
         );
     };
 
+    const refetch = () => { refetchPending(); refetchCompleted(); };
+
     return (
         <div className="space-y-6">
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                     { label: "Pending Tests",  value: pending.length,   icon: Clock,        color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
                     { label: "Completed",      value: completed.length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
@@ -125,8 +150,8 @@ export default function LabTechDashboard() {
                             <FlaskConical size={16} className="text-indigo-600" />
                         </div>
                         <div>
-                            <h2 className="text-base font-bold text-gray-800">Lab Requests</h2>
-                            <p className="text-xs text-gray-400 mt-0.5">Tests awaiting results · sorted by priority</p>
+                            <h2 className="text-base font-bold text-gray-800">Lab Requests Queue</h2>
+                            <p className="text-xs text-gray-400 mt-0.5">Tests awaiting results • sorted by priority • patient details included</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -142,8 +167,8 @@ export default function LabTechDashboard() {
                     </div>
                 </div>
 
-                <div className="px-6 py-5 space-y-3">
-                    {isLoading ? <LoadingSkeleton rows={4} /> : pending.length === 0 ? (
+                <div className="px-4 sm:px-6 py-5 space-y-4">
+                    {pendingLoading ? <LoadingSkeleton rows={4} /> : pending.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
                                 <CheckCircle2 size={22} className="text-green-500" />
@@ -158,52 +183,104 @@ export default function LabTechDashboard() {
                             return (order[a.priority as keyof typeof order] ?? 2) - (order[b.priority as keyof typeof order] ?? 2);
                         }).map((req: any) => {
                             const isExpanded    = activeId === req.id;
-                            const patientName   = req.patients?.name ?? req.patient_name ?? null;
+                            const patient = req.patients ?? {};
+                            const patientName   = patient?.name ?? req.patient_name ?? `Patient #${req.visit_id?.slice(-6) ?? req.id.slice(-6)}`;
+                            const patientPhone = patient?.phone;
+                            const patientGender = patient?.gender;
+                            const patientAge = patient?.birth_date ? calculateAge(patient.birth_date) : null;
+                            const patientIdShort = req.visit_id ? `#${req.visit_id.slice(-8).toUpperCase()}` : `#${req.id.slice(-6).toUpperCase()}`;
+                            const patientBg = patient?.blood_group;
                             const requestedByName = req.staffs?.name ?? null;
                             const elapsed       = timeAgo(req.created_at);
 
                             return (
-                                <div key={req.id} className={`rounded-2xl border overflow-hidden transition-all ${
-                                    isExpanded ? "border-indigo-200 bg-indigo-50/30" : "border-gray-100 bg-gray-50/50 hover:bg-white hover:border-indigo-100 hover:shadow-sm"
-                                }`}>
-                                    <div className="flex items-start gap-3 p-4">
-                                        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                                            req.priority === "stat" ? "bg-red-500" : req.priority === "urgent" ? "bg-amber-400" : "bg-gray-300"
-                                        }`} />
-
-                                        <div className="flex-1 min-w-0 space-y-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <p className="text-sm font-bold text-gray-800">{req.test_type ?? "Lab Test"}</p>
-                                                <PriorityBadge priority={req.priority} />
+                                <div key={req.id} className={`rounded-2xl border overflow-hidden transition-all ${isExpanded ? "border-indigo-200 bg-indigo-50/20 shadow-sm" : "border-gray-200 bg-white hover:border-indigo-100 hover:shadow-sm"}`}>
+                                    {/* Priority accent bar */}
+                                    <div className={`h-1 w-full ${req.priority === "stat" ? "bg-red-500" : req.priority === "urgent" ? "bg-amber-400" : "bg-gray-200"}`} />
+                                    <div className="p-4 sm:p-5">
+                                        {/* Top: Patient header */}
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shrink-0 text-white font-black text-sm shadow-sm">
+                                                {getInitials(patientName)}
                                             </div>
-                                            <div className="flex items-center gap-3 text-[11px] text-gray-400 flex-wrap">
-                                                {patientName && (
-                                                    <span className="flex items-center gap-1 font-medium text-gray-600">
-                                                        <User size={10} /> {patientName}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h3 className="text-sm font-bold text-gray-900 truncate">{patientName}</h3>
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-[10px] font-mono font-bold text-gray-600">
+                                                        <Hash size={10} /> {patientIdShort}
                                                     </span>
+                                                    <PriorityBadge priority={req.priority} />
+                                                </div>
+                                                {/* Patient important details row */}
+                                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                    {patientAge !== null && (
+                                                        <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">
+                                                            <Calendar size={11} className="text-gray-400" /> {patientAge} yrs
+                                                        </span>
+                                                    )}
+                                                    {patientGender && (
+                                                        <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">
+                                                            <User size={11} className="text-gray-400" /> {patientGender}
+                                                        </span>
+                                                    )}
+                                                    {patientPhone && (
+                                                        <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">
+                                                            <Phone size={11} className="text-gray-400" /> {patientPhone}
+                                                        </span>
+                                                    )}
+                                                    {patientBg && (
+                                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+                                                            <Droplets size={11} /> {patientBg}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {/* Test + meta */}
+                                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-bold text-indigo-700">
+                                                        <Beaker size={11} /> {req.test_type ?? "Lab Test"}
+                                                    </span>
+                                                    {elapsed && (
+                                                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                                                            <Clock size={11} /> {elapsed}
+                                                        </span>
+                                                    )}
+                                                    {requestedByName && (
+                                                        <span className="text-xs text-gray-500">• Requested by Dr. {requestedByName}</span>
+                                                    )}
+                                                </div>
+                                                {req.notes && (
+                                                    <div className="mt-2.5 flex items-start gap-2 px-3 py-2 bg-blue-50/60 border border-blue-100 rounded-xl">
+                                                        <FileText size={12} className="text-blue-500 shrink-0 mt-0.5" />
+                                                        <p className="text-xs text-blue-700 leading-relaxed"><span className="font-bold">Doctor&apos;s note:</span> {req.notes}</p>
+                                                    </div>
                                                 )}
-                                                {requestedByName && <span>Requested by Dr. {requestedByName}</span>}
-                                                {elapsed && <span>· {elapsed}</span>}
                                             </div>
-                                            {req.notes && (
-                                                <p className="text-xs text-blue-600 italic">"{req.notes}"</p>
-                                            )}
+                                            <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{fmtDate(req.created_at)}</span>
+                                                <button
+                                                    onClick={() => setField("dashboardActiveId", isExpanded ? null : req.id)}
+                                                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm ${isExpanded ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"}`}>
+                                                    {isExpanded ? <><ChevronUp size={12} /> Cancel</> : <><FileText size={12} /> Enter Result</>}
+                                                </button>
+                                            </div>
                                         </div>
-
-                                        <button
-                                            onClick={() => setField("dashboardActiveId", isExpanded ? null : req.id)}
-                                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm shrink-0 ${
-                                                isExpanded
-                                                    ? "bg-gray-100 hover:bg-gray-200 text-gray-600"
-                                                    : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"
-                                            }`}>
-                                            <FileText size={12} />
-                                            {isExpanded ? "Cancel" : "Enter Result"}
-                                        </button>
+                                        {/* Mobile action */}
+                                        <div className="sm:hidden mt-3">
+                                            <button
+                                                onClick={() => setField("dashboardActiveId", isExpanded ? null : req.id)}
+                                                className={`w-full flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm ${isExpanded ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"}`}>
+                                                {isExpanded ? <><ChevronUp size={12} /> Cancel</> : <><FileText size={12} /> Enter Result for {patientName.split(" ")[0]}</>}
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {isExpanded && (
-                                        <div className="px-5 pb-5 pt-3 border-t border-indigo-100">
+                                        <div className="px-4 sm:px-5 pb-5 pt-4 border-t border-indigo-100 bg-white">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Activity size={14} className="text-indigo-600" />
+                                                <p className="text-xs font-black uppercase tracking-widest text-indigo-700">Enter Structured Result — {req.test_type}</p>
+                                                <span className="ml-auto text-xs text-gray-400 font-mono">{patientIdShort} • {patientName}</span>
+                                            </div>
                                             <TestTemplateForm
                                                 testType={req.test_type ?? ""}
                                                 submitting={submittingId === req.id}
@@ -214,7 +291,7 @@ export default function LabTechDashboard() {
                                             <div className="flex justify-end mt-3">
                                                 <button onClick={() => setField("dashboardActiveId", null)}
                                                     className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
-                                                    Cancel
+                                                    Close
                                                 </button>
                                             </div>
                                         </div>
@@ -235,22 +312,34 @@ export default function LabTechDashboard() {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-gray-800">Completed Tests</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{completed.length} result{completed.length !== 1 ? "s" : ""} submitted today</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{completed.length} result{completed.length !== 1 ? "s" : ""} • most recent first</p>
                         </div>
                     </div>
-                    <div className="px-6 py-4 space-y-2">
-                        {completed.map((req: any) => {
-                            const patientName = req.patients?.name ?? req.patient_name ?? `Test #${req.id?.slice(-6)}`;
+                    <div className="px-4 sm:px-6 py-4 space-y-3 max-h-[520px] overflow-y-auto">
+                        {completed.slice(0, 20).map((req: any) => {
+                            const patient = req.patients ?? {};
+                            const patientName = patient?.name ?? req.patient_name ?? `Test #${req.id?.slice(-6)}`;
+                            const patientIdShort = req.visit_id ? `#${req.visit_id.slice(-8).toUpperCase()}` : `#${req.id.slice(-6)}`;
                             return (
-                                <div key={req.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                                    <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                                <div key={req.id} className="flex items-start gap-3 p-3.5 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:border-green-100 hover:shadow-sm transition-all">
+                                    <div className="w-8 h-8 rounded-xl bg-green-500 flex items-center justify-center shrink-0 mt-0.5">
+                                        <CheckCircle2 size={14} className="text-white" />
+                                    </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-gray-700 truncate">{req.test_type}</p>
-                                        <p className="text-[10px] text-gray-400 mt-0.5">
-                                            {patientName} · {req.result ? req.result.slice(0, 40) + (req.result.length > 40 ? "…" : "") : "Result recorded"}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="text-xs font-bold text-gray-800">{req.test_type}</p>
+                                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-500">{patientIdShort}</span>
+                                            <PriorityBadge priority={req.priority} />
+                                        </div>
+                                        <p className="text-xs font-semibold text-gray-700 mt-1 truncate">{patientName}</p>
+                                        <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                                            {parseResultPreview(req.result)}
                                         </p>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 shrink-0">{fmtTime(req.completed_at)}</p>
+                                    <div className="text-right shrink-0">
+                                        <p className="text-[10px] font-bold text-gray-500">{fmtDate(req.completed_at)}</p>
+                                        <p className="text-[10px] text-gray-400">{fmtTime(req.completed_at)}</p>
+                                    </div>
                                 </div>
                             );
                         })}

@@ -236,14 +236,30 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
     const method = normalizeMethod(input.method ?? existing.method ?? existing.payment_method) ?? "cash";
     const totalKobo = amountToKobo(existing);
     const paidKobo = paidToKobo(existing);
-    const incomingKobo =
-        typeof input.amountPaid === "number"
+    // Handle front-desk price edit: if amountPaid is provided and differs from current total, treat it as a price correction
+    let effectiveTotalKobo = totalKobo;
+    let isPriceEdit = false;
+    if (typeof input.amountPaid === "number" && Number.isFinite(input.amountPaid) && input.amountPaid >= 0) {
+        const editedKobo = Math.max(0, Math.round(input.amountPaid * 100));
+        if (editedKobo !== totalKobo) {
+            effectiveTotalKobo = editedKobo;
+            isPriceEdit = true;
+        }
+    }
+    // If price was edited, the edited amount becomes the new total and is fully paid on confirm
+    // Otherwise, treat amountPaid as incoming payment toward existing total
+    const incomingKobo = isPriceEdit
+        ? effectiveTotalKobo - paidKobo
+        : typeof input.amountPaid === "number"
             ? Math.max(0, Math.round(input.amountPaid * 100))
             : totalKobo - paidKobo;
-    const nextPaidKobo = Math.min(totalKobo, paidKobo + incomingKobo);
-    const nextStatus: PaymentStatus = nextPaidKobo >= totalKobo ? "paid" : "partial";
+    const nextPaidKobo = isPriceEdit
+        ? effectiveTotalKobo
+        : Math.min(effectiveTotalKobo, paidKobo + incomingKobo);
+    const nextStatus: PaymentStatus = nextPaidKobo >= effectiveTotalKobo ? "paid" : "partial";
+    const editedAmount = effectiveTotalKobo / 100;
 
-    const fullPayload = {
+    const fullPayload: Record<string, any> = {
         status: nextStatus,
         paid_at: nextStatus === "paid" ? now : existing.paid_at ?? null,
         processed_date: now,
@@ -252,20 +268,31 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
         payment_method: methodLabel(method),
         amount_paid_kobo: nextPaidKobo,
     };
+    // Include corrected amount if price was edited
+    if (isPriceEdit) {
+        fullPayload.amount = editedAmount;
+        fullPayload.amount_kobo = effectiveTotalKobo;
+    }
 
-    const compatiblePayload = {
+    const compatiblePayload: Record<string, any> = {
         status: nextStatus,
         paid_at: nextStatus === "paid" ? now : existing.paid_at ?? null,
         processed_date: now,
         processed_by: input.cashierId ?? existing.processed_by ?? null,
         method,
     };
+    if (isPriceEdit) {
+        compatiblePayload.amount = editedAmount;
+    }
 
-    const minimalPayload = {
+    const minimalPayload: Record<string, any> = {
         status: nextStatus,
         paid_at: nextStatus === "paid" ? now : existing.paid_at ?? null,
         method,
     };
+    if (isPriceEdit) {
+        minimalPayload.amount = editedAmount;
+    }
 
     try {
         const updated = normalizePayment(
