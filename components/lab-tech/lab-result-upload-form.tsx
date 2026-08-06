@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/emr/use-emr";
+import { usePatient } from "@/hooks/emr/use-patients";
 import {
     Loader2, CheckCircle2, Upload,
     AlertCircle, FileText, Microscope,
@@ -236,6 +237,7 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
 
 export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFormProps) {
     const { data, isLoading: loading, error } = useLabRequestsByPatient(patientId);
+    const { data: patient } = usePatient(patientId);
 
     const pendingRequests = data?.filter((r: any) => r.status === "pending") ?? [];
 
@@ -292,7 +294,8 @@ export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFor
         </div>
     );
 
-    // ── Pending requests ──
+    // ── Pending requests ── with patient header
+    const patientName = (patient as any)?.name ?? null;
     return (
         <div className="space-y-5">
             <div className="flex items-center justify-between">
@@ -303,6 +306,12 @@ export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFor
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 leading-tight">Lab Result Upload</h1>
                         <p className="text-sm text-gray-400 mt-0.5">Record and submit test findings</p>
+                        {patientName && (
+                            <p className="text-xs font-semibold text-indigo-700 mt-0.5 flex items-center gap-1.5">
+                                <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100">#{patientId.slice(-8).toUpperCase()}</span>
+                                {patientName} { (patient as any)?.phone ? `• ${(patient as any).phone}` : ""}
+                            </p>
+                        )}
                     </div>
                 </div>
                 {pendingRequests.length > 1 && (
@@ -311,6 +320,24 @@ export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFor
                     </span>
                 )}
             </div>
+            {patientName && (
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-indigo-100 px-4 py-3 flex flex-wrap items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center text-white font-black text-xs shrink-0">
+                        {patientName.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900">{patientName}</p>
+                        <p className="text-xs text-gray-600 flex flex-wrap gap-2">
+                            <span className="font-mono">ID: #{patientId.slice(-8).toUpperCase()}</span>
+                            { (patient as any)?.gender && <><span>•</span> {(patient as any).gender}</>}
+                            { (patient as any)?.phone && <><span>•</span> {(patient as any).phone}</>}
+                        </p>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-white border border-indigo-100 text-indigo-700">
+                        {pendingRequests.length} test{pendingRequests.length!==1?"s":""} pending
+                    </span>
+                </div>
+            )}
 
             <div className="space-y-4">
                 {pendingRequests.map((req: any) => (
