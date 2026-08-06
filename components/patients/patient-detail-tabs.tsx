@@ -427,6 +427,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               )}
               <PaymentHistory
                 patientId={patient.id}
+                patient={patient}
                 readOnly={billingReadOnly}
                 onSettle={billingReadOnly ? undefined : paymentId => confirmPayment.mutate({ id: paymentId, method: "cash", cashierId: staffId })}
               />

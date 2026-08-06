@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { usePaymentsByPatient, useCreatePayment } from "@/hooks/emr/use-payment";
 import { mapPaymentsForHistory } from "@/lib/utils/map-payment-history";
+import { exportPatientInvoice, type InvoicePatientInfo } from "@/lib/utils/invoice";
 import type { Payment as DbPayment } from "@/types/models";
 import { Plus, Printer, Loader2, X } from "lucide-react";
 
@@ -134,11 +135,12 @@ function PaymentRow({ payment, onSettle }: PaymentRowProps) {
 
 interface PaymentHistoryProps {
     patientId:  string;
+    patient?:   InvoicePatientInfo | null;
     readOnly?:  boolean;
     onSettle?:  (paymentId: string) => void;
 }
 
-export default function PaymentHistory({ patientId, readOnly = false, onSettle }: PaymentHistoryProps) {
+export default function PaymentHistory({ patientId, patient = null, readOnly = false, onSettle }: PaymentHistoryProps) {
     const [categoryFilter, setCategoryFilter] = useState<PaymentCategory | "all">("all");
     const [statusFilter,   setStatusFilter]   = useState<PaymentStatus   | "all">("all");
     const [isAddBillOpen, setIsAddBillOpen] = useState(false);
@@ -190,9 +192,11 @@ export default function PaymentHistory({ patientId, readOnly = false, onSettle }
                     <span className="text-xs text-slate-400">{payments.length} record{payments.length !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => window.print()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors">
+                    <button
+                        onClick={() => exportPatientInvoice({ patientId, patient, payments })}
+                        disabled={isLoading}
+                        title="Download a branded invoice with all paid and pending items"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         <Printer size={13} /> Export Invoice
                     </button>
                     {!readOnly && (
@@ -202,22 +206,6 @@ export default function PaymentHistory({ patientId, readOnly = false, onSettle }
                             <Plus size={13} /> Add Bill
                         </button>
                     )}
-                </div>
-            </div>
-
-            {/* Print Header (Visible only when printing) */}
-            <div className="hidden print:block mb-8">
-                <h1 className="text-2xl font-bold text-slate-900 mb-1">Nile Valley Hospital</h1>
-                <p className="text-sm text-slate-500 mb-6">Patient Invoice / Billing Statement</p>
-                <div className="flex justify-between border-b pb-4">
-                    <div>
-                        <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">Patient ID</p>
-                        <p className="text-sm font-medium">{patientId}</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-xs text-slate-400 uppercase font-bold tracking-widest">Date Generated</p>
-                        <p className="text-sm font-medium">{new Date().toLocaleDateString()}</p>
-                    </div>
                 </div>
             </div>
 
