@@ -341,7 +341,22 @@ function PatientProfile({
                     <div className="flex-1 min-w-0">
                         <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Patient Profile</p>
                         <h2 className="text-2xl font-bold text-white truncate">{patient.name}</h2>
-                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {/* Patient ID - prominently visible at top */}
+                        <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                            <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm">
+                                <ClipboardList size={12} className="text-white/80" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">ID</span>
+                                <span className="font-mono text-xs font-bold text-white tracking-wide max-w-[160px] truncate">
+                                    {p.id || (p as any).$id || (patient as any).userId || "—"}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={onCopyId}
+                                    className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold transition-colors"
+                                >
+                                    {showCopied ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
+                                </button>
+                            </span>
                             {patient.gender && (
                                 <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
                                     {patient.gender}
