@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Patient } from "@/types/models";
 import { AILabInterpretation } from "@/components/ai/AIComponents";
+import TestTemplateForm from "../TestTemplateForm";
 import { calculateAge } from "@/utils/export";
 
 // ─── Priority badge ───────────────────────────────────────────────────────────
@@ -246,17 +247,15 @@ function LabTechPendingRow({ req, patientId, onSubmitted }: { req: any; patientI
     const { mutate: updateLabRequest, isPending: saving } = useUpdateLabRequest();
     const { mutate: createPayment } = useCreatePayment();
     const [open, setOpen] = useState(false);
-    const [result, setResult] = useState("");
     const [price, setPrice] = useState("");
 
-    function handleSubmit() {
-        if (!result.trim()) { toast.error("Enter the test result before submitting."); return; }
+    function handleSubmit(resultString: string) {
         updateLabRequest(
             {
                 id: req.id,
                 updates: {
                     status: "completed",
-                    result: result.trim(),
+                    result: resultString,
                     completed_by: user?.$id ?? user?.id,
                     completed_at: new Date().toISOString(),
                 },
@@ -275,7 +274,6 @@ function LabTechPendingRow({ req, patientId, onSubmitted }: { req: any; patientI
                     }
                     toast.success("Result submitted."); 
                     setOpen(false); 
-                    setResult(""); 
                     setPrice("");
                     onSubmitted(); 
                 },
@@ -310,19 +308,18 @@ function LabTechPendingRow({ req, patientId, onSubmitted }: { req: any; patientI
             </div>
 
             {open && (
-                <div className="px-5 pb-5 pt-4 space-y-3 border-t border-indigo-100 bg-white">
+                <div className="px-5 pb-5 pt-4 space-y-4 border-t border-indigo-100 bg-white">
                     <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
                             <Beaker size={13} className="text-indigo-600" />
                         </div>
                         <div>
                             <p className="text-xs font-black uppercase tracking-widest text-indigo-700">Result for {req.test_type}</p>
-                            <p className="text-[11px] text-gray-400">Detailed findings • will be displayed as structured table for clinicians</p>
+                            <p className="text-[11px] text-gray-400">Structured template • reference ranges • interpretation guides</p>
                         </div>
                     </div>
-                    <textarea rows={4} value={result} onChange={e => setResult(e.target.value)}
-                        placeholder="Enter detailed test results here... Use structured format if possible (e.g., WBC: 6.2, HGB: 14.1...)"
-                        className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all" />
+
+                    {/* Optional price → creates billing */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
                             <span>Test Price (NGN)</span> <span className="text-gray-300 font-normal normal-case">(Optional • creates billing)</span>
@@ -334,14 +331,18 @@ function LabTechPendingRow({ req, patientId, onSubmitted }: { req: any; patientI
                                 className="w-full h-10 pl-7 pr-3 text-sm font-semibold text-gray-800 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all" />
                         </div>
                     </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                        <button onClick={() => { setOpen(false); setResult(""); setPrice(""); }}
+
+                    {/* Structured template form — same as the lab tech dashboard */}
+                    <TestTemplateForm
+                        testType={req.test_type ?? ""}
+                        submitting={saving}
+                        onSubmit={async (resultString) => handleSubmit(resultString)}
+                    />
+
+                    <div className="flex justify-end pt-1">
+                        <button onClick={() => { setOpen(false); setPrice(""); }}
                             className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
                             Cancel
-                        </button>
-                        <button onClick={handleSubmit} disabled={saving || !result.trim()}
-                            className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            {saving ? <><Loader2 size={12} className="animate-spin" /> Submitting...</> : <><CheckCircle2 size={13} /> Submit Result</>}
                         </button>
                     </div>
                 </div>
