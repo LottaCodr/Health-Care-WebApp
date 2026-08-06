@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
@@ -8,10 +7,11 @@ import { usePendingLabRequests, useUpdateLabRequest } from "@/hooks/emr/use-emr"
 import { LoadingSkeleton } from "@/components/emr";
 import {
     FlaskConical, CheckCircle2, Clock,
-    Loader2, RefreshCcw, FileText, AlertTriangle, User,
+    RefreshCcw, FileText, AlertTriangle, User,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLabStore } from "@/store/lab-store";
+import TestTemplateForm from "./TestTemplateForm";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -65,8 +65,8 @@ export default function LabTechDashboard() {
     const pending   = (requests as any[]).filter(r => r.status === "pending");
     const completed = (requests as any[]).filter(r => r.status === "completed");
 
-    const handleSubmitResult = (reqId: string) => {
-        const result = resultText[reqId]?.trim();
+    const handleSubmitResult = (reqId: string, resultOverride?: string) => {
+        const result = resultOverride ?? resultText[reqId]?.trim();
         if (!result) { toast.error("Please enter the test result."); return; }
         setField("dashboardSubmittingId", reqId);
         updateLabRequest(
@@ -203,29 +203,18 @@ export default function LabTechDashboard() {
                                     </div>
 
                                     {isExpanded && (
-                                        <div className="px-5 pb-5 pt-1 space-y-3 border-t border-indigo-100">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                                Test Result
-                                            </label>
-                                            <textarea
-                                                value={resultText[req.id] ?? ""}
-                                                onChange={e => setDashboardResultText(req.id, e.target.value)}
-                                                placeholder="Enter detailed test results here..."
-                                                rows={4}
-                                                className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all"
+                                        <div className="px-5 pb-5 pt-3 border-t border-indigo-100">
+                                            <TestTemplateForm
+                                                testType={req.test_type ?? ""}
+                                                submitting={submittingId === req.id}
+                                                onSubmit={async (resultString) => {
+                                                    handleSubmitResult(req.id, resultString);
+                                                }}
                                             />
-                                            <div className="flex justify-end gap-2">
+                                            <div className="flex justify-end mt-3">
                                                 <button onClick={() => setField("dashboardActiveId", null)}
                                                     className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
                                                     Cancel
-                                                </button>
-                                                <button onClick={() => handleSubmitResult(req.id)}
-                                                    disabled={submittingId === req.id || !resultText[req.id]?.trim()}
-                                                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                                    {submittingId === req.id
-                                                        ? <><Loader2 size={12} className="animate-spin" /> Submitting...</>
-                                                        : <><CheckCircle2 size={13} /> Submit Result</>
-                                                    }
                                                 </button>
                                             </div>
                                         </div>

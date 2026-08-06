@@ -4,15 +4,14 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { useLabRequestsByPatient, useUpdateLabRequest } from "@/hooks/emr/use-emr";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
-    Loader2, CheckCircle2, Upload, FlaskConical,
-    AlertCircle, FileText, Microscope, ClipboardList,
-    StickyNote, ArrowRight, Clock, ChevronDown, ChevronUp,
+    Loader2, CheckCircle2, Upload,
+    AlertCircle, FileText, Microscope,
+    Clock, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLabStore } from "@/store/lab-store";
+import TestTemplateForm from "./TestTemplateForm";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -31,29 +30,6 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function FieldCard({ icon, label, helper, required, children }: {
-    icon: React.ReactNode; label: string; helper?: string;
-    required?: boolean; children: React.ReactNode;
-}) {
-    return (
-        <div className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition-all duration-150 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 pt-5 pb-3 border-b border-gray-50">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0 group-focus-within:bg-indigo-100 transition-colors">
-                    {icon}
-                </div>
-                <div>
-                    <p className="text-sm font-bold text-gray-800">
-                        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-                    </p>
-                    {helper && <p className="text-xs text-gray-400 mt-0.5">{helper}</p>}
-                </div>
-            </div>
-            <div className="px-6 py-4">{children}</div>
-            <div className="h-0.5 w-0 group-focus-within:w-full bg-indigo-500 transition-all duration-300 ease-out" />
-        </div>
-    );
-}
-
 function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div>
@@ -69,61 +45,34 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
     const router = useRouter();
     const { user } = useAuth();
 
-    // FIX: hook takes no arguments; isPending renamed to `completing` to match
-    // all the existing disabled/loading references in the JSX below.
     const { mutate: updateLabRequest, isPending: completing } = useUpdateLabRequest();
 
-    const { uploadForms, uploadExpanded, setUploadFormField, toggleUploadExpanded, clearUploadForm } = useLabStore();
-    const form = uploadForms[req.id] || { results: "", normalRange: "", interpretation: "", remarks: "", resultFile: null };
+    const { uploadExpanded, toggleUploadExpanded } = useLabStore();
     const expanded = uploadExpanded[req.id] ?? true;
 
-    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [resultFile, setResultFile] = useState<File | null>(null);
+    const [fileError, setFileError] = useState<string | null>(null);
 
     const priorityCfg = PRIORITY_CONFIG[req.priority ?? "routine"] ?? PRIORITY_CONFIG.routine;
-
-    const update = (field: any, val: any) => {
-        setUploadFormField(req.id, field, val);
-        setErrors((p) => { const n = { ...p }; delete n[field]; return n; });
-    };
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         if (file.size > 10 * 1024 * 1024) {
-            setErrors((p) => ({ ...p, resultFile: "File must be under 10MB" }));
+            setFileError("File must be under 10MB");
             return;
         }
-        setUploadFormField(req.id, "resultFile", file);
-        setErrors((p) => { const n = { ...p }; delete n.resultFile; return n; });
+        setResultFile(file);
+        setFileError(null);
     };
 
-    const validate = () => {
-        const errs: Record<string, string> = {};
-        if (!form.results.trim()) errs.results = "Required";
-        if (!form.interpretation.trim()) errs.interpretation = "Required";
-        setErrors(errs);
-        return !Object.keys(errs).length;
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!validate()) { toast.error("Please fill all required fields."); return; }
-
-        const combinedResult = [
-            `Test Type: ${req.test_type ?? "Lab Test"}`,
-            `Date: ${new Date().toLocaleDateString("en-GB")}`,
-            `\nResults:\n${form.results}`,
-            form.normalRange ? `\nNormal Range:\n${form.normalRange}` : null,
-            `\nInterpretation:\n${form.interpretation}`,
-            form.remarks ? `\nRemarks:\n${form.remarks}` : null,
-        ].filter(Boolean).join("\n");
-
+    const handleTemplateSubmit = async (resultString: string) => {
         updateLabRequest(
             {
                 id: req.id,
                 updates: {
                     status: "completed",
-                    result: combinedResult,
+                    result: resultString,
                     completed_by: user?.$id,
                     completed_at: new Date().toISOString(),
                 },
@@ -131,7 +80,6 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
             {
                 onSuccess: () => {
                     toast.success("Results submitted successfully.");
-                    clearUploadForm(req.id);
                     onSuccess ? onSuccess() : setTimeout(() => router.back(), 1200);
                 },
                 onError: (err: any) => {
@@ -179,14 +127,14 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
             {req.notes && (
                 <div className="px-6 py-3 bg-blue-50/50 border-b border-blue-100/60">
                     <p className="text-xs text-blue-700">
-                        <span className="font-bold">Doctor's note:</span> {req.notes}
+                        <span className="font-bold">Doctor&apos;s note:</span> {req.notes}
                     </p>
                 </div>
             )}
 
             {/* ── Expandable form ── */}
             {expanded && (
-                <form onSubmit={handleSubmit} className="space-y-4 p-6">
+                <div className="space-y-4 p-6">
 
                     {/* Test info strip */}
                     <div className="bg-gray-50 rounded-2xl border border-gray-100 px-5 py-4">
@@ -208,42 +156,12 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
                         </div>
                     </div>
 
-                    <FieldCard icon={<ClipboardList size={16} className="text-indigo-600" />} label="Test Results" helper="Enter all measured values and findings in detail." required>
-                        <Textarea
-                            placeholder="e.g. WBC: 7.5K/μL, RBC: 4.8M/μL, Haemoglobin: 14.2 g/dL, Platelets: 250K/μL..."
-                            value={form.results}
-                            onChange={(e) => update("results", e.target.value)}
-                            rows={5}
-                            disabled={completing}
-                            className={`text-sm border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0 ${errors.results ? "text-red-600" : "text-gray-800"}`}
-                        />
-                        {errors.results && <p className="flex items-center gap-1 text-[10px] text-red-500 font-semibold mt-1"><AlertCircle size={10} /> {errors.results}</p>}
-                    </FieldCard>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FieldCard icon={<FlaskConical size={16} className="text-indigo-600" />} label="Normal Range" helper="Reference range for this test.">
-                            <Input placeholder="e.g. 4.5K – 11K/μL" value={form.normalRange}
-                                onChange={(e) => update("normalRange", e.target.value)} disabled={completing}
-                                className="text-sm border-0 bg-transparent focus-visible:ring-0 placeholder:text-gray-300 p-0 h-auto" />
-                        </FieldCard>
-                        <FieldCard icon={<StickyNote size={16} className="text-indigo-600" />} label="Additional Remarks" helper="Optional observations or follow-up notes.">
-                            <Input placeholder="e.g. Repeat test recommended in 48hrs" value={form.remarks}
-                                onChange={(e) => update("remarks", e.target.value)} disabled={completing}
-                                className="text-sm border-0 bg-transparent focus-visible:ring-0 placeholder:text-gray-300 p-0 h-auto" />
-                        </FieldCard>
-                    </div>
-
-                    <FieldCard icon={<Microscope size={16} className="text-indigo-600" />} label="Clinical Interpretation" helper="Your professional interpretation of the findings." required>
-                        <Textarea
-                            placeholder="e.g. Results indicate mild leukocytosis. Suggest clinical correlation with symptoms. No evidence of anaemia..."
-                            value={form.interpretation}
-                            onChange={(e) => update("interpretation", e.target.value)}
-                            rows={4}
-                            disabled={completing}
-                            className={`text-sm border-0 bg-transparent resize-none focus-visible:ring-0 placeholder:text-gray-300 p-0 ${errors.interpretation ? "text-red-600" : "text-gray-800"}`}
-                        />
-                        {errors.interpretation && <p className="flex items-center gap-1 text-[10px] text-red-500 font-semibold mt-1"><AlertCircle size={10} /> {errors.interpretation}</p>}
-                    </FieldCard>
+                    {/* Template-based form */}
+                    <TestTemplateForm
+                        testType={req.test_type ?? ""}
+                        onSubmit={handleTemplateSubmit}
+                        submitting={completing}
+                    />
 
                     {/* File upload */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -252,23 +170,23 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
                                 <Upload size={15} className="text-indigo-600" />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-gray-800">Attach Report</p>
+                                <p className="text-sm font-bold text-gray-800">Attach Report (Optional)</p>
                                 <p className="text-xs text-gray-400 mt-0.5">PDF, DOC, JPG or PNG — max 10MB</p>
                             </div>
                         </div>
                         <div className="px-6 py-4">
                             <label htmlFor={`resultFile-${req.id}`}
                                 className={`flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all
-                                    ${form.resultFile ? "border-indigo-300 bg-indigo-50/40" : "border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30"}`}
+                                    ${resultFile ? "border-indigo-300 bg-indigo-50/40" : "border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30"}`}
                             >
-                                {form.resultFile ? (
+                                {resultFile ? (
                                     <>
                                         <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
                                             <FileText size={18} className="text-indigo-600" />
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-sm font-bold text-indigo-700">{form.resultFile.name}</p>
-                                            <p className="text-xs text-gray-400 mt-0.5">{(form.resultFile.size / 1024).toFixed(0)} KB — click to change</p>
+                                            <p className="text-sm font-bold text-indigo-700">{resultFile.name}</p>
+                                            <p className="text-xs text-gray-400 mt-0.5">{(resultFile.size / 1024).toFixed(0)} KB — click to change</p>
                                         </div>
                                     </>
                                 ) : (
@@ -285,9 +203,9 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
                             </label>
                             <input id={`resultFile-${req.id}`} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                 onChange={handleFile} disabled={completing} className="hidden" />
-                            {errors.resultFile && (
+                            {fileError && (
                                 <p className="flex items-center gap-1 text-[10px] text-red-500 font-semibold mt-2">
-                                    <AlertCircle size={10} /> {errors.resultFile}
+                                    <AlertCircle size={10} /> {fileError}
                                 </p>
                             )}
                         </div>
@@ -297,25 +215,18 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
                     <div className="flex items-start gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-2xl">
                         <AlertCircle size={13} className="text-blue-500 shrink-0 mt-0.5" />
                         <p className="text-xs text-blue-700 leading-relaxed">
-                            After submitting, the patient will automatically be moved to <strong>Awaiting Payment</strong>. Ensure all results are accurate before submission.
+                            After submitting, the patient status will be updated automatically. Ensure all results are accurate before submission.
                         </p>
                     </div>
 
-                    {/* Actions */}
+                    {/* Cancel */}
                     <div className="flex items-center gap-3">
                         <button type="button" onClick={() => router.back()} disabled={completing}
                             className="px-5 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
                             Cancel
                         </button>
-                        <button type="submit" disabled={completing}
-                            className="flex-1 h-12 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                            {completing
-                                ? <><Loader2 size={16} className="animate-spin" /> Submitting Results...</>
-                                : <><CheckCircle2 size={16} /> Submit Results <ArrowRight size={15} /></>
-                            }
-                        </button>
                     </div>
-                </form>
+                </div>
             )}
         </div>
     );
