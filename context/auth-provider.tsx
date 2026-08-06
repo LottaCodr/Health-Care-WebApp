@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from "react";
 import supabase from "@/utils/supabase/client";
 import { fetchStaffProfile } from "@/actions/staff/staff";
 import { useRouter } from "next/navigation";
@@ -17,12 +17,14 @@ import { useConsultationStore } from "@/store/consultation-store";
 import { usePharmacyStore } from "@/store/pharmacy-store";
 import { usePatientStore } from "@/store/patient-store";
 import { useCacheStore, useUserStore, useUIStore } from "@/store/store";
+import { LogoutOverlay } from "@/components/layout/LogoutOverlay";
 
 interface AuthContextType {
     user: any | null;
     isAuthenticated: boolean;
     isLoading: boolean;
     loading?: boolean; // legacy alias used across components
+    isLoggingOut: boolean;
     login: (
         email: string,
         password: string
@@ -36,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const queryClient = useQueryClient();
     const isAuthenticatingRef = useRef(false);
 
@@ -219,7 +222,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
+        // Show the logout overlay immediately for visual feedback
+        setIsLoggingOut(true);
+
         try {
             // 1. Terminate Supabase session FIRST — this clears auth cookies
             //    so the server-side proxy won't redirect back to the dashboard.
@@ -263,7 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             router.replace("/login");
         }
-    };
+    }, [queryClient, router]);
 
     const contextValue: AuthContextType = useMemo(
         () => ({
@@ -271,15 +277,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isAuthenticated: !!user,
             isLoading,
             loading: isLoading,
+            isLoggingOut,
             login,
             logout,
         }),
-        [user, isLoading]
+        [user, isLoading, isLoggingOut, logout]
     );
 
     return (
         <AuthContext.Provider value={contextValue}>
             {children}
+            {isLoggingOut && <LogoutOverlay />}
         </AuthContext.Provider>
     );
 }

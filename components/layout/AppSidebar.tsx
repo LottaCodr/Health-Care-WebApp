@@ -199,7 +199,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={() => { logout?.(); setShowLogout(false); }}
+                                    onClick={async () => { setShowLogout(false); await logout?.(); }}
                                     className="flex-1 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-all border border-red-500/20"
                                 >
                                     Sign Out
