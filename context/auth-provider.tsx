@@ -16,7 +16,7 @@ import { useVitalsStore } from "@/store/vitals-store";
 import { useConsultationStore } from "@/store/consultation-store";
 import { usePharmacyStore } from "@/store/pharmacy-store";
 import { usePatientStore } from "@/store/patient-store";
-import { useCacheStore } from "@/store/store";
+import { useCacheStore, useUserStore, useUIStore } from "@/store/store";
 
 interface AuthContextType {
     user: any | null;
@@ -221,17 +221,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
-            // 1. Immediate redirect and UI reset for instant feedback
+            // 1. Terminate Supabase session FIRST — this clears auth cookies
+            //    so the server-side proxy won't redirect back to the dashboard.
+            await supabase.auth.signOut();
+
+            // 2. Clear persisted and in-memory state
             if (typeof window !== "undefined") {
                 localStorage.removeItem("nile_user_profile");
             }
-            router.replace("/login");
             setUser(null);
-            
-            // 2. Clear TanStack Query cache
+
+            // 3. Clear TanStack Query cache
             queryClient.clear();
-            
-            // 3. Reset Zustand stores
+
+            // 4. Reset Zustand stores
             useFrontDeskStore.getState().resetForm();
             useLabStore.getState().resetAll();
             useRadiologyStore.getState().resetAll();
@@ -248,10 +251,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             useBulkUploadStore.getState().reset();
             useAppointmentStore.getState().resetForm();
 
-            // 4. Perform session termination in background
-            await supabase.auth.signOut();
+            // Reset user and UI stores (persisted to localStorage)
+            useUserStore.getState().clearUser();
+            useUIStore.setState({ sidebarOpen: true, darkMode: false });
+
+            // 5. Navigate to login — safe now that cookies are cleared
+            router.replace("/login");
         } catch (error) {
             console.error("Logout error:", error);
+            // Fallback: still try to send them to login
+            setUser(null);
             router.replace("/login");
         }
     };
