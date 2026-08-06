@@ -133,20 +133,16 @@ export default function SecuritySettings() {
 
     const handleLogoutAllSessions = async () => {
         try {
-            await logout();
-            toast({
-                title: "Logged Out",
-                description: "You have been logged out from all sessions.",
-            });
-
             logSecurityEvent('LOGOUT_ALL_SESSIONS', {
                 userId: user?.$id,
                 email: user?.email
             });
+            // Logout will redirect to login page immediately
+            await logout();
         } catch (error) {
             toast({
                 title: "Error",
-                description: "Failed to logout from all sessions.",
+                description: "Failed to logout. Please try again.",
                 variant: "destructive",
             });
         }

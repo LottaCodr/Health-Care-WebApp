@@ -4,10 +4,10 @@ import React from "react";
 import { useAuth } from "@/context/auth-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LogOut, User, ShieldCheck } from "lucide-react";
+import { LogOut, User, ShieldCheck, Loader2 } from "lucide-react";
 
 export function NavUser() {
-    const { user, logout } = useAuth();
+    const { user, logout, isLoggingOut } = useAuth();
 
     return (
         <DropdownMenu>
@@ -38,8 +38,16 @@ export function NavUser() {
                     <ShieldCheck size={18} /> Identity Verification
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-gray-50 mx-2" />
-                <DropdownMenuItem onClick={() => logout()} className="rounded-2xl p-3 gap-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer mt-1">
-                    <LogOut size={18} /> Terminate Session
+                <DropdownMenuItem
+                    onClick={(e) => { e.preventDefault(); logout(); }}
+                    disabled={isLoggingOut}
+                    className="rounded-2xl p-3 gap-3 font-bold text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isLoggingOut ? (
+                        <><Loader2 size={18} className="animate-spin" /> Signing out...</>
+                    ) : (
+                        <><LogOut size={18} /> Terminate Session</>
+                    )}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
