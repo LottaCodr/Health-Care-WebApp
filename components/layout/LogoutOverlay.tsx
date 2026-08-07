@@ -16,6 +16,7 @@ const LOGOUT_STEPS = [
 
 export function LogoutOverlay() {
     const [stepIndex, setStepIndex] = useState(0);
+    const [showManual, setShowManual] = useState(false);
 
     useEffect(() => {
         // Cycle through status messages for visual feedback
@@ -26,7 +27,14 @@ export function LogoutOverlay() {
             });
         }, 800);
 
-        return () => clearInterval(interval);
+        // If the hard-navigate hasn't fired after 2.4s, show a manual fallback
+        // so the user is never stuck behind a spinner with no escape.
+        const fallback = setTimeout(() => setShowManual(true), 2400);
+
+        return () => {
+            clearInterval(interval);
+            clearTimeout(fallback);
+        };
     }, []);
 
     const currentStep = LOGOUT_STEPS[stepIndex];
@@ -37,10 +45,13 @@ export function LogoutOverlay() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
+            role="status"
+            aria-live="polite"
+            aria-label="Signing out — please wait"
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0a1628]"
         >
             {/* Background texture */}
-            <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden" aria-hidden>
                 {/* Radial glow */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-blue-600/6 blur-3xl" />
                 {/* Rings */}
@@ -60,7 +71,7 @@ export function LogoutOverlay() {
             {/* Content */}
             <div className="relative flex flex-col items-center gap-8">
                 {/* Animated spinner */}
-                <div className="relative w-20 h-20">
+                <div className="relative w-20 h-20" aria-hidden>
                     {/* Outer ring */}
                     <motion.div
                         animate={{ rotate: 360 }}
@@ -119,7 +130,7 @@ export function LogoutOverlay() {
                         transition={{ duration: 0.25 }}
                         className="flex items-center gap-2.5"
                     >
-                        <div className="flex gap-1">
+                        <div className="flex gap-1" aria-hidden>
                             {[0, 1, 2].map((i) => (
                                 <motion.div
                                     key={i}
@@ -139,7 +150,7 @@ export function LogoutOverlay() {
                 </AnimatePresence>
 
                 {/* Progress bar */}
-                <div className="w-48 h-0.5 bg-white/[0.06] rounded-full overflow-hidden">
+                <div className="w-48 h-0.5 bg-white/[0.06] rounded-full overflow-hidden" aria-hidden>
                     <motion.div
                         initial={{ width: "0%" }}
                         animate={{ width: "100%" }}
@@ -147,6 +158,29 @@ export function LogoutOverlay() {
                         className="h-full bg-gradient-to-r from-blue-400 via-blue-500 to-green-400 rounded-full"
                     />
                 </div>
+
+                {/* Manual fallback — only appears if navigation is delayed */}
+                <AnimatePresence>
+                    {showManual && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex flex-col items-center gap-2 pt-2"
+                        >
+                            <p className="text-white/30 text-[11px] font-medium text-center max-w-[240px] leading-relaxed">
+                                Taking longer than expected?
+                            </p>
+                            <a
+                                href="/login"
+                                className="text-xs font-bold text-blue-400 hover:text-blue-300 underline underline-offset-4 transition-colors"
+                            >
+                                Go to login
+                            </a>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </motion.div>
     );
