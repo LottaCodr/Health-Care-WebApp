@@ -55,9 +55,9 @@ export const PatientFormValidation = z
       .min(5, "Address must be at least 5 characters"),
 
     // Step 3: General Medical History
-    allergies: z.string(),
-    significantMedicationHistory: z.string(),
-    longTermMedication: z.string(),
+    allergies: z.string().optional(),
+    significantMedicationHistory: z.string().optional(),
+    longTermMedication: z.string().optional(),
     covidVaccinationOptions: z.enum(["Vaccinated", "Not Vaccinated", "Partial"]),
     bloodGroup: z.string().min(1, "Blood group is required"),
     genoType: z.string().min(1, "Geno type is required"),

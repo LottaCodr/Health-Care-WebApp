@@ -3,7 +3,7 @@
 import { createPatient, updatePatientStatus } from "@/lib/services/patient.service";
 import { createAppointment } from "@/lib/services/appointment.service";
 import { PatientStatus } from "@/types/models";
-import type { UploadType } from "@/store/bulk-upload-store";
+import type { UploadType } from "@/lib/actions/bulk-upload";
 import {
     generatePatientRecord,
     type RecordSection,
