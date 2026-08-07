@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { LabRequest } from "@/types/models";
 import { createNotification } from "./notification.service";
+import { createPayment } from "./payment.service";
 
 // ─── Lab Requests ─────────────────────────────────────────────────────────────
 
@@ -13,12 +14,34 @@ export interface CreateLabRequestInput {
     priority?: "routine" | "urgent" | "stat";
     notes?: string;
     status?: string;
+    price?: number;
 }
 
 export async function createLabRequest(
     input: CreateLabRequestInput
 ): Promise<LabRequest> {
     const supabase = await createClient();
+
+    // 1. Resolve test price (from input or catalog)
+    let testPrice = typeof input.price === "number" && input.price >= 0 ? input.price : 0;
+    if (testPrice === 0 && input.testType) {
+        try {
+            const cleanTestName = input.testType.replace(/^\[RADIOLOGY\]\s*/i, "").trim();
+            const { data: catalogItem } = await supabase
+                .from("lab_test_catalog")
+                .select("price")
+                .ilike("test_name", cleanTestName)
+                .maybeSingle();
+
+            if (catalogItem && typeof catalogItem.price === "number" && catalogItem.price > 0) {
+                testPrice = catalogItem.price;
+            }
+        } catch (catErr) {
+            console.error("[lab] catalog lookup error:", catErr);
+        }
+    }
+
+    // 2. Insert lab request
     const { data, error } = await supabase
         .from("lab_requests")
         .insert([{
@@ -34,6 +57,45 @@ export async function createLabRequest(
 
     if (error) { console.error("[lab] createRequest:", error); throw error; }
 
+    // 3. Automatically create a pending payment in billing so it reflects in FrontDesk & Patient Billing
+    try {
+        await createPayment({
+            patient_id: input.patientId,
+            amount: testPrice,
+            description: `Lab Test: ${input.testType}`,
+            category: "lab",
+            status: "pending",
+            processed_by: input.requestedBy || undefined,
+            notes: input.notes ? `Clinical notes: ${input.notes}` : undefined,
+        });
+    } catch (payErr) {
+        console.error("[lab] auto-create payment failed:", payErr);
+    }
+
+    // 4. Update patient status to sent-to-lab if currently registered or under consultation
+    try {
+        const { data: currentPatient } = await supabase
+            .from("patients")
+            .select("status")
+            .eq("id", input.patientId)
+            .maybeSingle();
+
+        if (
+            currentPatient &&
+            (currentPatient.status === "registered" ||
+             currentPatient.status === "under-consultation" ||
+             currentPatient.status === "awaiting-consultation")
+        ) {
+            await supabase
+                .from("patients")
+                .update({ status: "sent-to-lab" })
+                .eq("id", input.patientId);
+        }
+    } catch (stErr) {
+        console.error("[lab] patient status update error:", stErr);
+    }
+
+    // 5. Send notification
     await createNotification({
         role: "LabTechnician",
         title: "New Lab Request",
@@ -128,17 +190,62 @@ export async function updateLabRequest(
         completed_at?: string;
         priority?: string;
         notes?: string;
+        price?: number;
     }
 ): Promise<LabRequest> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_requests")
-        .update(updates)
+        .update({
+            status: updates.status,
+            result: updates.result,
+            completed_by: updates.completed_by,
+            completed_at: updates.completed_at,
+            priority: updates.priority,
+            notes: updates.notes,
+        })
         .eq("id", id)
         .select()
         .single();
 
     if (error) { console.error("[lab] updateRequest:", error); throw error; }
+
+    // If price is specified on completion or result entry, ensure bill exists / update bill
+    if (typeof updates.price === "number" && updates.price > 0 && data?.visit_id) {
+        try {
+            // Check if payment already exists for this test
+            const desc = `Lab Test: ${data.test_type}`;
+            const { data: existingPayments } = await supabase
+                .from("payments")
+                .select("id, amount, status")
+                .eq("patient_id", data.visit_id)
+                .eq("category", "lab")
+                .ilike("description", `%${data.test_type}%`)
+                .order("created_at", { ascending: false })
+                .limit(1);
+
+            if (existingPayments && existingPayments.length > 0 && existingPayments[0].status === "pending") {
+                await supabase
+                    .from("payments")
+                    .update({
+                        amount: updates.price,
+                        amount_kobo: Math.round(updates.price * 100),
+                    })
+                    .eq("id", existingPayments[0].id);
+            } else if (!existingPayments || existingPayments.length === 0) {
+                await createPayment({
+                    patient_id: data.visit_id,
+                    amount: updates.price,
+                    description: desc,
+                    category: "lab",
+                    status: "pending",
+                    processed_by: updates.completed_by || undefined,
+                });
+            }
+        } catch (payErr) {
+            console.error("[lab] error updating/creating payment on lab update:", payErr);
+        }
+    }
 
     // Auto-route patient back to doctor queue when tests complete
     if (updates.status === "completed" && data?.visit_id) {

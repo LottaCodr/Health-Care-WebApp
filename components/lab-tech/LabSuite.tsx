@@ -23,6 +23,7 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
 
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
+    const [price, setPrice] = useState("");
     const updatePatientStatusMutation = useUpdatePatientStatus();
     const updateLabRequestMutation = useUpdateLabRequest();
 
@@ -31,13 +32,15 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
     const handleTemplateSubmit = async (resultString: string) => {
         setSubmitting(true);
         try {
+            const parsedPrice = Number(price);
             updateLabRequestMutation.mutate({
                 id: requestId,
                 updates: {
                     status: "completed",
-                    completed_by: user?.$id,
+                    completed_by: user?.$id ?? user?.id,
                     completed_at: new Date().toISOString(),
                     result: resultString,
+                    ...(parsedPrice > 0 ? { price: parsedPrice } : {}),
                 },
             });
 
@@ -167,16 +170,35 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
             )}
 
             {/* Template-based form - properly arranged with patient context */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-50">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-                        <FileText size={13} className="text-indigo-600" />
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-50 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                            <FileText size={13} className="text-indigo-600" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-gray-500">Lab Result Entry</p>
+                            <p className="text-xs text-gray-400">Structured template • reference ranges • auto-reflected in frontdesk billing</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-xs font-black uppercase tracking-widest text-gray-500">Lab Result Entry</p>
-                        <p className="text-xs text-gray-400">Structured template • reference ranges • interpretation guides</p>
+
+                    {/* Optional Price for Billing */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Price (NGN):</span>
+                        <div className="relative w-32">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">₦</span>
+                            <input
+                                type="number"
+                                min="0"
+                                value={price}
+                                onChange={(e) => setPrice(e.target.value)}
+                                placeholder="e.g. 5000"
+                                className="w-full h-8 pl-6 pr-2 text-xs font-bold rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            />
+                        </div>
                     </div>
                 </div>
+
                 <TestTemplateForm
                     testType={request?.test_type ?? ""}
                     onSubmit={handleTemplateSubmit}
