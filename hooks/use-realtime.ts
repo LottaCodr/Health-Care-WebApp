@@ -286,37 +286,40 @@ export function useRoleRealtime(role?: string) {
         if (!role) return;
 
         const ROLE_TABLE_MAP: Record<string, { table: string; keys: readonly unknown[][] }[]> = {
-            Frontdesk: [
-                { table: "patients",  keys: [["patients"], ["patients-by-status"]] },
-                { table: "payments",  keys: [["payments"], ["payments", "pending"]] },
+            FrontDesk: [
+                { table: "patients",     keys: [["patients"]] },
+                { table: "payments",     keys: [["payments"]] },
+                { table: "appointments", keys: [["appointments"]] },
             ],
             Doctor: [
-                { table: "patients",      keys: [["patients"], ["patients-by-status"]] },
+                { table: "patients",      keys: [["patients"]] },
                 { table: "consultations", keys: [["consultations"]] },
-                { table: "lab_requests",  keys: [["lab-requests"]] },
+                { table: "lab_requests",  keys: [["lab"], ["radiology"]] },
+                { table: "appointments",  keys: [["appointments"]] },
             ],
             Nurse: [
-                { table: "patients",        keys: [["patients"], ["patients-by-status"]] },
-                { table: "nursing_actions", keys: [["nursing-actions"]] },
+                { table: "patients",        keys: [["patients"]] },
+                { table: "nursing_actions", keys: [["nursing"]] },
             ],
-            Labtech: [
-                { table: "lab_requests", keys: [["lab-requests"], ["pending-lab-requests"]] },
+            LabTechnician: [
+                { table: "lab_requests", keys: [["lab"]] },
             ],
             Radiologist: [
-                { table: "lab_requests", keys: [["lab-requests"], ["pending-lab-requests"]] },
+                { table: "lab_requests", keys: [["radiology"]] },
             ],
             Pharmacist: [
-                { table: "prescriptions",  keys: [["prescriptions"], ["pending-prescriptions"]] },
-                { table: "drug_inventory", keys: [["drug-inventory"]] },
+                { table: "prescriptions",  keys: [["pharmacy", "prescriptions"]] },
+                { table: "drug_inventory", keys: [["pharmacy", "inventory"]] },
             ],
             Admin: [
                 { table: "patients",        keys: [["patients"]] },
                 { table: "consultations",   keys: [["consultations"]] },
-                { table: "prescriptions",   keys: [["prescriptions"]] },
-                { table: "lab_requests",    keys: [["lab-requests"]] },
-                { table: "payments",        keys: [["payments"], ["payments", "pending"]] },
-                { table: "nursing_actions", keys: [["nursing-actions"]] },
-                { table: "drug_inventory",  keys: [["drug-inventory"]] },
+                { table: "prescriptions",   keys: [["pharmacy", "prescriptions"]] },
+                { table: "lab_requests",    keys: [["lab"], ["radiology"]] },
+                { table: "payments",        keys: [["payments"]] },
+                { table: "nursing_actions", keys: [["nursing"]] },
+                { table: "drug_inventory",  keys: [["pharmacy", "inventory"]] },
+                { table: "appointments",    keys: [["appointments"]] },
             ],
         };
 
@@ -337,18 +340,18 @@ export function useRoleRealtime(role?: string) {
                     const status = payload.new?.status;
                     const name   = payload.new?.name ?? "Patient";
                     const roleRoutes: Record<string, string[]> = {
-                        Frontdesk:  ["registered", "awaiting-payment", "discharged"],
-                        Doctor:     ["awaiting-consultation"],
-                        Nurse:      ["sent-to-nurse"],
-                        Labtech:    ["sent-to-lab"],
-                        Radiologist:["sent-to-radiology"],
-                        Pharmacist: ["sent-to-pharmacy"],
+                        FrontDesk:    ["registered", "awaiting-payment", "discharged"],
+                        Doctor:       ["awaiting-consultation"],
+                        Nurse:        ["sent-to-nurse"],
+                        LabTechnician:["sent-to-lab"],
+                        Radiologist:  ["sent-to-radiology"],
+                        Pharmacist:   ["sent-to-pharmacy"],
                     };
                     if (roleRoutes[role]?.includes(status)) {
                         toast.info(`${name} → ${status.replace(/-/g, " ")}`);
                     }
                 }
-                if (table === "lab_requests" && payload.eventType === "INSERT" && role === "Labtech") {
+                if (table === "lab_requests" && payload.eventType === "INSERT" && role === "LabTechnician") {
                     const t = payload.new?.test_type ?? "";
                     if (!t.startsWith("[RADIOLOGY]")) toast.info(`New lab request: ${t}`);
                 }

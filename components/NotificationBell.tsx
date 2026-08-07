@@ -33,15 +33,20 @@ export default function NotificationBell() {
     const [open, setOpen] = useState(false);
     const ref             = useRef<HTMLDivElement>(null);
 
-    // Close on outside click
+    // Close on outside click or Escape.
     useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
+        const handlePointerDown = (event: MouseEvent) => {
+            if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
         };
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setOpen(false);
+        };
+        document.addEventListener("mousedown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
     }, []);
 
     const handleClick = (n: Notification) => {
@@ -57,7 +62,9 @@ export default function NotificationBell() {
             <button
                 onClick={() => setOpen((o) => !o)}
                 className="relative w-9 h-9 rounded-xl border border-gray-100 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-200 transition-all shadow-sm"
-                aria-label="Notifications"
+                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+                aria-expanded={open}
+                aria-controls="notification-panel"
             >
                 <Bell size={15} />
                 {unreadCount > 0 && (
@@ -69,7 +76,7 @@ export default function NotificationBell() {
 
             {/* ── Dropdown ── */}
             {open && (
-                <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl border border-gray-100 shadow-xl z-50 overflow-hidden">
+                <div id="notification-panel" className="absolute right-0 top-11 z-50 w-[calc(100vw-1.5rem)] max-w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
 
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
@@ -92,6 +99,7 @@ export default function NotificationBell() {
                             )}
                             <button
                                 onClick={() => setOpen(false)}
+                                aria-label="Close notifications"
                                 className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                             >
                                 <X size={12} />

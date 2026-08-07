@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 
 export type AppointmentPriority  = "routine" | "urgent" | "emergency";
 export type AppointmentStatus    = "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show";
@@ -41,6 +42,7 @@ export interface AppointmentActions {
     resetForm:    () => void;
     openEdit:     (id: string, data: AppointmentFormState) => void;
     closeForm:    () => void;
+    resetAll:     () => void;
 }
 
 const initialForm: AppointmentFormState = {
@@ -64,7 +66,7 @@ const initialUI: AppointmentUIState = {
     showForm:       false,
     editTargetId:   null,
     cancelTargetId: null,
-    dateFilter:     new Date().toISOString().slice(0, 10),
+    dateFilter:     toHospitalISODate(),
     statusFilter:   "all",
     search:         "",
     viewMode:       "list",
@@ -83,6 +85,7 @@ export const useAppointmentStore = create<AppointmentStore>()(
             resetForm:    () => set({ ...initialForm, showForm: false, editTargetId: null }),
             openEdit: (id, data) => set({ ...data, showForm: true, editTargetId: id }),
             closeForm: () => set({ showForm: false, editTargetId: null }),
+            resetAll:  () => set({ ...initialForm, ...initialUI }),
         }),
         { name: "appointment-store" }
     )

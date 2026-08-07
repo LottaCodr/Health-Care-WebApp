@@ -1,16 +1,16 @@
 "use client";
 
-import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
 import {
     HeartPulse, CheckCircle2, RefreshCcw,
     ChevronRight, Phone, Baby, BedDouble,
-    Eye, AlertCircle,
+    Eye, ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
-import { usePatientsByStatus, usePendingNursingActions } from "@/hooks/emr/use-emr";
-import NursePatientSearch from "././component/nurse-patient-search";
+import { usePatientsByStatus, useCompletedNursingActions } from "@/hooks/emr/use-emr";
+import NursePatientSearch from "./component/nurse-patient-search";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,9 +35,15 @@ function timeInQueue(updatedAt?: string): string {
 
 // ─── Patient card ─────────────────────────────────────────────────────────────
 
-function PatientCard({ patient, index, href, statusLabel, accentColor }: {
+const HOVER_BORDERS: Record<string, string> = {
+    "bg-teal-600": "hover:border-teal-200",
+    "bg-sky-600": "hover:border-sky-200",
+    "bg-indigo-600": "hover:border-indigo-200",
+};
+
+function PatientCard({ patient, index, href, accentColor }: {
     patient: any; index?: number; href: string;
-    statusLabel: string; accentColor: string;
+    accentColor: string;
 }) {
     const age      = calcAge(patient.birth_date ?? patient.date_of_birth);
     const isChild  = age ? parseInt(age) <= 12 : false;
@@ -45,7 +51,7 @@ function PatientCard({ patient, index, href, statusLabel, accentColor }: {
 
     return (
         <Link href={href}
-            className={`group flex items-center gap-3 p-3.5 rounded-2xl border bg-gray-50/50 hover:bg-white hover:shadow-sm transition-all border-gray-100 hover:${accentColor.replace("bg-", "border-").replace("-600", "-200")}`}>
+            className={`group flex items-center gap-3 p-3.5 rounded-2xl border bg-gray-50/50 hover:bg-white hover:shadow-sm transition-all border-gray-100 ${HOVER_BORDERS[accentColor] ?? "hover:border-gray-200"}`}>
 
             {index !== undefined && (
                 <div className={`w-6 h-6 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0 transition-colors ${accentColor}`}>
@@ -96,7 +102,7 @@ function StatusGroup({ icon: Icon, iconBg, iconColor, label, count, badgeBg, bad
 }) {
     return (
         <div className={`bg-white rounded-3xl border shadow-sm overflow-hidden ${borderColor}`}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-4 sm:px-5 border-b border-gray-50">
                 <div className="flex items-center gap-2.5">
                     <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                         <Icon size={15} className={iconColor} />
@@ -109,7 +115,7 @@ function StatusGroup({ icon: Icon, iconBg, iconColor, label, count, badgeBg, bad
                     </span>
                 )}
             </div>
-            <div className="px-5 py-4 space-y-2.5">
+            <div className="px-4 py-4 sm:px-5 space-y-2.5">
                 {loading ? (
                     Array.from({ length: 2 }).map((_, i) => (
                         <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-2xl border border-gray-100">
@@ -139,27 +145,39 @@ export default function NurseDashboard() {
     const { data: sentToNurse    = [], isPending: l1, refetch: r1 } = usePatientsByStatus("sent-to-nurse" as any);
     const { data: underObserv    = [], isPending: l2, refetch: r2 } = usePatientsByStatus("under-observation" as any);
     const { data: admitted       = [], isPending: l3, refetch: r3 } = usePatientsByStatus("admitted" as any);
-    const { data: actions        = [] }                              = usePendingNursingActions();
+    const { data: completedData  = [], isPending: l4, refetch: r4 } = useCompletedNursingActions();
 
     if (!authorized) return null;
 
     const queue     = sentToNurse   as any[];
     const observed  = underObserv   as any[];
     const inpatient = admitted      as any[];
-    const completed = (actions as any[]).filter(a => a.status === "Completed");
+    const completed = completedData as any[];
 
     const total     = queue.length + observed.length + inpatient.length;
 
-    function refetchAll() { r1(); r2(); r3(); }
+    function refetchAll() { void Promise.all([r1(), r2(), r3(), r4()]); }
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-5 sm:space-y-6">
+
+            <DashboardHeader
+                title="Nursing workspace"
+                description="Prioritize patients who need attention, monitor observations, and continue inpatient care."
+                icon={HeartPulse}
+                tone="teal"
+                actions={
+                    <Link href="/nurse/task" className="inline-flex h-9 items-center gap-2 rounded-xl border border-teal-100 bg-teal-50 px-3 text-xs font-bold text-teal-700 transition-colors hover:bg-teal-100">
+                        <ClipboardList size={13} /> View tasks
+                    </Link>
+                }
+            />
 
             {/* ── Patient search — pull up ANY patient, not just your queue ── */}
             <NursePatientSearch />
 
             {/* ── Stats row ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-3">
                 {[
                     { label: "Needs Attention",    value: queue.length,     color: "text-teal-600",   bg: "bg-teal-50",   border: "border-teal-100",   icon: HeartPulse  },
                     { label: "Under Observation",  value: observed.length,  color: "text-sky-600",    bg: "bg-sky-50",    border: "border-sky-100",    icon: Eye         },
@@ -187,8 +205,11 @@ export default function NurseDashboard() {
                     {total > 0 ? `${total} patient${total !== 1 ? "s" : ""} across all stages` : "All clear"}
                 </p>
                 <button onClick={refetchAll}
-                    className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
-                    <RefreshCcw size={13} />
+                    type="button"
+                    aria-label="Refresh nursing queues"
+                    disabled={l1 || l2 || l3 || l4}
+                    className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors disabled:cursor-wait disabled:opacity-60">
+                    <RefreshCcw size={13} className={l1 || l2 || l3 || l4 ? "animate-spin" : ""} />
                 </button>
             </div>
 
@@ -205,7 +226,7 @@ export default function NurseDashboard() {
                     {queue.map((p, i) => (
                         <PatientCard key={p.id} patient={p} index={i}
                             href={`/nurse/queue/patient/${p.id}`}
-                            statusLabel="Sent to Nurse" accentColor="bg-teal-600" />
+                            accentColor="bg-teal-600" />
                     ))}
                 </StatusGroup>
 
@@ -219,7 +240,7 @@ export default function NurseDashboard() {
                     {observed.map(p => (
                         <PatientCard key={p.id} patient={p}
                             href={`/nurse/queue/patient/${p.id}`}
-                            statusLabel="Under Observation" accentColor="bg-sky-600" />
+                            accentColor="bg-sky-600" />
                     ))}
                 </StatusGroup>
 
@@ -233,7 +254,7 @@ export default function NurseDashboard() {
                     {inpatient.map(p => (
                         <PatientCard key={p.id} patient={p}
                             href={`/nurse/queue/patient/${p.id}`}
-                            statusLabel="Admitted" accentColor="bg-indigo-600" />
+                            accentColor="bg-indigo-600" />
                     ))}
                 </StatusGroup>
             </div>

@@ -1,4 +1,5 @@
 import { UserRole } from "@/types/models";
+import { normalizeUserRole } from "@/lib/roles";
 
 export const ROLE_DASHBOARD_MAP: Record<UserRole, string> = {
   [UserRole.FrontDesk]: "/front-desk/dashboard",
@@ -11,6 +12,6 @@ export const ROLE_DASHBOARD_MAP: Record<UserRole, string> = {
 };
 
 export function getDashboardRoute(role?: string): string {
-  if (!role) return "/login";
-  return ROLE_DASHBOARD_MAP[role as UserRole] || "/login";
+  const normalizedRole = normalizeUserRole(role);
+  return normalizedRole ? ROLE_DASHBOARD_MAP[normalizedRole] : "/login";
 }

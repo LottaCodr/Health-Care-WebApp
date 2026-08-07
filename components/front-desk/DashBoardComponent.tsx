@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
 import { LoadingSkeleton } from "@/components/emr";
 import {
     Users, ClipboardList, Wallet, LogOut, Plus,
     ChevronRight, ArrowRight, BedDouble, RefreshCcw,
-    UserCheck,
+    UserCheck, CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import PaymentConfirmation from "./PaymentSuite";
@@ -15,13 +15,11 @@ import { usePatientsByStatus } from "@/hooks/emr/use-patients";
 import {
     useActiveAdmissions,
 } from "@/hooks/emr/use-admissions";
+import { useAppointmentsByDate } from "@/hooks/emr/use-appointments";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtTime(iso?: string) {
-    if (!iso) return "";
-    return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-}
 
 function calcAge(dob?: string) {
     if (!dob) return null;
@@ -80,7 +78,7 @@ function Section({ icon: Icon, iconBg, iconColor, title, subtitle, badge, badgeC
 }) {
     return (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
+            <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5 border-b border-gray-50">
                 <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                         <Icon size={15} className={iconColor} />
@@ -90,7 +88,7 @@ function Section({ icon: Icon, iconBg, iconColor, title, subtitle, badge, badgeC
                         <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     {extraHeaderContent}
                     {typeof badge === "number" && badge > 0 && (
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${badgeColor}`}>
@@ -104,7 +102,7 @@ function Section({ icon: Icon, iconBg, iconColor, title, subtitle, badge, badgeC
                     )}
                 </div>
             </div>
-            <div className="px-6 py-4 space-y-2.5">
+            <div className="px-4 py-4 sm:px-6 space-y-2.5">
                 {loading ? <LoadingSkeleton rows={3} /> : empty}
                 {!loading && children}
             </div>
@@ -122,21 +120,18 @@ export default function FrontDeskDashboard() {
     const awaitingPayment     = usePatientsByStatus(PatientStatus.AwaitingPayment);
     const discharged          = usePatientsByStatus(PatientStatus.Discharged);
     const activeAdmissions    = useActiveAdmissions();
+    const todayAppointments   = useAppointmentsByDate(toHospitalISODate());
 
-    // Refresh handler
-    const handleRefresh = useCallback(() => {
-        registered.refetch && registered.refetch();
-        awaitingConsult.refetch && awaitingConsult.refetch();
-        awaitingPayment.refetch && awaitingPayment.refetch();
-        discharged.refetch && discharged.refetch();
-        activeAdmissions.refetch && activeAdmissions.refetch();
-    }, [
-        registered.refetch,
-        awaitingConsult.refetch,
-        awaitingPayment.refetch,
-        discharged.refetch,
-        activeAdmissions.refetch
-    ]);
+    const handleRefresh = () => {
+        void Promise.all([
+            registered.refetch(),
+            awaitingConsult.refetch(),
+            awaitingPayment.refetch(),
+            discharged.refetch(),
+            activeAdmissions.refetch(),
+            todayAppointments.refetch(),
+        ]);
+    };
 
     if (!authorized) return null;
 
@@ -148,7 +143,8 @@ export default function FrontDeskDashboard() {
         { label: "In Queue",         value: Array.isArray(awaitingConsult.data) ? awaitingConsult.data.length : 0, icon: ClipboardList,  color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
         { label: "Admitted",         value: admittedPatientsLength                                     , icon: BedDouble,      color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
         { label: "Pending Payment",  value: Array.isArray(awaitingPayment.data) ? awaitingPayment.data.length : 0, icon: Wallet,         color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100"    },
-        { label: "Discharged Today", value: Array.isArray(discharged.data) ? discharged.data.length : 0, icon: LogOut,         color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
+        { label: "Discharged",       value: Array.isArray(discharged.data) ? discharged.data.length : 0, icon: LogOut,         color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
+        { label: "Appointments Today", value: Array.isArray(todayAppointments.data) ? todayAppointments.data.length : 0, icon: CalendarDays, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100" },
     ];
 
     // True if any section is loading
@@ -157,7 +153,8 @@ export default function FrontDeskDashboard() {
         awaitingConsult.isLoading ||
         awaitingPayment.isLoading ||
         discharged.isLoading ||
-        activeAdmissions.isLoading;
+        activeAdmissions.isLoading ||
+        todayAppointments.isLoading;
 
     // fix: wrap callbacks in functions instead of passing potentially undefined or wrong signatures
 
@@ -185,9 +182,21 @@ export default function FrontDeskDashboard() {
     return (
         <div className="space-y-6">
 
+            <DashboardHeader
+                title="Front desk operations"
+                description="Coordinate arrivals, admissions, appointments, and billing from today’s live queues."
+                icon={ClipboardList}
+                tone="blue"
+                actions={
+                    <Link href="/front-desk/patient/new" className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white transition-colors hover:bg-blue-700">
+                        <Plus size={13} /> Register patient
+                    </Link>
+                }
+            />
+
             {/* ── Stats and Refresh ── */}
-            <div className="flex items-center justify-between gap-3">
-                <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="space-y-3">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-3">
                     {stats.map(s => {
                         const Icon = s.icon;
                         return (
@@ -205,7 +214,7 @@ export default function FrontDeskDashboard() {
                 </div>
                 <button
                     aria-label="Refresh dashboard"
-                    className="flex items-center gap-1 ml-2 px-3 py-2 rounded-lg border border-gray-200 shadow-sm text-xs font-bold text-gray-600 bg-white hover:bg-blue-50 hover:text-blue-700 transition-all"
+                    className="ml-auto flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 shadow-sm text-xs font-bold text-gray-600 bg-white hover:bg-blue-50 hover:text-blue-700 transition-all"
                     onClick={handleRefresh}
                     disabled={anyLoading}
                     type="button"
@@ -225,7 +234,7 @@ export default function FrontDeskDashboard() {
                     iconBg="bg-blue-50"
                     iconColor="text-blue-600"
                     title="New Arrivals"
-                    subtitle="Patients registered today"
+                    subtitle="Newly registered patients ready for check-in"
                     badge={Array.isArray(registered.data) ? registered.data.length : 0}
                     badgeColor="bg-blue-50 text-blue-700 border-blue-100"
                     href="/front-desk/queue"

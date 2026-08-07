@@ -9,15 +9,17 @@ import { usePatientsByStatus, useConsultationsByDoctor } from "@/hooks/emr/use-e
 import { useAppointmentsByDate } from "@/hooks/emr/use-appointments";
 import { LoadingSkeleton, EmptyState, ErrorAlert } from "@/components/emr-ui";
 import {
-    Clock, ClipboardList, CheckCircle2, Users,
+    Clock, ClipboardList, CheckCircle2,
     ChevronRight, Stethoscope, Activity, FileText,
-    Calendar, BedDouble, Baby, AlertTriangle,
+    Calendar, BedDouble, Baby,
 } from "lucide-react";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function todayISO() {
-    return new Date().toISOString().split("T")[0];
+    return toHospitalISODate();
 }
 
 function calcAge(dob?: string) {
@@ -34,6 +36,10 @@ function timeWaiting(updatedAt?: string) {
     return `${Math.floor(mins / 60)}h ${mins % 60}m waiting`;
 }
 
+function isCompletedConsultation(status?: string) {
+    return String(status ?? "").toLowerCase().replace(/[\s_-]/g, "") === "completed";
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatCard({ label, value, icon: Icon, color, bg, border }: {
@@ -41,7 +47,7 @@ function StatCard({ label, value, icon: Icon, color, bg, border }: {
     color: string; bg: string; border: string;
 }) {
     return (
-        <div className={`bg-white rounded-2xl border ${border} px-5 py-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow`}>
+        <div className={`bg-white rounded-2xl border ${border} px-4 py-4 sm:px-5 sm:py-5 flex min-w-0 items-center gap-3 sm:gap-4 shadow-sm hover:shadow-md transition-shadow`}>
             <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                 <Icon size={19} className={color} />
             </div>
@@ -59,7 +65,7 @@ function TabBar({ tabs, active, onChange }: {
     onChange: (id: string) => void;
 }) {
     return (
-        <div className="flex border-b border-gray-100 -mx-6 px-6 overflow-x-auto">
+        <div className="scrollbar-hide flex border-b border-gray-100 -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-x-auto">
             {tabs.map(tab => (
                 <button key={tab.id} onClick={() => onChange(tab.id)}
                     className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-all duration-150 ${
@@ -86,7 +92,7 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
     const wait     = timeWaiting(patient.updated_at);
 
     return (
-        <div className="flex items-center gap-3 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-red-100 hover:shadow-sm transition-all group">
+        <div className="flex flex-wrap items-center gap-3 p-3.5 sm:p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-red-100 hover:shadow-sm transition-all group">
             <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black text-sm shrink-0">
                 {index + 1}
             </div>
@@ -110,7 +116,7 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
                     {wait && <span className="text-amber-500 font-medium">· {wait}</span>}
                 </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="ml-auto flex items-center gap-1.5 shrink-0">
                 <Link href={`/doctor/health-records/${patient.id}`}
                     className="w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
                     <FileText size={13} />
@@ -153,7 +159,8 @@ export default function DoctorDashboard() {
 
     const awaitingPatients = usePatientsByStatus(PatientStatus.AwaitingConsultation);
     const admittedPatients = usePatientsByStatus(PatientStatus.Admitted);
-    const myConsultations  = useConsultationsByDoctor(user?.$id ?? "");
+    const staffId          = user?.$id ?? user?.id ?? "";
+    const myConsultations  = useConsultationsByDoctor(staffId);
     const todayAppts       = useAppointmentsByDate(todayISO());
 
     if (protectionLoading) return (
@@ -167,15 +174,16 @@ export default function DoctorDashboard() {
 
     const queueCount     = awaitingPatients.data?.length ?? 0;
     const admittedCount  = admittedPatients.data?.length ?? 0;
-    const inProgressCount= myConsultations.data?.filter(c => c.status !== "Completed").length ?? 0;
-    const completedCount = myConsultations.data?.filter(c => c.status === "Completed").length ?? 0;
-    const apptCount      = todayAppts.data?.length ?? 0;
+    const inProgressCount = myConsultations.data?.filter(c => !isCompletedConsultation(c.status)).length ?? 0;
+    const completedCount  = myConsultations.data?.filter(c => isCompletedConsultation(c.status)).length ?? 0;
+    const myTodayAppointments = todayAppts.data?.filter((appointment: any) => appointment.doctor_id === staffId) ?? [];
+    const apptCount = myTodayAppointments.length;
 
     const stats = [
         { label: "Awaiting Consultation", value: queueCount,      icon: Clock,         color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
         { label: "Admitted Patients",      value: admittedCount,   icon: BedDouble,     color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
         { label: "Today's Appointments",   value: apptCount,       icon: Calendar,      color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100"   },
-        { label: "Completed Today",        value: completedCount,  icon: CheckCircle2,  color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
+        { label: "Completed Consultations", value: completedCount,  icon: CheckCircle2,  color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
     ];
 
     const tabs = [
@@ -187,12 +195,24 @@ export default function DoctorDashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <DashboardHeader
+                title="Clinical dashboard"
+                description="Review your consultation queue, admitted patients, and today’s assigned appointments."
+                icon={Stethoscope}
+                tone="red"
+                actions={
+                    <Link href="/doctor/appointments" className="inline-flex h-9 items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-bold text-red-700 transition-colors hover:bg-red-100">
+                        <Calendar size={13} /> My schedule
+                    </Link>
+                }
+            />
+
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                 {stats.map(s => <StatCard key={s.label} {...s} />)}
             </div>
 
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-6 pt-6 pb-0">
+                <div className="flex items-center justify-between px-4 pt-5 pb-0 sm:px-6 sm:pt-6">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
                             <ClipboardList size={16} className="text-red-600" />
@@ -201,7 +221,7 @@ export default function DoctorDashboard() {
                     </div>
                 </div>
 
-                <div className="px-6 pt-4 pb-6">
+                <div className="px-4 pt-4 pb-5 sm:px-6 sm:pb-6">
                     <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
                     <div className="mt-5 space-y-3">
 
@@ -242,7 +262,7 @@ export default function DoctorDashboard() {
                                 {!myConsultations.isLoading && inProgressCount === 0 && (
                                     <EmptyState title="No active consultations" description="Consultations you start will appear here" icon="📋" />
                                 )}
-                                {myConsultations.data?.filter(c => c.status !== "Completed").map(c => (
+                                {myConsultations.data?.filter(c => !isCompletedConsultation(c.status)).map(c => (
                                     <div key={c.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50 text-sm text-gray-700">
                                         {c.patient_name ?? `Consultation #${c.id?.slice(-6)}`}
                                     </div>
@@ -257,7 +277,7 @@ export default function DoctorDashboard() {
                                 {!myConsultations.isLoading && completedCount === 0 && (
                                     <EmptyState title="No completed consultations" description="Completed consultations will appear here" icon="✓" />
                                 )}
-                                {myConsultations.data?.filter(c => c.status === "Completed").map(c => (
+                                {myConsultations.data?.filter(c => isCompletedConsultation(c.status)).map(c => (
                                     <div key={c.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50 text-sm text-gray-700 flex items-center gap-3">
                                         <CheckCircle2 size={14} className="text-green-500 shrink-0" />
                                         {c.patientName ?? `Consultation #${c.id?.slice(-6)}`}

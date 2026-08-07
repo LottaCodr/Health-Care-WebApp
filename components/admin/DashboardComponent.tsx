@@ -5,16 +5,18 @@ import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
 import {
     usePatientsByStatus,
+    useAllPatients,
     usePendingLabRequests,
     usePendingPrescriptions,
     usePendingNursingActions,
 } from "@/hooks/emr/use-emr";
 import {
     Users, Stethoscope, FlaskConical, Pill,
-    HeartPulse, CreditCard, Activity, TrendingUp,
-    Clock, CheckCircle2, AlertTriangle, Loader2,
+    HeartPulse, CreditCard, Activity,
+    AlertTriangle, ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -23,7 +25,7 @@ function StatCard({ label, value, icon: Icon, color, bg, border, href, sublabel 
     color: string; bg: string; border: string; href?: string; sublabel?: string;
 }) {
     const content = (
-        <div className={`bg-white rounded-2xl border ${border} shadow-sm px-5 py-5 flex items-center gap-4 hover:shadow-md transition-all group`}>
+        <div className={`bg-white rounded-2xl border ${border} shadow-sm px-4 py-4 sm:px-5 sm:py-5 flex min-w-0 items-center gap-3 sm:gap-4 hover:shadow-md transition-all group`}>
             <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                 <Icon size={19} className={color} />
             </div>
@@ -42,7 +44,7 @@ function StatCard({ label, value, icon: Icon, color, bg, border, href, sublabel 
 
 function SectionHeader({ title, subtitle, action }: { title: string; subtitle: string; action?: React.ReactNode }) {
     return (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p className="text-sm font-bold text-gray-900">{title}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
@@ -67,12 +69,9 @@ const ROLE_ACTIVITY = [
 export default function AdminDashboard() {
     const { authorized } = useRoleProtection([UserRole.Admin]);
 
-    const registered = usePatientsByStatus(PatientStatus.Registered);
+    const allPatients = useAllPatients();
     const awaiting = usePatientsByStatus(PatientStatus.AwaitingConsultation);
     const awaitingPay = usePatientsByStatus(PatientStatus.AwaitingPayment);
-    const discharged = usePatientsByStatus(PatientStatus.Discharged);
-    const sentToLab = usePatientsByStatus(PatientStatus.SentToLab);
-    const sentToPharm = usePatientsByStatus(PatientStatus.SentToPharmacy);
 
     const { data: labRequests } = usePendingLabRequests();
     const { data: prescriptions } = usePendingPrescriptions();
@@ -80,9 +79,7 @@ export default function AdminDashboard() {
 
     if (!authorized) return null;
 
-    const totalPatients = (registered.data?.length ?? 0) + (awaiting.data?.length ?? 0) +
-        (awaitingPay.data?.length ?? 0) + (discharged.data?.length ?? 0) +
-        (sentToLab.data?.length ?? 0) + (sentToPharm.data?.length ?? 0);
+    const totalPatients = allPatients.data?.length ?? 0;
 
     const pendingLab = labRequests?.filter((r: any) => r.status === "pending").length ?? 0;
     const activePx = prescriptions?.filter((p: any) => p.status === "Active").length ?? 0;
@@ -90,7 +87,7 @@ export default function AdminDashboard() {
     const pendingPay = awaitingPay.data?.length ?? 0;
 
     const stats = [
-        { label: "Total Patients Today", value: totalPatients, icon: Users, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+        { label: "Total Patient Records", value: totalPatients, icon: Users, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
         { label: "Awaiting Consultation", value: awaiting.data?.length ?? 0, icon: Stethoscope, color: "text-red-600", bg: "bg-red-50", border: "border-red-100", href: "/doctor/dashboard" },
         { label: "Pending Lab Tests", value: pendingLab, icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", href: "/lab-tech/dashboard" },
         { label: "Active Prescriptions", value: activePx, icon: Pill, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100", href: "/pharmacist/dashboard" },
@@ -108,25 +105,24 @@ export default function AdminDashboard() {
     return (
         <div className="space-y-6">
 
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-xl font-black text-gray-900">Admin Console</h1>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Link href="/admin/staff"
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-700 shadow-sm transition-all">
-                        <Users size={13} /> Manage Staff
-                    </Link>
-                    <Link href="/admin/audit"
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0a1628] hover:bg-[#0f1f38] text-white text-xs font-bold shadow-sm transition-all">
-                        <Activity size={13} /> Audit Log
-                    </Link>
-                </div>
-            </div>
+            <DashboardHeader
+                title="Hospital operations overview"
+                description="Monitor patient flow, department queues, billing, and staff activity from one place."
+                icon={ShieldCheck}
+                tone="amber"
+                actions={
+                    <div className="flex flex-wrap gap-2">
+                        <Link href="/admin/staff"
+                            className="flex h-9 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-bold text-gray-700 transition-all hover:border-gray-300 hover:bg-gray-50">
+                            <Users size={13} /> Staff
+                        </Link>
+                        <Link href="/admin/audit"
+                            className="flex h-9 items-center gap-2 rounded-xl bg-[#0a1628] px-3 text-xs font-bold text-white transition-all hover:bg-[#0f1f38]">
+                            <Activity size={13} /> Audit Log
+                        </Link>
+                    </div>
+                }
+            />
 
             {/* ── Alerts ── */}
             {alerts.length > 0 && (
@@ -142,7 +138,7 @@ export default function AdminDashboard() {
             )}
 
             {/* ── Stats grid ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                 {stats.map((s) => <StatCard key={s.label} {...s} />)}
             </div>
 

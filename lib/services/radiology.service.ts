@@ -141,10 +141,13 @@ export async function submitRadiologyReport(
 
     // Auto-route patient back to doctor queue when report submitted
     if (report.status === "completed" && result.visit_id) {
-        await sb
+        const { error: patientError } = await sb
             .from("patients")
-            .update({ status: "under-observation" })
+            .update({ status: "awaiting-consultation" })
             .eq("id", result.visit_id);
+        if (patientError) {
+            throw new Error("Report was filed, but the patient could not be returned to the doctor queue.");
+        }
     }
 
     return result;
