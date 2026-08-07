@@ -15,7 +15,8 @@ import {
     CheckCircle,
     Clock,
     Users,
-    Activity
+    Activity,
+    Loader2
 } from "lucide-react";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
@@ -46,7 +47,7 @@ type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export default function SecuritySettings() {
     const { toast } = useToast();
-    const { user, logout } = useAuth();
+    const { user, logout, isLoggingOut } = useAuth();
     const [loading, setLoading] = useState(false);
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
@@ -132,12 +133,15 @@ export default function SecuritySettings() {
     };
 
     const handleLogoutAllSessions = async () => {
+        if (isLoggingOut) return;
         try {
             logSecurityEvent('LOGOUT_ALL_SESSIONS', {
                 userId: user?.$id,
                 email: user?.email
             });
-            // Logout will redirect to login page immediately
+            // Logout shows a full-screen overlay and hard-navigates to /login —
+            // it never returns normally. We await it so the lint rule is happy
+            // but the navigation will happen before a toast could be shown.
             await logout();
         } catch (error) {
             toast({
@@ -357,8 +361,9 @@ export default function SecuritySettings() {
                         onClick={handleLogoutAllSessions}
                         variant="outline"
                         className="w-full"
+                        disabled={isLoggingOut}
                     >
-                        Logout from All Sessions
+                        {isLoggingOut ? <><Loader2 size={16} className="animate-spin" /> Signing out...</> : "Logout from All Sessions"}
                     </Button>
                 </CardContent>
             </Card>

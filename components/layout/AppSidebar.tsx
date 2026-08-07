@@ -10,7 +10,7 @@ import Image from "next/image";
 import { useAuth } from "@/context/auth-provider";
 import { NAV_CONFIG } from "./config";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, ChevronRight } from "lucide-react";
+import { LogOut, ChevronRight, Loader2 } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import Link from "next/link";
 import { normalizeUserRole } from "@/lib/roles";
@@ -33,7 +33,7 @@ const ROLE_CONFIG: Record<string, { accent: string; gradient: string; label: str
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
-    const { user, logout } = useAuth();
+    const { user, logout, isLoggingOut } = useAuth();
     const { unreadCount } = useNotifications();
     const { isMobile, setOpenMobile } = useSidebar();
     const [showLogout, setShowLogout] = useState(false);
@@ -166,10 +166,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     </div>
                     <button
                         onClick={() => setShowLogout(true)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                        disabled={isLoggingOut}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                         aria-label="Log out"
                     >
-                        <LogOut size={13} />
+                        {isLoggingOut ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />}
                     </button>
                 </div>
 
@@ -183,19 +184,22 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                             transition={{ duration: 0.15 }}
                             className="mt-2 px-3 py-3 rounded-2xl bg-[#0f1c3a] border border-white/10 space-y-2.5"
                         >
-                            <p className="text-xs text-white/50 font-medium text-center">Sign out of EMR?</p>
+                            <p className="text-xs text-white/50 font-medium text-center">Signing you out securely…</p>
+                            <p className="text-[10px] text-white/25 font-medium text-center -mt-1">You&apos;ll be taken to the login page</p>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => setShowLogout(false)}
-                                    className="flex-1 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 text-xs font-semibold transition-all"
+                                    disabled={isLoggingOut}
+                                    className="flex-1 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={async () => { setShowLogout(false); await logout?.(); }}
-                                    className="flex-1 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-all border border-red-500/20"
+                                    onClick={async () => { await logout?.(); }}
+                                    disabled={isLoggingOut}
+                                    className="flex-1 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-all border border-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                                 >
-                                    Sign Out
+                                    {isLoggingOut ? <><Loader2 size={12} className="animate-spin" /> Signing out…</> : "Sign Out"}
                                 </button>
                             </div>
                         </motion.div>

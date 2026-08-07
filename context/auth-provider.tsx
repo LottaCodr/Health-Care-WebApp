@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const queryClient = useQueryClient();
     const isAuthenticatingRef = useRef(false);
+    const logoutInProgressRef = useRef(false);
 
     // Supabase can transiently throw lock contention in dev when` multiple
     // auth reads race. Retry once, then fall back to session user.
@@ -219,57 +220,204 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const logout = useCallback(async () => {
-        // Show the logout overlay immediately for visual feedback
+        // Guard against double-clicks / concurrent calls (e.g., NavUser + Sidebar)
+        if (logoutInProgressRef.current || isLoggingOut) return;
+        logoutInProgressRef.current = true;
+
+        // Show the overlay immediately for visual feedback
         setIsLoggingOut(true);
 
-        try {
-            // 1. Terminate Supabase session FIRST — this clears auth cookies
-            //    so the server-side proxy won't redirect back to the dashboard.
-            await supabase.auth.signOut();
+        /**
+         * Purge every piece of persisted session / workflow state *optimistically*,
+         * so the UI feels instant and the next login never sees the previous
+         * user's data even if a network call hangs.
+         */
+        const clearClientState = () => {
+            try {
+                if (typeof window !== "undefined") {
+                    // Supabase JS stores the session under `sb-<ref>-auth-token`
+                    // (and legacy `sb:token`). Expire every matching key.
+                    const lsKeysToRemove: string[] = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (!k) continue;
+                        if (
+                            k.startsWith("sb-") ||
+                            k.startsWith("sb:") ||
+                            k.includes("supabase") ||
+                            k === "nile_user_profile" ||
+                            k === "ui-store"
+                        ) {
+                            lsKeysToRemove.push(k);
+                        }
+                    }
+                    lsKeysToRemove.forEach((k) => {
+                        try {
+                            localStorage.removeItem(k);
+                        } catch {}
+                    });
+                    // Belt-and-suspenders for the two app keys we know about
+                    try {
+                        localStorage.removeItem("nile_user_profile");
+                    } catch {}
+                    try {
+                        localStorage.removeItem("ui-store");
+                    } catch {}
 
-            // 2. Clear persisted and in-memory state
-            if (typeof window !== "undefined") {
-                localStorage.removeItem("nile_user_profile");
+                    // SessionStorage may also hold a transient copy
+                    try {
+                        const ssKeys: string[] = [];
+                        for (let i = 0; i < sessionStorage.length; i++) {
+                            const k = sessionStorage.key(i);
+                            if (!k) continue;
+                            if (k.startsWith("sb-") || k.startsWith("sb:") || k.includes("supabase")) ssKeys.push(k);
+                        }
+                        ssKeys.forEach((k) => {
+                            try {
+                                sessionStorage.removeItem(k);
+                            } catch {}
+                        });
+                    } catch {}
+
+                    // Brute-force expire document.cookie entries for Supabase
+                    // (covers cases where `supabase.auth.signOut()` hangs or the
+                    // token was stored under a custom cookie name).
+                    try {
+                        if (typeof document !== "undefined" && document.cookie) {
+                            document.cookie.split(";").forEach((c) => {
+                                const eqPos = c.indexOf("=");
+                                const name = eqPos > -1 ? c.substring(0, eqPos).trim() : c.trim();
+                                if (!name) return;
+                                if (name.startsWith("sb-") || name.startsWith("sb:") || name.includes("supabase")) {
+                                    try {
+                                        document.cookie = `${name}=; Max-Age=0; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                                        document.cookie = `${name}=; Max-Age=0; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+                                    } catch {}
+                                }
+                            });
+                        }
+                    } catch {}
+                }
+            } catch {}
+
+            setUser(null);
+
+            try {
+                queryClient.clear();
+                // Cancel any in-flight fetches so they don't repopulate the cache
+                // with the previous user's data after we've cleared it.
+                queryClient.cancelQueries?.();
+            } catch {}
+
+            // Tear down any open Realtime channels so they don't leak after
+            // the session is destroyed.
+            try {
+                // `removeAllChannels` is the fastest path; fall back to per-channel.
+                const anySupabase = supabase as unknown as { removeAllChannels?: () => void };
+                if (typeof anySupabase.removeAllChannels === "function") {
+                    anySupabase.removeAllChannels();
+                }
+            } catch {}
+
+            try {
+                useFrontDeskStore.getState().resetForm();
+                useLabStore.getState().resetAll();
+                useRadiologyStore.getState().resetAll();
+                useVitalsStore.getState().resetForm();
+                useConsultationStore.getState().resetForm();
+                usePharmacyStore.getState().resetForm();
+                usePatientStore.getState().resetForm();
+                useCacheStore.getState().clear();
+                useDischargeStore.getState().resetForm();
+                useNurseChartsStore.getState().resetDrugForm();
+                useNurseChartsStore.getState().resetFluidForm();
+                useAppointmentStore.getState().resetAll();
+                useUserStore.getState().clearUser();
+                useUIStore.setState({ sidebarOpen: true, darkMode: false });
+                // Persist middleware writes `ui-store` synchronously after setState;
+                // remove it again so the next mount starts clean.
+                try {
+                    localStorage.removeItem("ui-store");
+                } catch {}
+            } catch (err) {
+                console.warn("[logout] store reset warning:", err);
             }
-            setUser(null);
+        };
 
-            // 3. Clear TanStack Query cache
-            queryClient.clear();
+        // Optimistic clear — user sees logged-out state instantly
+        clearClientState();
 
-            // 4. Reset Zustand stores
-            useFrontDeskStore.getState().resetForm();
-            useLabStore.getState().resetAll();
-            useRadiologyStore.getState().resetAll();
-            useVitalsStore.getState().resetForm();
-            useConsultationStore.getState().resetForm();
-            usePharmacyStore.getState().resetForm();
-            usePatientStore.getState().resetForm();
-            useCacheStore.getState().clear();
+        // Hard-navigate helper — guarantees the user leaves the protected page
+        // even if `supabase.auth.signOut()` or `/api/auth/signout` hangs.
+        let navigated = false;
+        const hardNavigate = () => {
+            if (navigated) return;
+            navigated = true;
+            if (typeof window !== "undefined") {
+                // `replace` avoids pushing a history entry the user could "Back" into.
+                window.location.replace("/login");
+                // Fallback if the first replace was blocked (rare popup-blocker case)
+                setTimeout(() => {
+                    if (window.location.pathname !== "/login") {
+                        window.location.href = "/login";
+                    }
+                }, 200);
+                // If for any reason we're still on the page after 3s, drop the overlay
+                // so the user isn't stuck behind an invisible modal.
+                setTimeout(() => setIsLoggingOut(false), 3000);
+            } else {
+                router.replace("/login");
+                setIsLoggingOut(false);
+            }
+            logoutInProgressRef.current = false;
+        };
 
-            // Additional session stores
-            useDischargeStore.getState().resetForm();
-            useNurseChartsStore.getState().resetDrugForm();
-            useNurseChartsStore.getState().resetFluidForm();
-            useAppointmentStore.getState().resetAll();
+        // Safety net: never keep the overlay longer than 2.8s
+        const fallbackTimer = setTimeout(hardNavigate, 2800);
 
-            // Reset user and UI stores (persisted to localStorage)
-            useUserStore.getState().clearUser();
-            useUIStore.setState({ sidebarOpen: true, darkMode: false });
+        try {
+            // 1. Browser Supabase session — race with a timeout so a stalled
+            //    network (or the placeholder env) can't block the flow.
+            try {
+                await Promise.race([
+                    (async () => {
+                        try {
+                            // `global` revokes refresh tokens server-side; fall back to `local`
+                            await (supabase.auth.signOut as unknown as (opts?: { scope: string }) => Promise<unknown>)({ scope: "global" });
+                        } catch {
+                            try {
+                                await supabase.auth.signOut();
+                            } catch {}
+                        }
+                    })(),
+                    new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+                ]);
+            } catch {}
 
-            // 5. Navigate to login — safe now that cookies are cleared
-            router.replace("/login");
+            // 2. Server-side cookie clear — POST to the Route Handler which
+            //    expires httpOnly cookies via the `Set-Cookie` header. This is
+            //    required because `proxy.ts` reads cookies on the server.
+            try {
+                await Promise.race([
+                    fetch("/api/auth/signout", {
+                        method: "POST",
+                        credentials: "include",
+                        cache: "no-store",
+                    })
+                        .then(() => undefined)
+                        .catch(() => undefined),
+                    new Promise<void>((resolve) => setTimeout(resolve, 1200)),
+                ]);
+            } catch {}
         } catch (error) {
-            console.error("Logout error:", error);
-            // Fallback: still try to send them to login
-            setUser(null);
-            router.replace("/login");
+            console.error("[logout] error (continuing to login):", error);
         } finally {
-            // Always clear the overlay flag, otherwise the LogoutOverlay stays
-            // mounted (and blocks the screen) on the login page if navigation
-            // fails or if signOut errors after the flag was set.
-            setIsLoggingOut(false);
+            clearTimeout(fallbackTimer);
+            // Small grace period lets cookie-expiry Set-Cookie propagate before
+            // the hard reload, without noticeably slowing the UX.
+            setTimeout(hardNavigate, 400);
         }
-    }, [queryClient, router]);
+    }, [queryClient, router, isLoggingOut]);
 
     const contextValue: AuthContextType = useMemo(
         () => ({
