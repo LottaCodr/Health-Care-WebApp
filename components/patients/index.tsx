@@ -7,7 +7,7 @@ import BulkUploadDialog from "@/components/BulkUpload";
 import { Button } from "@/components/ui/button";
 import {
     RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
-    Users, Plus, Loader2, Search, UserX,
+    Users, Plus, Loader2, Search, UserX, Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -274,11 +274,21 @@ export default function PatientsComponent() {
                                 <span className="hidden sm:inline font-medium">Refresh</span>
                             </Button>
                             {(isFrontdesk || isAdmin) && (
-                                <BulkUploadDialog
-                                    open={bulkOpen}
-                                    onOpenChange={setBulkOpen}
-                                    uploadType="patients"
-                                />
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setBulkOpen(true)}
+                                        className="h-9 px-3 rounded-xl border-gray-200 text-gray-600 hover:text-gray-900 gap-1.5 text-sm font-semibold"
+                                    >
+                                        <Upload size={15} />
+                                        <span className="hidden sm:inline">Bulk Import</span>
+                                    </Button>
+                                    <BulkUploadDialog
+                                        open={bulkOpen}
+                                        onOpenChange={setBulkOpen}
+                                        uploadType="patients"
+                                    />
+                                </>
                             )}
                             {isFrontdesk && (
                                 <Link href="/front-desk/patient/new">

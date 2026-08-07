@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Upload,
@@ -915,6 +914,14 @@ export default function BulkUploadDialog({
   React.useEffect(() => {
     setLocalUploadType(uploadType);
   }, [uploadType]);
+
+  // Reset state when dialog closes
+  React.useEffect(() => {
+    if (!open) {
+      handleReset();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // ── File handler ────────────────────────────────────────────────────────────
 

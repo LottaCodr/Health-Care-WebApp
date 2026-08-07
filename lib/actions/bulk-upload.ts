@@ -45,7 +45,7 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
         case "patients":
             return {
                 name:                     str("name"),
-                birth_date:            str("birth_date") || null,
+                birth_date:               str("date_of_birth") || null,
                 gender:                   str("gender").toLowerCase(),
                 phone:                    str("phone"),
                 address:                  str("address") || null,
@@ -64,7 +64,10 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
                 unit:          str("unit") || "Pack",
                 reorder_level: num("reorder_level", 3),
                 price:    num("price", 0),
-                is_active:     str("status", "TRUE").toUpperCase() !== "FALSE",
+                is_active:     (() => {
+                    const v = (row["is_active"] ?? "TRUE").trim().toUpperCase();
+                    return v !== "FALSE" && v !== "INACTIVE";
+                })(),
             };
 
         case "lab_test_catalog":
