@@ -8,7 +8,7 @@ import {
     Pill, Plus, Search, X, Edit3, Trash2, Loader2,
     CheckCircle2, ChevronDown, RefreshCcw, Package,
     AlertTriangle, TrendingDown, ShieldAlert,
-    ToggleLeft, ToggleRight, ArrowUpCircle, Filter,
+    ToggleLeft, ToggleRight, ArrowUpCircle, Filter, Upload,
 } from "lucide-react";
 import {
     useDrugCatalog,
@@ -18,6 +18,7 @@ import {
     useRestockDrug,
 } from "@/hooks/emr/use-pharmacy";
 import { usePharmacyStore, Drug, ViewMode } from "@/store/pharmacy-store";
+import BulkUploadDialog from "@/components/BulkUpload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -308,6 +309,8 @@ export default function DrugManagementPage() {
         viewMode, search, category, stockFilter, editTarget, deleteTarget, restockTarget, showAdd, toggling, setField
     } = usePharmacyStore();
 
+    const [bulkImportOpen, setBulkImportOpen] = useState(false);
+
     const filtered = useMemo(() => {
         if (!drugs) return [];
         return (drugs as unknown as Drug[]).filter(d => {
@@ -363,6 +366,11 @@ export default function DrugManagementPage() {
                             </button>
                         ))}
                     </div>
+                    <BulkUploadDialog
+                        open={bulkImportOpen}
+                        onOpenChange={setBulkImportOpen}
+                        uploadType="drug_inventory"
+                    />
                     <button onClick={() => setField("showAdd", true)}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold shadow-sm shadow-violet-200 transition-all">
                         <Plus size={14} /> Add Drug

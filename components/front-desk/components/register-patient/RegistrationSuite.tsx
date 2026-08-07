@@ -13,6 +13,9 @@ import {
 import { Form, FormControl } from "@/components/ui/form";
 import CustomFormField from "@/components/CustomFormField";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
 import { PatientFormValidation } from "@/lib/validation";
 import {
   CovidVaccinationOptions,
@@ -20,6 +23,7 @@ import {
   PatientFormDefaultValues,
   BloodGroupOptions,
   GenotypeOptions,
+  RelationshipOptions,
 } from "@/constants";
 import { FormFieldType } from "@/components/forms/PatientForm";
 import { createPatient } from "@/lib/services/patient.service";
@@ -575,7 +579,21 @@ export default function RegistrationSuite() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactName" label="Contact Name" placeholder="Jane Doe" required />
                             <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="emergencyContactNumber" label="Contact Phone" placeholder="+234 800 000 0000" required />
-                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactRelationship" label="Relationship" placeholder="Spouse, Parent, Sibling" required />
+                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="emergencyContactRelationship" label="Relationship" required
+                              renderSkeleton={field => (
+                                <FormControl>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select relationship" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {RelationshipOptions.map(rel => (
+                                        <SelectItem key={rel} value={rel}>{rel}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                              )} />
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactEmail" label="Contact Email" placeholder="contact@example.com" required />
                             <div className="sm:col-span-2">
                               <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactAddress" label="Contact Address" placeholder="123 Main Street, City" required />
@@ -587,14 +605,14 @@ export default function RegistrationSuite() {
                       {/* ── Step 3: Medical History ── */}
                       {currentStep === 2 && (
                         <section className="space-y-5">
-                          <SectionTitle title="Medical History" description="Relevant health background and medications" />
+                          <SectionTitle title="Medical History" description="Relevant health background and medications (optional)" />
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="allergies" label="Known Allergies" placeholder="Penicillin, Peanuts, Latex..." required />
-                            <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="significantMedicationHistory" label="Medical / Surgical History" placeholder="Diabetes, hypertension, surgeries..." required />
+                            <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="allergies" label="Known Allergies" placeholder="Penicillin, Peanuts, Latex..." />
+                            <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="significantMedicationHistory" label="Medical / Surgical History" placeholder="Diabetes, hypertension, surgeries..." />
                             <div className="sm:col-span-2">
-                              <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="longTermMedication" label="Long-Term Medications" placeholder="List ongoing medications and dosages..." required />
+                              <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="longTermMedication" label="Long-Term Medications" placeholder="List ongoing medications and dosages..." />
                             </div>
-                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="covidVaccinationOptions" label="COVID-19 Vaccination Status" required
+                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="covidVaccinationOptions" label="COVID-19 Vaccination Status"
                               renderSkeleton={field => (
                                 <FormControl>
                                   <RadioGroup className="flex flex-col gap-2.5" onValueChange={field.onChange} defaultValue={field.value}>
@@ -608,8 +626,36 @@ export default function RegistrationSuite() {
                                 </FormControl>
                               )} />
                             <div className="space-y-5">
-                              <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="bloodGroup" label="Blood Group" placeholder="O+, A-, B+, AB-" required />
-                              <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="genoType" label="Genotype" placeholder="AA, AS, SS" required />
+                              <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="bloodGroup" label="Blood Group"
+                                renderSkeleton={field => (
+                                  <FormControl>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select blood group" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {BloodGroupOptions.map(bg => (
+                                          <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
+                                )} />
+                              <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="genoType" label="Genotype"
+                                renderSkeleton={field => (
+                                  <FormControl>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select genotype" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {GenotypeOptions.map(gt => (
+                                          <SelectItem key={gt} value={gt}>{gt}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
+                                )} />
                             </div>
                           </div>
                         </section>

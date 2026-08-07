@@ -9,7 +9,6 @@ import { useFrontDeskStore } from "@/store/frontdesk-store";
 import { useLabStore } from "@/store/lab-store";
 import { useDischargeStore } from "@/store/discharge-store";
 import { useNurseChartsStore } from "@/store/nurse-chart-store";
-import { useBulkUploadStore } from "@/store/bulk-upload-store";
 import { useAppointmentStore } from "@/store/appoointment-store";
 import { useRadiologyStore } from "@/store/radiology-store";
 import { useVitalsStore } from "@/store/vitals-store";
@@ -254,7 +253,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             useDischargeStore.getState().resetForm();
             useNurseChartsStore.getState().resetDrugForm();
             useNurseChartsStore.getState().resetFluidForm();
-            useBulkUploadStore.getState().reset();
             useAppointmentStore.getState().resetForm();
 
             // Reset user and UI stores (persisted to localStorage)

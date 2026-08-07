@@ -3,18 +3,11 @@
 import React, { useState, useMemo, Suspense } from "react";
 import SearchInput from "./search-input";
 import PatientsTable from "./table";
-import BulkUploadComponent from "@/components/BulkUpload";
-import { bulkUploadRows } from "@/lib/actions/patient-workflow.actions";
+import BulkUploadDialog from "@/components/BulkUpload";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import {
     RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
-    Users, Plus, Loader2, Search, UserX, Upload,
+    Users, Plus, Loader2, Search, UserX,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -281,13 +274,11 @@ export default function PatientsComponent() {
                                 <span className="hidden sm:inline font-medium">Refresh</span>
                             </Button>
                             {(isFrontdesk || isAdmin) && (
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setBulkOpen(true)}
-                                    className="h-9 gap-1.5 rounded-xl border-gray-200 text-sm font-semibold"
-                                >
-                                    <Upload size={15} /> Bulk Import
-                                </Button>
+                                <BulkUploadDialog
+                                    open={bulkOpen}
+                                    onOpenChange={setBulkOpen}
+                                    uploadType="patients"
+                                />
                             )}
                             {isFrontdesk && (
                                 <Link href="/front-desk/patient/new">
@@ -315,21 +306,7 @@ export default function PatientsComponent() {
                     </div>
                 </div>
 
-                {/* ── Bulk import dialog ───────────────────────────────────────── */}
-                <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>Bulk patient import</DialogTitle>
-                        </DialogHeader>
-                        <BulkUploadComponent
-                            // onUpload={async (type, rows) => {
-                            //     const result = await bulkUploadRows(type, rows);
-                            //     if (result.success > 0) refetch();
-                            //     return result;
-                            // }}
-                        />
-                    </DialogContent>
-                </Dialog>
+                {/* Bulk import dialog is rendered inline above */}
 
                 {/* ── Table card ───────────────────────────────────────────────── */}
                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
