@@ -104,6 +104,7 @@ export const paymentKeys = {
 export const pharmacyKeys = {
     prescriptions: () => ["pharmacy", "prescriptions"] as const,
     prescriptionsPending: () => ["pharmacy", "prescriptions", "pending"] as const,
+    prescriptionsCompletedToday: () => ["pharmacy", "prescriptions", "completed", "today"] as const,
     prescriptionsByPatient: (id: string) => ["pharmacy", "prescriptions", "patient", id] as const,
     prescription: (id: string) => ["pharmacy", "prescriptions", "detail", id] as const,
     inventory: () => ["pharmacy", "inventory"] as const,

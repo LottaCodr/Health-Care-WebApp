@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 // import { NotificationContainer } from "@/components/notification-container";
 import { Providers } from "@/context/provider";
 import { cn } from "@/utils/utils";
@@ -28,6 +29,7 @@ export default function RootLayout({
             {children}
             {/* <NotificationContainer /> */}
             <Toaster />
+            <SonnerToaster position="top-right" richColors closeButton />
           </ThemeProvider>
         </Providers>
       </body>

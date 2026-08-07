@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
     Sidebar, SidebarContent, SidebarHeader,
-    SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter,
+    SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import Image from "next/image";
 import { useAuth } from "@/context/auth-provider";
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, ChevronRight } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import Link from "next/link";
+import { normalizeUserRole } from "@/lib/roles";
 
 // ─── Role config ──────────────────────────────────────────────────────────────
 // Keys must match the exact DB values from staffs.role (case-sensitive in Postgres).
@@ -23,37 +24,27 @@ const ROLE_CONFIG: Record<string, { accent: string; gradient: string; label: str
     Nurse: { accent: "text-teal-400", gradient: "from-teal-500    to-teal-700", label: "Nurse" },
     Pharmacist: { accent: "text-violet-400", gradient: "from-violet-500  to-violet-700", label: "Pharmacist" },
     LabTechnician: { accent: "text-indigo-400", gradient: "from-indigo-500  to-indigo-700", label: "Lab Technician" },
-    Frontdesk: { accent: "text-blue-400", gradient: "from-blue-500    to-blue-700", label: "Front Desk" },
+    FrontDesk: { accent: "text-blue-400", gradient: "from-blue-500    to-blue-700", label: "Front Desk" },
     Admin: { accent: "text-amber-400", gradient: "from-amber-500   to-amber-700", label: "Administrator" },
     Radiologist: { accent: "text-fuchsia-400", gradient: "from-fuchsia-500 to-fuchsia-700", label: "Radiologist" },
 };
-
-// ─── Normalise role ───────────────────────────────────────────────────────────
-// Converts any casing the auth context might store ("frontdesk", "FRONTDESK",
-// "front_desk") into the canonical DB form ("Frontdesk").
-// Steps: lower-case everything → capitalise first letter.
-// This handles all known variants without requiring exhaustive aliases.
-
-function normaliseRole(raw?: string): string {
-    if (!raw) return "";
-    const lower = raw.toLowerCase().replace(/[_\s-]/g, ""); // strip separators
-    return lower.charAt(0).toUpperCase() + lower.slice(1);
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
-    const router = useRouter();
     const { user, logout } = useAuth();
     const { unreadCount } = useNotifications();
+    const { isMobile, setOpenMobile } = useSidebar();
     const [showLogout, setShowLogout] = useState(false);
 
-    // Normalise so lookups work regardless of auth context casing
-    const userRole = normaliseRole(user?.role);
-
-    const nav = userRole ? NAV_CONFIG[userRole] ?? NAV_CONFIG[user?.role ?? ""] : null;
-    const roleCfg = ROLE_CONFIG[userRole] ?? ROLE_CONFIG[user?.role ?? ""] ?? ROLE_CONFIG.Admin;
+    const userRole = normalizeUserRole(user?.role);
+    const nav = userRole ? NAV_CONFIG[userRole] : null;
+    const roleCfg = (userRole && ROLE_CONFIG[userRole]) || ROLE_CONFIG.Admin;
+    const dashboardHref = nav?.main[0]?.url ?? "/";
+    const handleNavigate = () => {
+        if (isMobile) setOpenMobile(false);
+    };
 
     if (!nav) return null;
 
@@ -61,7 +52,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <Sidebar
             variant="inset"
             {...props}
-            className="bg-[#0a1628] border-r border-white/5 flex flex-col"
+            className="!bg-[#0a1628] border-r border-white/10 text-white flex flex-col"
         >
             {/* ── Logo ── */}
             <SidebarHeader className="px-4 pt-5 pb-2 shrink-0">
@@ -72,7 +63,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                             className="h-auto p-0 hover:bg-transparent"
                             asChild
                         >
-                            <Link href="/" className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/5 active:bg-white/8 transition-all duration-200 group cursor-pointer">
+                            <Link href={dashboardHref} onClick={handleNavigate} className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-all duration-200 group cursor-pointer">
 
                                 {/* Logo mark with online indicator */}
                                 <div className="relative shrink-0">
@@ -93,7 +84,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                                     <p className="text-white font-bold text-[13px] leading-tight tracking-tight truncate">
                                         Nile Valley
                                     </p>
-                                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">
+                                    <p className="text-white/45 text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">
                                         Mother & Child · Hospital EMR
                                     </p>
                                 </div>
@@ -101,7 +92,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                                 {/* Hover arrow */}
                                 <svg
                                     width="12" height="12" viewBox="0 0 12 12" fill="none"
-                                    className="shrink-0 text-white/15 group-hover:text-white/35 transition-colors duration-200"
+                                    className="shrink-0 text-white/15 group-hover:text-white/55 transition-colors duration-200"
                                 >
                                     <path
                                         d="M2 6h8M6 2l4 4-4 4"
@@ -117,7 +108,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenu>
 
                 {/* Role badge + notification count */}
-                <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/4 border border-white/5">
+                <div className="flex items-center gap-2 px-3 py-2 mt-2 rounded-xl bg-white/[0.04] border border-white/10">
                     <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-br ${roleCfg.gradient} shrink-0`} />
                     <p className={`text-[10px] font-black uppercase tracking-widest flex-1 ${roleCfg.accent}`}>
                         {roleCfg.label}
@@ -142,7 +133,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         <NavItem
                             key={item.url}
                             item={item}
-                            isActive={pathname.startsWith(item.url)}
+                            isActive={pathname === item.url || pathname.startsWith(`${item.url}/`)}
+                            onNavigate={handleNavigate}
                         />
                     ))}
                 </NavSection>
@@ -152,7 +144,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         <NavItem
                             key={item.url}
                             item={item}
-                            isActive={pathname.startsWith(item.url)}
+                            isActive={pathname === item.url || pathname.startsWith(`${item.url}/`)}
+                            onNavigate={handleNavigate}
                         />
                     ))}
                 </NavSection>
@@ -169,11 +162,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-white text-xs font-bold truncate leading-tight">{user?.name ?? "Staff"}</p>
-                        <p className="text-white/30 text-[9px] font-medium truncate mt-0.5">{user?.email}</p>
+                        <p className="text-white/45 text-[9px] font-medium truncate mt-0.5">{user?.email}</p>
                     </div>
                     <button
                         onClick={() => setShowLogout(true)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
                         aria-label="Log out"
                     >
                         <LogOut size={13} />
@@ -218,7 +211,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div>
-            <p className="text-[9px] font-black text-white/18 uppercase tracking-[0.22em] mb-1.5 px-3">
+            <p className="text-[9px] font-black text-white/45 uppercase tracking-[0.22em] mb-1.5 px-3">
                 {label}
             </p>
             <ul className="space-y-0.5">{children}</ul>
@@ -229,23 +222,26 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
 // ─── Nav item ─────────────────────────────────────────────────────────────────
 
 function NavItem({
-    item, isActive,
+    item, isActive, onNavigate,
 }: {
     item: { icon: React.ElementType; title: string; url: string; badge?: number };
     isActive: boolean;
+    onNavigate: () => void;
 }) {
     const Icon = item.icon;
     return (
         <li>
             <Link
                 href={item.url}
+                onClick={onNavigate}
+                aria-current={isActive ? "page" : undefined}
                 className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150
-                    ${isActive ? "text-white" : "text-white/35 hover:text-white/65 hover:bg-white/4"}`}
+                    ${isActive ? "text-white" : "text-white/55 hover:text-white/65 hover:bg-white/5"}`}
             >
                 {isActive && (
                     <motion.div
                         layoutId="sidebar-active-bg"
-                        className="absolute inset-0 bg-white/8 rounded-xl border border-white/8"
+                        className="absolute inset-0 bg-white/[0.08] rounded-xl border border-white/10"
                         transition={{ type: "spring", stiffness: 500, damping: 35 }}
                     />
                 )}
@@ -257,7 +253,7 @@ function NavItem({
                     />
                 )}
 
-                <Icon size={16} className={`relative shrink-0 transition-colors ${isActive ? "text-blue-400" : "text-white/25"}`} />
+                <Icon size={16} className={`relative shrink-0 transition-colors ${isActive ? "text-blue-400" : "text-white/40"}`} />
                 <span className="relative flex-1 text-left tracking-tight">{item.title}</span>
 
                 {item.badge != null && item.badge > 0 && (
@@ -266,7 +262,7 @@ function NavItem({
                     </span>
                 )}
 
-                {isActive && <ChevronRight size={12} className="relative text-white/20 shrink-0" />}
+                {isActive && <ChevronRight size={12} className="relative text-white/40 shrink-0" />}
             </Link>
         </li>
     );

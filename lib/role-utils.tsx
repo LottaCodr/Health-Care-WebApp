@@ -12,6 +12,7 @@ import {
     ROLE_DASHBOARD_MAP as SHARED_ROLE_DASHBOARD_MAP,
     getDashboardRoute,
 } from "@/lib/role-dashboard";
+import { normalizeUserRole } from "@/lib/roles";
 
 // Route configuration by role
 export const ROLE_ROUTES: Record<UserRole, string> = SHARED_ROLE_DASHBOARD_MAP;
@@ -35,7 +36,8 @@ export const PROTECTED_ROUTES: Record<string, UserRole[]> = {
 export function useRoleProtection(allowedRoles: UserRole[]) {
     const router = useRouter();
     const { user, isLoading } = useAuth();
-    const userRole = user?.role as UserRole | undefined;
+    const userRole = normalizeUserRole(user?.role) || undefined;
+    const hasAccess = !!userRole && allowedRoles.includes(userRole);
 
     useEffect(() => {
         if (isLoading) return;
@@ -45,10 +47,10 @@ export function useRoleProtection(allowedRoles: UserRole[]) {
             return;
         }
 
-        if (userRole && !allowedRoles.includes(userRole)) {
+        if (!hasAccess) {
             router.replace("/unauthorized");
         }
-    }, [isLoading, user, userRole, allowedRoles, router]);
+    }, [hasAccess, isLoading, user, router]);
 
     if (isLoading) return { authorized: false, loading: true };
 
@@ -56,7 +58,7 @@ export function useRoleProtection(allowedRoles: UserRole[]) {
         return { authorized: false, loading: false };
     }
 
-    if (!allowedRoles.includes(userRole!)) {
+    if (!hasAccess) {
         return { authorized: false, loading: false };
     }
 
@@ -95,7 +97,7 @@ export function withRoleProtection(
 export function isRouteAccessible(pathname: string, role: UserRole): boolean {
     for (const [route, roles] of Object.entries(PROTECTED_ROUTES)) {
         if (pathname.startsWith(route)) {
-            return roles.includes(role) || roles.includes(UserRole.Admin);
+            return roles.includes(role);
         }
     }
     return false;

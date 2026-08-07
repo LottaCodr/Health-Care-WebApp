@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 
 // PostgREST join — requires nursing_actions_patient_id_fkey to exist (see migration)
 const SELECT_WITH_PATIENT = `
@@ -85,10 +86,12 @@ export async function listPendingNursingActions() {
 
 export async function listCompletedNursingActions() {
     const supabase = await createClient();
+    const startOfToday = new Date(`${toHospitalISODate()}T00:00:00+01:00`);
     const { data, error } = await supabase
         .from("nursing_actions")
         .select(SELECT_WITH_PATIENT)
         .eq("status", "Completed")
+        .gte("completion_time", startOfToday.toISOString())
         .order("completion_time", { ascending: false });
 
     if (error) { console.error("[nursing] listCompleted:", error); return []; }

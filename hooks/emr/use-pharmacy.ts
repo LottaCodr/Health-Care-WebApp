@@ -33,6 +33,17 @@ export function usePendingPrescriptions() {
     });
 }
 
+export function useCompletedPrescriptionsToday() {
+    return useQuery({
+        queryKey: pharmacyKeys.prescriptionsCompletedToday(),
+        queryFn: PH.listCompletedPrescriptionsToday,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+        refetchInterval: 60_000,
+    });
+}
+
 export function usePrescription(id: string) {
     return useQuery({
         queryKey: pharmacyKeys.prescription(id),
@@ -54,9 +65,12 @@ export function useCreatePrescription() {
 
         onSuccess: (prescription) => {
             qc.setQueryData(pharmacyKeys.prescription(prescription.id), prescription);
-            qc.invalidateQueries({
-                queryKey: pharmacyKeys.prescriptionsByPatient(prescription.id),
-            });
+            const patientId = prescription.patient_id ?? prescription.patientId;
+            if (patientId) {
+                qc.invalidateQueries({
+                    queryKey: pharmacyKeys.prescriptionsByPatient(patientId),
+                });
+            }
             qc.invalidateQueries({ queryKey: pharmacyKeys.prescriptionsPending() });
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
         },
@@ -84,10 +98,14 @@ export function useUpdatePrescription() {
 
         onSuccess: (updated) => {
             qc.setQueryData(pharmacyKeys.prescription(updated.id), updated);
-            qc.invalidateQueries({
-                queryKey: pharmacyKeys.prescriptionsByPatient(updated.id),
-            });
+            const patientId = updated.patient_id ?? updated.patientId;
+            if (patientId) {
+                qc.invalidateQueries({
+                    queryKey: pharmacyKeys.prescriptionsByPatient(patientId),
+                });
+            }
             qc.invalidateQueries({ queryKey: pharmacyKeys.prescriptionsPending() });
+            qc.invalidateQueries({ queryKey: pharmacyKeys.prescriptionsCompletedToday() });
             // After dispensing the DB trigger creates a payment → bust payment cache too
             if (updated.id) {
                 qc.invalidateQueries({ queryKey: ["payments"] });

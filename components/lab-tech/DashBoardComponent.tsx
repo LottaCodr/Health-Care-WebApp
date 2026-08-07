@@ -9,12 +9,14 @@ import {
     FlaskConical, CheckCircle2, Clock,
     RefreshCcw, FileText, AlertTriangle, User,
     Phone, Calendar, Droplets, Beaker, Hash,
-    ChevronDown, ChevronUp, Activity,
+    ChevronDown, ChevronUp, Activity, Microscope,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLabStore } from "@/store/lab-store";
 import TestTemplateForm from "./TestTemplateForm";
 import { calculateAge } from "@/utils/export";
+import Link from "next/link";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -121,6 +123,18 @@ export default function LabTechDashboard() {
     return (
         <div className="space-y-6">
 
+            <DashboardHeader
+                title="Laboratory workspace"
+                description="Work through priority specimens, enter structured results, and review today’s completed tests."
+                icon={FlaskConical}
+                tone="indigo"
+                actions={
+                    <Link href="/lab-tech/catalog" className="inline-flex h-9 items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100">
+                        <Microscope size={13} /> Test catalog
+                    </Link>
+                }
+            />
+
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
@@ -130,7 +144,7 @@ export default function LabTechDashboard() {
                 ].map(s => {
                     const Icon = s.icon;
                     return (
-                        <div key={s.label} className={`bg-white rounded-2xl border ${s.border} shadow-sm px-5 py-5 flex items-center gap-4 hover:shadow-md transition-shadow`}>
+                        <div key={s.label} className={`bg-white rounded-2xl border ${s.border} shadow-sm px-4 py-4 sm:px-5 sm:py-5 flex min-w-0 items-center gap-3 sm:gap-4 hover:shadow-md transition-shadow`}>
                             <div className={`w-11 h-11 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
                                 <Icon size={19} className={s.color} />
                             </div>
@@ -145,7 +159,7 @@ export default function LabTechDashboard() {
 
             {/* Pending requests */}
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
+                <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5 border-b border-gray-50">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
                             <FlaskConical size={16} className="text-indigo-600" />
@@ -161,9 +175,12 @@ export default function LabTechDashboard() {
                                 {pending.length} pending
                             </span>
                         )}
-                        <button onClick={() => refetch()}
-                            className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
-                            <RefreshCcw size={13} />
+                        <button onClick={refetch}
+                            type="button"
+                            aria-label="Refresh laboratory queues"
+                            disabled={pendingLoading || completedLoading}
+                            className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors disabled:cursor-wait disabled:opacity-60">
+                            <RefreshCcw size={13} className={pendingLoading || completedLoading ? "animate-spin" : ""} />
                         </button>
                     </div>
                 </div>

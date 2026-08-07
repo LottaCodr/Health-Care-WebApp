@@ -18,6 +18,7 @@ import { getAllStaffs } from "@/actions/staff/get.staff";
 import { Staff } from "@/actions/staff/types";
 import { calculateAge } from "@/utils/export";
 import { useConfirmPayment } from "@/hooks/emr/use-payment";
+import { normalizeUserRole } from "@/lib/roles";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
 
@@ -79,15 +80,6 @@ const DISCHARGE_STATUSES = new Set([
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function normalizeRole(role?: string) {
-  const r = (role ?? "").toLowerCase();
-  if (r.includes("front")) return "FrontDesk";
-  if (r.includes("doc")) return "Doctor";
-  if (r.includes("nurse")) return "Nurse";
-  if (r.includes("admin")) return "Admin";
-  return role ?? "";
-}
-
 function normalizeStatus(status?: string) {
   return String(status ?? "").toLowerCase().replace(/_/g, "-").trim();
 }
@@ -110,11 +102,11 @@ function SectionHeader({ icon: Icon, color, bg, title, subtitle }: {
   icon: React.ElementType; color: string; bg: string; title: string; subtitle: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 items-start gap-3 sm:items-center">
       <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
         <Icon size={17} className={color} />
       </div>
-      <div>
+      <div className="min-w-0">
         <h3 className="text-sm font-bold text-gray-900 leading-tight">{title}</h3>
         <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
       </div>
@@ -124,7 +116,7 @@ function SectionHeader({ icon: Icon, color, bg, title, subtitle }: {
 
 function NoPatient({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-100">
+    <div className="flex flex-col items-center justify-center px-4 py-12 sm:py-16 bg-white rounded-2xl border border-gray-100">
       <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-3">
         <Icon size={20} className="text-gray-300" />
       </div>
@@ -137,11 +129,11 @@ function NoPatient({ icon: Icon, label }: { icon: React.ElementType; label: stri
 function Panel({ accent, label, children }: { accent: string; label: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-50">
+      <div className="flex items-center gap-2.5 px-4 py-3.5 sm:px-5 border-b border-gray-50">
         <div className={`w-1.5 h-4 rounded-full ${accent}`} />
         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</p>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-3 sm:p-5">{children}</div>
     </div>
   );
 }
@@ -160,7 +152,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const { user } = useAuth();
   const confirmPayment = useConfirmPayment();
 
-  const role = normalizeRole(user?.role);
+  const role = normalizeUserRole(user?.role);
   const staffId = user?.$id ?? user?.id ?? "";
   const status = normalizeStatus(patient.status ?? patientStore.status);
   const canManageBilling = role === "FrontDesk" || role === "Admin";
@@ -171,7 +163,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const availableStaff = useMemo(() =>
     staff.filter((s: Staff) =>
       s.role && consultationStore.referredTo &&
-      s.role.toLowerCase() === consultationStore.referredTo
+      s.role.toLowerCase() === consultationStore.referredTo.toLowerCase()
     ),
     [staff, consultationStore.referredTo]
   );
@@ -266,7 +258,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const openDischargeForm = dischargeStore.openForm;
   useEffect(() => {
     if (tab === "discharge" && patient.id) openDischargeForm(patient.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, patient.id, openDischargeForm]);
 
   useEffect(() => {
@@ -286,41 +277,49 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <Tabs value={tab} onValueChange={setTab} className="w-full space-y-5">
-      <TabsList className="flex flex-wrap items-start w-full h-auto bg-white border border-gray-100 rounded-2xl p-2.5 shadow-sm gap-x-1 gap-y-2">
-        {groupedTabs.map(({ group, tabs }, groupIdx) => (
-          <Fragment key={group}>
-            <div className="flex flex-col gap-1 min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-300 px-1">
-                {GROUP_LABELS[group]}
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {tabs.map(({ value, label, icon: Icon, accent, activeBar }) => {
-                  const isActive = tab === value;
-                  return (
-                    <TabsTrigger key={value} value={value}
-                      className={`relative flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 min-w-[7rem] ${
-                        isActive
-                          ? `bg-gray-50 border border-gray-100 shadow-sm ${accent}`
-                          : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/60"
-                      }`}>
-                      {isActive && <span className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${activeBar}`} />}
-                      <Icon size={14} className="shrink-0" />
-                      <span className="truncate">{label}</span>
-                    </TabsTrigger>
-                  );
-                })}
-              </div>
-            </div>
-            {groupIdx < groupedTabs.length - 1 && (
-              <div className="hidden sm:block w-px self-stretch bg-gray-100 mx-1.5 mt-4" />
-            )}
-          </Fragment>
-        ))}
-      </TabsList>
+    <Tabs value={tab} onValueChange={setTab} className="min-w-0 w-full space-y-5">
+      <div className="rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
+        <div className="flex items-center justify-between px-1 pb-1.5 sm:hidden">
+          <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Patient record sections</p>
+          <p className="text-[9px] font-semibold text-gray-400">Swipe to explore →</p>
+        </div>
+        <div className="scrollbar-hide max-w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain">
+          <TabsList aria-label="Patient record sections" className="inline-flex h-auto min-w-max flex-nowrap items-stretch justify-start gap-1 bg-transparent p-0 shadow-none">
+            {groupedTabs.map(({ group, tabs }, groupIdx) => (
+              <Fragment key={group}>
+                <div className="flex shrink-0 flex-col gap-1 rounded-xl bg-gray-50/50 p-1">
+                  <p className="px-1 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                    {GROUP_LABELS[group]}
+                  </p>
+                  <div className="flex flex-nowrap gap-1">
+                    {tabs.map(({ value, label, icon: Icon, accent, activeBar }) => {
+                      const isActive = tab === value;
+                      return (
+                        <TabsTrigger key={value} value={value}
+                          className={`relative min-h-10 snap-start gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-all duration-200 ${
+                            isActive
+                              ? `border-gray-200 bg-white shadow-sm ${accent}`
+                              : "border-transparent bg-transparent text-gray-500 hover:border-gray-100 hover:bg-white hover:text-gray-700"
+                          }`}>
+                          {isActive && <span className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${activeBar}`} />}
+                          <Icon size={14} className="shrink-0" />
+                          <span>{label}</span>
+                        </TabsTrigger>
+                      );
+                    })}
+                  </div>
+                </div>
+                {groupIdx < groupedTabs.length - 1 && (
+                  <div aria-hidden="true" className="mx-1.5 w-px shrink-0 self-stretch bg-gray-100" />
+                )}
+              </Fragment>
+            ))}
+          </TabsList>
+        </div>
+      </div>
 
       {/* ── Vitals ── */}
-      <TabsContent value="vitals" className="mt-0">
+      <TabsContent value="vitals" className="mt-0 min-w-0">
         <div className="space-y-5">
           <SectionHeader icon={Activity} color="text-blue-600" bg="bg-blue-50"
             title="Vitals Recording" subtitle="Patient measurements and clinical observations" />
@@ -342,7 +341,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       </TabsContent>
 
       {/* ── Consultations ── */}
-      <TabsContent value="consultations" className="mt-0">
+      <TabsContent value="consultations" className="mt-0 min-w-0">
         <div className="space-y-5">
           <SectionHeader icon={Stethoscope} color="text-red-600" bg="bg-red-50"
             title="Consultations" subtitle="Clinical findings and patient routing" />
@@ -368,7 +367,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       </TabsContent>
 
       {/* ── Prescriptions ── */}
-      <TabsContent value="prescriptions" className="mt-0">
+      <TabsContent value="prescriptions" className="mt-0 min-w-0">
         <div className="space-y-5">
           <SectionHeader icon={Pill} color="text-violet-600" bg="bg-violet-50"
             title="Prescriptions" subtitle="Medication records and dispensing history" />
@@ -390,21 +389,21 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       </TabsContent>
 
       {/* ── Lab ── */}
-      <TabsContent value="lab" className="mt-0"><LabTab patient={patient} userRole={user?.role} /></TabsContent>
-      <TabsContent value="radiology" className="mt-0"><RadiologyTab patient={patient} userRole={user?.role} /></TabsContent>
+      <TabsContent value="lab" className="mt-0 min-w-0"><LabTab patient={patient} userRole={user?.role} /></TabsContent>
+      <TabsContent value="radiology" className="mt-0 min-w-0"><RadiologyTab patient={patient} userRole={user?.role} /></TabsContent>
 
       {patient.id && (
         <>
           {/* ── Nurse charts ── */}
-          <TabsContent value="drug-chart" className="mt-0">
+          <TabsContent value="drug-chart" className="mt-0 min-w-0">
             <DrugChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
           </TabsContent>
-          <TabsContent value="fluid-balance" className="mt-0">
+          <TabsContent value="fluid-balance" className="mt-0 min-w-0">
             <FluidBalanceChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
           </TabsContent>
 
           {/* ── Discharge ── */}
-          <TabsContent value="discharge" className="mt-0">
+          <TabsContent value="discharge" className="mt-0 min-w-0">
             <div className="space-y-4">
               <SectionHeader icon={ClipboardCheck} color="text-emerald-600" bg="bg-emerald-50"
                 title="Discharge Summary" subtitle="Complete before sending patient to billing" />
@@ -414,7 +413,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
           </TabsContent>
 
           {/* ── Billing ── */}
-          <TabsContent value="billing" className="mt-0">
+          <TabsContent value="billing" className="mt-0 min-w-0">
             <div className="space-y-4">
               <SectionHeader icon={CreditCard} color="text-orange-600" bg="bg-orange-50"
                 title="Payment History"
@@ -435,16 +434,17 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
           </TabsContent>
 
           {/* ── Appointments — all roles, patient-scoped ── */}
-          <TabsContent value="appointments" className="mt-0">
+          <TabsContent value="appointments" className="mt-0 min-w-0">
             <AppointmentComponent
               staffId={staffId}
               patientId={patient.id}
               inPatientContext
+              canManage={canManageBilling}
             />
           </TabsContent>
 
           {/* ── Documents — upload: FrontDesk/Admin; view: all roles ── */}
-          <TabsContent value="documents" className="mt-0">
+          <TabsContent value="documents" className="mt-0 min-w-0">
             <PatientDocumentsTab
               patientId={patient.id}
               staffId={staffId}

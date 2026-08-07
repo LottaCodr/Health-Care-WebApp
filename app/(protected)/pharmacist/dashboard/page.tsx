@@ -1,14 +1,5 @@
-"use client";
+import PharmacistDashboard from "@/components/pharmacist/DashBoardComponent";
 
-import React from 'react'
-import DashBoardComponent from '@/components/pharmacist/DashBoardComponent'
-
-const DashboardPage = () => {
-    return (
-        <main className="min-h-screen w-full px-4 py-6 sm:px-6 md:py-10 lg:px-8">
-            <DashBoardComponent />
-        </main>
-    )
+export default function PharmacistDashboardPage() {
+    return <PharmacistDashboard />;
 }
-
-export default DashboardPage

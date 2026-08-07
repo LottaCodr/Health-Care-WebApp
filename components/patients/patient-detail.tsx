@@ -147,7 +147,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
     const currentPatient = patientStore.patient[0];
 
     return (
-        <main className="max-w-full px-2 md:px-6 py-10 space-y-8">
+        <main className="min-w-0 max-w-full py-2 sm:py-4 space-y-5 sm:space-y-7">
 
             {/* Return visit banner */}
             {isFrontDesk && isDischarged && patient.id && (
@@ -326,7 +326,7 @@ function PatientProfile({
         <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
 
             {/* ── Hero header ─────────────────────────────────────────────────── */}
-            <div className="relative px-6 pt-8 pb-6 bg-gradient-to-br from-blue-700 to-blue-900 overflow-hidden">
+            <div className="relative px-4 pt-6 pb-5 sm:px-6 sm:pt-8 sm:pb-6 bg-gradient-to-br from-blue-700 to-blue-900 overflow-hidden">
                 {/* Decorative circles */}
                 <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5" />
                 <div className="absolute top-8 -right-4 w-28 h-28 rounded-full bg-white/5" />
@@ -340,7 +340,7 @@ function PatientProfile({
                     {/* Name & meta */}
                     <div className="flex-1 min-w-0">
                         <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Patient Profile</p>
-                        <h2 className="text-2xl font-bold text-white truncate">{patient.name}</h2>
+                        <h2 className="text-xl sm:text-2xl font-bold text-white break-words">{patient.name}</h2>
                         {/* Patient ID - prominently visible at top */}
                         <div className="flex flex-wrap items-center gap-2 mt-2.5">
                             <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm">
@@ -377,7 +377,7 @@ function PatientProfile({
                             {status || "No Status"}
                         </span>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <button
                                 type="button"
                                 onClick={() => router.push(`/patient-timeline/${patient.id}`)}
@@ -428,7 +428,7 @@ function PatientProfile({
             </div>
 
             {/* ── Fields grid ───────────────────────────────────────────────────── */}
-            <div className="px-6 py-6">
+            <div className="px-4 py-4 sm:px-6 sm:py-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {activeFields.map((field) => (
                         <InfoItem key={field.label} label={field.label} icon={field.icon} value={field.value} />

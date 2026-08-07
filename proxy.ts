@@ -1,23 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getDashboardRoute } from "@/lib/role-dashboard";
+import { normalizeUserRole } from "@/lib/roles";
 
 // ─── Public routes (no auth needed) ────────────────────────────────────────
 const PUBLIC_PATHS = ["/unauthorized", "/login"];
-
-// ─── Role normalization (mirror logic from auth-provider) ──────────────────
-function normalizeRole(role: any): string {
-    if (typeof role !== "string") return role ?? "";
-    const r = String(role).toLowerCase();
-    if (r.includes("front")) return "FrontDesk";
-    if (r.includes("doc")) return "Doctor";
-    if (r.includes("nurse")) return "Nurse";
-    if (r.includes("lab")) return "LabTechnician";
-    if (r.includes("pharm")) return "Pharmacist";
-    if (r.includes("radio")) return "Radiologist";
-    if (r.includes("admin")) return "Admin";
-    return role;
-}
 
 // ─── Role → route prefix map (used to guard wrong-role access) ─────────────
 const ROLE_PREFIXES: Record<string, string> = {
@@ -93,7 +80,7 @@ export async function proxy(request: NextRequest) {
                 .eq("id", user.id)
                 .single();
 
-            const normalizedRole = normalizeRole(staffRow?.role);
+            const normalizedRole = normalizeUserRole(staffRow?.role);
             const dashboard = getDashboardRoute(normalizedRole);
 
             return NextResponse.redirect(new URL(dashboard, request.url));
@@ -111,7 +98,7 @@ export async function proxy(request: NextRequest) {
             .select("role")
             .eq("id", user.id)
             .single();
-        const normalizedRole = normalizeRole(staffRow?.role);
+        const normalizedRole = normalizeUserRole(staffRow?.role);
         const dashboard = getDashboardRoute(normalizedRole);
         return NextResponse.redirect(new URL(dashboard, request.url));
     }
@@ -130,12 +117,14 @@ export async function proxy(request: NextRequest) {
         .eq("id", user.id)
         .single();
 
-    const userRole = normalizeRole(staffRow?.role);
+    const userRole = normalizeUserRole(staffRow?.role);
 
     // ── Role-based access control ────────────────────────────────────────────
     for (const [role, prefix] of Object.entries(ROLE_PREFIXES)) {
         if (pathname.startsWith(prefix)) {
-            if (userRole !== role) {
+            // Admin dashboard links intentionally provide cross-department
+            // oversight; every other role stays restricted to its own prefix.
+            if (userRole !== role && userRole !== "Admin") {
                 // User is on the wrong role's area → redirect to their dashboard
                 const correctDash = getDashboardRoute(userRole);
                 return NextResponse.redirect(new URL(correctDash, request.url));

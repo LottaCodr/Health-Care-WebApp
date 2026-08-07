@@ -2,12 +2,13 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
+import { useRoleProtection } from "@/lib/role-utils";
+import { UserRole } from "@/types/models";
 import { toast } from "sonner";
 import {
     usePendingRadiologyRequests,
     useCompletedRadiologyRequests,
     useSubmitRadiologyReport,
-    useUpdatePatientStatus,
 } from "@/hooks/emr/use-emr";
 import { stripRadiologyPrefix } from "@/lib/utils";
 import {
@@ -15,6 +16,8 @@ import {
     Loader2, AlertTriangle, Image, ChevronDown, User,
 } from "lucide-react";
 import { useRadiologyStore } from "@/store/radiology-store";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import Link from "next/link";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,8 +53,7 @@ function PriorityBadge({ priority }: { priority?: string }) {
 
 function RequestCard({ request }: { request: any }) {
     const { user } = useAuth();
-    const { mutate: submitReport, isPending: saving }  = useSubmitRadiologyReport();
-    const { mutate: updateStatus }                      = useUpdatePatientStatus();
+    const { mutate: submitReport, isPending: saving } = useSubmitRadiologyReport();
     const { inlineForms, inlineExpanded, setInlineFormField, toggleInlineExpanded, clearInlineForm } = useRadiologyStore();
 
     const form         = inlineForms[request.id]  || { resultText: "", isCritical: false, criticalNote: "" };
@@ -71,14 +73,7 @@ function RequestCard({ request }: { request: any }) {
             { id: request.id, report: { status: "completed", result: fullReport, completed_by: user?.id ?? user?.$id ?? "", completed_at: new Date().toISOString() } },
             {
                 onSuccess: () => {
-                    const patientId = request.visit_id ?? request.patient_id;
-                    if (patientId) {
-                        updateStatus(
-                            { id: patientId, status: "awaiting-consultation" as any },
-                            { onError: () => toast.error("Report filed but patient status could not be updated.") }
-                        );
-                    }
-                    toast.success("Radiology report submitted.");
+                    toast.success("Radiology report submitted and patient returned to the doctor queue.");
                     clearInlineForm(request.id);
                 },
                 onError: (err: any) => toast.error(err?.message ?? "Failed to submit report."),
@@ -90,7 +85,7 @@ function RequestCard({ request }: { request: any }) {
         <div className={`rounded-2xl border overflow-hidden transition-all ${
             open ? "border-cyan-200 bg-white shadow-sm" : "border-gray-100 bg-gray-50/50 hover:bg-white hover:border-cyan-100 hover:shadow-sm"
         }`}>
-            <div className="flex items-start gap-3 p-4">
+            <div className="flex flex-wrap items-start gap-3 p-4">
                 <div className="w-9 h-9 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0 mt-0.5">
                     <Image size={15} className="text-cyan-600" />
                 </div>
@@ -113,7 +108,7 @@ function RequestCard({ request }: { request: any }) {
                     )}
                 </div>
                 <button onClick={() => toggleInlineExpanded(request.id)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm shrink-0 ${
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm w-full justify-center sm:w-auto shrink-0 ${
                         open ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-cyan-200"
                     }`}>
                     <FileText size={12} />
@@ -204,20 +199,15 @@ function CompletedCard({ request }: { request: any }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function RadiologyDashboard() {
-    const { user } = useAuth();
-    const isAuthorized = user?.role === "Radiologist" || user?.role === "Admin";
+    const { authorized, loading: protectionLoading } = useRoleProtection([UserRole.Radiologist, UserRole.Admin]);
 
     const { data: pending = [], isPending: loadingPending, isError: pendingError, refetch } = usePendingRadiologyRequests();
     const { data: completed = [], isPending: loadingCompleted } = useCompletedRadiologyRequests();
 
-    if (!isAuthorized) return (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
-                <AlertTriangle size={18} className="text-amber-500" />
-            </div>
-            <p className="text-sm font-semibold text-gray-600">Access restricted to Radiologists</p>
-        </div>
-    );
+    if (protectionLoading) {
+        return <div className="h-64 animate-pulse rounded-3xl border border-gray-100 bg-white" />;
+    }
+    if (!authorized) return null;
 
     // Sort pending: STAT first, then urgent, then routine
     const sortedPending = [...(pending as any[])].sort((a, b) => {
@@ -227,25 +217,35 @@ export default function RadiologyDashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-xl font-black text-gray-900">Radiology</h1>
-                    <p className="text-xs text-gray-400 mt-0.5">Imaging investigations and reports</p>
-                </div>
-                <button onClick={() => refetch()}
-                    className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shadow-sm">
-                    <RefreshCcw size={13} />
-                </button>
-            </div>
+            <DashboardHeader
+                title="Radiology workspace"
+                description="Prioritize imaging requests, report critical findings, and review filed investigations."
+                icon={Radio}
+                tone="cyan"
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Link href="/radiology/reports" className="inline-flex h-9 items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3 text-xs font-bold text-cyan-700 transition-colors hover:bg-cyan-100">
+                            <FileText size={13} /> Reports
+                        </Link>
+                        <button onClick={() => refetch()}
+                            type="button"
+                            aria-label="Refresh radiology queue"
+                            disabled={loadingPending || loadingCompleted}
+                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60">
+                            <RefreshCcw size={13} className={loadingPending || loadingCompleted ? "animate-spin" : ""} />
+                        </button>
+                    </div>
+                }
+            />
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 {[
                     { label: "Pending Reports", value: (pending as any[]).length,   icon: Clock,        color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
                     { label: "Reports Filed",    value: (completed as any[]).length, icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
                     { label: "STAT / Urgent",    value: (pending as any[]).filter((r: any) => r.priority === "stat" || r.priority === "urgent").length, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50", border: "border-red-100" },
                 ].map(({ label, value, icon: Icon, color, bg, border }) => (
-                    <div key={label} className={`bg-white rounded-2xl border ${border} shadow-sm px-5 py-5 flex items-center gap-4 hover:shadow-md transition-shadow`}>
+                    <div key={label} className={`bg-white rounded-2xl border ${border} shadow-sm px-4 py-4 sm:px-5 sm:py-5 flex min-w-0 items-center gap-3 sm:gap-4 hover:shadow-md transition-shadow`}>
                         <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                             <Icon size={19} className={color} />
                         </div>
@@ -259,7 +259,7 @@ export default function RadiologyDashboard() {
 
             {/* Pending */}
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
+                <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5 border-b border-gray-50">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0">
                             <Radio size={16} className="text-cyan-600" />
@@ -275,7 +275,7 @@ export default function RadiologyDashboard() {
                         </span>
                     )}
                 </div>
-                <div className="px-6 py-5 space-y-3">
+                <div className="px-4 py-4 sm:px-6 sm:py-5 space-y-3">
                     {loadingPending ? (
                         <div className="flex items-center justify-center py-12 gap-3">
                             <Loader2 size={16} className="text-cyan-500 animate-spin" />
@@ -306,10 +306,10 @@ export default function RadiologyDashboard() {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-gray-800">Filed Reports</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{(completed as any[]).length} report{(completed as any[]).length !== 1 ? "s" : ""} submitted today</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{(completed as any[]).length} completed report{(completed as any[]).length !== 1 ? "s" : ""} on record</p>
                         </div>
                     </div>
-                    <div className="px-6 py-4 space-y-2">
+                    <div className="px-4 py-4 sm:px-6 space-y-2">
                         {loadingCompleted ? (
                             <div className="flex items-center justify-center py-8 gap-3">
                                 <Loader2 size={14} className="text-gray-400 animate-spin" />

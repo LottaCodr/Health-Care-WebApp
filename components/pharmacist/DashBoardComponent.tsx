@@ -3,14 +3,15 @@
 import React from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import { usePendingPrescriptions } from "@/hooks/emr/use-emr";
+import { useCompletedPrescriptionsToday, usePendingPrescriptions } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton } from "@/components/emr";
 import {
     Pill, Clock, CheckCircle2, ChevronRight,
     RefreshCcw, BadgeDollarSign, User, Calendar,
-    Stethoscope, AlertCircle, TrendingUp,
+    Stethoscope, AlertCircle, TrendingUp, Package,
 } from "lucide-react";
 import Link from "next/link";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,12 +35,13 @@ function fmtDate(iso?: string) {
 
 export default function PharmacistDashboard() {
     const { authorized } = useRoleProtection([UserRole.Pharmacist, UserRole.Admin]);
-    const { data: prescriptions, isLoading: loading, refetch } = usePendingPrescriptions();
+    const { data: prescriptions = [], isLoading: loading, refetch: refetchPending } = usePendingPrescriptions();
+    const { data: completedPrescriptions = [], isLoading: completedLoading, refetch: refetchCompleted } = useCompletedPrescriptionsToday();
 
     if (!authorized) return null;
 
-    const active      = (prescriptions as any[] ?? []).filter(p => p.status === "Active" || !p.dispensed);
-    const dispensed   = (prescriptions as any[] ?? []).filter(p => p.status === "Dispensed" || p.dispensed === true);
+    const active      = prescriptions as any[];
+    const dispensed   = completedPrescriptions as any[];
     const unreviewed  = active.filter(p => !p.pharmacist_id);
     const totalPending= active.reduce((s: number, p: any) => s + (Number(p.price) || 0), 0);
     const totalEarned = dispensed.reduce((s: number, p: any) => s + (Number(p.price) || 0), 0);
@@ -48,7 +50,7 @@ export default function PharmacistDashboard() {
         { label: "Active Orders",    value: active.length,     icon: Pill,          color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
         { label: "Unreviewed",       value: unreviewed.length, icon: Clock,         color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
         { label: "Dispensed Today",  value: dispensed.length,  icon: CheckCircle2,  color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
-        { label: "Revenue Today",    value: null,              icon: TrendingUp,    color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100",
+        { label: "Dispensed Value",    value: null,              icon: TrendingUp,    color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100",
           custom: totalEarned > 0 ? fmtNaira(totalEarned) : "₦0.00"
         },
     ];
@@ -56,12 +58,24 @@ export default function PharmacistDashboard() {
     return (
         <div className="space-y-6">
 
+            <DashboardHeader
+                title="Pharmacy workspace"
+                description="Review medication orders, dispense safely, and keep an eye on today’s pharmacy activity."
+                icon={Pill}
+                tone="violet"
+                actions={
+                    <Link href="/pharmacist/inventory" className="inline-flex h-9 items-center gap-2 rounded-xl border border-violet-100 bg-violet-50 px-3 text-xs font-bold text-violet-700 transition-colors hover:bg-violet-100">
+                        <Package size={13} /> Inventory
+                    </Link>
+                }
+            />
+
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                 {stats.map(s => {
                     const Icon = s.icon;
                     return (
-                        <div key={s.label} className={`bg-white rounded-2xl border ${s.border} shadow-sm px-5 py-5 flex items-center gap-4 hover:shadow-md transition-shadow`}>
+                        <div key={s.label} className={`bg-white rounded-2xl border ${s.border} shadow-sm px-4 py-4 sm:px-5 sm:py-5 flex min-w-0 items-center gap-3 sm:gap-4 hover:shadow-md transition-shadow`}>
                             <div className={`w-11 h-11 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
                                 <Icon size={19} className={s.color} />
                             </div>
@@ -78,7 +92,7 @@ export default function PharmacistDashboard() {
 
             {/* Dispensing queue */}
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
+                <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5 border-b border-gray-50">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
                             <Pill size={16} className="text-violet-600" />
@@ -99,14 +113,17 @@ export default function PharmacistDashboard() {
                                 {active.length} pending
                             </span>
                         )}
-                        <button onClick={() => refetch()}
-                            className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
-                            <RefreshCcw size={13} />
+                        <button onClick={() => { void Promise.all([refetchPending(), refetchCompleted()]); }}
+                            type="button"
+                            aria-label="Refresh pharmacy queues"
+                            disabled={loading || completedLoading}
+                            className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors disabled:cursor-wait disabled:opacity-60">
+                            <RefreshCcw size={13} className={loading || completedLoading ? "animate-spin" : ""} />
                         </button>
                     </div>
                 </div>
 
-                <div className="px-6 py-5 space-y-3">
+                <div className="px-4 py-4 sm:px-6 sm:py-5 space-y-3">
                     {loading ? <LoadingSkeleton rows={4} /> : active.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
@@ -169,9 +186,9 @@ export default function PharmacistDashboard() {
             </div>
 
             {/* Dispensed today */}
-            {dispensed.length > 0 && (
+            {(dispensed.length > 0 || completedLoading) && (
                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
+                    <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5 border-b border-gray-50">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
                                 <CheckCircle2 size={15} className="text-green-600" />
@@ -189,8 +206,8 @@ export default function PharmacistDashboard() {
                             </span>
                         )}
                     </div>
-                    <div className="px-6 py-4 space-y-2">
-                        {dispensed.slice(0, 8).map((rx: any) => (
+                    <div className="px-4 py-4 sm:px-6 space-y-2">
+                        {completedLoading ? <LoadingSkeleton rows={2} /> : dispensed.slice(0, 8).map((rx: any) => (
                             <div key={rx.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
                                 <CheckCircle2 size={13} className="text-green-500 shrink-0" />
                                 <div className="flex-1 min-w-0">

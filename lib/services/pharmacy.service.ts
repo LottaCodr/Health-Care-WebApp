@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { Prescription, DrugInventoryItem } from "@/types/models";
+import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────
 
@@ -75,6 +76,21 @@ export async function listPendingPrescriptions(): Promise<Prescription[]> {
         .order("created_at", { ascending: false });
 
     if (error) { console.error("[pharmacy] listPending:", error); return []; }
+    return data as unknown as Prescription[];
+}
+
+export async function listCompletedPrescriptionsToday(): Promise<Prescription[]> {
+    const supabase = await createClient();
+    const startOfToday = new Date(`${toHospitalISODate()}T00:00:00+01:00`);
+
+    const { data, error } = await supabase
+        .from("prescriptions")
+        .select("*, patients(name, phone, gender)")
+        .eq("dispensed", true)
+        .gte("dispensed_at", startOfToday.toISOString())
+        .order("dispensed_at", { ascending: false });
+
+    if (error) { console.error("[pharmacy] listCompletedToday:", error); return []; }
     return data as unknown as Prescription[];
 }
 

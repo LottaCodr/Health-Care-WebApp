@@ -48,6 +48,7 @@ export {
 // Nursing
 export {
     usePendingNursingActions,
+    useCompletedNursingActions,
     useNursingActionsByPatient,
     useCreateNursingAction,
     useUpdateNursingAction,
@@ -66,6 +67,7 @@ export {
     usePrescription,
     usePrescriptionsByPatient,
     usePendingPrescriptions,
+    useCompletedPrescriptionsToday,
     useCreatePrescription,
     useUpdatePrescription,
     useDispensingRecordsByPatient,
