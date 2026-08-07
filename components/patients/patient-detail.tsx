@@ -370,33 +370,37 @@ function PatientProfile({
                         </div>
                     </div>
 
-                    {/* Right-side actions: status + download */}
-                    <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0">
+                    {/* Right-side actions: status + view timeline + download record */}
+                    <div className="flex flex-wrap sm:flex-col items-center sm:items-end gap-2 shrink-0">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${statusClass}`}>
                             <span className="w-1.5 h-1.5 rounded-full bg-current" />
                             {status || "No Status"}
                         </span>
 
-                        {canDownload && (
+                        <div className="flex items-center gap-2">
                             <button
                                 type="button"
-                                onClick={onDownload}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all backdrop-blur-sm"
+                                onClick={() => router.push(`/patient-timeline/${patient.id}`)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all backdrop-blur-sm shadow-xs"
+                                title="View chronological patient journey timeline"
                             >
-                                <Download size={12} />
-                                Download Record
+                                <History size={12} />
+                                View Timeline
                             </button>
-                        )}
-                    </div>
 
-                    <button
-    type="button"
-    onClick={() => router.push(`/patient-timeline/${patient.id}`)}
-    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all"
->
-    <History size={12} />
-    View Timeline
-</button>
+                            {canDownload && (
+                                <button
+                                    type="button"
+                                    onClick={onDownload}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all backdrop-blur-sm"
+                                    title="Export or print comprehensive medical record"
+                                >
+                                    <Download size={12} />
+                                    Download Record
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 

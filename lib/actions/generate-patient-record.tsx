@@ -12,7 +12,9 @@ import path from "path";
 
 export type RecordSection =
     | "demographics"
+    | "vitals"
     | "consultations"
+    | "prescriptions"
     | "lab_results"
     | "radiology"
     | "drug_chart"
@@ -62,16 +64,12 @@ const C = {
 // ─── Logo loader ──────────────────────────────────────────────────────────────
 
 function loadLogoBase64(): string | null {
-    const candidates = [
-        path.join(process.cwd(), "public", "assets", "icons", "nilelogo.jpeg"),
-        path.join(process.cwd(), "assets", "icons", "nilelogo.jpeg"),
-        path.join(process.cwd(), "src", "assets", "icons", "nilelogo.jpeg"),
-    ];
-    for (const p of candidates) {
-        try {
-            if (fs.existsSync(p)) return fs.readFileSync(p).toString("base64");
-        } catch { /* continue */ }
-    }
+    try {
+        const logoPath = path.join(process.cwd(), "public/assets/icons/nilelogo.jpeg");
+        if (fs.existsSync(logoPath)) {
+            return fs.readFileSync(logoPath).toString("base64");
+        }
+    } catch { /* continue */ }
     return null;
 }
 
@@ -340,6 +338,28 @@ function PatientRecordPDF({
 
                 <PatientCard patient={patient} />
 
+                {/* ── Vitals / Nursing ── */}
+                {sections.includes("vitals") && (
+                    <Section title="Vital Signs & Nursing Observations" color={C.sky}>
+                        <DataTable
+                            columns={[
+                                { header: "Date",        key: "date",        flex: 1.5 },
+                                { header: "Type",        key: "type",        flex: 1.5 },
+                                { header: "Details",     key: "description", flex: 4   },
+                                { header: "Nurse",       key: "nurse",       flex: 2   },
+                                { header: "Status",      key: "status",      flex: 1   },
+                            ]}
+                            rows={(data.vitals ?? []).map((v: any) => ({
+                                date:        v.created_at ? new Date(v.created_at).toLocaleDateString("en-GB") : "—",
+                                type:        v.action_type ?? "Vitals",
+                                description: v.description ?? "—",
+                                nurse:       v.assigned_nurse ?? v.completed_by ?? "—",
+                                status:      v.status ?? "Completed",
+                            }))}
+                        />
+                    </Section>
+                )}
+
                 {/* ── Consultations ── */}
                 {sections.includes("consultations") && (
                     <Section title="Consultation History" color={C.danger}>
@@ -362,6 +382,28 @@ function PatientRecordPDF({
                     </Section>
                 )}
 
+                {/* ── Prescriptions ── */}
+                {(sections.includes("prescriptions") || sections.includes("drug_chart")) && (
+                    <Section title="Prescriptions & Medications" color={C.teal}>
+                        <DataTable
+                            columns={[
+                                { header: "Date",     key: "date",     flex: 1.5 },
+                                { header: "Drug",     key: "drug",     flex: 2.5 },
+                                { header: "Dosage",   key: "dose",     flex: 1.5 },
+                                { header: "Duration", key: "duration", flex: 1.5 },
+                                { header: "Status",   key: "status",   flex: 1   },
+                            ]}
+                            rows={(data.prescriptions ?? []).map((p: any) => ({
+                                date:     p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB") : "—",
+                                drug:     p.drug_name ?? "—",
+                                dose:     p.dosage ?? "—",
+                                duration: p.duration ?? "—",
+                                status:   p.dispensed ? "Dispensed" : (p.status ?? "Active"),
+                            }))}
+                        />
+                    </Section>
+                )}
+
                 {/* ── Lab Results ── */}
                 {sections.includes("lab_results") && (
                     <Section title="Laboratory Results" color={C.indigo}>
@@ -370,15 +412,13 @@ function PatientRecordPDF({
                                 { header: "Date",         key: "date",   flex: 1.5 },
                                 { header: "Test",         key: "test",   flex: 3   },
                                 { header: "Status",       key: "status", flex: 1.5 },
-                                { header: "Result",       key: "result", flex: 2   },
-                                { header: "Normal Range", key: "normal", flex: 2   },
+                                { header: "Result",       key: "result", flex: 3.5 },
                             ]}
                             rows={(data.lab_results ?? []).map((l: any) => ({
                                 date:   l.created_at ? new Date(l.created_at).toLocaleDateString("en-GB") : "—",
                                 test:   l.test_type ?? "—",
                                 status: l.status ?? "—",
-                                result: l.result ?? l.result_value ?? "Pending",
-                                normal: l.normal_range ?? "—",
+                                result: l.result ?? l.result_value ?? (l.status === "completed" ? "Completed" : "Pending"),
                             }))}
                         />
                     </Section>
@@ -398,15 +438,15 @@ function PatientRecordPDF({
                                 date:   r.created_at ? new Date(r.created_at).toLocaleDateString("en-GB") : "—",
                                 study:  String(r.test_type ?? "").replace("[RADIOLOGY]", "").trim(),
                                 status: r.status ?? "—",
-                                report: r.result ?? r.radiologist_notes ?? "Pending",
+                                report: r.result ?? r.radiologist_notes ?? (r.status === "completed" ? "Completed" : "Pending"),
                             }))}
                         />
                     </Section>
                 )}
 
-                {/* ── Drug Chart ── */}
-                {sections.includes("drug_chart") && (
-                    <Section title="Drug Chart" color={C.teal}>
+                {/* ── Inpatient Drug Chart ── */}
+                {sections.includes("drug_chart") && (data.drug_chart ?? []).length > 0 && (
+                    <Section title="Inpatient Drug Administration Chart" color={C.teal}>
                         <DataTable
                             columns={[
                                 { header: "Drug",      key: "drug",  flex: 2.5 },
@@ -561,6 +601,17 @@ function buildPrintHTML(
 
     // ── Section bodies ─────────────────────────────────────────────────────────
 
+    const vitals = !sections.includes("vitals") ? "" : sec("Vital Signs & Nursing Observations", C.sky, tbl(
+        [{ h: "Date", k: "date" }, { h: "Type", k: "type" }, { h: "Details", k: "description" }, { h: "Nurse", k: "nurse" }, { h: "Status", k: "status" }],
+        (data.vitals ?? []).map((v: any) => ({
+            date:        v.created_at ? new Date(v.created_at).toLocaleDateString("en-GB") : "—",
+            type:        v.action_type ?? "Vitals",
+            description: v.description ?? "—",
+            nurse:       v.assigned_nurse ?? v.completed_by ?? "—",
+            status:      v.status ?? "Completed",
+        }))
+    ));
+
     const consultations = !sections.includes("consultations") ? "" : sec("Consultation History", C.danger, tbl(
         [{ h: "Date", k: "date" }, { h: "Doctor", k: "doctor" }, { h: "Diagnosis", k: "diagnosis" }, { h: "Management", k: "management" }, { h: "Referred To", k: "referred" }],
         (data.consultations ?? []).map((c: any) => ({
@@ -572,14 +623,24 @@ function buildPrintHTML(
         }))
     ));
 
+    const prescriptions = !(sections.includes("prescriptions") || sections.includes("drug_chart")) ? "" : sec("Prescriptions & Medications", C.teal, tbl(
+        [{ h: "Date", k: "date" }, { h: "Drug", k: "drug" }, { h: "Dosage", k: "dose" }, { h: "Duration", k: "duration" }, { h: "Status", k: "status" }],
+        (data.prescriptions ?? []).map((p: any) => ({
+            date:     p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB") : "—",
+            drug:     p.drug_name ?? "—",
+            dose:     p.dosage ?? "—",
+            duration: p.duration ?? "—",
+            status:   p.dispensed ? "Dispensed" : (p.status ?? "Active"),
+        }))
+    ));
+
     const labResults = !sections.includes("lab_results") ? "" : sec("Laboratory Results", C.indigo, tbl(
-        [{ h: "Date", k: "date" }, { h: "Test", k: "test" }, { h: "Status", k: "status" }, { h: "Result", k: "result" }, { h: "Normal Range", k: "normal" }],
+        [{ h: "Date", k: "date" }, { h: "Test", k: "test" }, { h: "Status", k: "status" }, { h: "Result", k: "result" }],
         (data.lab_results ?? []).map((l: any) => ({
             date:   l.created_at ? new Date(l.created_at).toLocaleDateString("en-GB") : "—",
             test:   l.test_type ?? "—",
             status: l.status    ?? "—",
-            result: l.result ?? l.result_value ?? "Pending",
-            normal: l.normal_range ?? "—",
+            result: l.result ?? l.result_value ?? (l.status === "completed" ? "Completed" : "Pending"),
         }))
     ));
 
@@ -589,11 +650,11 @@ function buildPrintHTML(
             date:   r.created_at ? new Date(r.created_at).toLocaleDateString("en-GB") : "—",
             study:  String(r.test_type ?? "").replace("[RADIOLOGY]", "").trim(),
             status: r.status ?? "—",
-            report: r.result ?? r.radiologist_notes ?? "Pending",
+            report: r.result ?? r.radiologist_notes ?? (r.status === "completed" ? "Completed" : "Pending"),
         }))
     ));
 
-    const drugChart = !sections.includes("drug_chart") ? "" : sec("Drug Chart", C.teal, tbl(
+    const drugChart = !sections.includes("drug_chart") || !(data.drug_chart ?? []).length ? "" : sec("Inpatient Drug Administration Chart", C.teal, tbl(
         [{ h: "Drug", k: "drug" }, { h: "Dose", k: "dose" }, { h: "Route", k: "route" }, { h: "Frequency", k: "freq" }, { h: "Start", k: "start" }, { h: "End", k: "end" }, { h: "Status", k: "active" }],
         (data.drug_chart ?? []).map((d: any) => ({
             drug:   `${d.drug_name}${d.generic_name ? ` (${d.generic_name})` : ""}`,
@@ -799,7 +860,9 @@ function buildPrintHTML(
     </div>
   </div>
 
+  ${vitals}
   ${consultations}
+  ${prescriptions}
   ${labResults}
   ${radiology}
   ${drugChart}
@@ -841,94 +904,123 @@ async function fetchAllSections(
     const result: Record<string, any[]> = {};
 
     await Promise.all(sections.map(async (section) => {
-        switch (section) {
+        try {
+            switch (section) {
 
-            case "consultations": {
-                let q = sb.from("consultations")
-                    .select("*")
-                    .eq("id", patientId)
-                    .order("created_at", { ascending: false });
-                if (dateFrom) q = q.gte("created_at", dateFrom);
-                if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
-                const { data } = await q;
-                result.consultations = data ?? [];
-                break;
+                case "vitals": {
+                    let q = sb.from("nursing_actions")
+                        .select("*")
+                        .eq("patient_id", patientId)
+                        .order("created_at", { ascending: false });
+                    if (dateFrom) q = q.gte("created_at", dateFrom);
+                    if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
+                    const { data } = await q;
+                    result.vitals = data ?? [];
+                    break;
+                }
+
+                case "consultations": {
+                    let q = sb.from("consultations")
+                        .select("*, staffs:doctor_id(name)")
+                        .eq("patient_id", patientId)
+                        .order("created_at", { ascending: false });
+                    if (dateFrom) q = q.gte("created_at", dateFrom);
+                    if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
+                    const { data } = await q;
+                    result.consultations = data ?? [];
+                    break;
+                }
+
+                case "prescriptions": {
+                    let q = sb.from("prescriptions")
+                        .select("*")
+                        .eq("patient_id", patientId)
+                        .order("created_at", { ascending: false });
+                    if (dateFrom) q = q.gte("created_at", dateFrom);
+                    if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
+                    const { data } = await q;
+                    result.prescriptions = data ?? [];
+                    break;
+                }
+
+                case "lab_results": {
+                    let q = sb.from("lab_requests")
+                        .select("*")
+                        .eq("visit_id", patientId)
+                        .not("test_type", "like", "[RADIOLOGY]%")
+                        .order("created_at", { ascending: false });
+                    if (dateFrom) q = q.gte("created_at", dateFrom);
+                    if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
+                    const { data } = await q;
+                    result.lab_results = data ?? [];
+                    break;
+                }
+
+                case "radiology": {
+                    let q = sb.from("lab_requests")
+                        .select("*")
+                        .eq("visit_id", patientId)
+                        .like("test_type", "[RADIOLOGY]%")
+                        .order("created_at", { ascending: false });
+                    if (dateFrom) q = q.gte("created_at", dateFrom);
+                    if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
+                    const { data } = await q;
+                    result.radiology = data ?? [];
+                    break;
+                }
+
+                case "drug_chart": {
+                    const { data } = await sb.from("nurse_drug_chart")
+                        .select("*, drug_administration_records(*)")
+                        .eq("patient_id", patientId)
+                        .order("created_at", { ascending: false });
+                    result.drug_chart = data ?? [];
+                    break;
+                }
+
+                case "fluid_balance": {
+                    let q = sb.from("fluid_balance")
+                        .select("*")
+                        .eq("patient_id", patientId)
+                        .order("record_date", { ascending: false })
+                        .order("record_time", { ascending: false });
+                    if (dateFrom) q = q.gte("record_date", dateFrom);
+                    if (dateTo)   q = q.lte("record_date", dateTo);
+                    const { data } = await q;
+                    result.fluid_balance = data ?? [];
+                    break;
+                }
+
+                case "discharge_note": {
+                    const { data } = await sb.from("discharge_notes")
+                        .select("*, staffs:doctor_id(name)")
+                        .eq("patient_id", patientId)
+                        .order("created_at", { ascending: false })
+                        .limit(1);
+                    result.discharge_note = data ?? [];
+                    break;
+                }
+
+                case "payments": {
+                    let q = sb.from("payments")
+                        .select("*")
+                        .eq("patient_id", patientId)
+                        .order("created_at", { ascending: false });
+                    if (dateFrom) q = q.gte("created_at", dateFrom);
+                    if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
+                    const { data } = await q;
+                    result.payments = data ?? [];
+                    break;
+                }
+
+                // demographics = patient record itself — no extra query needed
+                case "demographics":
+                default:
+                    break;
             }
-
-            case "lab_results": {
-                let q = sb.from("lab_requests")
-                    .select("*")
-                    .eq("patient_id", patientId)
-                    .not("test_type", "like", "[RADIOLOGY]%")
-                    .order("created_at", { ascending: false });
-                if (dateFrom) q = q.gte("created_at", dateFrom);
-                if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
-                const { data } = await q;
-                result.lab_results = data ?? [];
-                break;
-            }
-
-            case "radiology": {
-                let q = sb.from("lab_requests")
-                    .select("*")
-                    .eq("patient_id", patientId)
-                    .like("test_type", "[RADIOLOGY]%")
-                    .order("created_at", { ascending: false });
-                if (dateFrom) q = q.gte("created_at", dateFrom);
-                if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
-                const { data } = await q;
-                result.radiology = data ?? [];
-                break;
-            }
-
-            case "drug_chart": {
-                const { data } = await sb.from("nurse_drug_chart")
-                    .select("*, drug_administration_records(*)")
-                    .eq("patient_id", patientId)
-                    .order("created_at", { ascending: false });
-                result.drug_chart = data ?? [];
-                break;
-            }
-
-            case "fluid_balance": {
-                let q = sb.from("fluid_balance")
-                    .select("*")
-                    .eq("patient_id", patientId)
-                    .order("record_date", { ascending: false })
-                    .order("record_time", { ascending: false });
-                if (dateFrom) q = q.gte("record_date", dateFrom);
-                if (dateTo)   q = q.lte("record_date", dateTo);
-                const { data } = await q;
-                result.fluid_balance = data ?? [];
-                break;
-            }
-
-            case "discharge_note": {
-                const { data } = await sb.from("discharge_notes")
-                    .select("*, staffs(name)")
-                    .eq("patient_id", patientId)
-                    .order("created_at", { ascending: false })
-                    .limit(1);
-                result.discharge_note = data ?? [];
-                break;
-            }
-
-            case "payments": {
-                let q = sb.from("payments")
-                    .select("*")
-                    .eq("patient_id", patientId)
-                    .order("created_at", { ascending: false });
-                if (dateFrom) q = q.gte("created_at", dateFrom);
-                if (dateTo)   q = q.lte("created_at", `${dateTo}T23:59:59`);
-                const { data } = await q;
-                result.payments = data ?? [];
-                break;
-            }
-
-            // demographics = patient record itself — no extra query needed
-            case "demographics":
-            default:
-                break;
+        } catch (err) {
+            console.error(`[generatePatientRecord] error fetching section ${section}:`, err);
+            result[section] = [];
         }
     }));
 

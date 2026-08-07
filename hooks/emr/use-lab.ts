@@ -70,6 +70,11 @@ export function useCreateLabRequest() {
             qc.invalidateQueries({ queryKey: labKeys.byPatient(request.visit_id!) });
             qc.invalidateQueries({ queryKey: labKeys.pending() });
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            qc.invalidateQueries({ queryKey: ["payments"] });
+            qc.invalidateQueries({ queryKey: ["pending-payments"] });
+            if (request.visit_id) {
+                qc.invalidateQueries({ queryKey: ["payments", request.visit_id] });
+            }
         },
     });
 }
@@ -102,6 +107,11 @@ export function useUpdateLabRequest() {
             qc.invalidateQueries({ queryKey: labKeys.byPatient(updated.visit_id!) });
             qc.invalidateQueries({ queryKey: labKeys.pending() });
             qc.invalidateQueries({ queryKey: labKeys.completed() });
+            qc.invalidateQueries({ queryKey: ["payments"] });
+            qc.invalidateQueries({ queryKey: ["pending-payments"] });
+            if (updated.visit_id) {
+                qc.invalidateQueries({ queryKey: ["payments", updated.visit_id] });
+            }
         },
     });
 }

@@ -87,7 +87,7 @@ export default function LabTechDashboard() {
     const pending   = (pendingData as any[]).filter(r => r.status === "pending");
     const completed = (completedData as any[]);
 
-    const handleSubmitResult = (reqId: string, resultOverride?: string) => {
+    const handleSubmitResult = (reqId: string, resultOverride?: string, priceOverride?: number) => {
         const result = resultOverride ?? resultText[reqId]?.trim();
         if (!result) { toast.error("Please enter the test result."); return; }
         setField("dashboardSubmittingId", reqId);
@@ -97,13 +97,14 @@ export default function LabTechDashboard() {
                 updates: {
                     status:       "completed",
                     result,
-                    completed_by: user?.$id,
+                    completed_by: user?.$id ?? user?.id,
                     completed_at: new Date().toISOString(),
+                    ...(priceOverride && priceOverride > 0 ? { price: priceOverride } : {}),
                 },
             },
             {
                 onSuccess: () => {
-                    toast.success("Result submitted.");
+                    toast.success("Result submitted and updated in billing.");
                     setDashboardResultText(reqId, "");
                     setField("dashboardActiveId", null);
                     refetchPending();

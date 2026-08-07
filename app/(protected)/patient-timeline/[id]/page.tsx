@@ -5,123 +5,388 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
-    useConsultationsByPatient, useLabRequestsByPatient,
-    useNursingActionsByPatient, usePaymentsByPatient, usePatient
+    useConsultationsByPatient,
+    useLabRequestsByPatient,
+    useRadiologyRequestsByPatient,
+    usePrescriptionsByPatient,
+    useNursingActionsByPatient,
+    usePaymentsByPatient,
+    usePatient,
 } from "@/hooks/emr/use-emr";
 import {
     ArrowLeft, Calendar, Stethoscope, FlaskConical, HeartPulse,
     CreditCard, CheckCircle2, Clock, AlertCircle, Loader2,
     User, Activity, Radio, Pill, ClipboardList, RefreshCcw,
-    TrendingUp,
+    TrendingUp, Search, SlidersHorizontal, ArrowUpDown, Printer,
+    Download, ExternalLink, ShieldAlert, Phone, Mail, MapPin,
+    Droplets, Dna, Building2, Check, Copy, ChevronDown,
+    ChevronUp, Layers, Sparkles, FileText, Syringe, FileCheck,
+    X, Baby, Briefcase, ChevronRight,
 } from "lucide-react";
 import { fmtFull, calcAge } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import PatientRecordDownload, { DownloadOptions } from "@/components/patients/patient-record-download";
+import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
+import { toast } from "sonner";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Event Types & Interfaces ─────────────────────────────────────────────────
 
-interface TimelineEvent {
+export type TimelineEventType =
+    | "registration"
+    | "consultation"
+    | "lab"
+    | "radiology"
+    | "pharmacy"
+    | "nursing"
+    | "discharge"
+    | "payment";
+
+export interface TimelineEvent {
     id: string;
-    type: "registration" | "consultation" | "lab" | "radiology" | "nursing" | "pharmacy" | "payment";
+    type: TimelineEventType;
     title: string;
-    description: string;
+    description?: string;
     timestamp: string;
     status?: string;
+    priority?: "routine" | "urgent" | "stat" | string;
+    actor?: string;
     meta?: string;
+    details?: {
+        label?: string;
+        value?: string | number;
+        tag?: string;
+        items?: { k: string; v: string }[];
+        fullText?: string;
+    };
+    raw?: any;
 }
 
-// ─── Event config ─────────────────────────────────────────────────────────────
+// ─── Event Type Configuration ─────────────────────────────────────────────────
 
-const EVENT_CONFIG: Record<string, {
+const EVENT_CONFIG: Record<TimelineEventType, {
     icon: React.ElementType;
     color: string;
     bg: string;
     border: string;
+    badgeBg: string;
+    badgeText: string;
     label: string;
     line: string;
+    glow: string;
 }> = {
-    registration: { icon: User, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", label: "Registration", line: "bg-blue-200" },
-    consultation: { icon: Stethoscope, color: "text-red-600", bg: "bg-red-50", border: "border-red-200", label: "Consultation", line: "bg-red-200" },
-    lab: { icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200", label: "Lab", line: "bg-indigo-200" },
-    radiology: { icon: Radio, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200", label: "Radiology", line: "bg-cyan-200" },
-    nursing: { icon: HeartPulse, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200", label: "Nursing", line: "bg-teal-200" },
-    pharmacy: { icon: Pill, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200", label: "Pharmacy", line: "bg-violet-200" },
-    payment: { icon: CreditCard, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", label: "Payment", line: "bg-amber-200" },
+    registration: {
+        icon: User,
+        color: "text-blue-600",
+        bg: "bg-blue-50",
+        border: "border-blue-200",
+        badgeBg: "bg-blue-100",
+        badgeText: "text-blue-700",
+        label: "Registration",
+        line: "bg-blue-400",
+        glow: "shadow-blue-100",
+    },
+    consultation: {
+        icon: Stethoscope,
+        color: "text-rose-600",
+        bg: "bg-rose-50",
+        border: "border-rose-200",
+        badgeBg: "bg-rose-100",
+        badgeText: "text-rose-700",
+        label: "Consultation",
+        line: "bg-rose-400",
+        glow: "shadow-rose-100",
+    },
+    lab: {
+        icon: FlaskConical,
+        color: "text-indigo-600",
+        bg: "bg-indigo-50",
+        border: "border-indigo-200",
+        badgeBg: "bg-indigo-100",
+        badgeText: "text-indigo-700",
+        label: "Laboratory",
+        line: "bg-indigo-400",
+        glow: "shadow-indigo-100",
+    },
+    radiology: {
+        icon: Radio,
+        color: "text-cyan-600",
+        bg: "bg-cyan-50",
+        border: "border-cyan-200",
+        badgeBg: "bg-cyan-100",
+        badgeText: "text-cyan-700",
+        label: "Radiology",
+        line: "bg-cyan-400",
+        glow: "shadow-cyan-100",
+    },
+    pharmacy: {
+        icon: Pill,
+        color: "text-violet-600",
+        bg: "bg-violet-50",
+        border: "border-violet-200",
+        badgeBg: "bg-violet-100",
+        badgeText: "text-violet-700",
+        label: "Prescription",
+        line: "bg-violet-400",
+        glow: "shadow-violet-100",
+    },
+    nursing: {
+        icon: HeartPulse,
+        color: "text-teal-600",
+        bg: "bg-teal-50",
+        border: "border-teal-200",
+        badgeBg: "bg-teal-100",
+        badgeText: "text-teal-700",
+        label: "Nursing & Vitals",
+        line: "bg-teal-400",
+        glow: "shadow-teal-100",
+    },
+    discharge: {
+        icon: FileCheck,
+        color: "text-emerald-600",
+        bg: "bg-emerald-50",
+        border: "border-emerald-200",
+        badgeBg: "bg-emerald-100",
+        badgeText: "text-emerald-700",
+        label: "Discharge",
+        line: "bg-emerald-400",
+        glow: "shadow-emerald-100",
+    },
+    payment: {
+        icon: CreditCard,
+        color: "text-amber-600",
+        bg: "bg-amber-50",
+        border: "border-amber-200",
+        badgeBg: "bg-amber-100",
+        badgeText: "text-amber-700",
+        label: "Billing & Payment",
+        line: "bg-amber-400",
+        glow: "shadow-amber-100",
+    },
 };
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: React.ElementType }> = {
     completed: { color: "text-green-700", bg: "bg-green-50 border-green-200", icon: CheckCircle2 },
+    dispensed: { color: "text-green-700", bg: "bg-green-50 border-green-200", icon: CheckCircle2 },
+    paid: { color: "text-green-700", bg: "bg-green-50 border-green-200", icon: CheckCircle2 },
     pending: { color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Clock },
+    partial: { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Clock },
     active: { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Activity },
     inprogress: { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: Activity },
     failed: { color: "text-red-700", bg: "bg-red-50 border-red-200", icon: AlertCircle },
     cancelled: { color: "text-gray-600", bg: "bg-gray-100 border-gray-200", icon: AlertCircle },
+    waived: { color: "text-purple-700", bg: "bg-purple-50 border-purple-200", icon: CheckCircle2 },
 };
 
-
-
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status?: string }) {
-    const key = (status ?? "").toLowerCase();
+    if (!status) return null;
+    const key = status.toLowerCase().replace(/[\s-_]/g, "");
     const cfg = STATUS_CONFIG[key] ?? { color: "text-gray-600", bg: "bg-gray-100 border-gray-200", icon: Clock };
     const Icon = cfg.icon;
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${cfg.bg} ${cfg.color}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${cfg.bg} ${cfg.color}`}>
             <Icon size={10} />
-            {status}
+            <span className="capitalize">{status}</span>
         </span>
     );
 }
 
-// ─── Timeline event card ──────────────────────────────────────────────────────
+function PriorityBadge({ priority }: { priority?: string }) {
+    if (!priority) return null;
+    const p = priority.toLowerCase();
+    if (p === "stat") {
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200 animate-pulse">
+                STAT
+            </span>
+        );
+    }
+    if (p === "urgent") {
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                URGENT
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200">
+            {priority}
+        </span>
+    );
+}
 
-function EventCard({ event, isLast }: { event: TimelineEvent; isLast: boolean }) {
+function timeAgo(dateString?: string) {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffMin < 1) return "Just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHour < 24) return `${diffHour}h ago`;
+    if (diffDay === 1) return "Yesterday";
+    if (diffDay < 7) return `${diffDay}d ago`;
+    return date.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+}
+
+function formatDateHeader(iso: string) {
+    const d = new Date(iso);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+    return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+// ─── Single Timeline Event Card Component ──────────────────────────────────────
+
+function EventCard({
+    event,
+    isLast,
+    isExpanded,
+    onToggleExpand,
+}: {
+    event: TimelineEvent;
+    isLast: boolean;
+    isExpanded: boolean;
+    onToggleExpand: () => void;
+}) {
     const cfg = EVENT_CONFIG[event.type] ?? EVENT_CONFIG.registration;
     const Icon = cfg.icon;
+    const [copied, setCopied] = useState(false);
+
+    const handleCopyDetails = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const hasExpandableContent = !!(
+        event.details?.fullText ||
+        (event.details?.items && event.details.items.length > 2) ||
+        (event.description && event.description.length > 180)
+    );
 
     return (
-        <div className="flex gap-4">
-            {/* Left: icon + connecting line */}
+        <div className="relative flex gap-4 group">
+            {/* Timeline Left Node + Connecting Line */}
             <div className="flex flex-col items-center shrink-0">
-                <div className={`w-10 h-10 rounded-2xl ${cfg.bg} border ${cfg.border} flex items-center justify-center z-10`}>
-                    <Icon size={16} className={cfg.color} />
+                <div className={`w-10 h-10 rounded-2xl ${cfg.bg} border-2 ${cfg.border} flex items-center justify-center z-10 shadow-sm ${cfg.glow} transition-transform group-hover:scale-105 duration-200`}>
+                    <Icon size={18} className={cfg.color} />
                 </div>
-                {!isLast && <div className={`w-0.5 flex-1 mt-2 rounded-full ${cfg.line} opacity-50 min-h-[24px]`} />}
+                {!isLast && (
+                    <div className={`w-0.5 flex-1 my-1.5 rounded-full ${cfg.line} opacity-30 min-h-[36px]`} />
+                )}
             </div>
 
-            {/* Right: card content */}
+            {/* Timeline Right Card */}
             <div className="flex-1 pb-6 min-w-0">
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-gray-200 transition-all">
-                    {/* Header strip */}
-                    <div className={`h-0.5 w-full ${cfg.line}`} />
-                    <div className="p-4 space-y-2.5">
-                        {/* Top row */}
-                        <div className="flex items-start justify-between gap-2 flex-wrap">
-                            <div>
+                <div className="bg-white rounded-2xl border border-gray-100/80 shadow-xs hover:shadow-md hover:border-gray-200 transition-all duration-200 overflow-hidden">
+                    
+                    {/* Top color bar */}
+                    <div className={`h-1 w-full ${cfg.line}`} />
+
+                    <div className="p-4 sm:p-5 space-y-3">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between gap-3 flex-wrap">
+                            <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-sm font-bold text-gray-900">{event.title}</p>
-                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
+                                    <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${cfg.badgeBg} ${cfg.badgeText}`}>
                                         {cfg.label}
                                     </span>
+                                    {event.priority && <PriorityBadge priority={event.priority} />}
+                                    {event.status && <StatusBadge status={event.status} />}
                                 </div>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                    <Calendar size={10} className="text-gray-400" />
-                                    <p className="text-[11px] font-medium text-gray-400">{fmtFull(event.timestamp)}</p>
-                                </div>
+                                <h3 className="text-sm sm:text-base font-bold text-gray-900 mt-1 leading-snug">
+                                    {event.title}
+                                </h3>
                             </div>
-                            {event.status && <StatusBadge status={event.status} />}
+
+                            {/* Timestamp & Relative time */}
+                            <div className="text-right shrink-0">
+                                <span className="text-[11px] font-semibold text-gray-500 block">
+                                    {new Date(event.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                                <span className="text-[10px] text-gray-400 font-medium">
+                                    {timeAgo(event.timestamp)}
+                                </span>
+                            </div>
                         </div>
 
                         {/* Description */}
                         {event.description && (
-                            <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{event.description}</p>
+                            <p className={`text-xs text-gray-600 leading-relaxed ${!isExpanded && hasExpandableContent ? "line-clamp-2" : ""}`}>
+                                {event.description}
+                            </p>
                         )}
 
-                        {/* Meta */}
-                        {event.meta && (
-                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${cfg.bg} border ${cfg.border}`}>
-                                <p className={`text-[10px] font-bold ${cfg.color}`}>{event.meta}</p>
+                        {/* Rich Details / Structured Metrics */}
+                        {event.details?.items && event.details.items.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                                {event.details.items.map(({ k, v }, i) => (
+                                    <div key={i} className="bg-gray-50/80 rounded-xl px-3 py-2 border border-gray-100">
+                                        <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{k}</p>
+                                        <p className="text-xs font-bold text-gray-800 mt-0.5 truncate">{v}</p>
+                                    </div>
+                                ))}
                             </div>
                         )}
+
+                        {/* Expandable full text / Clinical findings / Full lab result */}
+                        {event.details?.fullText && isExpanded && (
+                            <div className="mt-3 p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Clinical Data / Full Report</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCopyDetails(event.details?.fullText || "")}
+                                        className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                    >
+                                        {copied ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy Details</>}
+                                    </button>
+                                </div>
+                                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed bg-white p-3 rounded-lg border border-gray-100 overflow-x-auto">
+                                    {event.details.fullText}
+                                </pre>
+                            </div>
+                        )}
+
+                        {/* Footer Meta Row */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-50 text-[11px] text-gray-400 flex-wrap gap-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                                {event.actor && (
+                                    <span className="flex items-center gap-1 font-medium text-gray-600">
+                                        <User size={11} className="text-gray-400" /> {event.actor}
+                                    </span>
+                                )}
+                                {event.meta && (
+                                    <span className="font-medium text-gray-500">
+                                        {event.meta}
+                                    </span>
+                                )}
+                            </div>
+
+                            {hasExpandableContent && (
+                                <button
+                                    type="button"
+                                    onClick={onToggleExpand}
+                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors ml-auto"
+                                >
+                                    {isExpanded ? (
+                                        <>Less details <ChevronUp size={12} /></>
+                                    ) : (
+                                        <>View full details <ChevronDown size={12} /></>
+                                    )}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -129,241 +394,706 @@ function EventCard({ event, isLast }: { event: TimelineEvent; isLast: boolean })
     );
 }
 
-// ─── Filter button ────────────────────────────────────────────────────────────
-
-function FilterChip({ label, active, onClick, color, bg }: {
-    label: string; active: boolean; onClick: () => void; color: string; bg: string;
-}) {
-    return (
-        <button onClick={onClick}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all
-                ${active ? `${bg} ${color} border-current/20` : "bg-white text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600"}`}>
-            {label}
-        </button>
-    );
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main Timeline Page Component ─────────────────────────────────────────────
 
 export default function PatientTimelinePage() {
     const params = useParams();
     const router = useRouter();
     const patientId = (params?.id ?? params?.patientId ?? params?.userId) as string;
 
-    const { data: patient, isLoading: pLoading } = usePatient(patientId);
+    // ── Queries ──
+    const { data: patient, isLoading: pLoading, error: pError } = usePatient(patientId);
+    const { data: consultations = [] } = useConsultationsByPatient(patientId);
+    const { data: labRequests = [] } = useLabRequestsByPatient(patientId);
+    const { data: radiologyRequests = [] } = useRadiologyRequestsByPatient(patientId);
+    const { data: prescriptions = [] } = usePrescriptionsByPatient(patientId);
+    const { data: nursing = [] } = useNursingActionsByPatient(patientId);
+    const { data: payments = [] } = usePaymentsByPatient(patientId);
 
-    const { data: consultations } = useConsultationsByPatient(patientId);
-    const { data: labRequests } = useLabRequestsByPatient(patientId);
-    const { data: nursing } = useNursingActionsByPatient(patientId);
-    const { data: payments } = usePaymentsByPatient(patientId);
+    // ── UI Filters & State ──
+    const [activeCategory, setActiveCategory] = useState<string>("all");
+    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+    const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
+    const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+    const [copiedId, setCopiedId] = useState(false);
 
-    const [activeFilter, setActiveFilter] = useState<string | null>(null);
+    const handleCopyPatientId = () => {
+        if (!patient?.id) return;
+        navigator.clipboard.writeText(patient.id);
+        setCopiedId(true);
+        setTimeout(() => setCopiedId(false), 2000);
+    };
 
+    // ── Build Unified Timeline Events ──
     const allEvents = useMemo<TimelineEvent[]>(() => {
         const events: TimelineEvent[] = [];
 
-        // Registration
+        // 1. Patient Registration
         if (patient) {
             events.push({
                 id: `reg-${patient.id}`,
                 type: "registration",
-                title: "Patient Registered",
-                description: `${patient.name} was registered at Nile Valley Hospital. Blood Group: ${patient.blood_group ?? "—"} · Genotype: ${patient.geno_type ?? "—"}`,
-                timestamp: patient.created_at ?? patient.created_at ?? new Date().toISOString(),
+                title: "Patient Registered at Nile Valley Hospital",
+                description: `Official hospital registration for ${patient.name}. Demographics, contact information, and initial medical baseline established.`,
+                timestamp: patient.created_at ?? new Date().toISOString(),
                 status: "Completed",
+                actor: "Front Desk Registry",
+                details: {
+                    items: [
+                        { k: "Blood Group", v: patient.blood_group || "—" },
+                        { k: "Genotype", v: patient.geno_type || "—" },
+                        { k: "Allergies", v: patient.allergies || "None known" },
+                        { k: "HMO/Insurance", v: patient.hmo ? (patient.hmo_name || "Yes") : "Private Client" },
+                        { k: "Emergency Contact", v: patient.emergency_contact_name ? `${patient.emergency_contact_name} (${patient.emergency_contact_number || "—"})` : "—" },
+                    ],
+                },
             });
         }
 
-        // Consultations
-        consultations?.forEach((c: any) => {
+        // 2. Doctor Consultations
+        consultations.forEach((c: any) => {
             const desc = [
-                c.symptoms ? `Symptoms: ${c.symptoms.slice(0, 120)}${c.symptoms.length > 120 ? "…" : ""}` : null,
-                c.diagnosis ? `Assessment: ${c.diagnosis.slice(0, 80)}${c.diagnosis.length > 80 ? "…" : ""}` : null,
-            ].filter(Boolean).join(" · ");
+                c.symptoms ? `Symptoms: ${c.symptoms}` : null,
+                c.diagnosis ? `Assessment / Diagnosis: ${c.diagnosis}` : null,
+                c.recommendations ? `Plan: ${c.recommendations}` : null,
+            ].filter(Boolean).join("\n\n");
+
+            const items: { k: string; v: string }[] = [];
+            if (c.diagnosis) items.push({ k: "Diagnosis", v: c.diagnosis });
+            if (c.referred_to) items.push({ k: "Referred To", v: c.referred_to.replace(/-/g, " ").toUpperCase() });
+            if (c.status) items.push({ k: "Consultation Status", v: c.status });
+
             events.push({
-                id: c.id ?? c.$id,
+                id: `consult-${c.id ?? c.$id}`,
                 type: "consultation",
-                title: "Doctor Consultation",
-                description: desc || "Consultation recorded.",
-                timestamp: c.created_at ?? c.consultationDate,
-                status: c.status,
+                title: c.diagnosis ? `Consultation: ${c.diagnosis}` : "Doctor Clinical Consultation",
+                description: desc || "Clinical consultation and examination recorded.",
+                timestamp: c.created_at ?? c.consultation_date ?? c.startTime,
+                status: c.status ?? "Completed",
+                actor: c.staffs?.name ? `Dr. ${c.staffs.name}` : (c.doctor_id ? `Doctor ID #${c.doctor_id.slice(-6)}` : "Attending Physician"),
                 meta: c.referred_to ? `Referred → ${c.referred_to.replace(/-/g, " ")}` : undefined,
+                details: {
+                    items,
+                    fullText: desc || undefined,
+                },
+                raw: c,
             });
         });
 
-        // Lab requests (excluding radiology)
+        // 3. Laboratory Investigations
         labRequests
-            ?.filter((r: any) => !String(r.test_type ?? "").startsWith("[RADIOLOGY]"))
+            .filter((r: any) => !String(r.test_type ?? "").startsWith("[RADIOLOGY]"))
             .forEach((r: any) => {
+                const items: { k: string; v: string }[] = [
+                    { k: "Test Investigation", v: r.test_type ?? "Lab Test" },
+                    { k: "Priority", v: (r.priority ?? "Routine").toUpperCase() },
+                    { k: "Result Status", v: r.status === "completed" ? "Completed" : "Awaiting Results" },
+                ];
+                if (r.completed_at) {
+                    items.push({ k: "Completed At", v: fmtFull(r.completed_at) });
+                }
+
                 events.push({
-                    id: r.id ?? r.$id,
+                    id: `lab-${r.id ?? r.$id}`,
                     type: "lab",
-                    title: r.test_type ?? "Lab Test",
-                    description: r.notes ? `Clinical indication: ${r.notes}` : r.result ? `Result: ${r.result.slice(0, 100)}` : "Lab investigation requested.",
+                    title: `Lab Test: ${r.test_type ?? "Laboratory Test"}`,
+                    description: r.notes ? `Clinical Indication: ${r.notes}` : (r.result ? "Laboratory analysis completed with findings." : "Laboratory investigation requested."),
                     timestamp: r.created_at,
-                    status: r.status,
-                    meta: r.status === "completed" && r.completed_at ? `Completed: ${fmtFull(r.completed_at)}` : `Priority: ${r.priority ?? "routine"}`,
+                    status: r.status ?? "pending",
+                    priority: r.priority ?? "routine",
+                    actor: r.completed_by ? `Lab Tech #${r.completed_by.slice(-6)}` : "Laboratory Department",
+                    meta: r.completed_at ? `Completed: ${fmtFull(r.completed_at)}` : `Priority: ${r.priority ?? "routine"}`,
+                    details: {
+                        items,
+                        fullText: r.result ? `LABORATORY RESULT FINDINGS:\n\n${r.result}` : undefined,
+                    },
+                    raw: r,
                 });
             });
 
-        // Radiology
-        labRequests
-            ?.filter((r: any) => String(r.test_type ?? "").startsWith("[RADIOLOGY]"))
-            .forEach((r: any) => {
-                const clean = r.test_type.replace(/^\[RADIOLOGY\]\s*/, "");
-                events.push({
-                    id: `rad-${r.id}`,
-                    type: "radiology",
-                    title: clean,
-                    description: r.notes ? `Clinical indication: ${r.notes}` : r.result ? r.result.slice(0, 150) : "Radiology investigation requested.",
-                    timestamp: r.created_at,
-                    status: r.status,
-                    meta: r.status === "completed" ? "Report filed" : `Priority: ${r.priority ?? "routine"}`,
-                });
-            });
+        // 4. Radiology Investigations
+        radiologyRequests.forEach((r: any) => {
+            const cleanStudy = String(r.test_type ?? "Radiology Study").replace(/^\[RADIOLOGY\]\s*/i, "");
+            const items: { k: string; v: string }[] = [
+                { k: "Modality / Study", v: cleanStudy },
+                { k: "Urgency", v: (r.priority ?? "Routine").toUpperCase() },
+                { k: "Report Status", v: r.status === "completed" ? "Report Available" : "Scheduled" },
+            ];
 
-        // Nursing
-        nursing?.forEach((a: any) => {
             events.push({
-                id: a.id ?? a.$id,
+                id: `rad-${r.id ?? r.$id}`,
+                type: "radiology",
+                title: `Radiology: ${cleanStudy}`,
+                description: r.notes ? `Clinical Indication: ${r.notes}` : (r.result ? "Radiology report and imaging findings available." : "Radiology investigation requested."),
+                timestamp: r.created_at,
+                status: r.status ?? "pending",
+                priority: r.priority ?? "routine",
+                actor: r.completed_by ? "Radiologist" : "Radiology Department",
+                meta: r.status === "completed" ? "Report filed" : `Priority: ${r.priority ?? "routine"}`,
+                details: {
+                    items,
+                    fullText: r.result ? `RADIOLOGY REPORT:\n\n${r.result}` : undefined,
+                },
+                raw: r,
+            });
+        });
+
+        // 5. Prescriptions & Pharmacy
+        prescriptions.forEach((p: any) => {
+            const isDispensed = p.dispensed === true || String(p.status).toLowerCase() === "dispensed";
+            const items: { k: string; v: string }[] = [
+                { k: "Medication", v: p.drug_name ?? "Medication" },
+                { k: "Dosage", v: p.dosage ?? "—" },
+                { k: "Duration", v: p.duration ?? "—" },
+            ];
+            if (p.price) {
+                items.push({ k: "Cost", v: `₦${Number(p.price).toLocaleString("en-NG")}` });
+            }
+
+            events.push({
+                id: `rx-${p.id ?? p.$id}`,
+                type: "pharmacy",
+                title: `Prescription: ${p.drug_name ?? "Prescribed Drug"}`,
+                description: [
+                    p.dosage ? `Dosage: ${p.dosage}` : null,
+                    p.duration ? `Duration: ${p.duration}` : null,
+                    p.notes ? `Instructions: ${p.notes}` : null,
+                ].filter(Boolean).join(" • "),
+                timestamp: p.created_at ?? p.createdDate,
+                status: isDispensed ? "Dispensed" : (p.status ?? "Active"),
+                actor: p.pharmacist_id ? "Hospital Pharmacist" : "Prescribing Doctor",
+                meta: p.price ? `₦${Number(p.price).toLocaleString("en-NG")}` : undefined,
+                details: {
+                    items,
+                    fullText: p.notes ? `Prescription Instructions: ${p.notes}` : undefined,
+                },
+                raw: p,
+            });
+        });
+
+        // 6. Nursing Actions & Vitals
+        nursing.forEach((n: any) => {
+            const isVitals = n.action_type === "Vitals" || n.action_type?.toLowerCase().includes("vital");
+            const items: { k: string; v: string }[] = [
+                { k: "Action Type", v: n.action_type ?? "Nursing Care" },
+                { k: "Status", v: n.status ?? "Completed" },
+            ];
+            if (n.completion_time) {
+                items.push({ k: "Completed At", v: fmtFull(n.completion_time) });
+            }
+
+            events.push({
+                id: `nurse-${n.id ?? n.$id}`,
                 type: "nursing",
-                title: `Nursing: ${a.action_type ?? "Care"}`,
-                description: a.description ?? "Nursing action performed.",
-                timestamp: a.created_at,
-                status: a.status,
-                meta: a.completion_time ? `Completed: ${fmtFull(a.completion_time)}` : undefined,
+                title: isVitals ? "Vital Signs Recorded" : `Nursing Care: ${n.action_type ?? "Action"}`,
+                description: n.description || "Nursing assessment and care recorded.",
+                timestamp: n.created_at,
+                status: n.status ?? "Completed",
+                actor: n.assigned_nurse ?? n.completed_by ? `Nurse ${n.assigned_nurse || n.completed_by}` : "Nursing Unit",
+                meta: isVitals ? "Vitals Charted" : (n.action_type ?? "Nursing"),
+                details: {
+                    items,
+                    fullText: n.description ? `Nursing Log:\n${n.description}` : undefined,
+                },
+                raw: n,
             });
         });
 
-        // Payments
-        payments?.forEach((p: any) => {
+        // 7. Payments & Billing Transactions
+        payments.forEach((p: any) => {
+            const amountFormatted = `₦${Number(p.amount ?? p.amount_kobo ? (p.amount_kobo / 100) : 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
+            const isPaid = p.status === "paid" || p.status === "Completed";
+            const items: { k: string; v: string }[] = [
+                { k: "Billed Amount", v: amountFormatted },
+                { k: "Category", v: (p.category ?? "General").toUpperCase() },
+                { k: "Payment Method", v: p.payment_method ?? p.paymentMethod ?? p.method ?? "Cash" },
+            ];
+            if (p.invoice_no) items.push({ k: "Invoice No", v: p.invoice_no });
+
             events.push({
-                id: p.id ?? p.$id,
+                id: `pay-${p.id ?? p.$id}`,
                 type: "payment",
-                title: "Payment",
-                description: `₦${Number(p.amount ?? 0).toLocaleString("en-NG")} — ${p.payment_method ?? p.paymentMethod ?? "—"}`,
-                timestamp: p.created_at,
-                status: p.status,
+                title: `Billing: ${p.description ?? "Hospital Service Invoice"}`,
+                description: `Amount: ${amountFormatted} · Category: ${p.category || "Service"} · Invoice: ${p.invoice_no || "Generated"}`,
+                timestamp: p.created_at ?? p.processed_date,
+                status: isPaid ? "Paid" : (p.status ?? "Pending"),
+                actor: p.processed_by ? `Cashier #${p.processed_by.slice(-6)}` : "Front Desk Cashier",
+                meta: amountFormatted,
+                details: {
+                    items,
+                },
+                raw: p,
             });
         });
 
-        return events.sort((a, b) =>
-            new Date(b.timestamp ?? 0).getTime() - new Date(a.timestamp ?? 0).getTime()
-        );
-    }, [patient, consultations, labRequests, nursing, payments]);
+        return events;
+    }, [patient, consultations, labRequests, radiologyRequests, prescriptions, nursing, payments]);
 
-    const filtered = useMemo(() =>
-        activeFilter ? allEvents.filter(e => e.type === activeFilter) : allEvents
-        , [allEvents, activeFilter]);
+    // ── Filter & Search Logic ──
+    const filteredEvents = useMemo(() => {
+        return allEvents
+            .filter((e) => {
+                // Category filter
+                if (activeCategory !== "all") {
+                    if (activeCategory === "lab_radiology") {
+                        if (e.type !== "lab" && e.type !== "radiology") return false;
+                    } else if (e.type !== activeCategory) {
+                        return false;
+                    }
+                }
 
+                // Search query
+                if (searchQuery.trim()) {
+                    const q = searchQuery.toLowerCase();
+                    const matchTitle = e.title.toLowerCase().includes(q);
+                    const matchDesc = (e.description || "").toLowerCase().includes(q);
+                    const matchActor = (e.actor || "").toLowerCase().includes(q);
+                    const matchMeta = (e.meta || "").toLowerCase().includes(q);
+                    const matchFull = (e.details?.fullText || "").toLowerCase().includes(q);
+                    if (!matchTitle && !matchDesc && !matchActor && !matchMeta && !matchFull) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+            .sort((a, b) => {
+                const timeA = new Date(a.timestamp || 0).getTime();
+                const timeB = new Date(b.timestamp || 0).getTime();
+                return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
+            });
+    }, [allEvents, activeCategory, searchQuery, sortOrder]);
+
+    // ── Group events by date for visual clarity ──
+    const groupedEvents = useMemo(() => {
+        const groups: { dateKey: string; dateTitle: string; events: TimelineEvent[] }[] = [];
+        const map = new Map<string, TimelineEvent[]>();
+
+        filteredEvents.forEach((event) => {
+            const dateKey = new Date(event.timestamp).toISOString().slice(0, 10);
+            if (!map.has(dateKey)) {
+                map.set(dateKey, []);
+            }
+            map.get(dateKey)!.push(event);
+        });
+
+        map.forEach((eventsInDate, dateKey) => {
+            const sampleIso = eventsInDate[0]?.timestamp || dateKey;
+            groups.push({
+                dateKey,
+                dateTitle: formatDateHeader(sampleIso),
+                events: eventsInDate,
+            });
+        });
+
+        return groups;
+    }, [filteredEvents]);
+
+    // ── Category Counts ──
     const typeCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        allEvents.forEach(e => { counts[e.type] = (counts[e.type] ?? 0) + 1; });
+        const counts: Record<string, number> = { all: allEvents.length };
+        allEvents.forEach((e) => {
+            counts[e.type] = (counts[e.type] ?? 0) + 1;
+        });
+        counts.lab_radiology = (counts.lab ?? 0) + (counts.radiology ?? 0);
         return counts;
     }, [allEvents]);
 
-    if (pLoading) return (
-        <div className="min-h-screen bg-gray-50/60 flex items-center justify-center gap-3">
-            <Loader2 size={20} className="text-red-500 animate-spin" />
-            <p className="text-sm font-medium text-gray-500">Loading timeline...</p>
-        </div>
-    );
+    // ── Handlers ──
+    const toggleExpandEvent = (id: string) => {
+        setExpandedEvents((prev) => ({ ...prev, [id]: !prev[id] }));
+    };
 
-    if (!patient) return (
-        <div className="min-h-screen bg-gray-50/60 flex flex-col items-center justify-center gap-4">
-            <AlertCircle size={28} className="text-amber-500" />
-            <p className="text-sm font-semibold text-gray-600">Patient not found</p>
-            <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-600 hover:border-gray-300 transition-all">
-                <ArrowLeft size={14} /> Go Back
-            </button>
-        </div>
-    );
+    const handlePrintTimeline = () => {
+        window.print();
+    };
+
+    const handleDownloadRecord = async (options: DownloadOptions) => {
+        if (!patient?.id) return;
+        try {
+            const result = await generatePatientRecord({
+                patientId: patient.id,
+                sections: options.sections,
+                dateFrom: options.dateFrom,
+                dateTo: options.dateTo,
+                format: options.format,
+                includeStamp: options.includeStamp,
+            });
+
+            if (result.type === "pdf") {
+                const bytes = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
+                const blob = new Blob([bytes], { type: "application/pdf" });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = result.filename;
+                anchor.click();
+                URL.revokeObjectURL(url);
+                toast.success("Medical record downloaded as PDF.");
+            } else {
+                const win = window.open("", "_blank", "width=1000,height=760,scrollbars=yes");
+                if (win) {
+                    win.document.write(result.html);
+                    win.document.close();
+                } else {
+                    const blob = new Blob([result.html], { type: "text/html" });
+                    const url = URL.createObjectURL(blob);
+                    window.open(url, "_blank");
+                    URL.revokeObjectURL(url);
+                }
+                toast.success("Print preview opened.");
+            }
+            setIsDownloadModalOpen(false);
+        } catch (err) {
+            toast.error("Failed to generate patient record.");
+            throw err;
+        }
+    };
+
+    // ── Loading state ──
+    if (pLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50/60 flex flex-col items-center justify-center gap-3">
+                <Loader2 size={24} className="text-blue-600 animate-spin" />
+                <p className="text-sm font-semibold text-gray-500">Loading comprehensive timeline…</p>
+            </div>
+        );
+    }
+
+    // ── Not found error state ──
+    if (pError || !patient) {
+        return (
+            <div className="min-h-screen bg-gray-50/60 flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mb-4">
+                    <AlertCircle size={28} />
+                </div>
+                <h2 className="text-lg font-bold text-gray-800">Patient Record Not Found</h2>
+                <p className="text-xs text-gray-500 mt-1 max-w-sm">The patient ID requested does not exist or has been removed from the system.</p>
+                <button
+                    type="button"
+                    onClick={() => router.back()}
+                    className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm shadow-blue-200"
+                >
+                    <ArrowLeft size={14} /> Go Back
+                </button>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50/60">
-            <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        <div className="min-h-screen bg-gray-50/60 py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto space-y-6">
 
-                {/* ── Back + title ── */}
-                <div className="flex items-center gap-3">
-                    <button onClick={() => router.back()}
-                        className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all shadow-sm shrink-0">
-                        <ArrowLeft size={15} />
-                    </button>
-                    <div>
-                        <h1 className="text-lg font-black text-gray-900">Patient Timeline</h1>
-                        <p className="text-xs text-gray-400 mt-0.5">Chronological medical history</p>
+                {/* ── Top Bar & Breadcrumbs ── */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => router.back()}
+                            className="w-10 h-10 rounded-2xl bg-white border border-gray-200 shadow-xs flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all shrink-0"
+                            title="Go Back"
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                        <div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold">
+                                <span>EMR</span>
+                                <ChevronRight size={12} />
+                                <span>Patients</span>
+                                <ChevronRight size={12} />
+                                <span className="text-blue-600 font-bold">Clinical Timeline</span>
+                            </div>
+                            <h1 className="text-xl font-black text-gray-900 mt-0.5">
+                                Patient Journey Timeline
+                            </h1>
+                        </div>
+                    </div>
+
+                    {/* Header Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            type="button"
+                            onClick={handlePrintTimeline}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-700 shadow-xs transition-all"
+                        >
+                            <Printer size={14} /> Print Timeline
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsDownloadModalOpen(true)}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm shadow-blue-200 transition-all"
+                        >
+                            <Download size={14} /> Export Record
+                        </button>
                     </div>
                 </div>
 
-                {/* ── Patient summary card ── */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center text-white font-black text-lg shadow-md shadow-red-200 shrink-0">
-                            {patient.name?.[0]?.toUpperCase()}
+                {/* ── Patient Profile Summary Card ── */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6 overflow-hidden relative">
+                    <div className="flex flex-col md:flex-row md:items-center gap-5 justify-between">
+                        
+                        {/* Avatar + Primary Bio */}
+                        <div className="flex items-start gap-4 min-w-0">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-xl shadow-md shadow-blue-200 shrink-0">
+                                {patient.name?.[0]?.toUpperCase() ?? <User size={24} />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h2 className="text-lg sm:text-xl font-black text-gray-900 truncate">
+                                        {patient.name}
+                                    </h2>
+                                    {patient.status && (
+                                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 capitalize">
+                                            {patient.status.replace(/-/g, " ")}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Patient ID with copy button */}
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-gray-100 text-gray-700 font-mono text-[11px] font-bold">
+                                        ID: {patient.id?.slice(0, 12)}…
+                                        <button
+                                            type="button"
+                                            onClick={handleCopyPatientId}
+                                            className="text-gray-400 hover:text-blue-600 transition-colors ml-0.5"
+                                            title="Copy full patient ID"
+                                        >
+                                            {copiedId ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
+                                        </button>
+                                    </span>
+                                    {patient.gender && (
+                                        <span className="text-xs text-gray-500 font-semibold bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md capitalize">
+                                            {patient.gender}
+                                        </span>
+                                    )}
+                                    {patient.birth_date && (
+                                        <span className="text-xs text-gray-500 font-semibold bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md">
+                                            {calcAge(patient.birth_date)} yrs ({new Date(patient.birth_date).toLocaleDateString("en-GB")})
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-base font-black text-gray-900">{patient.name}</p>
-                            <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                {patient.gender && <span className="text-xs text-gray-500 font-medium capitalize">{patient.gender}</span>}
-                                {patient.birth_date && <span className="text-xs text-gray-500 font-medium">{calcAge(patient.birth_date)}</span>}
+
+                        {/* Quick Patient Tags */}
+                        <div className="flex flex-wrap md:flex-col md:items-end gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100">
+                            <div className="flex items-center gap-2">
                                 {patient.blood_group && (
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">
-                                        {patient.blood_group}
+                                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl bg-red-50 text-red-700 border border-red-100">
+                                        <Droplets size={12} /> {patient.blood_group}
+                                    </span>
+                                )}
+                                {patient.geno_type && (
+                                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        <Dna size={12} /> {patient.geno_type}
                                     </span>
                                 )}
                             </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                            <p className="text-2xl font-black text-gray-900">{allEvents.length}</p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-0.5">Events</p>
+                            {patient.allergies && patient.allergies !== "None" && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200">
+                                    <ShieldAlert size={12} className="text-rose-500 shrink-0" />
+                                    Allergy: {patient.allergies}
+                                </span>
+                            )}
                         </div>
                     </div>
 
-                    {/* Event type summary */}
-                    <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-gray-50">
-                        {(["consultation", "lab", "nursing", "payment"] as const).map(type => {
-                            const cfg = EVENT_CONFIG[type];
-                            const Icon = cfg.icon;
-                            return (
-                                <div key={type} className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl ${cfg.bg} border ${cfg.border}`}>
-                                    <Icon size={14} className={cfg.color} />
-                                    <p className={`text-sm font-black ${cfg.color}`}>{typeCounts[type] ?? 0}</p>
-                                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{cfg.label}</p>
+                    {/* Secondary Contact & Insurance Metadata Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100 text-xs text-gray-600">
+                        {patient.phone && (
+                            <div className="flex items-center gap-2">
+                                <Phone size={13} className="text-gray-400 shrink-0" />
+                                <span className="truncate">{patient.phone}</span>
+                            </div>
+                        )}
+                        {patient.email && (
+                            <div className="flex items-center gap-2">
+                                <Mail size={13} className="text-gray-400 shrink-0" />
+                                <span className="truncate">{patient.email}</span>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2 sm:justify-end">
+                            <Building2 size={13} className="text-gray-400 shrink-0" />
+                            <span className="font-semibold text-gray-700 truncate">
+                                {patient.hmo ? `HMO: ${patient.hmo_name || "Enrolled"}` : "Private Client"}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── Summary Stats Metric Cards ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 print:hidden">
+                    {[
+                        { label: "Total Events", count: allEvents.length, icon: Layers, color: "text-gray-700", bg: "bg-gray-100" },
+                        { label: "Consults", count: consultations.length, icon: Stethoscope, color: "text-rose-600", bg: "bg-rose-50" },
+                        { label: "Lab Tests", count: labRequests.length, icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50" },
+                        { label: "Radiology", count: radiologyRequests.length, icon: Radio, color: "text-cyan-600", bg: "bg-cyan-50" },
+                        { label: "Prescriptions", count: prescriptions.length, icon: Pill, color: "text-violet-600", bg: "bg-violet-50" },
+                        { label: "Payments", count: payments.length, icon: CreditCard, color: "text-amber-600", bg: "bg-amber-50" },
+                    ].map((stat, i) => {
+                        const Icon = stat.icon;
+                        return (
+                            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col items-center text-center shadow-xs">
+                                <div className={`w-8 h-8 rounded-xl ${stat.bg} flex items-center justify-center mb-1.5`}>
+                                    <Icon size={14} className={stat.color} />
                                 </div>
+                                <p className="text-base font-black text-gray-900 leading-tight">{stat.count}</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5 truncate max-w-full">{stat.label}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* ── Interactive Controls & Filtering Toolbar ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs space-y-3 print:hidden">
+                    
+                    {/* Search & Sort Row */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                        
+                        {/* Live Search */}
+                        <div className="relative flex-1">
+                            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search timeline (symptoms, diagnoses, drugs, tests, doctors)..."
+                                className="w-full h-10 pl-9 pr-8 rounded-xl bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:bg-white transition-all"
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Chronological Sort Toggle */}
+                        <button
+                            type="button"
+                            onClick={() => setSortOrder(o => o === "desc" ? "asc" : "desc")}
+                            className="flex items-center justify-center gap-1.5 px-3.5 h-10 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
+                            title="Toggle timeline order"
+                        >
+                            <ArrowUpDown size={13} />
+                            <span>{sortOrder === "desc" ? "Newest First" : "Oldest First"}</span>
+                        </button>
+                    </div>
+
+                    {/* Category Filter Chips */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide pt-1">
+                        {[
+                            { id: "all", label: "All Events", count: typeCounts.all },
+                            { id: "consultation", label: "Consultations", count: typeCounts.consultation || 0 },
+                            { id: "lab_radiology", label: "Labs & Radiology", count: typeCounts.lab_radiology || 0 },
+                            { id: "pharmacy", label: "Prescriptions", count: typeCounts.pharmacy || 0 },
+                            { id: "nursing", label: "Nursing / Vitals", count: typeCounts.nursing || 0 },
+                            { id: "payment", label: "Billing / Payments", count: typeCounts.payment || 0 },
+                        ].map((chip) => {
+                            const isActive = activeCategory === chip.id;
+                            return (
+                                <button
+                                    key={chip.id}
+                                    type="button"
+                                    onClick={() => setActiveCategory(chip.id)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                                        isActive
+                                            ? "bg-blue-600 text-white shadow-xs shadow-blue-200"
+                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    }`}
+                                >
+                                    <span>{chip.label}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${isActive ? "bg-blue-700 text-white" : "bg-white text-gray-600"}`}>
+                                        {chip.count}
+                                    </span>
+                                </button>
                             );
                         })}
                     </div>
                 </div>
 
-                {/* ── Filter chips ── */}
-                <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">Filter:</p>
-                    <FilterChip label="All" active={!activeFilter} onClick={() => setActiveFilter(null)} color="text-gray-700" bg="bg-gray-100" />
-                    {Object.entries(EVENT_CONFIG).filter(([, cfg]) => typeCounts[cfg.label.toLowerCase()] ?? typeCounts[Object.keys(EVENT_CONFIG).find(k => EVENT_CONFIG[k] === cfg) ?? ""] ?? 0).map(([type, cfg]) =>
-                        (typeCounts[type] ?? 0) > 0 ? (
-                            <FilterChip key={type}
-                                label={`${cfg.label} (${typeCounts[type]})`}
-                                active={activeFilter === type}
-                                onClick={() => setActiveFilter(activeFilter === type ? null : type)}
-                                color={cfg.color} bg={cfg.bg} />
-                        ) : null
-                    )}
-                </div>
-
-                {/* ── Timeline ── */}
-                {filtered.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-2xl border border-gray-100">
-                        <TrendingUp size={22} className="text-gray-300" />
-                        <p className="text-sm font-semibold text-gray-500">No events recorded yet</p>
-                        <p className="text-xs text-gray-400">Medical events will appear here as the patient progresses through care.</p>
+                {/* ── Timeline Events Spine Display ── */}
+                {filteredEvents.length === 0 ? (
+                    <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center flex flex-col items-center justify-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400">
+                            <TrendingUp size={22} />
+                        </div>
+                        <h3 className="text-base font-bold text-gray-800">No matching timeline events</h3>
+                        <p className="text-xs text-gray-400 max-w-sm">
+                            {searchQuery || activeCategory !== "all"
+                                ? "Try adjusting your search query or switching the category filter."
+                                : "Medical events will appear here as the patient journeys through consultation, tests, and care."}
+                        </p>
+                        {(searchQuery || activeCategory !== "all") && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    setActiveCategory("all");
+                                }}
+                                className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition-colors mt-2"
+                            >
+                                Reset all filters
+                            </button>
+                        )}
                     </div>
                 ) : (
-                    <div className="space-y-0">
-                        {filtered.map((event, idx) => (
-                            <EventCard key={event.id} event={event} isLast={idx === filtered.length - 1} />
+                    <div className="space-y-8">
+                        {groupedEvents.map((group) => (
+                            <div key={group.dateKey} className="space-y-4">
+                                
+                                {/* Sticky Date Group Header */}
+                                <div className="flex items-center gap-3 sticky top-4 z-20">
+                                    <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold shadow-md shadow-slate-900/10">
+                                        <Calendar size={12} className="text-slate-300" />
+                                        <span>{group.dateTitle}</span>
+                                        <span className="text-[10px] text-slate-300 font-normal">
+                                            ({group.events.length} {group.events.length === 1 ? "event" : "events"})
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 h-px bg-gray-200" />
+                                </div>
+
+                                {/* Events within this date group */}
+                                <div className="space-y-0 pl-1 sm:pl-3">
+                                    {group.events.map((event, idx) => (
+                                        <EventCard
+                                            key={event.id}
+                                            event={event}
+                                            isLast={idx === group.events.length - 1}
+                                            isExpanded={!!expandedEvents[event.id]}
+                                            onToggleExpand={() => toggleExpandEvent(event.id)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
                         ))}
                     </div>
                 )}
+
+                {/* ── Export / Download Dialog ── */}
+                <Dialog open={isDownloadModalOpen} onOpenChange={setIsDownloadModalOpen}>
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-base font-bold text-gray-900">
+                                <Download size={18} className="text-blue-600" />
+                                Export Patient Medical Record
+                            </DialogTitle>
+                        </DialogHeader>
+                        {patient?.id && (
+                            <PatientRecordDownload
+                                patientId={patient.id}
+                                patientName={patient.name ?? "Patient"}
+                                onDownload={handleDownloadRecord}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     );

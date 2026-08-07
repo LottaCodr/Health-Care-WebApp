@@ -2,7 +2,9 @@
 
 import React, { useRef, useState } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
-import PatientRecordDownload from "@/components/patients/patient-record-download";
+import PatientRecordDownload, { DownloadOptions } from "@/components/patients/patient-record-download";
+import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
+import { toast } from "sonner";
 import {
     Dialog,
     DialogContent,
@@ -144,13 +146,45 @@ export default function PatientRecordPage({ patient }: Props) {
                         <PatientRecordDownload
                             patientId={patient.id}
                             patientName={patient.name ?? "Patient"}
-                            onDownload={async (options) => {
-                                if (options.format === "print") {
-                                    handlePrint();
-                                } else {
-                                    handlePrint();
+                            onDownload={async (options: DownloadOptions) => {
+                                try {
+                                    const result = await generatePatientRecord({
+                                        patientId: patient.id!,
+                                        sections: options.sections,
+                                        dateFrom: options.dateFrom,
+                                        dateTo: options.dateTo,
+                                        format: options.format,
+                                        includeStamp: options.includeStamp,
+                                    });
+
+                                    if (result.type === "pdf") {
+                                        const bytes = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
+                                        const blob = new Blob([bytes], { type: "application/pdf" });
+                                        const url = URL.createObjectURL(blob);
+                                        const anchor = document.createElement("a");
+                                        anchor.href = url;
+                                        anchor.download = result.filename;
+                                        anchor.click();
+                                        URL.revokeObjectURL(url);
+                                        toast.success("Patient record downloaded as PDF.");
+                                    } else {
+                                        const win = window.open("", "_blank", "width=1000,height=760,scrollbars=yes");
+                                        if (win) {
+                                            win.document.write(result.html);
+                                            win.document.close();
+                                        } else {
+                                            const blob = new Blob([result.html], { type: "text/html" });
+                                            const url = URL.createObjectURL(blob);
+                                            window.open(url, "_blank");
+                                            URL.revokeObjectURL(url);
+                                        }
+                                        toast.success("Print document opened.");
+                                    }
+                                    setDownloadOpen(false);
+                                } catch (err) {
+                                    toast.error("Failed to generate patient record.");
+                                    throw err;
                                 }
-                                setDownloadOpen(false);
                             }}
                         />
                     )}
