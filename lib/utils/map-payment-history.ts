@@ -10,7 +10,17 @@ function mapStatus(raw?: string): HistoryPayment["status"] {
     return "pending";
 }
 
-function mapCategory(desc?: string): HistoryPayment["category"] {
+const KNOWN_CATEGORIES = new Set([
+    "consultation", "lab", "radiology", "pharmacy", "procedure", "admission", "other",
+]);
+
+function mapCategory(category?: string | null, desc?: string): HistoryPayment["category"] {
+    // Prefer the explicit category stored on the payment row…
+    const c = (category ?? "").toLowerCase();
+    if (KNOWN_CATEGORIES.has(c)) return c as HistoryPayment["category"];
+
+    // …and fall back to inferring it from the description for legacy rows
+    // that predate the category column.
     const d = (desc ?? "").toLowerCase();
     if (d.includes("lab")) return "lab";
     if (d.includes("radio")) return "radiology";
@@ -34,7 +44,7 @@ export function mapPaymentsForHistory(rows: DbPayment[]): HistoryPayment[] {
         return {
             id: p.id,
             patient_id: p.patient_id ?? p.patientId ?? "",
-            category: mapCategory(p.description),
+            category: mapCategory((p as any).category, p.description),
             description: p.description ?? "Payment",
             amount_kobo: amount,
             amount_paid_kobo: paid,

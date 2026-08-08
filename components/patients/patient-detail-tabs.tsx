@@ -17,7 +17,6 @@ import { Patient, PatientStatus } from "@/types/models";
 import { getAllStaffs } from "@/actions/staff/get.staff";
 import { Staff } from "@/actions/staff/types";
 import { calculateAge } from "@/utils/export";
-import { useConfirmPayment } from "@/hooks/emr/use-payment";
 import { normalizeUserRole } from "@/lib/roles";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
@@ -150,7 +149,6 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const dischargeStore = useDischargeStore();
   const formRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const confirmPayment = useConfirmPayment();
 
   const role = normalizeUserRole(user?.role);
   const staffId = user?.$id ?? user?.id ?? "";
@@ -428,7 +426,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                 patientId={patient.id}
                 patient={patient}
                 readOnly={billingReadOnly}
-                onSettle={billingReadOnly ? undefined : paymentId => confirmPayment.mutate({ id: paymentId, method: "cash", cashierId: staffId })}
+                cashierId={staffId}
               />
             </div>
           </TabsContent>

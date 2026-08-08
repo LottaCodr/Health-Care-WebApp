@@ -344,7 +344,7 @@ export default function DrugManagementPage() {
     const lowStock = (drugs as unknown as Drug[] ?? []).filter(d => d.quantity <= (d.reorder_level ?? 10) && d.quantity > 0).length;
     const outOfStock = (drugs as unknown as Drug[] ?? []).filter(d => d.quantity === 0).length;
 
-    const selCls = "h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer";
+    const selCls = "h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer";
 
     return (
         <div className="space-y-6">

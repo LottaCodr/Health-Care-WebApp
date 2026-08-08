@@ -235,7 +235,7 @@ export default function HealthRecordsComponent() {
 
     if (!authorized) return null;
 
-    const selectCls = "h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer";
+    const selectCls = "h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer";
 
     return (
         <div className="space-y-6">

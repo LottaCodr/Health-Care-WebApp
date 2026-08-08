@@ -70,6 +70,15 @@ export default function PatientDetailsComponent({ patient }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patient]);
 
+    // Deep-link: /patient/[id]?readmit=1 (from the dashboard "Re-admit" action)
+    // auto-opens the return-visit dialog for discharged patients.
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (!patient?.id || !isFrontDesk || !isDischarged) return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("readmit") === "1") setReturnOpen(true);
+    }, [patient?.id, isFrontDesk, isDischarged]);
+
     const handleCopyId = useCallback(async (id: string) => {
         try {
             await navigator.clipboard.writeText(id);

@@ -92,8 +92,11 @@ export interface Consultation {
     // Identity fields
     id: string;                  // Unique identifier
     patient_id: string;          // Patient's ID
-    patient_name?: string;       // Denormalized patient name (when joined/denormalized)
+    patient_name?: string | null;       // Denormalized patient name (when joined/denormalized)
     patientName?: string;        // camelCase variant
+    patient_gender?: string | null;     // Joined patient gender (doctor dashboard)
+    patient_birth_date?: string | null; // Joined patient date of birth
+    patient_phone?: string | null;      // Joined patient phone
     doctor_id: string;           // Doctor's ID
 
     // Clinical content

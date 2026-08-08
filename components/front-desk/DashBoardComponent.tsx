@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import PaymentConfirmation from "./PaymentSuite";
-import { usePatientsByStatus } from "@/hooks/emr/use-patients";
+import { usePatientsByStatus, useAllPatients } from "@/hooks/emr/use-patients";
 import {
     useActiveAdmissions,
 } from "@/hooks/emr/use-admissions";
@@ -31,6 +31,40 @@ function calcAge(dob?: string) {
         age--;
     }
     return age < 1 ? "< 1 yr" : `${age} yrs`;
+}
+
+function registeredToday(patient: any): boolean {
+    if (!patient?.created_at) return false;
+    return String(patient.created_at).slice(0, 10) === toHospitalISODate();
+}
+
+// ─── Live status chip ─────────────────────────────────────────────────────────
+
+const STATUS_CHIP: Record<string, string> = {
+    "registered":            "bg-blue-50 text-blue-700 border-blue-100",
+    "sent-to-nurse":         "bg-teal-50 text-teal-700 border-teal-100",
+    "awaiting-consultation": "bg-amber-50 text-amber-700 border-amber-100",
+    "under-consultation":    "bg-violet-50 text-violet-700 border-violet-100",
+    "sent-to-lab":           "bg-indigo-50 text-indigo-700 border-indigo-100",
+    "sent-to-radiology":     "bg-cyan-50 text-cyan-700 border-cyan-100",
+    "sent-to-pharmacy":      "bg-pink-50 text-pink-700 border-pink-100",
+    "awaiting-payment":      "bg-red-50 text-red-700 border-red-100",
+    "admitted":              "bg-blue-50 text-blue-700 border-blue-100",
+    "under-observation":     "bg-orange-50 text-orange-700 border-orange-100",
+    "discharged":            "bg-green-50 text-green-700 border-green-100",
+};
+
+function StatusChip({ status }: { status?: string }) {
+    const key = (status ?? "").toLowerCase();
+    const label = key
+        ? key.split("-").map(w => w[0]?.toUpperCase() + w.slice(1)).join(" ")
+        : "No status";
+    return (
+        <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${STATUS_CHIP[key] ?? "bg-gray-50 text-gray-500 border-gray-100"}`}>
+            <span className="w-1 h-1 rounded-full bg-current opacity-60" />
+            {label}
+        </span>
+    );
 }
 
 // ─── Patient row ──────────────────────────────────────────────────────────────
@@ -59,6 +93,35 @@ function PatientRow({ patient, action }: {
             <Link href={action.href}
                 className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-bold transition-colors ${action.color}`}>
                 {action.label} <ArrowRight size={11} />
+            </Link>
+        </div>
+    );
+}
+
+// ─── Today's-arrival row (status chip shows live journey stage) ───────────────
+
+function ArrivalRow({ patient }: { patient: any }) {
+    const age = calcAge(patient.birth_date ?? patient.date_of_birth);
+    const initials = typeof patient.name === "string" && patient.name.length > 0
+        ? patient.name[0].toUpperCase()
+        : "?";
+    return (
+        <div className="flex items-center gap-3 p-3 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-100 hover:shadow-sm transition-all">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center font-black text-blue-600 text-sm shrink-0">
+                {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-800 truncate">{patient.name ?? "—"}</p>
+                <p className="text-[11px] text-gray-400">
+                    {patient.gender ?? ""}
+                    {age ? ` · ${age}` : ""}
+                    {patient.created_at ? ` · ${new Date(patient.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                </p>
+            </div>
+            <StatusChip status={patient.status} />
+            <Link href={`/front-desk/patient/${patient.id}`}
+                className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-bold transition-colors bg-blue-600 hover:bg-blue-700">
+                Open <ArrowRight size={11} />
             </Link>
         </div>
     );
@@ -115,16 +178,22 @@ function Section({ icon: Icon, iconBg, iconColor, title, subtitle, badge, badgeC
 export default function FrontDeskDashboard() {
     const { authorized } = useRoleProtection([UserRole.FrontDesk, UserRole.Admin]);
 
-    const registered          = usePatientsByStatus(PatientStatus.Registered);
+    const allPatients         = useAllPatients();
     const awaitingConsult     = usePatientsByStatus(PatientStatus.AwaitingConsultation);
     const awaitingPayment     = usePatientsByStatus(PatientStatus.AwaitingPayment);
     const discharged          = usePatientsByStatus(PatientStatus.Discharged);
     const activeAdmissions    = useActiveAdmissions();
     const todayAppointments   = useAppointmentsByDate(toHospitalISODate());
 
+    // "New arrivals" = every patient registered today, regardless of which
+    // stage of the journey they have reached (nurse triage, doctor, billing…).
+    const todaysArrivals = Array.isArray(allPatients.data)
+        ? allPatients.data.filter(registeredToday)
+        : [];
+
     const handleRefresh = () => {
         void Promise.all([
-            registered.refetch(),
+            allPatients.refetch(),
             awaitingConsult.refetch(),
             awaitingPayment.refetch(),
             discharged.refetch(),
@@ -139,7 +208,7 @@ export default function FrontDeskDashboard() {
     const admittedPatientsLength = admittedPatients.length;
 
     const stats = [
-        { label: "New Arrivals",     value: Array.isArray(registered.data) ? registered.data.length : 0, icon: Users,         color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100"   },
+        { label: "New Arrivals",     value: todaysArrivals.length, icon: Users,         color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100"   },
         { label: "In Queue",         value: Array.isArray(awaitingConsult.data) ? awaitingConsult.data.length : 0, icon: ClipboardList,  color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
         { label: "Admitted",         value: admittedPatientsLength                                     , icon: BedDouble,      color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
         { label: "Pending Payment",  value: Array.isArray(awaitingPayment.data) ? awaitingPayment.data.length : 0, icon: Wallet,         color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100"    },
@@ -149,7 +218,7 @@ export default function FrontDeskDashboard() {
 
     // True if any section is loading
     const anyLoading =
-        registered.isLoading ||
+        allPatients.isLoading ||
         awaitingConsult.isLoading ||
         awaitingPayment.isLoading ||
         discharged.isLoading ||
@@ -159,8 +228,8 @@ export default function FrontDeskDashboard() {
     // fix: wrap callbacks in functions instead of passing potentially undefined or wrong signatures
 
     const handleRegisteredRefresh = () => {
-        if (typeof registered.refetch === "function") {
-            registered.refetch();
+        if (typeof allPatients.refetch === "function") {
+            allPatients.refetch();
         }
     };
     const handleActiveAdmissionsRefresh = () => {
@@ -228,20 +297,20 @@ export default function FrontDeskDashboard() {
             {/* ── Row 1: New arrivals + Admitted patients ── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                {/* New arrivals */}
+                {/* Today's arrivals */}
                 <Section
                     icon={Users}
                     iconBg="bg-blue-50"
                     iconColor="text-blue-600"
-                    title="New Arrivals"
-                    subtitle="Newly registered patients ready for check-in"
-                    badge={Array.isArray(registered.data) ? registered.data.length : 0}
+                    title="Today's Arrivals"
+                    subtitle="Patients registered today and their live journey stage"
+                    badge={todaysArrivals.length}
                     badgeColor="bg-blue-50 text-blue-700 border-blue-100"
                     href="/front-desk/queue"
                     hrefLabel="View All"
-                    loading={registered.isLoading}
-                    empty={Array.isArray(registered.data) && registered.data.length === 0 ? (
-                        <p className="text-sm text-gray-400 text-center py-8">No new arrivals</p>
+                    loading={allPatients.isLoading}
+                    empty={todaysArrivals.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-8">No patients registered yet today</p>
                     ) : undefined}
                     extraHeaderContent={
                         <button
@@ -249,15 +318,14 @@ export default function FrontDeskDashboard() {
                             type="button"
                             className="flex items-center text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors p-1 rounded-lg"
                             onClick={handleRegisteredRefresh}
-                            disabled={registered.isLoading}
+                            disabled={allPatients.isLoading}
                         >
-                            <RefreshCcw size={14} className={registered.isLoading ? "animate-spin" : ""} />
+                            <RefreshCcw size={14} className={allPatients.isLoading ? "animate-spin" : ""} />
                         </button>
                     }
                 >
-                    {Array.isArray(registered.data) && registered.data.slice(0, 5).map(p => (
-                        <PatientRow key={p.id} patient={p}
-                            action={{ label: "Check In", href: `/front-desk/patient/${p.id}`, color: "bg-blue-600 hover:bg-blue-700" }} />
+                    {todaysArrivals.slice(0, 5).map(p => (
+                        <ArrivalRow key={p.id} patient={p} />
                     ))}
                     <Link href="/front-desk/patient/new" className="block mt-1">
                         {/* Button should not be a child of Link in Next.js 13+; so use only <Link> as stylable element */}
