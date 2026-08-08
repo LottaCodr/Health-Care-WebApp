@@ -222,6 +222,82 @@ export async function getPaymentById(id: string): Promise<Payment | null> {
     return data ? normalizePayment(data) : null;
 }
 
+export interface UpdatePendingBillInput {
+    id: string;
+    description?: string;
+    amount?: number;
+    category?: PaymentCategory;
+    notes?: string;
+}
+
+/**
+ * Edit an outstanding (pending / partially paid) bill *before* it is settled.
+ * Front desk uses this to correct prices, descriptions or categories while the
+ * invoice is still open, so the settled amount always reflects the latest edit.
+ */
+export async function updatePendingBill(input: UpdatePendingBillInput): Promise<Payment> {
+    if (!input.id) throw new Error("id is required to update a bill.");
+
+    const supabase = await createClient();
+    const existing = await getPaymentById(input.id);
+    if (!existing) throw new Error("Bill was not found.");
+    if (!isOutstanding(existing)) {
+        throw new Error("Only outstanding bills can be edited. This bill is already settled.");
+    }
+
+    const now = new Date().toISOString();
+    const nextDescription =
+        typeof input.description === "string" && input.description.trim()
+            ? input.description.trim()
+            : existing.description;
+    const nextCategory = input.category ?? (existing.category as PaymentCategory | undefined) ?? "other";
+
+    let nextAmount = existing.amount;
+    if (typeof input.amount === "number" && Number.isFinite(input.amount) && input.amount >= 0) {
+        nextAmount = input.amount;
+    }
+
+    const paidKobo = paidToKobo(existing);
+    const nextAmountKobo = Math.max(0, Math.round(nextAmount * 100));
+    // Guard: never drop the bill below what has already been paid toward it.
+    const effectiveKobo = Math.max(nextAmountKobo, paidKobo);
+    nextAmount = effectiveKobo / 100;
+
+    const fullPayload: Record<string, any> = {
+        description: nextDescription,
+        category: nextCategory,
+        amount: nextAmount,
+        amount_kobo: effectiveKobo,
+        updated_at: now,
+        notes: input.notes !== undefined ? input.notes : existing.notes ?? null,
+    };
+
+    const compatiblePayload: Record<string, any> = {
+        description: nextDescription,
+        category: nextCategory,
+        amount: nextAmount,
+        updated_at: now,
+    };
+
+    const minimalPayload: Record<string, any> = {
+        description: nextDescription,
+        amount: nextAmount,
+    };
+
+    try {
+        return normalizePayment(
+            await tryUpdatePayment(supabase, input.id, String((existing as any).raw_status ?? existing.status), [
+                fullPayload,
+                compatiblePayload,
+                minimalPayload,
+            ])
+        );
+    } catch (error) {
+        console.error("[payment] updatePendingBill:", error);
+        throw error;
+    }
+}
+
 export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, methodArg?: string): Promise<Payment> {
     const input: ConfirmPaymentInput =
         typeof inputOrId === "string" ? { id: inputOrId, method: methodArg } : inputOrId;
@@ -240,7 +316,8 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
     let effectiveTotalKobo = totalKobo;
     let isPriceEdit = false;
     if (typeof input.amountPaid === "number" && Number.isFinite(input.amountPaid) && input.amountPaid >= 0) {
-        const editedKobo = Math.max(0, Math.round(input.amountPaid * 100));
+        // Never drop the bill total below what has already been collected.
+        const editedKobo = Math.max(paidKobo, Math.max(0, Math.round(input.amountPaid * 100)));
         if (editedKobo !== totalKobo) {
             effectiveTotalKobo = editedKobo;
             isPriceEdit = true;

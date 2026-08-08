@@ -1,14 +1,7 @@
+import React from "react";
 
-import React from 'react'
+import PatientsComponent from "@/components/patients";
 
-import { SearchParamProps } from "@/types";
-import PatientsComponent from '@/components/patients';
-
-const Patients = async ({ params: { userId } }: SearchParamProps) => {
-
-    return (
-        <PatientsComponent  />
-    );
+export default async function PatientsPage() {
+    return <PatientsComponent />;
 }
-
-export default Patients

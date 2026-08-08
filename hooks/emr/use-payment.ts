@@ -56,6 +56,28 @@ export function useCreatePayment() {
 }
 
 /**
+ * Edits an outstanding bill (price, description, category) while it is still
+ * pending — front desk can correct invoices before settling them.
+ */
+export function useUpdatePayment() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (input: PS.UpdatePendingBillInput) =>
+            PS.updatePendingBill(input),
+
+        onSuccess: (payment) => {
+            qc.invalidateQueries({ queryKey: paymentKeys.all() });
+            qc.invalidateQueries({ queryKey: paymentKeys.pending() });
+            if (payment.patient_id) {
+                qc.invalidateQueries({ queryKey: paymentKeys.byPatient(payment.patient_id) });
+                qc.invalidateQueries({ queryKey: patientKeys.detail(payment.patient_id) });
+            }
+        },
+    });
+}
+
+/**
  * Confirms a pending payment. Now takes the selected payment method
  * alongside the id — previously the method picker in the confirmation UI
  * was purely cosmetic because only the id was ever sent to the server.

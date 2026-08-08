@@ -69,14 +69,34 @@ export async function listConsultationsByDoctor(
     doctorId: string
 ): Promise<Consultation[]> {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    // Join the patient record so dashboards can show real names instead of ids.
+    const withPatient = await supabase
         .from("consultations")
-        .select("*")
+        .select("*, patients(name, gender, birth_date, phone)")
         .eq("doctor_id", doctorId)
         .order("created_at", { ascending: false });
 
-    if (error) { console.error("[consultation] listByDoctor:", error); return []; }
-    return data as unknown as Consultation[];
+    let data = withPatient.data;
+
+    if (withPatient.error) {
+        // Relationship may be missing in some schemas — fall back to plain rows.
+        console.warn("[consultation] listByDoctor patient join failed, using plain rows:", withPatient.error.message);
+        const plain = await supabase
+            .from("consultations")
+            .select("*")
+            .eq("doctor_id", doctorId)
+            .order("created_at", { ascending: false });
+        if (plain.error) { console.error("[consultation] listByDoctor:", plain.error); return []; }
+        data = plain.data;
+    }
+
+    return (data ?? []).map((row: any) => ({
+        ...row,
+        patient_name: row?.patient_name ?? row?.patients?.name ?? null,
+        patient_gender: row?.patient_gender ?? row?.patients?.gender ?? null,
+        patient_birth_date: row?.patient_birth_date ?? row?.patients?.birth_date ?? null,
+        patient_phone: row?.patient_phone ?? row?.patients?.phone ?? null,
+    })) as unknown as Consultation[];
 }
 
 export async function updateConsultation(
