@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { Prescription, DrugInventoryItem } from "@/types/models";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
+import { createPayment } from "./payment.service";
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────
 
@@ -39,6 +40,31 @@ export async function createPrescription(
         .single();
 
     if (error) { console.error("[pharmacy] createPrescription:", error); throw error; }
+
+    // ── Billing: when a prescription is dispensed at creation time, create a
+    // pending payment so the front-desk billing queue picks it up immediately.
+    // (PrescriptionDetails.tsx submits `dispensed: true` inline.)
+    if (
+        input.dispensed === true &&
+        input.patientId &&
+        typeof input.price === "number" &&
+        input.price > 0
+    ) {
+        try {
+            await createPayment({
+                patient_id: input.patientId,
+                amount: input.price,
+                description: `Pharmacy: ${input.drugName}`,
+                category: "pharmacy",
+                status: "pending",
+                processed_by: input.pharmacistId ?? undefined,
+                notes: input.notes ?? undefined,
+            });
+        } catch (payErr) {
+            console.error("[pharmacy] auto-create payment on dispense failed:", payErr);
+        }
+    }
+
     return data as unknown as Prescription;
 }
 
@@ -107,6 +133,29 @@ export async function updatePrescription(
         .single();
 
     if (error) { console.error("[pharmacy] updatePrescription:", error); throw error; }
+
+    // ── Billing: create a pending payment when drugs are dispensed ─────────────
+    // This ensures the front-desk billing queue (PaymentSuite pending payments)
+    // reflects pharmacy charges as soon as the pharmacist dispenses.
+    if (
+        updates.dispensed === true &&
+        data?.patient_id &&
+        typeof data.price === "number" &&
+        data.price > 0
+    ) {
+        try {
+            await createPayment({
+                patient_id: data.patient_id,
+                amount: data.price,
+                description: `Pharmacy: ${data.drug_name}`,
+                category: "pharmacy",
+                status: "pending",
+                processed_by: updates.pharmacist_id ?? data.pharmacist_id ?? undefined,
+            });
+        } catch (payErr) {
+            console.error("[pharmacy] auto-create payment on dispense failed:", payErr);
+        }
+    }
 
     // Auto-route patient to front desk when dispensed
     if (updates.dispensed === true && data?.patient_id) {
