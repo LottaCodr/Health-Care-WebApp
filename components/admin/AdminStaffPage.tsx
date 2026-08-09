@@ -35,7 +35,9 @@ interface Staff {
     name: string;
     email: string;
     role: string;
+    phone_number?: string;
     phone?: string;
+    status?: string;
     is_active?: boolean;
     created_at: string;
 }
@@ -170,9 +172,11 @@ function RoleBadge({ role }: { role: string }) {
 function StaffModal({
     staff,
     onClose,
+    onSuccess,
 }: {
     staff?: Staff | null;
     onClose: () => void;
+    onSuccess?: () => void;
 }) {
     const isEdit = !!staff;
 
@@ -185,7 +189,7 @@ function StaffModal({
         name: staff?.name ?? "",
         email: staff?.email ?? "",
         role: normalizeRole(staff?.role) ?? "Doctor",
-        phone: staff?.phone ?? "",
+        phone: staff?.phone_number ?? "",
         password: "",
     });
 
@@ -229,11 +233,13 @@ function StaffModal({
                     status: "Active",
                     department: "",
                     dateJoined: "",
+                    password: form.password,
                 });
 
                 toast.success("Staff added successfully.");
             }
 
+            if (onSuccess) onSuccess();
             onClose();
         } catch (err: any) {
             toast.error(err?.message ?? "Something went wrong.");
@@ -787,6 +793,7 @@ export default function AdminStaffPage() {
             {showAddModal && (
                 <StaffModal
                     onClose={() => setShowAddModal(false)}
+                    onSuccess={() => refetch()}
                 />
             )}
 

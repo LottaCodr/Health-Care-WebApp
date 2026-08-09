@@ -141,9 +141,20 @@ async function tryUpdatePayment(
         if (!error) return data;
         lastError = error;
 
+        // PGRST116 = no rows changed. This happens when the status column
+        // no longer matches `currentStatus` (e.g. the row was already
+        // settled by another request). Fetch the live row so the caller
+        // gets the up-to-date state instead of a stale snapshot.
         if (error.code === "PGRST116") {
             const existing = await getPaymentById(id);
-            if (existing) return existing;
+            if (existing) {
+                console.warn(
+                    `[payment] tryUpdatePayment: no row updated for id=${id} ` +
+                    `(status filter="${currentStatus}" — row may have been modified concurrently). ` +
+                    `Returning live record.`
+                );
+                return existing;
+            }
         }
     }
 
@@ -306,7 +317,12 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
     const existing = await getPaymentById(input.id);
 
     if (!existing) throw new Error("Payment record was not found.");
-    if (!isOutstanding(existing)) return existing;
+    if (!isOutstanding(existing)) {
+        throw new Error(
+            `This payment cannot be settled — its current status is "${existing.status ?? "unknown"}". ` +
+            `It may already be paid, waived, or fully refunded.`
+        );
+    }
 
     const now = new Date().toISOString();
     const method = normalizeMethod(input.method ?? existing.method ?? existing.payment_method) ?? "cash";

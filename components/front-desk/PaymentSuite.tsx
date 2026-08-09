@@ -255,7 +255,8 @@ export default function PaymentConfirmation() {
                     toast.success("Payment confirmed by cashier.");
                     refetch();
                 },
-                onError: () => toast.error("Failed to confirm payment."),
+                onError: (err: any) =>
+                    toast.error(err?.message ?? "Failed to confirm payment."),
                 onSettled: () => setConfirmingId(null),
             }
         );

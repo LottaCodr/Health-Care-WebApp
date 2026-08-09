@@ -13,7 +13,6 @@ export async function getAllStaffs(): Promise<Staff[]> {
     if (error) { console.error("[staff] getAll:", error); return []; }
     return data as unknown as Staff[];
 }
-
 export async function getStaffById(id: string): Promise<Staff | null> {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -25,7 +24,6 @@ export async function getStaffById(id: string): Promise<Staff | null> {
     if (error) { console.error("[staff] getById:", error); return null; }
     return data as unknown as Staff;
 }
-
 export async function getStaffByRole(role: UserRole | string): Promise<Staff[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -37,17 +35,61 @@ export async function getStaffByRole(role: UserRole | string): Promise<Staff[]> 
     return data as unknown as Staff[];
 }
 
+/**
+ * Create a new staff member.
+ * 1. Creates a Supabase Auth user (so the staff can log in).
+ * 2. Inserts a `staffs` row whose `id` equals the auth user's ID,
+ *    so that `fetchStaffProfile(id)` / `loginStaff` can find the profile.
+ */
 export async function createStaff(
-    staff: Omit<Staff, "id" | "created_at">
+    input: Omit<Staff, "id" | "created_at"> & { password?: string }
 ): Promise<Staff> {
     const supabase = await createClient();
+
+    // ── 1. Create the Supabase Auth user ──────────────────────────────────────
+    const password = input.password ?? "";
+    if (!password.trim()) {
+        throw new Error("A temporary password is required to create a staff account.");
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: input.email,
+        password: password,
+        options: { data: { name: input.name } },
+    });
+
+    if (authError) {
+        console.error("[staff] create auth user error:", authError);
+        throw new Error("Could not create staff account: " + authError.message);
+    }
+
+    if (!authData?.user) {
+        throw new Error("Could not create staff account: no auth user was returned.");
+    }
+
+    // ── 2. Insert the staff profile row (id = auth user id) ───────────────────
+    const staffRecord = {
+        id: authData.user.id,
+        name: input.name,
+        email: input.email,
+        phone_number: input.phone_number ?? "",
+        role: input.role,
+        department: input.department ?? "",
+        dateJoined: input.dateJoined ?? "",
+        status: input.status ?? "Active",
+    };
+
     const { data, error } = await supabase
         .from("staffs")
-        .insert([staff])
+        .insert([staffRecord])
         .select()
         .single();
 
-    if (error) { console.error("[staff] create:", error); throw error; }
+    if (error) {
+        console.error("[staff] create DB error:", error);
+        throw new Error("Could not create staff profile: " + error.message);
+    }
+
     return data as unknown as Staff;
 }
 
