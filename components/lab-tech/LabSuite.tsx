@@ -33,6 +33,12 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
         setSubmitting(true);
         try {
             const parsedPrice = Number(price);
+
+            // The service (lab.service.ts updateLabRequest) handles everything:
+            //  • persists the price
+            //  • creates / updates a pending payment when price > 0
+            //  • routes the patient to "awaiting-payment" (billable) or
+            //    "under-observation" (no charge) on completion
             updateLabRequestMutation.mutate({
                 id: requestId,
                 updates: {
@@ -44,14 +50,11 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                 },
             });
 
-            if (request?.patient_id || request?.visit_id) {
-                updatePatientStatusMutation.mutate({
-                    id: (request?.patient_id || request?.visit_id)!,
-                    status: PatientStatus.AwaitingConsultation,
-                });
-            }
-
-            setSuccess("Test results submitted successfully.");
+            setSuccess(
+                parsedPrice > 0
+                    ? "Test results submitted. A payment bill has been created — the patient is now in the front-desk billing queue."
+                    : "Test results submitted successfully."
+            );
             if (onComplete) setTimeout(onComplete, 2000);
         } catch (error) {
             console.error(error);

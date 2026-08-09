@@ -203,6 +203,8 @@ export async function updateLabRequest(
             completed_at: updates.completed_at,
             priority: updates.priority,
             notes: updates.notes,
+            price: updates.price,   // Persist the price set by the lab tech so the
+                                    // billing logic below can read it back.
         })
         .eq("id", id)
         .select()
@@ -210,29 +212,37 @@ export async function updateLabRequest(
 
     if (error) { console.error("[lab] updateRequest:", error); throw error; }
 
-    // If price is specified on completion or result entry, ensure bill exists / update bill
+    // ── Billing: create or update a pending payment when a price is set ────────
+    // This covers both: (a) the lab tech entering a price at result-submission
+    // time, and (b) any other code path that calls updateLabRequest with a price.
     if (typeof updates.price === "number" && updates.price > 0 && data?.visit_id) {
         try {
-            // Check if payment already exists for this test
             const desc = `Lab Test: ${data.test_type}`;
             const { data: existingPayments } = await supabase
                 .from("payments")
-                .select("id, amount, status")
+                .select("id, amount, amount_kobo, status")
                 .eq("patient_id", data.visit_id)
                 .eq("category", "lab")
                 .ilike("description", `%${data.test_type}%`)
                 .order("created_at", { ascending: false })
                 .limit(1);
 
-            if (existingPayments && existingPayments.length > 0 && existingPayments[0].status === "pending") {
+            const outstanding = existingPayments?.find(
+                (p: any) => p.status === "pending" || p.status === "partial"
+            );
+
+            if (outstanding) {
+                // Update the existing outstanding bill with the new price
                 await supabase
                     .from("payments")
                     .update({
                         amount: updates.price,
                         amount_kobo: Math.round(updates.price * 100),
+                        updated_at: new Date().toISOString(),
                     })
-                    .eq("id", existingPayments[0].id);
-            } else if (!existingPayments || existingPayments.length === 0) {
+                    .eq("id", outstanding.id);
+            } else {
+                // No outstanding bill found — create one
                 await createPayment({
                     patient_id: data.visit_id,
                     amount: updates.price,
@@ -247,18 +257,23 @@ export async function updateLabRequest(
         }
     }
 
-    // Auto-route patient back to doctor queue when tests complete
+    // ── Route patient after test completion ─────────────────────────────────────
     if (updates.status === "completed" && data?.visit_id) {
+        // If a billable price was set, route to front-desk billing queue so the
+        // settle button is available. Otherwise return to the doctor's queue.
+        const hasBillablePrice =
+            typeof updates.price === "number" && updates.price > 0;
+
         await supabase
             .from("patients")
-            .update({ status: "under-observation" })
+            .update({ status: hasBillablePrice ? "awaiting-payment" : "under-observation" })
             .eq("id", data.visit_id);
 
         await createNotification({
             recipient_id: data.requested_by ?? undefined,
             role: data.requested_by ? undefined : "Doctor",
             title: "Lab Result Ready",
-            message: `Results for ${data.test_type} are now available.`,
+            message: `Results for ${data.test_type} are now available.${hasBillablePrice ? " A payment is pending — please settle at the front desk." : ""}`,
             type: "success"
         });
     }
