@@ -14,13 +14,33 @@ export interface ChangePasswordResult {
 
 export const authService = {
     /**
-     * Change the current user's password. Supabase requires a sufficiently
-     * fresh session; if the session has expired the caller should re-authenticate.
+     * Change the current user's password. The current password is verified
+     * first (Supabase's `updateUser` alone doesn't require it, so without
+     * this check anyone with an open session could set a new password).
+     * Supabase requires a sufficiently fresh session; if the session has
+     * expired the caller should re-authenticate.
      */
     async changePassword(
-        _currentPassword: string,
+        currentPassword: string,
         newPassword: string
     ): Promise<ChangePasswordResult> {
+        const {
+            data: { user },
+            error: userError,
+        } = await supabase.auth.getUser();
+        if (userError || !user?.email) {
+            return { success: false, message: "Could not determine current user." };
+        }
+
+        // Verify the current password before allowing the change.
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: currentPassword,
+        });
+        if (signInError) {
+            return { success: false, message: "Current password is incorrect." };
+        }
+
         const { error } = await supabase.auth.updateUser({
             password: newPassword,
         });

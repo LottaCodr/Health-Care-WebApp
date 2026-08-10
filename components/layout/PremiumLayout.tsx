@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Stethoscope } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import { useRoleRealtime } from "@/hooks/use-realtime";
+import NetworkStatusBanner from "./NetworkStatusBanner";
 import { usePathname } from "next/navigation";
 import { normalizeUserRole } from "@/lib/roles";
 import { NAV_CONFIG } from "./config";
@@ -72,6 +73,9 @@ export function PremiumLayout({ children }: { children: React.ReactNode }) {
             <AppSidebar />
 
             <SidebarInset className="min-w-0 bg-slate-50/80 flex flex-col h-svh md:h-[calc(100svh-1rem)] overflow-hidden md:rounded-2xl">
+
+                {/* ── Connection status banner (offline / reconnecting / slow) ── */}
+                <NetworkStatusBanner />
 
                 {/* ── Header ── */}
                 <header className="z-40 shrink-0 flex min-h-14 items-center justify-between gap-3 px-3 sm:px-4 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-[0_1px_0_0_rgba(0,0,0,0.03)]">

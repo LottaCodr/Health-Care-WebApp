@@ -1,18 +1,30 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// FILE: components/settings/SettingsComponent.tsx  (main page)
+// FILE: components/settings/index.tsx  (main Settings page — all roles)
 // ─────────────────────────────────────────────────────────────────────────────
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { updateStaff } from "@/actions/staff/update.deletestaff";
+import { updateStaff } from "@/lib/services/staff.service";
+import { deleteOwnAccount } from "@/lib/services/account.service";
+import { passwordSchema, validatePasswordStrength } from "@/lib/auth-utils";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
 import supabase from "@/utils/supabase/client";
+import { refreshNotificationPrefs } from "@/hooks/use-realtime";
+import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
+import { useNetworkStore } from "@/store/network-store";
+
+// All settings actions are user-initiated writes: on a dead connection we
+// bail out fast with a clear message instead of hanging the spinner.
+function assertOnline(): boolean {
+    if (isBrowserOnline()) return true;
+    toast.error("You appear to be offline. Reconnect and try again.");
+    return false;
+}
 import {
     User, Lock, Bell, Trash2, Loader2, CheckCircle2,
     Shield, Mail, Phone, Eye, EyeOff, AlertTriangle,
@@ -77,7 +89,7 @@ const accountSchema = z.object({
 });
 
 function AccountSettings() {
-    const { user } = useAuth();
+    const { user, refreshProfile } = useAuth();
     const form = useForm<z.infer<typeof accountSchema>>({
         resolver: zodResolver(accountSchema),
         defaultValues: { full_name: "", email: "", phone_number: "" },
@@ -88,20 +100,63 @@ function AccountSettings() {
         if (user) form.reset({
             full_name: user.full_name || user.name || "",
             email: user.email || "",
-            phone_number: String(user.phone_number || ""),
+            phone_number: String(user.phone_number || user.phone || ""),
         });
     }, [user, form]);
 
     const onSubmit = async (data: z.infer<typeof accountSchema>) => {
+        const staffId = user?.$id || user?.id || "";
+        if (!staffId) {
+            toast.error("Could not determine your staff account. Please log in again.");
+            return;
+        }
+
+        if (!assertOnline()) return;
+
         try {
-            await updateStaff(user?.$id || "", {
-                name: data.full_name,
-                email: data.email,
-                phone_number: data.phone_number,
-            });
-            toast.success("Profile updated successfully.");
-        } catch {
-            toast.error("Failed to update profile. Please try again.");
+            const newEmail = data.email.trim().toLowerCase();
+            const oldEmail = String(user?.email || "").trim().toLowerCase();
+            let confirmationPending = false;
+
+            // If the email changed, sync it on the Auth user FIRST. Abort if
+            // Supabase rejects it (duplicate, rate-limit, invalid) so the
+            // staffs row never ends up out of sync with the login email.
+            if (newEmail !== oldEmail) {
+                const { data: authData, error: authErr } = await withTimeout(
+                    supabase.auth.updateUser({ email: newEmail }),
+                    15_000,
+                    "Email update is taking too long. Check your connection and try again."
+                );
+                if (authErr) {
+                    throw new Error(friendlyErrorMessage(authErr, authErr.message));
+                }
+                // "Confirm email" enabled → Supabase keeps the old email until
+                // the user clicks the confirmation link sent to the new one.
+                confirmationPending = !!authData?.user?.new_email;
+            }
+
+            // Update the staff profile row (canonical server action).
+            await withTimeout(
+                updateStaff(staffId, {
+                    name: data.full_name.trim(),
+                    email: newEmail,
+                    phone_number: data.phone_number.trim(),
+                }),
+                20_000,
+                "Saving your profile is taking too long. Check your connection and try again."
+            );
+
+            // Refresh the auth context so the header/user object shows the
+            // new name/phone/email immediately (no re-login needed).
+            await refreshProfile?.();
+
+            toast.success(
+                confirmationPending
+                    ? "Profile saved. A confirmation email was sent to your new address — your email will switch once confirmed."
+                    : "Profile updated successfully."
+            );
+        } catch (err: any) {
+            toast.error(friendlyErrorMessage(err, "Failed to update profile. Please try again."));
         }
     };
 
@@ -165,13 +220,20 @@ function AccountSettings() {
 
 // ─── 2. SECURITY SETTINGS ────────────────────────────────────────────────────
 
-const securitySchema = z.object({
-    currentPassword: z.string().min(6, "Current password is required"),
-    newPassword: z.string().min(8, "Must be at least 8 characters"),
-    confirmPassword: z.string().min(8, "Please confirm your new password"),
-}).refine((d) => d.newPassword === d.confirmPassword, {
-    message: "Passwords do not match", path: ["confirmPassword"],
-});
+const securitySchema = z
+    .object({
+        currentPassword: z.string().min(1, "Current password is required"),
+        newPassword: passwordSchema, // org policy: 8+ chars, upper, lower, digit, special
+        confirmPassword: z.string().min(1, "Please confirm your new password"),
+    })
+    .refine((d) => d.newPassword === d.confirmPassword, {
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
+    })
+    .refine((d) => d.newPassword !== d.currentPassword, {
+        message: "New password must be different from your current password",
+        path: ["newPassword"],
+    });
 
 function SecuritySettings() {
     const form = useForm<z.infer<typeof securitySchema>>({
@@ -183,19 +245,46 @@ function SecuritySettings() {
 
     const toggle = (field: string) => setShowFields((p) => ({ ...p, [field]: !p[field] }));
 
+    // Live password-strength meter
+    const newPassword = useWatch({ control: form.control, name: "newPassword" });
+    const strength = useMemo(() => validatePasswordStrength(newPassword || ""), [newPassword]);
+    const strengthScore = strength.isValid ? 100 : Math.max(0, 100 - strength.errors.length * 20);
+
     const onSubmit = async (values: z.infer<typeof securitySchema>) => {
+        if (!assertOnline()) return;
         setLoading(true);
         try {
-            const { data: { user }, error: ue } = await supabase.auth.getUser();
+            const { data: { user }, error: ue } = await withTimeout(
+                supabase.auth.getUser(),
+                10_000,
+                "Couldn't reach the server. Check your connection and try again."
+            );
             if (ue || !user?.email) throw new Error("Could not determine current user.");
-            const { error: se } = await supabase.auth.signInWithPassword({ email: user.email, password: values.currentPassword });
+
+            // 1. Re-authenticate with the current password. This both verifies
+            //    the user knows it and gives us a fresh session for step 2.
+            const { error: se } = await withTimeout(
+                supabase.auth.signInWithPassword({
+                    email: user.email,
+                    password: values.currentPassword,
+                }),
+                15_000,
+                "Verifying your password is taking too long. Check your connection and try again."
+            );
             if (se) throw new Error("Current password is incorrect.");
-            const { error: pe } = await supabase.auth.updateUser({ password: values.newPassword });
-            if (pe) throw new Error(pe.message);
+
+            // 2. Update the password on the Auth user.
+            const { error: pe } = await withTimeout(
+                supabase.auth.updateUser({ password: values.newPassword }),
+                15_000,
+                "Updating your password is taking too long. Check your connection and try again."
+            );
+            if (pe) throw new Error(friendlyErrorMessage(pe, pe.message));
+
             toast.success("Password changed successfully.");
             form.reset();
         } catch (err: any) {
-            toast.error(err?.message ?? "Could not change password.");
+            toast.error(friendlyErrorMessage(err, "Could not change password."));
         } finally {
             setLoading(false);
         }
@@ -233,11 +322,42 @@ function SecuritySettings() {
                         <PasswordField name="confirmPassword" label="Confirm Password" placeholder="Repeat new password" />
                     </div>
 
+                    {/* Password strength meter */}
+                    {newPassword && (
+                        <div className="space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                                {[25, 50, 75, 100].map((threshold) => {
+                                    const active = strengthScore >= threshold;
+                                    return (
+                                        <div key={threshold}
+                                            className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                                                active
+                                                    ? strength.isValid ? "bg-green-500" : "bg-amber-400"
+                                                    : "bg-gray-100"
+                                            }`} />
+                                    );
+                                })}
+                                <span className="text-[10px] font-bold text-gray-400 ml-1 w-16 text-right">
+                                    {strength.isValid ? "Strong" : `${strengthScore}%`}
+                                </span>
+                            </div>
+                            {!strength.isValid && strength.errors.length > 0 && (
+                                <ul className="space-y-0.5">
+                                    {strength.errors.map((errMsg) => (
+                                        <li key={errMsg} className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                                            <AlertTriangle size={10} className="shrink-0" /> {errMsg}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
                     {/* Password strength hint */}
                     <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-xl">
                         <Shield size={13} className="text-amber-600 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-amber-700 leading-relaxed">
-                            Use at least 8 characters with a mix of letters, numbers, and symbols for a strong password.
+                            Use at least 8 characters with a mix of uppercase, lowercase, numbers, and symbols for a strong password.
                         </p>
                     </div>
 
@@ -261,11 +381,17 @@ const NOTIFICATION_OPTIONS = [
     { id: "push", label: "In-App Notifications", desc: "Browser and desktop push notifications", icon: MonitorSmartphone },
 ] as const;
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+type NotificationPrefs = { email: boolean; sms: boolean; push: boolean };
+
+const DEFAULT_PREFS: NotificationPrefs = { email: true, sms: false, push: true };
+
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
     return (
-        <button type="button" onClick={() => onChange(!checked)} role="switch" aria-checked={checked}
+        <button type="button" role="switch" aria-checked={checked} disabled={disabled}
+            onClick={() => onChange(!checked)}
             className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0
-                ${checked ? "bg-blue-600" : "bg-gray-200"}`}>
+                ${checked ? "bg-blue-600" : "bg-gray-200"}
+                ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
             <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200
                 ${checked ? "translate-x-4" : "translate-x-0"}`} />
         </button>
@@ -273,38 +399,88 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 function NotificationSettings() {
-    const [prefs, setPrefs] = useState({ email: true, sms: false, push: true });
+    const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
     const [saving, setSaving] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    // Load persisted preferences from the Auth user's metadata.
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                const stored = user?.user_metadata?.notification_prefs as Partial<NotificationPrefs> | undefined;
+                if (active && stored && typeof stored === "object") {
+                    setPrefs({
+                        email: typeof stored.email === "boolean" ? stored.email : DEFAULT_PREFS.email,
+                        sms: typeof stored.sms === "boolean" ? stored.sms : DEFAULT_PREFS.sms,
+                        push: typeof stored.push === "boolean" ? stored.push : DEFAULT_PREFS.push,
+                    });
+                }
+            } catch {
+                // fall back to defaults
+            } finally {
+                if (active) setLoading(false);
+            }
+        })();
+        return () => { active = false; };
+    }, []);
 
     const handleSave = async () => {
+        if (!assertOnline()) return;
         setSaving(true);
-        await new Promise((r) => setTimeout(r, 800));
-        setSaving(false);
-        toast.success("Notification preferences saved.");
+        try {
+            const { error } = await withTimeout(
+                supabase.auth.updateUser({
+                    data: { notification_prefs: prefs },
+                }),
+                15_000,
+                "Saving preferences is taking too long. Check your connection and try again."
+            );
+            if (error) throw new Error(friendlyErrorMessage(error, error.message));
+            // Keep the realtime toast system's pref cache in sync immediately,
+            // so toggling In-App notifications off silences toasts right away.
+            await refreshNotificationPrefs();
+            toast.success("Notification preferences saved.");
+        } catch (err: any) {
+            toast.error(friendlyErrorMessage(err, "Could not save notification preferences."));
+        } finally {
+            setSaving(false);
+        }
     };
+
+    const disabled = saving || loading;
 
     return (
         <SectionCard>
             <CardHeader icon={Bell} color="text-blue-600" bg="bg-blue-50"
                 title="Notifications" subtitle="Choose how you want to be notified" />
             <div className="px-6 py-5 space-y-3">
-                {NOTIFICATION_OPTIONS.map(({ id, label, desc, icon: Icon }) => (
-                    <div key={id} className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-gray-200 transition-all">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0">
-                                <Icon size={14} className="text-gray-500" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold text-gray-800">{label}</p>
-                                <p className="text-[11px] text-gray-400 mt-0.5">{desc}</p>
-                            </div>
-                        </div>
-                        <Toggle checked={prefs[id as keyof typeof prefs]} onChange={(v) => setPrefs((p) => ({ ...p, [id]: v }))} />
+                {loading ? (
+                    <div className="flex items-center justify-center py-6">
+                        <Loader2 size={16} className="animate-spin text-gray-300" />
                     </div>
-                ))}
+                ) : (
+                    NOTIFICATION_OPTIONS.map(({ id, label, desc, icon: Icon }) => (
+                        <div key={id} className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-gray-200 transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0">
+                                    <Icon size={14} className="text-gray-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-800">{label}</p>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">{desc}</p>
+                                </div>
+                            </div>
+                            <Toggle checked={prefs[id as keyof NotificationPrefs]}
+                                onChange={(v) => setPrefs((p) => ({ ...p, [id]: v }))}
+                                disabled={disabled} />
+                        </div>
+                    ))
+                )}
 
                 <div className="pt-2">
-                    <button onClick={handleSave} disabled={saving}
+                    <button onClick={handleSave} disabled={disabled}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm shadow-blue-200 transition-all disabled:opacity-60">
                         {saving ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CheckCircle2 size={14} /> Save Preferences</>}
                     </button>
@@ -317,15 +493,34 @@ function NotificationSettings() {
 // ─── 4. DANGER ZONE ──────────────────────────────────────────────────────────
 
 function DangerZone() {
+    const { logout } = useAuth();
     const [confirm, setConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
     const handleDelete = async () => {
+        if (!assertOnline()) return;
         setDeleting(true);
-        await new Promise((r) => setTimeout(r, 1000));
-        setDeleting(false);
-        toast.error("Account deletion is disabled in this environment.");
-        setConfirm(false);
+        try {
+            // Server action: removes the staffs row (blocks future logins) and,
+            // when a service-role key is configured, the Auth user as well.
+            const result = await withTimeout(
+                deleteOwnAccount(),
+                20_000,
+                "Deleting your account is taking too long. Check your connection and try again."
+            );
+            if (!result.success) throw new Error(result.message);
+
+            toast.success("Your account has been deleted.");
+            // logout() clears all local state and hard-navigates to /login.
+            await logout();
+            // If navigation somehow fails, stop the spinner so the UI is not stuck.
+            setDeleting(false);
+            setConfirm(false);
+        } catch (err: any) {
+            toast.error(friendlyErrorMessage(err, "Could not delete your account."));
+            setDeleting(false);
+            setConfirm(false);
+        }
     };
 
     return (
@@ -344,7 +539,8 @@ function DangerZone() {
                 <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl mb-4">
                     <AlertTriangle size={15} className="text-red-600 shrink-0 mt-0.5" />
                     <p className="text-xs text-red-700 leading-relaxed">
-                        Deleting your account is <strong>permanent and irreversible</strong>. All your data, records, and settings will be permanently removed and cannot be recovered.
+                        Deleting your account is <strong>permanent and irreversible</strong>. You will lose access
+                        immediately and your staff profile will be removed.
                     </p>
                 </div>
 
@@ -354,7 +550,7 @@ function DangerZone() {
                         <Trash2 size={14} /> Delete My Account
                     </button>
                 ) : (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                         <button onClick={() => setConfirm(false)} disabled={deleting}
                             className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors disabled:opacity-50">
                             Cancel
