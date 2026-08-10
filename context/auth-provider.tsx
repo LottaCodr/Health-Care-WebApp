@@ -18,6 +18,7 @@ import { usePatientStore } from "@/store/patient-store";
 import { useCacheStore, useUserStore, useUIStore } from "@/store/store";
 import { LogoutOverlay } from "@/components/layout/LogoutOverlay";
 import { normalizeUserRole } from "@/lib/roles";
+import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
 
 interface AuthContextType {
     user: any | null;
@@ -30,6 +31,12 @@ interface AuthContextType {
         password: string
     ) => Promise<{ success: boolean; message: string; staff?: any }>;
     logout: () => Promise<void>;
+    /**
+     * Re-fetch the current staff profile from the DB and update `user` +
+     * the localStorage cache. Used by Settings after saving profile changes
+     * so the UI (name, phone) reflects the new values immediately.
+     */
+    refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -166,17 +173,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const login = useCallback(async (email: string, password: string) => {
         isAuthenticatingRef.current = true; // Block onAuthStateChange from double-fetching
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+            // Poor-network hardening: don't let the login button spin forever
+            // on a dead/flaky connection — fail fast with a clear message.
+            if (!isBrowserOnline()) {
+                return {
+                    success: false,
+                    message: "You appear to be offline. Connect to the internet and try again.",
+                };
+            }
+
+            const { data, error } = await withTimeout(
+                supabase.auth.signInWithPassword({ email, password }),
+                20_000,
+                "Login is taking too long. Please check your connection and try again."
+            );
 
             if (error) {
-                return { success: false, message: error.message };
+                return { success: false, message: friendlyErrorMessage(error, error.message) };
             }
 
             if (data?.user) {
-                const staffResult = await fetchStaffProfile(data.user.id);
+                const staffResult = await withTimeout(
+                    fetchStaffProfile(data.user.id),
+                    15_000,
+                    "Couldn't load your profile — check your connection and try again."
+                );
 
                 // Ensure we have a valid staff profile with a role before treating
                 // the user as authenticated. This keeps post-login redirects reliable.
@@ -216,6 +237,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return { success: false, message };
         } finally {
             isAuthenticatingRef.current = false;
+        }
+    }, []);
+
+    const refreshProfile = useCallback(async () => {
+        try {
+            const authUser = await getAuthUserSafely();
+            if (!authUser) {
+                setUser(null);
+                return;
+            }
+            const staff = await fetchStaffProfile(authUser.id);
+            const profile = buildStaffProfile(authUser, staff?.profile);
+            const validProfile = profile?.role ? profile : null;
+            setUser(validProfile);
+            if (typeof window !== "undefined" && validProfile) {
+                localStorage.setItem("nile_user_profile", JSON.stringify(validProfile));
+            } else if (typeof window !== "undefined") {
+                localStorage.removeItem("nile_user_profile");
+            }
+        } catch (error) {
+            console.error("[auth] refreshProfile error:", error);
         }
     }, []);
 
@@ -428,8 +470,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoggingOut,
             login,
             logout,
+            refreshProfile,
         }),
-        [user, isLoading, isLoggingOut, login, logout]
+        [user, isLoading, isLoggingOut, login, logout, refreshProfile]
     );
 
     return (

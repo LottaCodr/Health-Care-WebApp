@@ -68,16 +68,23 @@ export async function createStaff(
     }
 
     // ── 2. Insert the staff profile row (id = auth user id) ───────────────────
-    const staffRecord = {
+    // NOTE: the DB is snake_case (see CLAUDE.md) — PostgREST matches column
+    // names exactly, so sending camelCase `dateJoined` here failed with
+    // PGRST204 ("Could not find the 'dateJoined' column of 'staffs'").
+    // Map to `date_joined`, and only include it when a value is provided so
+    // the insert never breaks if the column doesn't exist or is nullable.
+    const staffRecord: Record<string, unknown> = {
         id: authData.user.id,
         name: input.name,
         email: input.email,
         phone_number: input.phone_number ?? "",
         role: input.role,
         department: input.department ?? "",
-        dateJoined: input.dateJoined ?? "",
         status: input.status ?? "Active",
     };
+
+    const joined = input.date_joined ?? input.dateJoined;
+    if (joined) staffRecord.date_joined = joined;
 
     const { data, error } = await supabase
         .from("staffs")

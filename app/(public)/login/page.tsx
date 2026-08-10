@@ -8,6 +8,7 @@ import { Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, ArrowRight, Stethoscope
 import Image from "next/image";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
+import NetworkStatusBanner from "@/components/layout/NetworkStatusBanner";
 
 
 // ─── Features list ────────────────────────────────────────────────────────────
@@ -319,7 +320,10 @@ const LoginScreen: React.FC = () => {
     const currentYear = new Date().getFullYear();
 
     return (
-        <Suspense fallback={
+        <>
+            {/* Connection banner so users see why login might be failing */}
+            <NetworkStatusBanner />
+            <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center bg-[#0a1628]">
                 <div className="relative w-14 h-14">
                     <div className="absolute inset-0 rounded-2xl border-2 border-white/8 border-t-blue-400 animate-spin" />
@@ -338,7 +342,8 @@ const LoginScreen: React.FC = () => {
                 login={login} currentYear={currentYear}
                 authLoading={authLoading}
             />
-        </Suspense>
+            </Suspense>
+        </>
     );
 };
 

@@ -30,6 +30,7 @@ import { createPatient } from "@/lib/services/patient.service";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
 import { useFrontDeskStore } from "@/store/frontdesk-store";
+import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -353,6 +354,14 @@ export default function RegistrationSuite() {
     if (submitting) return;
     setSubmitError(null);
 
+    // Poor-network hardening: don't let the user burn a full form fill on a
+    // dead connection — warn immediately and keep the form state intact.
+    if (!isBrowserOnline()) {
+      safeScrollToTop();
+      toast.error("You appear to be offline. Reconnect and try again — your form data is still here.");
+      return;
+    }
+
     const ok = await validateStep();
     if (!ok) { safeScrollToTop(); toast.error("Please fill all required fields."); return; }
 
@@ -361,7 +370,8 @@ export default function RegistrationSuite() {
 
     try {
       // camelCase form values → snake_case DB columns
-      await createPatient({
+      await withTimeout(
+      createPatient({
         // Personal
         name: v.name,
         email: v.email,
@@ -400,12 +410,17 @@ export default function RegistrationSuite() {
           parent_info: parentInfo || null,
           referral_info: referralInfo || null,
         } : {}),
-      } as any);
+      } as any),
+        30_000,
+        "Registration is taking too long. Please check your connection and try again."
+      );
 
       toast.success("Patient registered successfully!");
       setSubmitted(true);
     } catch (err: any) {
-      const msg = err?.message ?? err?.details ?? "Registration failed.";
+      // friendlyErrorMessage maps timeouts/network failures to a clear
+      // "check your connection" message instead of raw fetch errors.
+      const msg = friendlyErrorMessage(err, err?.details ?? err?.message ?? "Registration failed.");
       setSubmitError(msg); toast.error(msg); safeScrollToTop();
     } finally { setSubmitting(false); }
   };

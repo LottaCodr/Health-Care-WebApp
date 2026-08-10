@@ -18,6 +18,7 @@ import {
     RefreshCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
 
 import {
     useAllStaff,
@@ -210,31 +211,45 @@ function StaffModal({
             return;
         }
 
+        // Poor-network hardening: bail out fast instead of hanging the modal.
+        if (!isBrowserOnline()) {
+            toast.error("You appear to be offline. Reconnect and try again — the form data is still here.");
+            return;
+        }
+
         setSaving(true);
 
         try {
             if (isEdit) {
-                await updateStaffMutation.mutateAsync({
-                    id: staff!.id,
-                    updates: {
-                        name: form.name,
-                        role: form.role as UserRole,
-                        phone_number: form.phone,
-                    },
-                });
+                await withTimeout(
+                    updateStaffMutation.mutateAsync({
+                        id: staff!.id,
+                        updates: {
+                            name: form.name,
+                            role: form.role as UserRole,
+                            phone_number: form.phone,
+                        },
+                    }),
+                    20_000,
+                    "Updating staff is taking too long. Check your connection and try again."
+                );
 
                 toast.success("Staff updated successfully.");
             } else {
-                await createStaffMutation.mutateAsync({
-                    name: form.name,
-                    email: form.email,
-                    role: form.role as UserRole,
-                    phone_number: form.phone,
-                    status: "Active",
-                    department: "",
-                    dateJoined: "",
-                    password: form.password,
-                });
+                await withTimeout(
+                    createStaffMutation.mutateAsync({
+                        name: form.name,
+                        email: form.email,
+                        role: form.role as UserRole,
+                        phone_number: form.phone,
+                        status: "Active",
+                        department: "",
+                        dateJoined: "",
+                        password: form.password,
+                    }),
+                    30_000,
+                    "Creating the staff account is taking too long. Check your connection and try again."
+                );
 
                 toast.success("Staff added successfully.");
             }
@@ -242,7 +257,7 @@ function StaffModal({
             if (onSuccess) onSuccess();
             onClose();
         } catch (err: any) {
-            toast.error(err?.message ?? "Something went wrong.");
+            toast.error(friendlyErrorMessage(err, "Something went wrong."));
         } finally {
             setSaving(false);
         }

@@ -11,7 +11,7 @@ export async function fetchStaffProfile(id: string) {
     try {
         const { data, error } = await supabase
             .from("staffs")
-            .select("id, email, role, name")
+            .select("id, email, role, name, phone_number, department")
             .eq("id", id)
             .single();
 
