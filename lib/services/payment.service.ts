@@ -2,9 +2,16 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { Payment } from "@/types/models";
+import {
+    computeDiscountKobo,
+    resolvePayerFromPatient,
+    PAYER_CONFIG,
+    type PaymentType,
+    type PayerType,
+} from "@/lib/utils/billing";
 
 export type PaymentStatus = "pending" | "partial" | "paid" | "waived" | "refunded" | "failed";
-export type PaymentMethod = "cash" | "card" | "transfer" | "cheque";
+export type PaymentMethod = "cash" | "card" | "transfer" | "cheque" | "hmo" | "company";
 export type PaymentCategory =
     | "consultation"
     | "lab"
@@ -12,6 +19,7 @@ export type PaymentCategory =
     | "pharmacy"
     | "procedure"
     | "admission"
+    | "deposit"
     | "other";
 
 export interface CreatePaymentInput {
@@ -20,21 +28,49 @@ export interface CreatePaymentInput {
     description: string;
     category?: PaymentCategory;
     status?: PaymentStatus;
-    method?: PaymentMethod;
+    method?: PaymentMethod | string;
     processed_by?: string;
     invoice_no?: string;
     notes?: string;
+    payment_type?: PaymentType;
+    payer?: PayerType | string;
+    payer_reference?: string;
+    payer_code?: string;
 }
 
 export interface ConfirmPaymentInput {
     id: string;
     method?: PaymentMethod | string;
     cashierId?: string;
+    /** Naira collected now. Ignored for "full" (computed); required for "partial"/"deposit". */
     amountPaid?: number;
+    /**
+     * full | partial | deposit.
+     * Defaults to "partial" when amountPaid does not cover the balance, else "full".
+     */
+    paymentType?: PaymentType;
+    /** Percentage discount (0–100) applied to the bill total. */
+    discountPercent?: number;
+    /** Flat discount in Naira. Can be combined with discountPercent. */
+    discountAmount?: number;
+    /** Explicit price correction — new bill total (clamped to never drop below what's paid). */
+    correctedAmount?: number;
+    /** private | hmo | company — when omitted it is auto-identified from registration. */
+    payer?: PayerType | string;
+    payerReference?: string;
+    /** HMO authorization / company reference code. */
+    payerCode?: string;
+    /** Apply the patient's existing deposit credit toward this bill before collecting. */
+    useDepositCredit?: boolean;
+    notes?: string;
 }
 
 const OUTSTANDING_STATUSES = new Set(["pending", "partial"]);
 const FINAL_STATUSES = new Set(["paid", "waived", "refunded"]);
+
+type Sb = Awaited<ReturnType<typeof createClient>>;
+
+// ─── Normalizers ──────────────────────────────────────────────────────────────
 
 function normalizeStatus(status?: string | null): PaymentStatus {
     const value = String(status ?? "").toLowerCase();
@@ -49,6 +85,8 @@ function normalizeStatus(status?: string | null): PaymentStatus {
 
 function normalizeMethod(method?: string | null): PaymentMethod | undefined {
     const value = String(method ?? "").toLowerCase();
+    if (value.includes("hmo")) return "hmo";
+    if (value.includes("company") || value.includes("corporate")) return "company";
     if (value.includes("card")) return "card";
     if (value.includes("transfer")) return "transfer";
     if (value.includes("cheque") || value.includes("check")) return "cheque";
@@ -59,7 +97,25 @@ function normalizeMethod(method?: string | null): PaymentMethod | undefined {
 function methodLabel(method?: string | null): string | undefined {
     const normalized = normalizeMethod(method);
     if (!normalized) return undefined;
+    if (normalized === "hmo") return "HMO";
+    if (normalized === "company") return "Company";
     return normalized[0].toUpperCase() + normalized.slice(1);
+}
+
+function normalizePayer(payer?: string | null): PayerType | undefined {
+    const value = String(payer ?? "").toLowerCase();
+    if (value.includes("hmo")) return "hmo";
+    if (value.includes("company") || value.includes("corporate")) return "company";
+    if (value.includes("private") || value.includes("self") || value.includes("cash")) return "private";
+    return undefined;
+}
+
+function normalizePaymentType(type?: string | null): PaymentType | undefined {
+    const value = String(type ?? "").toLowerCase();
+    if (value === "partial" || value === "part") return "partial";
+    if (value === "deposit" || value === "advance") return "deposit";
+    if (value === "full" || value === "paid") return "full";
+    return undefined;
 }
 
 function amountToKobo(row: any): number {
@@ -73,11 +129,16 @@ function paidToKobo(row: any): number {
     return FINAL_STATUSES.has(normalizeStatus(row?.status)) ? amountToKobo(row) : 0;
 }
 
+function appliedToKobo(row: any): number {
+    return typeof row?.applied_kobo === "number" ? row.applied_kobo : 0;
+}
+
 function normalizePayment(row: any): Payment {
     const status = normalizeStatus(row?.status);
     const method = normalizeMethod(row?.method ?? row?.payment_method ?? row?.paymentMethod);
     const amountKobo = amountToKobo(row);
     const paidKobo = paidToKobo(row);
+    const payer = normalizePayer(row?.payer);
 
     return {
         ...row,
@@ -91,6 +152,16 @@ function normalizePayment(row: any): Payment {
         payment_method: row?.payment_method ?? methodLabel(method),
         method: method ?? row?.method,
         status,
+        payment_type: normalizePaymentType(row?.payment_type ?? row?.paymentType),
+        paymentType: normalizePaymentType(row?.payment_type ?? row?.paymentType),
+        discount_kobo: typeof row?.discount_kobo === "number" ? row.discount_kobo : 0,
+        discount_percent: typeof row?.discount_percent === "number" ? row.discount_percent : null,
+        discount_amount_kobo:
+            typeof row?.discount_amount_kobo === "number" ? row.discount_amount_kobo : null,
+        payer: payer ?? row?.payer ?? null,
+        payer_reference: row?.payer_reference ?? null,
+        payer_code: row?.payer_code ?? null,
+        applied_kobo: appliedToKobo(row),
         processedBy: row?.processedBy ?? row?.processed_by,
         processed_by: row?.processed_by ?? row?.processedBy,
         processedDate: row?.processedDate ?? row?.processed_date ?? row?.paid_at,
@@ -98,13 +169,26 @@ function normalizePayment(row: any): Payment {
     } as Payment;
 }
 
+function isDepositRow(row: any): boolean {
+    const category = String(row?.category ?? "").toLowerCase();
+    const type = String(row?.payment_type ?? "").toLowerCase();
+    return category === "deposit" || type === "deposit" || type === "advance";
+}
+
 function isOutstanding(row: any): boolean {
+    if (isDepositRow(row)) return false;
     const status = normalizeStatus(row?.status);
     if (!OUTSTANDING_STATUSES.has(status)) return false;
     return amountToKobo(row) - paidToKobo(row) > 0;
 }
 
-async function tryInsertPayment(supabase: Awaited<ReturnType<typeof createClient>>, candidates: any[]) {
+function outstandingKobo(row: any): number {
+    return Math.max(0, amountToKobo(row) - paidToKobo(row));
+}
+
+// ─── Defensive insert / update (schema differences tolerated) ────────────────
+
+async function tryInsertPayment(supabase: Sb, candidates: any[]) {
     let lastError: any = null;
 
     for (const candidate of candidates) {
@@ -122,7 +206,7 @@ async function tryInsertPayment(supabase: Awaited<ReturnType<typeof createClient
 }
 
 async function tryUpdatePayment(
-    supabase: Awaited<ReturnType<typeof createClient>>,
+    supabase: Sb,
     id: string,
     currentStatus: string,
     candidates: any[]
@@ -141,10 +225,8 @@ async function tryUpdatePayment(
         if (!error) return data;
         lastError = error;
 
-        // PGRST116 = no rows changed. This happens when the status column
-        // no longer matches `currentStatus` (e.g. the row was already
-        // settled by another request). Fetch the live row so the caller
-        // gets the up-to-date state instead of a stale snapshot.
+        // PGRST116 = no rows changed. The row may have been settled concurrently —
+        // return the live record so the caller gets up-to-date state.
         if (error.code === "PGRST116") {
             const existing = await getPaymentById(id);
             if (existing) {
@@ -161,6 +243,31 @@ async function tryUpdatePayment(
     throw lastError;
 }
 
+// ─── Payer auto-identification ────────────────────────────────────────────────
+
+/**
+ * Resolve how a patient pays (HMO / Company / Private) from the flags captured
+ * at registration. This is the single source of truth used by the billing UI
+ * and every settlement path, so the payer is never guessed by hand.
+ */
+export async function getPatientPayer(patientId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("patients")
+        .select("hmo, hmo_name, policy_number, company, company_name, private_client")
+        .eq("id", patientId)
+        .maybeSingle();
+
+    if (error || !data) {
+        console.warn("[payment] getPatientPayer: patient not found or fetch failed:", error?.message);
+        return resolvePayerFromPatient(null);
+    }
+
+    return resolvePayerFromPatient(data);
+}
+
+// ─── Create / read / edit ─────────────────────────────────────────────────────
+
 export async function createPayment(input: CreatePaymentInput): Promise<Payment> {
     if (!input.patient_id) throw new Error("patient_id is required to create a payment.");
     if (!input.description?.trim()) throw new Error("description is required to create a payment.");
@@ -173,7 +280,11 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
     const method = normalizeMethod(input.method);
     const amountKobo = Math.round(input.amount * 100);
     const now = new Date().toISOString();
-    const invoiceNo = input.invoice_no ?? `INV-${Date.now().toString(36).toUpperCase()}`;
+    const invoiceNo =
+        input.invoice_no ??
+        (String(input.category ?? "").toLowerCase() === "deposit"
+            ? `DEP-${Date.now().toString(36).toUpperCase()}`
+            : `INV-${Date.now().toString(36).toUpperCase()}`);
 
     const fullPayload = {
         patient_id: input.patient_id,
@@ -185,6 +296,10 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
         status,
         method,
         payment_method: methodLabel(method),
+        payment_type: input.payment_type ?? null,
+        payer: input.payer ?? null,
+        payer_reference: input.payer_reference ?? null,
+        payer_code: input.payer_code ?? null,
         processed_by: input.processed_by ?? null,
         processed_date: status === "paid" ? now : null,
         paid_at: status === "paid" ? now : null,
@@ -243,8 +358,6 @@ export interface UpdatePendingBillInput {
 
 /**
  * Edit an outstanding (pending / partially paid) bill *before* it is settled.
- * Front desk uses this to correct prices, descriptions or categories while the
- * invoice is still open, so the settled amount always reflects the latest edit.
  */
 export async function updatePendingBill(input: UpdatePendingBillInput): Promise<Payment> {
     if (!input.id) throw new Error("id is required to update a bill.");
@@ -309,6 +422,157 @@ export async function updatePendingBill(input: UpdatePendingBillInput): Promise<
     }
 }
 
+// ─── Deposit credit engine ────────────────────────────────────────────────────
+
+async function listDepositRows(supabase: Sb, patientId: string): Promise<any[]> {
+    // payment_type column may not exist on older schemas — fall back to category.
+    try {
+        const { data, error } = await supabase
+            .from("payments")
+            .select("*")
+            .eq("patient_id", patientId)
+            .or(`category.eq.deposit,payment_type.eq.deposit`);
+
+        if (!error) return data ?? [];
+    } catch (err) {
+        console.warn("[payment] deposit query with payment_type failed, falling back to category:", err);
+    }
+
+    const { data } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("patient_id", patientId)
+        .eq("category", "deposit");
+    return data ?? [];
+}
+
+/**
+ * Available deposit credit for a patient (in kobo):
+ * deposits collected minus the part already applied to bills.
+ */
+export async function getPatientDepositCredit(patientId: string) {
+    const supabase = await createClient();
+    const deposits = await listDepositRows(supabase, patientId);
+
+    let totalKobo = 0;
+    let appliedKobo = 0;
+    for (const row of deposits) {
+        if (normalizeStatus(row?.status) !== "paid" && normalizeStatus(row?.status) !== "partial") continue;
+        totalKobo += paidToKobo(row);
+        appliedKobo += appliedToKobo(row);
+    }
+
+    return {
+        totalKobo,
+        appliedKobo,
+        availableKobo: Math.max(0, totalKobo - appliedKobo),
+    };
+}
+
+async function updateRowPaidKobo(supabase: Sb, id: string, statusNow: string, payload: Record<string, any>) {
+    // Keep it simple: single payload + fallback without optional columns.
+    const { error } = await supabase
+        .from("payments")
+        .update(payload)
+        .eq("id", id)
+        .eq("status", statusNow);
+
+    if (error) {
+        // Retry without the newest columns.
+        const { applied_kobo, payment_type, ...rest } = payload as any;
+        void applied_kobo;
+        void payment_type;
+        const { error: retryError } = await supabase
+            .from("payments")
+            .update(rest)
+            .eq("id", id)
+            .eq("status", statusNow);
+        if (retryError) console.error("[payment] updateRowPaidKobo retry failed:", retryError);
+    }
+}
+
+/**
+ * Apply a patient's deposit credit to their outstanding bills (oldest first,
+ * optionally a specific bill first). Updates both the bills and the deposit
+ * rows' applied_kobo. Returns how much credit was used.
+ */
+async function applyDepositCreditInternal(
+    supabase: Sb,
+    patientId: string,
+    targetBillId?: string
+) {
+    const deposits = await listDepositRows(supabase, patientId);
+    const creditByDeposit = new Map<string, number>();
+
+    let creditPool = 0;
+    for (const row of deposits) {
+        const status = normalizeStatus(row?.status);
+        if (status !== "paid" && status !== "partial") continue;
+        const available = Math.max(0, paidToKobo(row) - appliedToKobo(row));
+        creditByDeposit.set(row.id, available);
+        creditPool += available;
+    }
+    if (creditPool <= 0) return { usedKobo: 0, appliedToTargetKobo: 0, settledBillIds: [] as string[] };
+
+    const { data: billRows } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("patient_id", patientId);
+    const bills = (billRows ?? []).filter(isOutstanding).sort((a: any, b: any) => {
+        // Target bill first, then oldest first.
+        if (a.id === targetBillId) return -1;
+        if (b.id === targetBillId) return 1;
+        return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
+    });
+
+    let usedKobo = 0;
+    let appliedToTargetKobo = 0;
+    const settledBillIds: string[] = [];
+
+    for (const bill of bills) {
+        if (creditPool <= 0) break;
+        const outstanding = outstandingKobo(bill);
+        const pay = Math.min(outstanding, creditPool);
+        if (pay <= 0) continue;
+
+        const newPaid = Math.min(amountToKobo(bill), paidToKobo(bill) + pay);
+        const nextStatus = newPaid >= amountToKobo(bill) ? "paid" : "partial";
+        await updateRowPaidKobo(supabase, bill.id, String((bill as any).raw_status ?? bill.status), {
+            amount_paid_kobo: newPaid,
+            status: nextStatus,
+            paid_at: nextStatus === "paid" ? new Date().toISOString() : bill.paid_at ?? null,
+            processed_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        });
+
+        // Consume from deposit rows FIFO.
+        let remaining = pay;
+        for (const [depositId, available] of creditByDeposit.entries()) {
+            if (remaining <= 0) break;
+            if (available <= 0) continue;
+            const take = Math.min(remaining, available);
+            creditByDeposit.set(depositId, available - take);
+            remaining -= take;
+            const row = deposits.find((d: any) => d.id === depositId);
+            const newApplied = appliedToKobo(row) + take;
+            await updateRowPaidKobo(supabase, depositId, String((row as any).raw_status ?? row.status), {
+                applied_kobo: newApplied,
+                payment_type: "deposit",
+                updated_at: new Date().toISOString(),
+            });
+        }
+
+        usedKobo += pay;
+        if (bill.id === targetBillId) appliedToTargetKobo = pay;
+        if (nextStatus === "paid") settledBillIds.push(bill.id);
+        creditPool -= pay;
+    }
+
+    return { usedKobo, appliedToTargetKobo, settledBillIds };
+}
+
+// ─── Confirm / settle a single bill ───────────────────────────────────────────
+
 export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, methodArg?: string): Promise<Payment> {
     const input: ConfirmPaymentInput =
         typeof inputOrId === "string" ? { id: inputOrId, method: methodArg } : inputOrId;
@@ -325,31 +589,115 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
     }
 
     const now = new Date().toISOString();
-    const method = normalizeMethod(input.method ?? existing.method ?? existing.payment_method) ?? "cash";
-    const totalKobo = amountToKobo(existing);
+    let totalKobo = amountToKobo(existing);
     const paidKobo = paidToKobo(existing);
-    // Handle front-desk price edit: if amountPaid is provided and differs from current total, treat it as a price correction
-    let effectiveTotalKobo = totalKobo;
-    let isPriceEdit = false;
-    if (typeof input.amountPaid === "number" && Number.isFinite(input.amountPaid) && input.amountPaid >= 0) {
-        // Never drop the bill total below what has already been collected.
-        const editedKobo = Math.max(paidKobo, Math.max(0, Math.round(input.amountPaid * 100)));
-        if (editedKobo !== totalKobo) {
-            effectiveTotalKobo = editedKobo;
-            isPriceEdit = true;
-        }
+
+    // ── 1. Payer auto-identification (HMO / Company / Private from registration) ──
+    let payer = normalizePayer(input.payer);
+    let payerReference = input.payerReference ?? (existing as any).payer_reference ?? null;
+    let payerCode = input.payerCode ?? (existing as any).payer_code ?? null;
+    if (!payer) {
+        const resolved = await getPatientPayer(existing.patient_id!);
+        payer = resolved.type;
+        payerReference = payerReference ?? (resolved.reference || null);
     }
-    // If price was edited, the edited amount becomes the new total and is fully paid on confirm
-    // Otherwise, treat amountPaid as incoming payment toward existing total
-    const incomingKobo = isPriceEdit
-        ? effectiveTotalKobo - paidKobo
-        : typeof input.amountPaid === "number"
-            ? Math.max(0, Math.round(input.amountPaid * 100))
-            : totalKobo - paidKobo;
-    const nextPaidKobo = isPriceEdit
-        ? effectiveTotalKobo
-        : Math.min(effectiveTotalKobo, paidKobo + incomingKobo);
-    const nextStatus: PaymentStatus = nextPaidKobo >= effectiveTotalKobo ? "paid" : "partial";
+    const method = payer === "hmo" || payer === "company"
+        ? payer
+        : normalizeMethod(input.method ?? existing.method ?? existing.payment_method) ?? "cash";
+
+    // ── 2. Optional price correction (front-desk edit before settling) ──
+    if (
+        typeof input.correctedAmount === "number" &&
+        Number.isFinite(input.correctedAmount) &&
+        input.correctedAmount >= 0
+    ) {
+        totalKobo = Math.max(paidKobo, Math.round(input.correctedAmount * 100));
+    }
+
+    // ── 3. Discount (percentage and/or flat amount) ──
+    const discount = computeDiscountKobo({
+        totalKobo,
+        paidKobo,
+        discountPercent: input.discountPercent,
+        discountAmount: input.discountAmount,
+    });
+    const effectiveTotalKobo = Math.max(paidKobo, totalKobo - discount.discountKobo);
+    const outstandingAfterDiscount = Math.max(0, effectiveTotalKobo - paidKobo);
+
+    // ── 4. Payment type resolution ──
+    let paymentType = normalizePaymentType(input.paymentType);
+    if (!paymentType) {
+        const offered = Math.max(0, Math.round((input.amountPaid ?? NaN) * 100));
+        paymentType =
+            Number.isFinite(offered) && offered + paidKobo < effectiveTotalKobo ? "partial" : "full";
+    }
+
+    // ── 5. Deposit: record the advance, then apply credit to outstanding bills ──
+    if (paymentType === "deposit") {
+        const depositKobo = Math.max(0, Math.round((input.amountPaid ?? 0) * 100));
+        if (depositKobo <= 0) throw new Error("Deposit amount must be greater than zero.");
+
+        const depositRow = await tryInsertPayment(supabase, [
+            {
+                patient_id: existing.patient_id,
+                amount: depositKobo / 100,
+                amount_kobo: depositKobo,
+                amount_paid_kobo: depositKobo,
+                description: "Advance deposit (credit on account)",
+                category: "deposit",
+                payment_type: "deposit",
+                status: "paid",
+                method,
+                payment_method: methodLabel(method),
+                payer,
+                payer_reference: payerReference,
+                payer_code: payerCode,
+                processed_by: input.cashierId ?? existing.processed_by ?? null,
+                processed_date: now,
+                paid_at: now,
+                invoice_no: `DEP-${Date.now().toString(36).toUpperCase()}`,
+                notes: input.notes ?? "Deposit collected in advance against future bills.",
+            },
+            {
+                patient_id: existing.patient_id,
+                amount: depositKobo / 100,
+                amount_kobo: depositKobo,
+                amount_paid_kobo: depositKobo,
+                description: "Advance deposit (credit on account)",
+                category: "deposit",
+                status: "paid",
+                method,
+                processed_by: input.cashierId ?? existing.processed_by ?? null,
+                processed_date: now,
+                paid_at: now,
+            },
+        ]);
+
+        await applyDepositCreditInternal(supabase, existing.patient_id!, existing.id);
+        await dischargeIfBillingCleared(supabase, normalizePayment(depositRow));
+        return normalizePayment(depositRow);
+    }
+
+    // ── 5. Optional existing deposit credit applied toward this bill first ──
+    let creditAppliedToTarget = 0;
+    if (input.useDepositCredit) {
+        const applied = await applyDepositCreditInternal(supabase, existing.patient_id!, existing.id);
+        creditAppliedToTarget = applied.appliedToTargetKobo;
+    }
+
+    // ── 6. Incoming cash / card / transfer ──
+    let incomingKobo = 0;
+    if (paymentType === "full") {
+        incomingKobo = Math.max(0, effectiveTotalKobo - paidKobo - creditAppliedToTarget);
+    } else {
+        incomingKobo = Math.min(
+            Math.max(0, effectiveTotalKobo - paidKobo - creditAppliedToTarget),
+            Math.max(0, Math.round((input.amountPaid ?? 0) * 100))
+        );
+    }
+
+    const newPaidKobo = Math.min(effectiveTotalKobo, paidKobo + creditAppliedToTarget + incomingKobo);
+    const nextStatus: PaymentStatus = newPaidKobo >= effectiveTotalKobo ? "paid" : "partial";
     const editedAmount = effectiveTotalKobo / 100;
 
     const fullPayload: Record<string, any> = {
@@ -359,13 +707,18 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
         processed_by: input.cashierId ?? existing.processed_by ?? null,
         method,
         payment_method: methodLabel(method),
-        amount_paid_kobo: nextPaidKobo,
+        amount_paid_kobo: newPaidKobo,
+        amount: editedAmount,
+        amount_kobo: effectiveTotalKobo,
+        payment_type: nextStatus === "paid" ? "full" : "partial",
+        payer,
+        payer_reference: payerReference,
+        payer_code: payerCode,
+        discount_kobo: discount.discountKobo,
+        discount_percent: discount.percent || null,
+        discount_amount_kobo: discount.flatKobo || null,
+        updated_at: now,
     };
-    // Include corrected amount if price was edited
-    if (isPriceEdit) {
-        fullPayload.amount = editedAmount;
-        fullPayload.amount_kobo = effectiveTotalKobo;
-    }
 
     const compatiblePayload: Record<string, any> = {
         status: nextStatus,
@@ -373,19 +726,15 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
         processed_date: now,
         processed_by: input.cashierId ?? existing.processed_by ?? null,
         method,
+        amount_paid_kobo: newPaidKobo,
+        amount: editedAmount,
     };
-    if (isPriceEdit) {
-        compatiblePayload.amount = editedAmount;
-    }
 
     const minimalPayload: Record<string, any> = {
         status: nextStatus,
         paid_at: nextStatus === "paid" ? now : existing.paid_at ?? null,
         method,
     };
-    if (isPriceEdit) {
-        minimalPayload.amount = editedAmount;
-    }
 
     try {
         const updated = normalizePayment(
@@ -404,9 +753,354 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
     }
 }
 
+// ─── Record a standalone deposit (advance payment) ────────────────────────────
+
+export interface RecordDepositInput {
+    patient_id: string;
+    amount: number;
+    method?: PaymentMethod | string;
+    cashierId?: string;
+    payer?: PayerType | string;
+    payerReference?: string;
+    payerCode?: string;
+    notes?: string;
+    /** Apply the new credit to the patient's outstanding bills immediately (default true). */
+    applyToOutstanding?: boolean;
+}
+
+export async function recordDeposit(input: RecordDepositInput): Promise<Payment> {
+    if (!input.patient_id) throw new Error("patient_id is required to record a deposit.");
+    const amountKobo = Math.round((input.amount ?? 0) * 100);
+    if (!Number.isFinite(amountKobo) || amountKobo <= 0) {
+        throw new Error("Deposit amount must be greater than zero.");
+    }
+
+    const supabase = await createClient();
+
+    let payer = normalizePayer(input.payer);
+    let payerReference = input.payerReference ?? null;
+    if (!payer) {
+        const resolved = await getPatientPayer(input.patient_id);
+        payer = resolved.type;
+        payerReference = payerReference ?? (resolved.reference || null);
+    }
+    const method = payer === "hmo" || payer === "company"
+        ? payer
+        : normalizeMethod(input.method) ?? "cash";
+
+    const now = new Date().toISOString();
+    const row = await tryInsertPayment(supabase, [
+        {
+            patient_id: input.patient_id,
+            amount: amountKobo / 100,
+            amount_kobo: amountKobo,
+            amount_paid_kobo: amountKobo,
+            description: "Advance deposit (credit on account)",
+            category: "deposit",
+            payment_type: "deposit",
+            status: "paid",
+            method,
+            payment_method: methodLabel(method),
+            payer,
+            payer_reference: payerReference,
+            payer_code: input.payerCode ?? null,
+            processed_by: input.cashierId ?? null,
+            processed_date: now,
+            paid_at: now,
+            invoice_no: `DEP-${Date.now().toString(36).toUpperCase()}`,
+            notes: input.notes ?? null,
+        },
+        {
+            patient_id: input.patient_id,
+            amount: amountKobo / 100,
+            amount_kobo: amountKobo,
+            amount_paid_kobo: amountKobo,
+            description: "Advance deposit (credit on account)",
+            category: "deposit",
+            status: "paid",
+            method,
+            processed_by: input.cashierId ?? null,
+            processed_date: now,
+            paid_at: now,
+        },
+    ]);
+
+    if (input.applyToOutstanding !== false) {
+        await applyDepositCreditInternal(supabase, input.patient_id);
+    }
+
+    await dischargeIfBillingCleared(supabase, normalizePayment(row));
+    return normalizePayment(row);
+}
+
+// ─── Settle ALL accumulated bills for one patient ─────────────────────────────
+
+export interface SettleAllPatientBillsInput {
+    patientId: string;
+    method?: PaymentMethod | string;
+    cashierId?: string;
+    /** full (default) or partial (requires amountPaid). */
+    paymentType?: "full" | "partial";
+    amountPaid?: number;
+    discountPercent?: number;
+    discountAmount?: number;
+    payer?: PayerType | string;
+    payerReference?: string;
+    payerCode?: string;
+    useDepositCredit?: boolean;
+}
+
+export interface SettleAllResult {
+    patientId: string;
+    billsSettled: number;
+    billsPartiallyPaid: number;
+    totalOutstandingKobo: number;
+    discountKobo: number;
+    creditUsedKobo: number;
+    collectedKobo: number;
+    remainingKobo: number;
+}
+
+export async function settleAllPatientBills(input: SettleAllPatientBillsInput): Promise<SettleAllResult> {
+    if (!input.patientId) throw new Error("patientId is required.");
+
+    const supabase = await createClient();
+    const { data: rows, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("patient_id", input.patientId)
+        .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    const bills = (rows ?? []).filter(isOutstanding);
+    if (bills.length === 0) {
+        return {
+            patientId: input.patientId,
+            billsSettled: 0,
+            billsPartiallyPaid: 0,
+            totalOutstandingKobo: 0,
+            discountKobo: 0,
+            creditUsedKobo: 0,
+            collectedKobo: 0,
+            remainingKobo: 0,
+        };
+    }
+
+    const now = new Date().toISOString();
+    const totalOutstandingKobo = bills.reduce((s, b) => s + outstandingKobo(b), 0);
+
+    // ── Payer auto-identification ──
+    let payer = normalizePayer(input.payer);
+    let payerReference = input.payerReference ?? null;
+    if (!payer) {
+        const resolved = await getPatientPayer(input.patientId);
+        payer = resolved.type;
+        payerReference = payerReference ?? (resolved.reference || null);
+    }
+    const method = payer === "hmo" || payer === "company"
+        ? payer
+        : normalizeMethod(input.method) ?? "cash";
+
+    // ── Discount across the accumulated bills ──
+    const discount = computeDiscountKobo({
+        totalKobo: totalOutstandingKobo,
+        paidKobo: 0,
+        discountPercent: input.discountPercent,
+        discountAmount: input.discountAmount,
+    });
+
+    // Distribute the discount proportionally across bills (remainder on first).
+    let remainingDiscount = discount.discountKobo;
+    const perBillDiscount = bills.map((b, i) => {
+        const out = outstandingKobo(b);
+        if (remainingDiscount <= 0) return 0;
+        let share = i === 0
+            ? Math.min(out, remainingDiscount)
+            : Math.min(out, Math.round((discount.discountKobo * out) / Math.max(1, totalOutstandingKobo)));
+        share = Math.min(share, remainingDiscount);
+        remainingDiscount -= share;
+        return share;
+    });
+
+    // ── Deposit credit first ──
+    let creditUsedKobo = 0;
+    if (input.useDepositCredit) {
+        const applied = await applyDepositCreditInternal(supabase, input.patientId);
+        creditUsedKobo = applied.usedKobo;
+    }
+
+    // Recompute each bill's outstanding after credit + discount.
+    const billPlans = bills.map((b, i) => {
+        const totalKobo = Math.max(paidToKobo(b), amountToKobo(b) - perBillDiscount[i]);
+        return { bill: b, discountKobo: perBillDiscount[i], totalKobo, outstanding: Math.max(0, totalKobo - paidToKobo(b)) };
+    });
+
+    const afterCreditOutstanding = billPlans.reduce((s, p) => s + p.outstanding, 0);
+
+    // ── Cash / card / transfer to collect ──
+    const paymentType = input.paymentType ?? "full";
+    let collectKobo = afterCreditOutstanding;
+    if (paymentType === "partial") {
+        collectKobo = Math.min(afterCreditOutstanding, Math.max(0, Math.round((input.amountPaid ?? 0) * 100)));
+    }
+    let incomingPool = collectKobo;
+    let collectedKobo = 0;
+    let settled = 0;
+    let partiallyPaid = 0;
+
+    for (const plan of billPlans) {
+        // Bills already fully covered by deposit credit or earlier payments.
+        if (paidToKobo(plan.bill) >= plan.totalKobo) {
+            settled++;
+            continue;
+        }
+        if (incomingPool <= 0) {
+            // Collection ran out — this bill stays outstanding, untouched.
+            partiallyPaid++;
+            continue;
+        }
+        const payNow = Math.min(plan.outstanding, incomingPool);
+        incomingPool -= payNow;
+
+        const newPaid = Math.min(plan.totalKobo, paidToKobo(plan.bill) + payNow);
+        const nextStatus: PaymentStatus = newPaid >= plan.totalKobo ? "paid" : "partial";
+        if (nextStatus === "paid") settled++; else partiallyPaid++;
+
+        const isThisBillFullyCoveredNow = payNow >= plan.outstanding;
+
+        await updateRowPaidKobo(supabase, plan.bill.id, String((plan.bill as any).raw_status ?? plan.bill.status), {
+            status: nextStatus,
+            amount_paid_kobo: newPaid,
+            paid_at: nextStatus === "paid" ? now : plan.bill.paid_at ?? null,
+            processed_date: now,
+            processed_by: input.cashierId ?? null,
+            method,
+            payment_method: methodLabel(method),
+            amount: plan.totalKobo / 100,
+            amount_kobo: plan.totalKobo,
+            payment_type: isThisBillFullyCoveredNow ? "full" : "partial",
+            payer,
+            payer_reference: payerReference,
+            payer_code: input.payerCode ?? null,
+            discount_kobo: plan.discountKobo,
+            discount_percent: discount.percent || null,
+            discount_amount_kobo: discount.flatKobo || null,
+            updated_at: now,
+        });
+
+        collectedKobo += payNow;
+    }
+
+    const remainingKobo = Math.max(0, afterCreditOutstanding - collectKobo);
+    const summary: SettleAllResult = {
+        patientId: input.patientId,
+        billsSettled: settled,
+        billsPartiallyPaid: partiallyPaid,
+        totalOutstandingKobo,
+        discountKobo: discount.discountKobo,
+        creditUsedKobo,
+        collectedKobo,
+        remainingKobo,
+    };
+
+    await dischargeIfBillingCleared(supabase, { patient_id: input.patientId } as any);
+    return summary;
+}
+
+// ─── Settle ALL pending bills in the checkout queue ───────────────────────────
+
+export interface SettleQueueBillsInput {
+    /** Default method used for private-payer bills (HMO/Company resolve automatically). */
+    method?: PaymentMethod | string;
+    cashierId?: string;
+}
+
+export interface SettleQueueResult {
+    settled: number;
+    patientsCleared: number;
+    byPayer: { hmo: number; company: number; private: number };
+}
+
+export async function settleAllPendingBills(input: SettleQueueBillsInput): Promise<SettleQueueResult> {
+    const supabase = await createClient();
+    const { data: rows, error } = await supabase
+        .from("payments")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    const bills = (rows ?? []).filter(isOutstanding);
+    if (bills.length === 0) {
+        return { settled: 0, patientsCleared: 0, byPayer: { hmo: 0, company: 0, private: 0 } };
+    }
+
+    const patientIds = [...new Set(bills.map((b: any) => b.patient_id).filter(Boolean))];
+    const { data: patients } = await supabase
+        .from("patients")
+        .select("id, hmo, hmo_name, policy_number, company, company_name, private_client")
+        .in("id", patientIds);
+    const patientMap = new Map((patients ?? []).map((p: any) => [p.id, p]));
+
+    const defaultMethod = normalizeMethod(input.method) ?? "cash";
+    const now = new Date().toISOString();
+    const byPayer = { hmo: 0, company: 0, private: 0 };
+
+    for (const bill of bills) {
+        const resolved = resolvePayerFromPatient(patientMap.get(bill.patient_id));
+        const method = resolved.type === "private" ? defaultMethod : resolved.type;
+        byPayer[resolved.type as keyof typeof byPayer] = (byPayer[resolved.type as keyof typeof byPayer] ?? 0) + 1;
+
+        const totalKobo = amountToKobo(bill);
+        await updateRowPaidKobo(supabase, bill.id, String((bill as any).raw_status ?? bill.status), {
+            status: "paid",
+            amount_paid_kobo: totalKobo,
+            paid_at: now,
+            processed_date: now,
+            processed_by: input.cashierId ?? null,
+            method,
+            payment_method: methodLabel(method),
+            payment_type: "full",
+            payer: resolved.type,
+            payer_reference: resolved.reference || null,
+            updated_at: now,
+        });
+    }
+
+    let patientsCleared = 0;
+    for (const patientId of patientIds) {
+        const { data: remaining } = await supabase
+            .from("payments")
+            .select("*")
+            .eq("patient_id", patientId);
+        if ((remaining ?? []).some(isOutstanding)) continue;
+
+        // Only auto-discharge patients that were actually awaiting payment —
+        // e.g. someone mid-lab-work keeps their status even if a single
+        // outstanding bill of theirs was settled here.
+        const { data: patient } = await supabase
+            .from("patients")
+            .select("status")
+            .eq("id", patientId)
+            .maybeSingle();
+        if (patient?.status !== "awaiting-payment") continue;
+
+        patientsCleared++;
+        await supabase
+            .from("patients")
+            .update({ status: "discharged", updated_at: now })
+            .eq("id", patientId);
+    }
+
+    return { settled: bills.length, patientsCleared, byPayer };
+}
+
+// ─── Discharge when billing is fully cleared ──────────────────────────────────
+
 async function dischargeIfBillingCleared(
-    supabase: Awaited<ReturnType<typeof createClient>>,
-    payment: Payment
+    supabase: Sb,
+    payment: Payment | { patient_id?: string }
 ) {
     if (!payment.patient_id) return;
 
@@ -436,6 +1130,8 @@ async function dischargeIfBillingCleared(
         .update({ status: "discharged", updated_at: new Date().toISOString() })
         .eq("id", payment.patient_id);
 }
+
+// ─── Listing ──────────────────────────────────────────────────────────────────
 
 export async function listPaymentsByPatient(patientId: string): Promise<Payment[]> {
     const supabase = await createClient();
@@ -471,7 +1167,7 @@ export async function listPendingPayments(): Promise<Payment[]> {
     const ids = [...new Set(outstanding.map((payment: any) => payment.patient_id).filter(Boolean))];
     const { data: patients } = await supabase
         .from("patients")
-        .select("id, name, phone")
+        .select("id, name, phone, hmo, hmo_name, policy_number, company, company_name, private_client")
         .in("id", ids);
 
     const patientMap = Object.fromEntries((patients ?? []).map((patient: any) => [patient.id, patient]));

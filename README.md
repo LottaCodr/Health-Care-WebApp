@@ -14,6 +14,12 @@ Built with **Next.js 16** (App Router), **React 19**, **Supabase**, and **Zustan
 - **Patient lifecycle** — Registration → consultation → nursing/lab/pharmacy → awaiting payment → discharged, with realtime queue updates.
 - **Consultation suite** — Symptoms, diagnosis, prescriptions, and lab requests.
 - **Billing** — Front-desk payment flow; status moves to `discharged` after payment.
+  - **Payment types** — Full payment, part payment, and deposit (advance payment held as patient credit and applied to bills automatically).
+  - **Discounts** — Percentage and/or flat-amount discounts at settlement, on a single bill or across all accumulated bills.
+  - **Settle all** — One button pays every accumulated bill for a patient (or the whole checkout queue), while individual bills can still be settled one at a time.
+  - **Auto-identified payer** — HMO / Company / Private client is detected from the patient's registration and drives the settlement method (insurer/employer vs cash/card/transfer) and claim-reference capture.
+- **Front-desk lab requests** — Front desk can order lab tests for a patient and route them to the lab (status → `sent-to-lab`, pending invoice auto-created).
+- **Doctor quick routing** — Doctors can route a patient to Lab, Radiology, Pharmacist, Front Desk (admission/billing) or Nurse *without* creating a consultation — or on top of an existing one — via the Quick Route panel.
 
 ### Recent modules (in active development)
 
@@ -27,7 +33,11 @@ Built with **Next.js 16** (App Router), **React 19**, **Supabase**, and **Zustan
 | **Pharmacy** | `pharmacy-store.ts` | `pharmacy.service.ts` |
 | **Bulk patient upload** | `bulk-upload-store.ts` | — |
 
-Other services: `patient`, `consultation`, `nursing`, `payment`, `radiology`, `audit`, `ai-service`.
+Other services: `patient`, `consultation`, `nursing`, `payment`, `radiology`, `audit`, `ai-service`, `patient-routing` (doctor quick routing without a consultation).
+
+### Billing schema
+
+The billing workflow uses extra columns on `payments` (`payment_type`, `discount_kobo`, `discount_percent`, `discount_amount_kobo`, `payer`, `payer_reference`, `payer_code`, `applied_kobo`). The app degrades gracefully when they are missing, but run the idempotent migration in `supabase/migrations/20260813_billing_payment_types_discount_payer_deposit.sql` to fully track payment types, discounts, payer identity and deposit-credit accounting.
 
 ---
 

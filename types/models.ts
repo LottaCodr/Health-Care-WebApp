@@ -191,7 +191,7 @@ export interface Payment {
     status:
         | "pending" | "partial" | "paid" | "waived" | "refunded" | "failed"
         | "Pending" | "Completed" | "Failed" | "Refunded";
-    category?: "consultation" | "lab" | "radiology" | "pharmacy" | "procedure" | "admission" | "other" | string;
+    category?: "consultation" | "lab" | "radiology" | "pharmacy" | "procedure" | "admission" | "deposit" | "other" | string;
     description: string;
     processedBy?: string; // Staff ID (Front Desk/cashier)
     processed_by?: string;
@@ -202,6 +202,22 @@ export interface Payment {
     notes?: string;
     created_at?: string;
     updated_at?: string;
+    // ── Billing workflow extensions ──────────────────────────────────────────
+    // Payment type: full | partial | deposit (advance payment held as credit).
+    payment_type?: "full" | "partial" | "deposit";
+    paymentType?: "full" | "partial" | "deposit";
+    // Discounts (stored in kobo; percent/flat kept for audit).
+    discount_kobo?: number;
+    discount_percent?: number;
+    discount_amount_kobo?: number;
+    // Payer auto-identified at settlement: private | hmo | company.
+    payer?: "private" | "hmo" | "company" | string;
+    payer_reference?: string; // HMO name / company name
+    payer_code?: string;      // authorization / claim / corporate reference code
+    // Deposit accounting: how much of a deposit row has been applied to bills.
+    applied_kobo?: number;
+    // Patients join (listPendingPayments enrichment).
+    patients?: any;
 }
 
 // Appointment entity

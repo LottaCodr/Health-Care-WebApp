@@ -32,7 +32,30 @@ export function usePaymentsByPatient(patientId: string) {
     });
 }
 
+/** Available deposit credit (advance payments) for a patient, in kobo. */
+export function usePatientDepositCredit(patientId: string, opts?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: paymentKeys.depositCredit(patientId),
+        queryFn: () => PS.getPatientDepositCredit(patientId),
+        enabled: !!patientId && opts?.enabled !== false,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
+
+function invalidatePaymentCaches(qc: ReturnType<typeof useQueryClient>, patientId?: string | null) {
+    qc.invalidateQueries({ queryKey: paymentKeys.all() });
+    qc.invalidateQueries({ queryKey: paymentKeys.pending() });
+    if (patientId) {
+        qc.invalidateQueries({ queryKey: paymentKeys.byPatient(patientId) });
+        qc.invalidateQueries({ queryKey: paymentKeys.depositCredit(patientId) });
+        qc.invalidateQueries({ queryKey: patientKeys.detail(patientId) });
+        qc.invalidateQueries({ queryKey: patientKeys.lists() });
+    }
+}
 
 export function useCreatePayment() {
     const qc = useQueryClient();
@@ -42,15 +65,7 @@ export function useCreatePayment() {
             PS.createPayment(data),
 
         onSuccess: (payment) => {
-            qc.invalidateQueries({ queryKey: paymentKeys.all() });
-            qc.invalidateQueries({ queryKey: paymentKeys.pending() });
-            // FIXED: was paymentKeys.byPatient(payment.id) — the payment's own
-            // id, not the patient's. That key matched nothing else in the
-            // app, so a newly created payment never correctly refreshed that
-            // patient's payment history cache.
-            if (payment.patient_id) {
-                qc.invalidateQueries({ queryKey: paymentKeys.byPatient(payment.patient_id) });
-            }
+            invalidatePaymentCaches(qc, payment.patient_id);
         },
     });
 }
@@ -67,20 +82,15 @@ export function useUpdatePayment() {
             PS.updatePendingBill(input),
 
         onSuccess: (payment) => {
-            qc.invalidateQueries({ queryKey: paymentKeys.all() });
-            qc.invalidateQueries({ queryKey: paymentKeys.pending() });
-            if (payment.patient_id) {
-                qc.invalidateQueries({ queryKey: paymentKeys.byPatient(payment.patient_id) });
-                qc.invalidateQueries({ queryKey: patientKeys.detail(payment.patient_id) });
-            }
+            invalidatePaymentCaches(qc, payment.patient_id);
         },
     });
 }
 
 /**
- * Confirms a pending payment. Now takes the selected payment method
- * alongside the id — previously the method picker in the confirmation UI
- * was purely cosmetic because only the id was ever sent to the server.
+ * Confirms a pending payment. Supports full / part payment, deposit
+ * (advance), percentage and/or flat discounts, deposit-credit application,
+ * and payer auto-identification (HMO / Company / Private).
  */
 export function useConfirmPayment() {
     const qc = useQueryClient();
@@ -89,7 +99,6 @@ export function useConfirmPayment() {
         mutationFn: (input: PS.ConfirmPaymentInput) =>
             PS.confirmPayment(input),
 
-        // Optimistic: remove from pending list immediately
         onMutate: async ({ id }) => {
             await qc.cancelQueries({ queryKey: paymentKeys.pending() });
             const previous = qc.getQueryData<Payment[]>(paymentKeys.pending());
@@ -104,13 +113,46 @@ export function useConfirmPayment() {
         },
 
         onSettled: (data) => {
-            qc.invalidateQueries({ queryKey: paymentKeys.all() });
-            qc.invalidateQueries({ queryKey: paymentKeys.pending() });
-            if (data?.patient_id) {
-                qc.invalidateQueries({ queryKey: patientKeys.detail(data.patient_id) });
-                qc.invalidateQueries({ queryKey: paymentKeys.byPatient(data.patient_id) });
-                qc.invalidateQueries({ queryKey: patientKeys.lists() });
-            }
+            invalidatePaymentCaches(qc, data?.patient_id ?? null);
+        },
+    });
+}
+
+/** Records an advance deposit (credit on the patient's account). */
+export function useRecordDeposit() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (input: PS.RecordDepositInput) => PS.recordDeposit(input),
+        onSuccess: (payment) => {
+            invalidatePaymentCaches(qc, payment.patient_id);
+        },
+    });
+}
+
+/** Settles ALL accumulated outstanding bills for a single patient. */
+export function useSettleAllPatientBills() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (input: PS.SettleAllPatientBillsInput) =>
+            PS.settleAllPatientBills(input),
+        onSuccess: (result) => {
+            invalidatePaymentCaches(qc, result.patientId);
+        },
+    });
+}
+
+/** Settles every pending bill in the checkout queue (payer-aware). */
+export function useSettleAllPendingBills() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (input: PS.SettleQueueBillsInput) =>
+            PS.settleAllPendingBills(input),
+        onSuccess: () => {
+            invalidatePaymentCaches(qc, null);
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
         },
     });
 }
