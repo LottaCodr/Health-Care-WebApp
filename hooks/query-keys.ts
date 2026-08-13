@@ -97,6 +97,7 @@ export const paymentKeys = {
     all: () => ["payments"] as const,
     pending: () => ["payments", "pending"] as const,
     byPatient: (id: string) => ["payments", "patient", id] as const,
+    depositCredit: (id: string) => ["payments", "deposit-credit", id] as const,
 };
 
 // ─── Pharmacy ─────────────────────────────────────────────────────────────────

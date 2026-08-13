@@ -72,7 +72,10 @@ export async function createLabRequest(
         console.error("[lab] auto-create payment failed:", payErr);
     }
 
-    // 4. Update patient status to sent-to-lab if currently registered or under consultation
+    // 4. Update patient status to sent-to-lab so the lab queue picks them up.
+    //    Anyone can request tests (doctor, front desk, admin…), so we route the
+    //    patient from any "walking" state. Admitted and discharged patients keep
+    //    their status — the request still lands in the lab queue.
     try {
         const { data: currentPatient } = await supabase
             .from("patients")
@@ -80,12 +83,9 @@ export async function createLabRequest(
             .eq("id", input.patientId)
             .maybeSingle();
 
-        if (
-            currentPatient &&
-            (currentPatient.status === "registered" ||
-             currentPatient.status === "under-consultation" ||
-             currentPatient.status === "awaiting-consultation")
-        ) {
+        const KEEP_STATUS = new Set(["admitted", "discharged"]);
+
+        if (currentPatient && !KEEP_STATUS.has(String(currentPatient.status).toLowerCase())) {
             await supabase
                 .from("patients")
                 .update({ status: "sent-to-lab" })

@@ -4,23 +4,25 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
     usePaymentsByPatient,
     useCreatePayment,
-    useConfirmPayment,
     useUpdatePayment,
 } from "@/hooks/emr/use-payment";
 import { mapPaymentsForHistory } from "@/lib/utils/map-payment-history";
 import { exportPatientInvoice, type InvoicePatientInfo } from "@/lib/utils/invoice";
 import type { Payment as DbPayment } from "@/types/models";
 import {
+    SettleBillModal, SettleAllBillsModal, DepositModal, PayerBadge,
+} from "./billing-modals";
+import { resolvePayerFromPatient, PAYMENT_TYPE_CONFIG } from "@/lib/utils/billing";
+import {
     Plus, Printer, Loader2, X, Pencil, CheckCircle2,
-    Banknote, CreditCard, ArrowLeftRight, Receipt, AlertTriangle,
+    Receipt, AlertTriangle, Wallet, Layers, ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PaymentStatus   = "pending" | "paid" | "partial" | "waived" | "refunded";
-export type PaymentCategory = "consultation" | "lab" | "radiology" | "pharmacy" | "procedure" | "admission" | "other";
-type SettleMethod = "cash" | "card" | "transfer";
+export type PaymentCategory = "consultation" | "lab" | "radiology" | "pharmacy" | "procedure" | "admission" | "deposit" | "other";
 
 export interface Payment {
     id:           string;
@@ -30,6 +32,14 @@ export interface Payment {
     amount_kobo:  number;
     amount_paid_kobo: number;
     status:       PaymentStatus;
+    payment_type?: "full" | "partial" | "deposit";
+    payer?:       "private" | "hmo" | "company" | null;
+    payer_reference?: string | null;
+    payer_code?:  string | null;
+    discount_kobo?: number;
+    discount_percent?: number | null;
+    applied_kobo?: number;
+    deposit_available_kobo?: number;
     payment_date: string | null;
     invoice_no:   string;
     collected_by: string | null;
@@ -58,24 +68,22 @@ const CATEGORY_LABELS: Record<PaymentCategory, string> = {
     pharmacy:     "Pharmacist",
     procedure:    "Procedure",
     admission:    "Admission",
+    deposit:      "Deposit",
     other:        "Other",
-};
-
-const SETTLE_METHODS: Record<SettleMethod, { label: string; icon: React.ElementType; active: string }> = {
-    cash:     { label: "Cash",     icon: Banknote,       active: "bg-green-50 text-green-700 border-green-300" },
-    card:     { label: "Card",     icon: CreditCard,     active: "bg-blue-50 text-blue-700 border-blue-300" },
-    transfer: { label: "Transfer", icon: ArrowLeftRight, active: "bg-violet-50 text-violet-700 border-violet-300" },
 };
 
 // ─── Summary Cards ────────────────────────────────────────────────────────────
 
 function PaymentSummary({ payments }: { payments: Payment[] }) {
-    const total   = payments.reduce((s, p) => s + p.amount_kobo, 0);
-    const paid    = payments.reduce((s, p) => s + p.amount_paid_kobo, 0);
-    const pending = payments.filter((p) => p.status === "pending" || p.status === "partial").reduce((s, p) => s + (p.amount_kobo - p.amount_paid_kobo), 0);
+    const bills    = payments.filter((p) => p.category !== "deposit");
+    const deposits = payments.filter((p) => p.category === "deposit");
+    const total    = bills.reduce((s, p) => s + p.amount_kobo, 0);
+    const paid     = bills.reduce((s, p) => s + p.amount_paid_kobo, 0);
+    const pending  = bills.filter((p) => p.status === "pending" || p.status === "partial").reduce((s, p) => s + (p.amount_kobo - p.amount_paid_kobo), 0);
+    const creditAvailable = deposits.reduce((s, p) => s + (p.deposit_available_kobo ?? 0), 0);
 
     return (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Total Billed</p>
                 <p className="text-lg font-bold text-slate-800 mt-1">{formatNaira(total)}</p>
@@ -87,6 +95,10 @@ function PaymentSummary({ payments }: { payments: Payment[] }) {
             <div className={`rounded-xl p-4 border ${pending > 0 ? "bg-yellow-50 border-yellow-100" : "bg-slate-50 border-slate-100"}`}>
                 <p className={`text-xs font-medium uppercase tracking-wide ${pending > 0 ? "text-yellow-600" : "text-slate-500"}`}>Outstanding</p>
                 <p className={`text-lg font-bold mt-1 ${pending > 0 ? "text-yellow-700" : "text-slate-400"}`}>{formatNaira(pending)}</p>
+            </div>
+            <div className={`rounded-xl p-4 border ${creditAvailable > 0 ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100"}`}>
+                <p className={`text-xs font-medium uppercase tracking-wide ${creditAvailable > 0 ? "text-emerald-600" : "text-slate-500"}`}>Deposit Credit</p>
+                <p className={`text-lg font-bold mt-1 ${creditAvailable > 0 ? "text-emerald-700" : "text-slate-400"}`}>{formatNaira(creditAvailable)}</p>
             </div>
         </div>
     );
@@ -104,12 +116,32 @@ interface PaymentRowProps {
 function PaymentRow({ payment, canManage, onEdit, onSettle }: PaymentRowProps) {
     const balance = payment.amount_kobo - payment.amount_paid_kobo;
     const outstanding = payment.status === "pending" || payment.status === "partial";
+    const isDeposit = payment.category === "deposit";
 
     return (
-        <tr className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+        <tr className={`border-b border-slate-100 transition-colors ${isDeposit ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "hover:bg-slate-50"}`}>
             <td className="px-4 py-3">
-                <div className="text-sm font-medium text-slate-800">{payment.description}</div>
-                <div className="text-xs text-slate-400">{payment.invoice_no}</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="text-sm font-medium text-slate-800">{payment.description}</div>
+                    {payment.payment_type && (
+                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full border ${
+                            payment.payment_type === "deposit" ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                            : payment.payment_type === "partial" ? "bg-blue-100 text-blue-700 border-blue-200"
+                            : "bg-slate-100 text-slate-600 border-slate-200"
+                        }`}>
+                            {PAYMENT_TYPE_CONFIG[payment.payment_type]?.short ?? payment.payment_type}
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs text-slate-400">{payment.invoice_no}</span>
+                    {payment.payer && (
+                        <PayerBadge payer={payment.payer} reference={payment.payer_reference ?? null} />
+                    )}
+                </div>
+                {payment.payer_code && (
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">Ref: {payment.payer_code}</div>
+                )}
             </td>
             <td className="px-4 py-3">
                 <span className="text-xs font-medium text-slate-600 bg-slate-100 rounded px-2 py-0.5">
@@ -118,12 +150,21 @@ function PaymentRow({ payment, canManage, onEdit, onSettle }: PaymentRowProps) {
             </td>
             <td className="px-4 py-3 text-sm text-slate-700 text-right whitespace-nowrap">
                 {formatNaira(payment.amount_kobo)}
+                {!!payment.discount_kobo && (
+                    <div className="text-[10px] text-teal-600">−{formatNaira(payment.discount_kobo)} discount</div>
+                )}
             </td>
             <td className="px-4 py-3 text-sm text-green-700 text-right whitespace-nowrap">
                 {formatNaira(payment.amount_paid_kobo)}
             </td>
             <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
-                {balance > 0
+                {isDeposit ? (
+                    (payment.deposit_available_kobo ?? 0) > 0 ? (
+                        <span className="text-emerald-600 font-semibold">{formatNaira(payment.deposit_available_kobo!)} credit</span>
+                    ) : (
+                        <span className="text-slate-400">applied</span>
+                    )
+                ) : balance > 0
                     ? <span className="text-yellow-600">{formatNaira(balance)}</span>
                     : <span className="text-slate-400">—</span>
                 }
@@ -149,7 +190,7 @@ function PaymentRow({ payment, canManage, onEdit, onSettle }: PaymentRowProps) {
                         </button>
                         <button
                             onClick={() => onSettle?.(payment)}
-                            title="Settle this bill — you can adjust the final amount first"
+                            title="Settle this bill — full / part payment, discount, or deposit"
                             className="text-xs text-teal-600 hover:underline font-bold"
                         >
                             Settle
@@ -158,187 +199,6 @@ function PaymentRow({ payment, canManage, onEdit, onSettle }: PaymentRowProps) {
                 )}
             </td>
         </tr>
-    );
-}
-
-// ─── Settle Bill Modal (price editable before confirming) ─────────────────────
-
-interface SettleBillModalProps {
-    payment: Payment;
-    cashierId: string;
-    onClose: () => void;
-}
-
-function SettleBillModal({ payment, cashierId, onClose }: SettleBillModalProps) {
-    const { mutate: confirmPayment, isPending } = useConfirmPayment();
-
-    const originalTotal = payment.amount_kobo / 100;
-
-    // Front desk may adjust the FINAL bill amount here, before settling.
-    // The input holds the full bill total (any part-payments stay recorded on
-    // the bill); leaving it unchanged simply completes the payment.
-    const [amount, setAmount] = useState<string>(String(originalTotal));
-    const [method, setMethod] = useState<SettleMethod>("cash");
-
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && !isPending) onClose(); };
-        document.addEventListener("keydown", handler);
-        return () => document.removeEventListener("keydown", handler);
-    }, [isPending, onClose]);
-
-    const finalAmount = Number(amount);
-    const amountValid = amount.trim() !== "" && Number.isFinite(finalAmount) && finalAmount >= 0;
-    const priceEdited = amountValid && Math.round(finalAmount * 100) !== payment.amount_kobo;
-    const isWaive = amountValid && finalAmount === 0;
-
-    function handleSettle() {
-        if (!amountValid || isPending) return;
-        confirmPayment(
-            {
-                id: payment.id,
-                method,
-                cashierId,
-                // The editable amount becomes the final bill total; on confirm,
-                // the payment service stores the corrected price and marks paid.
-                amountPaid: finalAmount,
-            },
-            {
-                onSuccess: () => {
-                    toast.success(
-                        priceEdited
-                            ? `Bill settled at adjusted price ${formatNaira(Math.round(finalAmount * 100))}.`
-                            : "Payment confirmed."
-                    );
-                    onClose();
-                },
-                onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to settle payment."),
-            }
-        );
-    }
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm print:hidden" role="presentation">
-            <div role="dialog" aria-modal="true" aria-labelledby="settle-bill-title"
-                className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center">
-                            <CheckCircle2 size={16} className="text-teal-600" />
-                        </div>
-                        <div>
-                            <h3 id="settle-bill-title" className="font-bold text-slate-800">Settle Bill</h3>
-                            <p className="text-[10px] text-slate-400">Review or adjust the price, then confirm payment</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} disabled={isPending} className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Close">
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <div className="p-6 space-y-5">
-                    {/* Bill being settled */}
-                    <div className="flex items-start gap-2.5 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl">
-                        <Receipt size={14} className="text-slate-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">{payment.description}</p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                                {payment.invoice_no} · {CATEGORY_LABELS[payment.category] ?? "Other"}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Editable final amount */}
-                    <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                Final amount (editable)
-                            </label>
-                            {priceEdited && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                                    Price adjusted
-                                </span>
-                            )}
-                        </div>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">₦</span>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                                disabled={isPending}
-                                autoFocus
-                                className={`w-full h-12 pl-9 pr-4 rounded-xl border bg-white text-lg font-extrabold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-400/25 focus:border-teal-400 transition-all ${
-                                    priceEdited ? "border-amber-300 bg-amber-50/40" : "border-slate-200"
-                                }`}
-                                placeholder="0.00"
-                            />
-                        </div>
-                        <p className="text-[11px] text-slate-400">
-                            {payment.amount_paid_kobo > 0 ? (
-                                <>
-                                    Already paid: <span className="font-semibold text-green-700">{formatNaira(payment.amount_paid_kobo)}</span>
-                                    {" · "}Collect now:{" "}
-                                    <span className="font-semibold text-teal-700">
-                                        {amountValid ? formatNaira(Math.max(0, Math.round(finalAmount * 100) - payment.amount_paid_kobo)) : "—"}
-                                    </span>
-                                </>
-                            ) : (
-                                <>Original bill: <span className="font-semibold">{formatNaira(payment.amount_kobo)}</span></>
-                            )}
-                        </p>
-                        {isWaive && (
-                            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-600">
-                                <AlertTriangle size={11} /> ₦0 marks this bill as fully waived / complimentary.
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Payment method */}
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Payment method
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {(Object.entries(SETTLE_METHODS) as [SettleMethod, (typeof SETTLE_METHODS)[SettleMethod]][]).map(([key, cfg]) => {
-                                const Icon = cfg.icon;
-                                const active = method === key;
-                                return (
-                                    <button
-                                        key={key}
-                                        type="button"
-                                        onClick={() => setMethod(key)}
-                                        disabled={isPending}
-                                        className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl border text-xs font-bold transition-all ${
-                                            active ? cfg.active : "bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600"
-                                        }`}
-                                    >
-                                        <Icon size={16} />
-                                        {cfg.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
-                        <button type="button" onClick={onClose} disabled={isPending}
-                            className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50">
-                            Cancel
-                        </button>
-                        <button type="button" onClick={handleSettle} disabled={!amountValid || isPending}
-                            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-lg shadow-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            {isPending
-                                ? <><Loader2 size={15} className="animate-spin" /> Settling…</>
-                                : <><CheckCircle2 size={15} /> Settle {amountValid ? formatNaira(Math.round(finalAmount * 100)) : ""}</>}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
     );
 }
 
@@ -486,12 +346,17 @@ export default function PaymentHistory({ patientId, patient = null, readOnly = f
     const [isAddBillOpen, setIsAddBillOpen] = useState(false);
     const [settleTarget, setSettleTarget] = useState<Payment | null>(null);
     const [editTarget, setEditTarget] = useState<Payment | null>(null);
+    const [settleAllOpen, setSettleAllOpen] = useState(false);
+    const [depositOpen, setDepositOpen] = useState(false);
 
     // Add Bill Form State
     const [newBill, setNewBill] = useState({ description: "", amount: "", category: "other" as PaymentCategory });
 
     const { data: raw = [], isLoading, isError } = usePaymentsByPatient(patientId);
     const { mutate: createPayment, isPending: isCreatingBill } = useCreatePayment();
+
+    // Payer auto-identified from the patient's registration (HMO / Company / Private).
+    const payerHint = useMemo(() => resolvePayerFromPatient(patient as any), [patient]);
 
     const handleAddBill = (e: React.FormEvent) => {
         e.preventDefault();
@@ -512,6 +377,11 @@ export default function PaymentHistory({ patientId, patient = null, readOnly = f
 
     const payments = useMemo(() => mapPaymentsForHistory(raw as DbPayment[]), [raw]);
 
+    const outstandingPayments = useMemo(
+        () => payments.filter((p) => p.status === "pending" || p.status === "partial" && p.category !== "deposit"),
+        [payments]
+    );
+
     const filtered = payments.filter((p) => {
         const matchCat    = categoryFilter === "all" || p.category === categoryFilter;
         const matchStatus = statusFilter   === "all" || p.status   === statusFilter;
@@ -528,12 +398,13 @@ export default function PaymentHistory({ patientId, patient = null, readOnly = f
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between print:hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
                 <div className="flex items-center gap-3">
                     <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Payment History</h3>
                     <span className="text-xs text-slate-400">{payments.length} record{payments.length !== 1 ? "s" : ""}</span>
+                    <PayerBadge payer={payerHint.type} reference={payerHint.reference || null} />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <button
                         onClick={() => exportPatientInvoice({ patientId, patient, payments })}
                         disabled={isLoading}
@@ -542,11 +413,27 @@ export default function PaymentHistory({ patientId, patient = null, readOnly = f
                         <Printer size={13} /> Export Invoice
                     </button>
                     {!readOnly && (
-                        <button
-                            onClick={() => setIsAddBillOpen(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-sm shadow-teal-200 text-xs font-bold transition-colors">
-                            <Plus size={13} /> Add Bill
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setDepositOpen(true)}
+                                title="Collect an advance deposit — held as credit on the patient's account"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200 text-xs font-bold transition-colors">
+                                <Wallet size={13} /> Take Deposit
+                            </button>
+                            {outstandingPayments.length > 0 && (
+                                <button
+                                    onClick={() => setSettleAllOpen(true)}
+                                    title="Settle every outstanding bill for this patient in one go"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-200 text-xs font-bold transition-colors">
+                                    <Layers size={13} /> Settle All ({outstandingPayments.length})
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setIsAddBillOpen(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-sm shadow-teal-200 text-xs font-bold transition-colors">
+                                <Plus size={13} /> Add Bill
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
@@ -633,12 +520,37 @@ export default function PaymentHistory({ patientId, patient = null, readOnly = f
                 </div>
             )}
 
-            {/* Settle Bill Modal — price editable before confirming */}
+            {/* Settle Bill Modal — full / part / deposit + discount + auto-identified payer */}
             {settleTarget && !readOnly && !onSettle && (
                 <SettleBillModal
                     payment={settleTarget}
+                    patient={patient as any}
+                    payerHint={payerHint}
                     cashierId={cashierId}
                     onClose={() => setSettleTarget(null)}
+                />
+            )}
+
+            {/* Settle ALL accumulated bills for this patient */}
+            {settleAllOpen && !readOnly && (
+                <SettleAllBillsModal
+                    payments={payments}
+                    patientId={patientId}
+                    patient={patient as any}
+                    payerHint={payerHint}
+                    cashierId={cashierId}
+                    onClose={() => setSettleAllOpen(false)}
+                />
+            )}
+
+            {/* Take an advance deposit */}
+            {depositOpen && !readOnly && (
+                <DepositModal
+                    patientId={patientId}
+                    patient={patient as any}
+                    payerHint={payerHint}
+                    cashierId={cashierId}
+                    onClose={() => setDepositOpen(false)}
                 />
             )}
 

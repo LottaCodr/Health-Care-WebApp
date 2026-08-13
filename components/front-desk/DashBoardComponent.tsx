@@ -69,9 +69,10 @@ function StatusChip({ status }: { status?: string }) {
 
 // ─── Patient row ──────────────────────────────────────────────────────────────
 
-function PatientRow({ patient, action }: {
+function PatientRow({ patient, action, secondaryAction }: {
     patient:  any;
     action:   { label: string; href: string; color: string };
+    secondaryAction?: { label: string; href: string; color: string };
 }) {
     const age = calcAge(patient.birth_date ?? patient.date_of_birth);
     const initials = typeof patient.name === "string" && patient.name.length > 0
@@ -90,6 +91,13 @@ function PatientRow({ patient, action }: {
                     {patient.phone ? ` · ${patient.phone}` : ""}
                 </p>
             </div>
+            {secondaryAction && (
+                <Link href={secondaryAction.href}
+                    title={secondaryAction.label}
+                    className={`shrink-0 hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${secondaryAction.color}`}>
+                    {secondaryAction.label}
+                </Link>
+            )}
             <Link href={action.href}
                 className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-bold transition-colors ${action.color}`}>
                 {action.label} <ArrowRight size={11} />
@@ -404,7 +412,8 @@ export default function FrontDeskDashboard() {
                 >
                     {Array.isArray(awaitingPayment.data) && awaitingPayment.data.slice(0, 5).map(p => (
                         <PatientRow key={p.id} patient={p}
-                            action={{ label: "Checkout", href: `/front-desk/payment/${p.id}`, color: "bg-red-600 hover:bg-red-700" }} />
+                            action={{ label: "Checkout", href: `/front-desk/payment/${p.id}`, color: "bg-red-600 hover:bg-red-700" }}
+                            secondaryAction={{ label: "Request Lab", href: `/front-desk/patient/${p.id}?tab=lab`, color: "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100" }} />
                     ))}
                 </Section>
 

@@ -43,6 +43,7 @@ const DischargeNoteForm = dynamic(() => import("../doctor/DischargeNoteForm"), {
 const PaymentHistory = dynamic(() => import("./payment-history"), { loading: () => <TabChunkSkeleton /> });
 const AppointmentComponent = dynamic(() => import("../front-desk/AppointmentComponent"), { loading: () => <TabChunkSkeleton /> });
 const PatientDocumentsTab = dynamic(() => import("./patient-documents-tab"), { loading: () => <TabChunkSkeleton /> });
+const QuickRoutePanel = dynamic(() => import("../doctor/QuickRoutePanel"), { loading: () => <TabChunkSkeleton /> });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -258,6 +259,17 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     if (tab === "discharge" && patient.id) openDischargeForm(patient.id);
   }, [tab, patient.id, openDischargeForm]);
 
+  // Deep-link: /front-desk/patient/[id]?tab=lab (or billing, consultations…)
+  // opens that section directly — used by dashboard quick actions.
+  const tabParamApplied = useRef(false);
+  useEffect(() => {
+    if (tabParamApplied.current || typeof window === "undefined") return;
+    tabParamApplied.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("tab");
+    if (requested && visibleTabs.some((t) => t.value === requested)) setTab(requested);
+  }, [visibleTabs]);
+
   useEffect(() => {
     if (!visibleTabs.some(t => t.value === tab)) setTab("vitals");
   }, [visibleTabs, tab]);
@@ -343,6 +355,11 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         <div className="space-y-5">
           <SectionHeader icon={Stethoscope} color="text-red-600" bg="bg-red-50"
             title="Consultations" subtitle="Clinical findings and patient routing" />
+          {(role === "Doctor" || role === "Admin") && patient?.id && (
+            <Panel accent="bg-indigo-500" label="Quick Route — no consultation needed">
+              <QuickRoutePanel patient={patient} />
+            </Panel>
+          )}
           {role === "Doctor" && patient?.id && (
             <Panel accent="bg-red-500" label="New Consultation">
               <div ref={formRef}>

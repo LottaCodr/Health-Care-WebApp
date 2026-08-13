@@ -1,58 +1,35 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
     BadgeDollarSign, CheckCircle2, Clock,
     Loader2, RefreshCcw, AlertTriangle, Receipt,
-    Banknote, CreditCard, ArrowLeftRight, User,
-    Pencil, DollarSign, Edit3,
+    User, Layers, Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useConfirmPayment, usePendingPayments } from "@/hooks/emr/use-payment";
+import { usePendingPayments } from "@/hooks/emr/use-payment";
 import { useAuth } from "@/context/auth-provider";
-
-// ─── Method config ────────────────────────────────────────────────────────────
-
-const METHOD_CONFIG = {
-    cash: { label: "Cash", icon: Banknote, color: "text-green-600", bg: "bg-green-50", border: "border-green-300" },
-    card: { label: "Card", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-300" },
-    transfer: { label: "Transfer", icon: ArrowLeftRight, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-300" },
-} as const;
+import { SettleBillModal, QueueSettleAllModal, PayerBadge } from "@/components/patients/billing-modals";
+import { formatKobo, resolvePayerFromPatient, PAYMENT_TYPE_CONFIG } from "@/lib/utils/billing";
 
 // ─── PaymentList ──────────────────────────────────────────────────────────────
 
 interface PaymentListProps {
     payments: any[];
-    isConfirming: string | null;
-    methodMap: Record<string, string>;
-    setMethodMap: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-    amountMap: Record<string, string>;
-    setAmountMap: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-    onConfirm: (id: string, amount: number, name: string) => void;
+    onSettle: (payment: any) => void;
 }
 
-const PaymentList: React.FC<PaymentListProps> = ({
-    payments,
-    isConfirming,
-    methodMap,
-    setMethodMap,
-    amountMap,
-    setAmountMap,
-    onConfirm,
-}) => {
+const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
     return (
         <div className="divide-y divide-gray-50">
             {payments.map((payment: any) => {
-                const confirming = isConfirming === payment.id;
-                const originalAmount = Number(payment.amount ?? 0);
-                const editedValue = amountMap[payment.id];
-                const displayAmount = editedValue !== undefined ? Number(editedValue || 0) : originalAmount;
-                const isEdited = editedValue !== undefined && Number(editedValue) !== originalAmount;
                 const patientName = payment.patients?.name ?? `Patient #${payment.patient_id?.slice(-6) ?? "—"}`;
                 const patientPhone = payment.patients?.phone;
-                const selectedMethod = methodMap[payment.id] ?? payment.method ?? "cash";
-                const methodCfg = METHOD_CONFIG[selectedMethod as keyof typeof METHOD_CONFIG] ?? METHOD_CONFIG.cash;
-                const MethodIcon = methodCfg.icon;
+                const payer = resolvePayerFromPatient(payment.patients ?? null);
+                const totalKobo = payment.amount_kobo ?? Math.round(Number(payment.amount ?? 0) * 100);
+                const paidKobo = payment.amount_paid_kobo ?? 0;
+                const balanceKobo = Math.max(0, totalKobo - paidKobo);
+                const paymentType = payment.payment_type;
 
                 // Parse what they're paying for from the description
                 const [descLabel, descDetail] = (payment.description ?? "Prescription dispensed").split(": ");
@@ -66,15 +43,16 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                 {patientName?.[0]?.toUpperCase() ?? <User size={16} />}
                             </div>
 
-                            {/* Info + method picker */}
+                            {/* Info */}
                             <div className="flex-1 min-w-0 space-y-3">
 
                                 {/* Patient name + phone + ID */}
                                 <div className="flex items-start justify-between gap-3">
                                     <div>
-                                        <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                        <p className="text-sm font-bold text-gray-900 flex items-center gap-2 flex-wrap">
                                             <span className="sm:hidden w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-black text-gray-500">{patientName?.[0]?.toUpperCase()}</span>
                                             {patientName}
+                                            <PayerBadge payer={payer.type} reference={payer.reference || null} />
                                         </p>
                                         {patientPhone && (
                                             <p className="text-xs text-gray-400 mt-0.5">{patientPhone}</p>
@@ -94,7 +72,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                         {descDetail && (
                                             <p className="text-xs font-medium text-gray-700 truncate mt-0.5">{descDetail}</p>
                                         )}
-                                        <div className="flex items-center gap-1 mt-1.5">
+                                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                                             <Clock size={9} className="text-gray-300" />
                                             <p className="text-[10px] text-gray-400">
                                                 {payment.created_at
@@ -107,91 +85,42 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{payment.category}</span>
                                                 </>
                                             )}
+                                            {paymentType && (
+                                                <>
+                                                    <span className="text-gray-300 mx-1">•</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">
+                                                        {PAYMENT_TYPE_CONFIG[paymentType as keyof typeof PAYMENT_TYPE_CONFIG]?.short ?? paymentType ?? ""}
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* Method selector */}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                        Method:
-                                    </p>
-                                    <div className="flex items-center gap-1.5">
-                                        {Object.entries(METHOD_CONFIG).map(([key, cfg]) => {
-                                            const Icon = cfg.icon;
-                                            const isActive = selectedMethod === key;
-                                            return (
-                                                <button
-                                                    key={key}
-                                                    type="button"
-                                                    onClick={() => setMethodMap((p) => ({ ...p, [payment.id]: key }))}
-                                                    disabled={confirming}
-                                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all
-                                                        ${isActive
-                                                            ? `${cfg.bg} ${cfg.color} ${cfg.border}`
-                                                            : "bg-white text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600"
-                                                        }`}
-                                                >
-                                                    <Icon size={11} /> {cfg.label}
-                                                </button>
-                                            );
-                                        })}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Amount + confirm - now with editable price */}
+                            {/* Amount + settle */}
                             <div className="flex flex-col gap-3 shrink-0 w-full lg:w-[220px] lg:items-end">
-                                {/* Editable amount */}
                                 <div className="w-full lg:text-right">
-                                    <div className="flex items-center gap-2 lg:justify-end mb-1.5">
-                                        <Edit3 size={11} className="text-gray-400" />
+                                    <div className="flex items-center justify-between gap-2 lg:justify-end mb-1.5">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                            Amount (Editable)
+                                            {paidKobo > 0 ? "Balance" : "Amount"}
                                         </p>
-                                        {isEdited && (
-                                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Edited</span>
-                                        )}
                                     </div>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500">₦</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={editedValue !== undefined ? editedValue : String(originalAmount)}
-                                            onChange={(e) => setAmountMap((prev) => ({ ...prev, [payment.id]: e.target.value }))}
-                                            disabled={confirming}
-                                            className={`w-full lg:w-[180px] h-11 pl-7 pr-3 rounded-xl border bg-white text-lg font-extrabold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400/20 focus:border-green-400 transition-all
-                                                ${isEdited ? "border-amber-300 bg-amber-50/30" : "border-gray-200"}`}
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                    {originalAmount === 0 && !isEdited && (
-                                        <p className="text-[10px] text-amber-600 font-medium mt-1 lg:text-right">⚠️ Price not set — please input price</p>
-                                    )}
-                                    {isEdited && (
-                                        <p className="text-[10px] text-gray-400 mt-1 lg:text-right">
-                                            Original: ₦{originalAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                                    <p className="text-lg font-extrabold text-gray-900 lg:text-right">
+                                        {formatKobo(paidKobo > 0 ? balanceKobo : totalKobo)}
+                                    </p>
+                                    {paidKobo > 0 && (
+                                        <p className="text-[10px] text-gray-400 mt-0.5 lg:text-right">
+                                            of {formatKobo(totalKobo)} ({PAYMENT_TYPE_CONFIG[(paymentType ?? "partial") as keyof typeof PAYMENT_TYPE_CONFIG]?.short ?? "Part"} paid)
                                         </p>
                                     )}
-                                    <div className={`hidden lg:flex items-center justify-end gap-1 mt-1.5 ${methodCfg.color}`}>
-                                        <MethodIcon size={10} />
-                                        <p className="text-[10px] font-bold uppercase tracking-widest">
-                                            {methodCfg.label}
-                                        </p>
-                                    </div>
                                 </div>
 
                                 <button
-                                    onClick={() => onConfirm(payment.id, displayAmount, patientName)}
-                                    disabled={confirming || displayAmount < 0 || Number.isNaN(displayAmount)}
+                                    onClick={() => onSettle(payment)}
                                     className="flex items-center justify-center gap-1.5 w-full lg:w-auto px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
                                 >
-                                    {confirming
-                                        ? <><Loader2 size={12} className="animate-spin" /> Confirming...</>
-                                        : <><CheckCircle2 size={13} /> Confirm ₦{displayAmount.toLocaleString("en-NG", { minimumFractionDigits: 0 })} Payment</>
-                                    }
+                                    <CheckCircle2 size={13} /> Settle Bill
                                 </button>
                             </div>
                         </div>
@@ -205,62 +134,20 @@ const PaymentList: React.FC<PaymentListProps> = ({
 // ─── Main PaymentConfirmation Component ──────────────────────────────────────
 
 export default function PaymentConfirmation() {
-    const [confirmingId, setConfirmingId] = useState<string | null>(null);
-    const [methodMap, setMethodMap] = useState<Record<string, string>>({});
-    const [amountMap, setAmountMap] = useState<Record<string, string>>({});
+    const [settleTarget, setSettleTarget] = useState<any | null>(null);
+    const [settleAllOpen, setSettleAllOpen] = useState(false);
     const { data: payments, isLoading, isError, refetch } = usePendingPayments();
-    const { mutate: confirm, isPending } = useConfirmPayment();
     const { user } = useAuth();
     const cashierId = user?.$id ?? user?.id ?? "";
 
-    // Sync amountMap when payments load
-    useEffect(() => {
-        if (payments && payments.length > 0) {
-            setAmountMap((prev) => {
-                const next: Record<string, string> = { ...prev };
-                payments.forEach((p: any) => {
-                    if (next[p.id] === undefined) {
-                        next[p.id] = String(Number(p.amount ?? 0));
-                    }
-                });
-                // Remove stale ids
-                Object.keys(next).forEach((k) => {
-                    if (!payments.some((p: any) => p.id === k)) delete next[k];
-                });
-                return next;
-            });
-        }
-    }, [payments]);
-
-    const handleConfirm = (id: string, amount: number, name: string) => {
-        if (isPending) return;
-        if (amount < 0 || Number.isNaN(amount)) {
-            toast.error("Please enter a valid amount.");
-            return;
-        }
-        if (amount === 0) {
-            if (!window.confirm(`Confirm ₦0 payment for ${name}? This will mark as paid with no charge. Continue?`)) return;
-        }
-        const method = methodMap[id] ?? "cash";
-        const formatted = amount.toLocaleString("en-NG", { minimumFractionDigits: 2 });
-        if (!window.confirm(`Confirm ₦${formatted} payment from ${name} via ${method}?`)) {
-            return;
-        }
-        setConfirmingId(id);
-
-        confirm(
-            { id, method: method as "cash" | "card" | "transfer", cashierId, amountPaid: amount },
-            {
-                onSuccess: () => {
-                    toast.success("Payment confirmed by cashier.");
-                    refetch();
-                },
-                onError: (err: any) =>
-                    toast.error(err?.message ?? "Failed to confirm payment."),
-                onSettled: () => setConfirmingId(null),
-            }
-        );
-    };
+    const totalPending = useMemo(
+        () => (payments ?? []).reduce((sum: number, p: any) => {
+            const total = p.amount_kobo ?? Math.round(Number(p.amount ?? 0) * 100);
+            const paid = p.amount_paid_kobo ?? 0;
+            return sum + Math.max(0, total - paid);
+        }, 0),
+        [payments]
+    );
 
     // ── Loading ──
     if (isLoading) return (
@@ -284,17 +171,6 @@ export default function PaymentConfirmation() {
         </div>
     );
 
-    const totalPending = payments?.reduce((sum: number, p: any) => {
-        const edited = amountMap[p.id];
-        const val = edited !== undefined ? Number(edited || 0) : Number(p.amount ?? 0);
-        return sum + (Number.isFinite(val) ? val : 0);
-    }, 0) ?? 0;
-
-    const hasEdited = payments?.some((p: any) => {
-        const edited = amountMap[p.id];
-        return edited !== undefined && Number(edited) !== Number(p.amount ?? 0);
-    });
-
     return (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
 
@@ -306,7 +182,7 @@ export default function PaymentConfirmation() {
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-gray-900 leading-tight">Pending Payments</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">Awaiting front-desk confirmation • edit price before confirming</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Full / part / deposit payments • discounts • auto-identified payer</p>
                     </div>
                 </div>
 
@@ -315,12 +191,17 @@ export default function PaymentConfirmation() {
                         <>
                             <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
                                 <BadgeDollarSign size={11} />
-                                ₦{totalPending.toLocaleString("en-NG", { minimumFractionDigits: 2 })} total
-                                {hasEdited && <span className="ml-1 text-[9px] bg-green-200 px-1.5 py-0.5 rounded-full">Edited</span>}
+                                {formatKobo(totalPending)} total
                             </span>
                             <span className="text-xs font-bold px-2.5 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
                                 {payments.length} pending
                             </span>
+                            <button
+                                onClick={() => setSettleAllOpen(true)}
+                                title="Settle every pending bill across all patients at once"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-sm shadow-orange-200 transition-colors">
+                                <Layers size={13} /> Settle All
+                            </button>
                         </>
                     )}
                     <button onClick={() => refetch()} aria-label="Refresh"
@@ -333,9 +214,14 @@ export default function PaymentConfirmation() {
             {/* Hint banner */}
             {payments && payments.length > 0 && (
                 <div className="mx-6 mt-4 flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
-                    <Pencil size={12} className="text-blue-500 shrink-0 mt-0.5" />
+                    <Wallet size={12} className="text-blue-500 shrink-0 mt-0.5" />
                     <p className="text-xs text-blue-700 leading-relaxed">
-                        <span className="font-bold">Price editable:</span> Adjust the amount for each payment before confirming. Enter <span className="font-mono">0</span> for waived/complimentary services. Edited prices are saved on confirmation.
+                        <span className="font-bold">Settle a bill</span> to choose{" "}
+                        <span className="font-semibold">Full payment</span>,{" "}
+                        <span className="font-semibold">Part payment</span>, or{" "}
+                        <span className="font-semibold">Deposit (advance)</span>, apply a{" "}
+                        <span className="font-semibold">% or ₦ discount</span>, and the payer is{" "}
+                        <span className="font-semibold">auto-identified</span> (HMO / Company / Private) from registration.
                     </p>
                 </div>
             )}
@@ -357,12 +243,44 @@ export default function PaymentConfirmation() {
             {payments && payments.length > 0 && (
                 <PaymentList
                     payments={payments}
-                    isConfirming={confirmingId}
-                    methodMap={methodMap}
-                    setMethodMap={setMethodMap}
-                    amountMap={amountMap}
-                    setAmountMap={setAmountMap}
-                    onConfirm={handleConfirm}
+                    onSettle={(payment) => setSettleTarget(payment)}
+                />
+            )}
+
+            {/* ── Settle modal (shared with the patient billing tab) ── */}
+            {settleTarget && (
+                <SettleBillModal
+                    payment={{
+                        id: settleTarget.id,
+                        patient_id: settleTarget.patient_id,
+                        category: settleTarget.category ?? "other",
+                        description: settleTarget.description ?? "",
+                        amount_kobo: settleTarget.amount_kobo ?? Math.round(Number(settleTarget.amount ?? 0) * 100),
+                        amount_paid_kobo: settleTarget.amount_paid_kobo ?? 0,
+                        status: settleTarget.status,
+                        payment_type: settleTarget.payment_type,
+                        payer: settleTarget.payer,
+                        payer_reference: settleTarget.payer_reference,
+                        payer_code: settleTarget.payer_code,
+                        payment_date: settleTarget.paid_at ?? settleTarget.processed_date ?? null,
+                        invoice_no: settleTarget.invoice_no ?? String(settleTarget.id ?? "").slice(0, 8).toUpperCase(),
+                        collected_by: settleTarget.processed_by ?? null,
+                        notes: settleTarget.notes ?? null,
+                        created_at: settleTarget.created_at ?? new Date().toISOString(),
+                    }}
+                    payerHint={resolvePayerFromPatient(settleTarget.patients ?? null)}
+                    cashierId={cashierId}
+                    onClose={() => setSettleTarget(null)}
+                />
+            )}
+
+            {/* ── Settle entire queue ── */}
+            {settleAllOpen && (
+                <QueueSettleAllModal
+                    totalBills={payments?.length ?? 0}
+                    totalKobo={totalPending}
+                    cashierId={cashierId}
+                    onClose={() => setSettleAllOpen(false)}
                 />
             )}
         </div>

@@ -351,7 +351,7 @@ function LabTechPendingRow({ req, patientId, onSubmitted }: { req: any; patientI
 
 // ─── Modal / Form: Send Lab Request (Creates request + auto-bills frontdesk) ───
 
-function SendLabRequestModal({
+export function SendLabRequestModal({
     patient,
     onClose,
     onSuccess,
@@ -629,7 +629,13 @@ export default function LabTab({ patient, userRole }: Props) {
     const [isSendRequestModalOpen, setIsSendRequestModalOpen] = useState(false);
 
     const isLabTech = userRole === "Labtech" || userRole === "LabTechnician" || userRole?.toLowerCase().includes("lab");
-    const canSendRequest = isLabTech || userRole === "Doctor" || userRole === "Admin";
+    // Front desk can also order lab tests for a patient and route them to the lab.
+    const canSendRequest =
+        isLabTech ||
+        userRole === "Doctor" ||
+        userRole === "Admin" ||
+        userRole === "FrontDesk" ||
+        userRole?.toLowerCase().includes("front");
     const pendingRequests = labRequests?.filter((r: any) => r.status === "pending") ?? [];
     const completedRequests = labRequests?.filter((r: any) => r.status === "completed") ?? [];
 
