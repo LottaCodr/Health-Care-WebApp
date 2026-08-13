@@ -37,7 +37,7 @@ Other services: `patient`, `consultation`, `nursing`, `payment`, `radiology`, `a
 
 ### Billing schema
 
-The billing workflow uses extra columns on `payments` (`payment_type`, `discount_kobo`, `discount_percent`, `discount_amount_kobo`, `payer`, `payer_reference`, `payer_code`, `applied_kobo`). The app degrades gracefully when they are missing, but run the idempotent migration in `supabase/migrations/20260813_billing_payment_types_discount_payer_deposit.sql` to fully track payment types, discounts, payer identity and deposit-credit accounting.
+The billing workflow uses extra columns on `payments` (`category`, `payment_type`, `discount_kobo`, `discount_percent`, `discount_amount_kobo`, `payer`, `payer_reference`, `payer_code`, `applied_kobo`). The app degrades gracefully when they are missing, but run the idempotent migration in `supabase/migrations/20260813_billing_payment_types_discount_payer_deposit.sql` to fully track payment types, discounts, payer identity and deposit-credit accounting. The migration also adds `category` if your existing `payments` table does not have it (needed for the category index and for deposit rows).
 
 ---
 

@@ -7,6 +7,13 @@
 -- features below are only fully tracked once this migration has been applied.
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- 0) Bill category — required by billing filters / deposit credit
+--    ('consultation' | 'lab' | 'radiology' | 'pharmacy' | 'procedure' |
+--     'admission' | 'deposit' | 'other'). Older payments tables never had
+--     this column; the index below will fail with 42703 unless we add it first.
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS category text DEFAULT 'other';
+
 -- 1) Payment type: 'full' | 'partial' | 'deposit'
 ALTER TABLE public.payments
     ADD COLUMN IF NOT EXISTS payment_type text;
