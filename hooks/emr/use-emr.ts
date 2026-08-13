@@ -60,7 +60,14 @@ export {
     usePaymentsByPatient,
     useCreatePayment,
     useConfirmPayment,
+    useRecordDeposit,
+    useSettleAllPatientBills,
+    useSettleAllPendingBills,
+    usePatientDepositCredit,
 } from "./use-payment";
+
+// Doctor quick routing (no consultation required)
+export { useRoutePatient } from "./use-route-patient";
 
 // Pharmacy — prescriptions + drug catalog + inventory
 export {
