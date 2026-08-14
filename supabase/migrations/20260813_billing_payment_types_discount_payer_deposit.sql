@@ -31,6 +31,19 @@ ALTER TABLE public.payments
 ALTER TABLE public.payments
     ADD COLUMN IF NOT EXISTS applied_kobo bigint DEFAULT 0;
 
+-- 5) Category (consultation, lab, radiology, pharmacy, procedure, admission, deposit, other).
+--    Older schemas may be missing this column entirely, so we guard with IF NOT EXISTS.
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS category text;
+
+-- 6) Kobo-precision accounting columns used by the billing engine.
+--    amount_kobo: total amount in kobo (smallest currency unit)
+--    amount_paid_kobo: amount actually paid in kobo
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS amount_kobo bigint;
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS amount_paid_kobo bigint;
+
 -- Indexes for common billing queries
 CREATE INDEX IF NOT EXISTS payments_patient_id_idx ON public.payments (patient_id);
 CREATE INDEX IF NOT EXISTS payments_status_idx ON public.payments (status);
