@@ -85,9 +85,14 @@ export async function logDrugAdministration(input: {
     givenBy:         string;
     administeredAt?: string;
     notes?:          string;
+    /** Second-checker (electronic witness) for high-risk drugs. */
+    witnessedBy?:    string;
+    /** Timestamp of the e-signature (defaults to now when witness present). */
+    signedAt?:       string;
 }) {
     await requireStaff([UserRole.Nurse]);
     const sb = await createClient();
+    const hasWitness = Boolean(input.witnessedBy);
     const { data, error } = await sb.from("drug_administration_records").insert([{
         drug_chart_id:   input.drugChartId,
         patient_id:      input.patientId,
@@ -96,6 +101,9 @@ export async function logDrugAdministration(input: {
         given_by:        input.givenBy,
         administered_at: input.administeredAt ?? new Date().toISOString(),
         notes:           input.notes          ?? null,
+        witnessed_by:    input.witnessedBy    ?? null,
+        witnessed_at:    hasWitness ? new Date().toISOString() : null,
+        signed_at:       input.signedAt ?? (hasWitness ? new Date().toISOString() : null),
     }]).select().single();
     if (error) throw error;
     return data;

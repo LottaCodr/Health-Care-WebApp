@@ -30,7 +30,13 @@ interface AuthContextType {
     login: (
         email: string,
         password: string
-    ) => Promise<{ success: boolean; message: string; staff?: any }>;
+    ) => Promise<{
+        success: boolean;
+        message: string;
+        staff?: any;
+        /** True when Supabase requires a second factor before the session is usable. */
+        mfaRequired?: boolean;
+    }>;
     logout: () => Promise<void>;
     /**
      * Re-fetch the current staff profile from the DB and update `user` +
@@ -246,6 +252,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
 
                 loginRateLimiter.clearAttempts(identifier);
+
+                // MFA: if the project requires AAL2 (TOTP verified), the session
+                // is not fully usable yet — surface the second-factor step.
+                try {
+                    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+                    if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+                        return {
+                            success: false,
+                            mfaRequired: true,
+                            staff: profile,
+                            message: "Enter the 6-digit code from your authenticator app to continue.",
+                        };
+                    }
+                } catch {
+                    // MFA disabled / unavailable in this environment — proceed.
+                }
 
                 return {
                     success: true,

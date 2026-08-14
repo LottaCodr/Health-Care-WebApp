@@ -35,6 +35,12 @@ Built with **Next.js 16** (App Router), **React 19**, **Supabase**, and **Zustan
 
 Other services: `patient`, `consultation`, `nursing`, `payment`, `radiology`, `audit`, `ai-service`, `patient-routing` (doctor quick routing without a consultation).
 
+### Completeness modules (2026-08-14)
+
+- **Clinical:** structured allergies + offline drug-safety engine, immunizations, vitals/lab trends (recharts), WHO growth charts, surgery/OT module with theatre schedule, referrals with printable letters, lab specimen tracking with barcode labels, ward & bed board, drug batches & expiry alerts, medication reconciliation, MAR witness/e-signature, break-glass emergency access, death/birth certificates with mortality register.
+- **Compliance & ops:** consent management (versioned), MFA/TOTP (Supabase Auth), audit review + CSV export, data retention & backup policy (`DATA_RETENTION_POLICY.md`), FHIR R4 / HL7 v2 / CSV exports, ICD-10/LOINC/SNOMED coding fields, SMS/email messaging (Termii/SendGrid/console), patient portal (`/portal`), offline mutation queue, admin reports & analytics, multi-facility support.
+- **Migration:** apply `supabase/migrations/20260814_emr_modules_schema.sql` (schema + RLS) with `supabase db push` — see `SECURITY_REPORT.md` for the full status table and what still needs external configuration (MFA enablement, messaging keys, service-role key for portal account creation).
+
 ### Billing schema
 
 The billing workflow uses extra columns on `payments` (`payment_type`, `discount_kobo`, `discount_percent`, `discount_amount_kobo`, `payer`, `payer_reference`, `payer_code`, `applied_kobo`). The app degrades gracefully when they are missing, but run the idempotent migration in `supabase/migrations/20260813_billing_payment_types_discount_payer_deposit.sql` to fully track payment types, discounts, payer identity and deposit-credit accounting.

@@ -20,6 +20,12 @@ import {
     LucideIcon,
     Radio,
     Calendar,
+    BedDouble,
+    Scissors,
+    TestTube2,
+    PackageX,
+    BarChart3,
+    Building2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -60,6 +66,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Patients", url: "/doctor/patients", icon: Stethoscope },
             { title: "Records", url: "/doctor/health-records", icon: ClipboardList },
             { title: "Appointments", url: "/doctor/appointments", icon: Calendar },
+            { title: "Surgery / OT", url: "/doctor/surgery", icon: Scissors },
         ],
         secondary: [
             { title: "Settings", url: "/doctor/settings", icon: Settings },
@@ -71,6 +78,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Dashboard", url: "/nurse/dashboard", icon: LayoutDashboard },
             { title: "Triaging", url: "/nurse/queue", icon: HeartPulse },
             { title: "Tasks", url: "/nurse/task", icon: ListChecks },
+            { title: "Ward Board", url: "/nurse/ward-board", icon: BedDouble },
         ],
         secondary: [
             { title: "Settings", url: "/nurse/settings", icon: Settings },
@@ -83,8 +91,8 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Dashboard", url: "/lab-tech/dashboard", icon: LayoutDashboard },
             { title: "Requests", url: "/lab-tech/requests", icon: FlaskConical },
             { title: "Reports", url: "/lab-tech/reports", icon: Microscope },
-            { title: "Test Catalog", url: "/lab-tech/catalog", icon: Microscope }
-
+            { title: "Test Catalog", url: "/lab-tech/catalog", icon: Microscope },
+            { title: "Specimens", url: "/lab-tech/specimens", icon: TestTube2 },
         ],
         secondary: [
             { title: "Settings", url: "/lab-tech/settings", icon: Settings },
@@ -96,6 +104,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Dashboard", url: "/pharmacist/dashboard", icon: LayoutDashboard },
             { title: "Dispensing", url: "/pharmacist/queue", icon: Pill },
             { title: "Inventory", url: "/pharmacist/inventory", icon: Package },
+            { title: "Expiry & Batches", url: "/pharmacist/expiry", icon: PackageX },
         ],
         secondary: [
             { title: "Settings", url: "/pharmacist/settings", icon: Settings },
@@ -119,6 +128,8 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Drugs Inventory", url: "/admin/stocked-drugs", icon: Pill },
             { title: "Tests Catalogue", url: "/admin/tests-catalogue", icon: Microscope },
             { title: "Audit Log", url: "/admin/audit", icon: ScrollText },
+            { title: "Reports", url: "/admin/reports", icon: BarChart3 },
+            { title: "Facilities", url: "/admin/facilities", icon: Building2 },
             // { title: "Radiology",  url: "/admin/radiology",   icon: Radio           },
         ],
         secondary: [

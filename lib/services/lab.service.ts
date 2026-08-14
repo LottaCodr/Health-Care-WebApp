@@ -298,6 +298,10 @@ export interface LabTestCatalogItem {
     test_code?: string;
     category: string;
     description?: string;
+    /** Coding standards: ICD-10 indication, LOINC, SNOMED. */
+    icd10_code?: string;
+    loinc_code?: string;
+    snomed_code?: string;
     price: number;
     sample_type?: string;
     turnaround_time?: string;

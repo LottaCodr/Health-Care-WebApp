@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { patientKeys } from "../query-keys";
 import * as PatientService from "@/lib/services/patient.service";
 import type { Patient, PatientStatus } from "@/types/models";
+import { enqueueOfflineRegistration } from "@/components/layout/OfflineSync";
 
 // ─── Cache config ─────────────────────────────────────────────────────────────
 
@@ -64,8 +65,17 @@ export function useCreatePatient() {
     const qc = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: Parameters<typeof PatientService.createPatient>[0]) =>
-            PatientService.createPatient(data),
+        mutationFn: async (data: Parameters<typeof PatientService.createPatient>[0]) => {
+            // Offline mode: park the registration locally and replay it when
+            // the network returns (see components/layout/OfflineSync.tsx).
+            if (typeof navigator !== "undefined" && !navigator.onLine) {
+                enqueueOfflineRegistration(data as unknown as Record<string, any>);
+                throw new Error(
+                    "OFFLINE_QUEUED: You are offline. This registration was saved on this device and will sync to the hospital system automatically when the connection returns."
+                );
+            }
+            return PatientService.createPatient(data);
+        },
 
         onSuccess: (patient) => {
             // Seed detail cache — instant navigation without extra request

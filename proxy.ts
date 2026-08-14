@@ -5,7 +5,7 @@ import { normalizeUserRole } from "@/lib/roles";
 import { sanitizeNextPath } from "@/lib/security";
 
 // ─── Public routes (no auth needed) ────────────────────────────────────────
-const PUBLIC_PATHS = ["/unauthorized", "/login"];
+const PUBLIC_PATHS = ["/unauthorized", "/login", "/portal"];
 
 // ─── Role → route prefix map (used to guard wrong-role access) ─────────────
 const ROLE_PREFIXES: Record<string, string> = {

@@ -87,36 +87,43 @@ Run `supabase db push` (or execute `supabase/migrations/20260814_enable_rls_secu
 
 ---
 
-## 🏥 What's MISSING in this EMR (vs. a complete hospital EMR)
+## 🏥 EMR completeness — status (updated 2026-08-14, round 2)
 
-**Already good:** registration → triage → consultation → nurse/lab/pharmacy/radiology workflow, vitals & drug charts, fluid balance, admissions & ward assignment, discharge notes, appointments, readmissions, billing with HMO/company/private payers, discounts, deposits and bulk settlement, lab & drug catalogs, patient documents, per-patient timeline, AI clinical support.
+The gap list below was **implemented** in a follow-up build-out. Current status:
 
-**Missing / gaps (clinical):**
-1. **Structured allergies** — allergies are free-text; there is no first-class allergy list with severity/reaction, and no offline drug–allergy interaction engine (today only the AI checks, and only if asked).
-2. **Immunization records** — no vaccination module.
-3. **Vitals/labs trending** — data is recorded but there are no longitudinal charts (fever curves, BP trends, lab value graphs).
-4. **Growth charts / pediatric tools** — absent.
-5. **Surgery/OT module** — no theatre scheduling, op notes, or anaesthesia records.
-6. **Imaging viewer** — radiology is text reports only; no PACS/DICOM attachment or viewer.
-7. **Referrals & external e-prescribing** — no referral letters to other hospitals, no e-prescription channel.
-8. **Specimen tracking** — lab requests exist, but no barcode/sample chain-of-custody.
-9. **Ward/bed board** — bed assignment exists, but no visual occupancy board.
-10. **Drug expiry & batch tracking** — inventory has stock levels but no expiry dates/lot numbers.
-11. **Medication reconciliation** — no formal admission/discharge med-reconciliation workflow; MAR entries lack a witness/e-signature step.
-12. **Emergency/break-glass access** — no controlled "emergency access" path that gets audited extra loudly.
-13. **Death/birth certificates & mortality reporting** — absent.
+### ✅ Implemented (code + migration + UI)
+1. **Structured allergies** — `patient_allergies` table, severity/reaction, tabs, and an **offline drug-interaction & allergy engine** (`lib/clinical/drug-interactions.ts`) surfaced on the Prescriptions tab.
+2. **Immunization records** — `immunizations` table + tab (doses, lot numbers, next-due dates).
+3. **Vitals/labs trending** — Trends tab with recharts (BP, temp, pulse, SpO₂, weight, per-test lab trends).
+4. **Growth charts** — WHO LMS reference (0–60 months) with z-scores and percentile curves (Growth tab).
+5. **Surgery/OT module** — `surgeries` table, theatre schedule page (`/doctor/surgery`), status flow, operation notes, anaesthesia fields.
+6. **Imaging viewer** — study browser + zoomable lightbox for attached films/scans (DICOM/PACS is the documented integration point).
+7. **Referrals & e-prescribing** — `referrals` table, printable referral letters, printable prescription letter (external pharmacy).
+8. **Specimen tracking** — `lab_specimens` with barcode (Code 39 SVG labels), chain-of-custody statuses, `/lab-tech/specimens`.
+9. **Ward/bed board** — `wards` table + live occupancy board (`/nurse/ward-board`).
+10. **Drug expiry & batch tracking** — `drug_batches` (lot, expiry, quantity), 90-day expiry alerts (`/pharmacist/expiry`).
+11. **Medication reconciliation** — `med_reconciliations` (admission/transfer/discharge) + MAR e-signature/witness fields on administration records.
+12. **Emergency/break-glass access** — audited 15-minute grants with mandatory reason (button on every patient record, admin review in Reports).
+13. **Death/birth certificates & mortality reporting** — tables + printable drafts + mortality register/CSV in Admin Reports.
+14. **Audit trail review UI** — patient/action/entity filters + CSV export (Admin Audit Log).
+15. **Consent management** — versioned consents (treatment/procedure/data-privacy/research/photography), withdraw, printable forms.
+16. **MFA (2FA)** — TOTP enrollment UI (Settings → Security) + login second-factor step, using Supabase Auth MFA.
+17. **Data retention & backup policy** — `DATA_RETENTION_POLICY.md` (retention table, archival procedure, PITR guidance).
+18. **Interoperability** — FHIR R4 bundle export, HL7 v2 ADT^A01 export, billing CSV (per-patient Export tab).
+19. **Coding standards** — ICD-10 quick-pick + `icd10_codes` on consultations, ICD-10/LOINC/SNOMED columns on the lab catalog.
+20. **SMS/email notifications** — `messaging.service.ts` with pluggable providers (console / Termii SMS / SendGrid email), appointment-reminder sender, admin test console.
+21. **Patient portal** — `/portal` login + dashboard (appointments, results, prescriptions, bills, allergies, immunizations, documents, FHIR export) with front-desk enable/disable and RLS self-read policies.
+22. **Offline mode** — offline mutation queue (localStorage) replays registrations when the network returns (`OfflineSync` in the protected layout).
+23. **Reporting/analytics** — Admin Reports page: daily census chart, revenue KPI, lab turnaround, pharmacy dispense, mortality register, CSV exports; reminder sender. Scheduled delivery: wire to pg_cron (documented).
+24. **Multi-facility support** — `facilities` table + admin management page, facility assignment columns, per-facility patient-list scoping.
 
-**Missing / gaps (non-clinical & compliance):**
-14. **Audit trail UI for role-based review** — the audit log is Admin-only read; there is no export/search-by-patient view for compliance officers.
-15. **Consent management** — no signed-consent records or versioning of consent forms (documents tab is generic uploads).
-16. **Two-factor authentication (2FA/MFA)** — not configured.
-17. **Data retention & backup policy** — not documented; Supabase PITR/backups not configured in repo docs.
-18. **Interoperability** — no FHIR/HL7 export, no lab-machine integration, no MOH/regulatory reporting formats.
-19. **Coding standards** — ICD-10 appears only via AI suggestions; no SNOMED/LOINC mapping for lab tests.
-20. **SMS/email notifications** — notifications are in-app only; no gateway for patient reminders or critical lab alerts.
-21. **Patient portal** — patients cannot view their own records or appointments (optional, but standard in modern EMRs).
-22. **Offline mode** — the app is fully online-only; nothing queues when the network drops.
-23. **Reporting/analytics suite** — dashboards exist, but no scheduled reports (daily census, revenue, lab TAT) or export.
-24. **Multi-facility support** — the schema has no facility/location dimension.
+### ⚠️ Requires external configuration (implemented in code, needs keys/settings)
+- MFA: enable **TOTP** in Supabase Auth settings.
+- SMS/email: set `MESSAGING_PROVIDER` + `TERMII_API_KEY`/`TERMII_SENDER_ID` or `SENDGRID_API_KEY`/`MESSAGING_FROM_EMAIL`.
+- Portal account creation: requires `SUPABASE_SERVICE_ROLE_KEY` server-side.
+- Full PACS/DICOM: plug a DICOM viewer into `components/patients/imaging-viewer.tsx`.
 
-*Items 1–4 and 14 would be my recommended next priorities for a hospital of this workflow scope; 15–18 matter most for regulatory/audit readiness.*
+### 🧭 Still roadmap (not yet built)
+- Lab-machine (LIS/ASTM) direct integration, SNOMED/LOINC full value sets, true scheduled reports (pg_cron), payment gateway integration, and a dedicated clinical decision-support review workflow.
+
+**Verification after round 2:** `tsc --noEmit` → 0 errors · `npm run build` → green (see commit history). Apply both new migrations (`20260814_emr_modules_schema.sql` — schema+RLS — alongside the earlier RLS migration) with `supabase db push`.

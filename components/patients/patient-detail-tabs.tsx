@@ -6,6 +6,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Activity, Pill, Stethoscope, FlaskConical, AlertCircle, CheckCircle2,
   Radio, Syringe, Droplets, ClipboardCheck, CreditCard, Calendar, FolderOpen,
+  ShieldAlert, TrendingUp, Ruler, Scissors, Send, TestTube2, ListChecks,
+  FileSignature, FileHeart, ImageIcon, FileDown, MonitorSmartphone, Siren,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -44,6 +46,20 @@ const PaymentHistory = dynamic(() => import("./payment-history"), { loading: () 
 const AppointmentComponent = dynamic(() => import("../front-desk/AppointmentComponent"), { loading: () => <TabChunkSkeleton /> });
 const PatientDocumentsTab = dynamic(() => import("./patient-documents-tab"), { loading: () => <TabChunkSkeleton /> });
 const QuickRoutePanel = dynamic(() => import("../doctor/QuickRoutePanel"), { loading: () => <TabChunkSkeleton /> });
+const AllergiesTab = dynamic(() => import("./allergies-tab"), { loading: () => <TabChunkSkeleton /> });
+const ImmunizationsTab = dynamic(() => import("./immunizations-tab"), { loading: () => <TabChunkSkeleton /> });
+const TrendsTab = dynamic(() => import("./trends-tab"), { loading: () => <TabChunkSkeleton /> });
+const GrowthTab = dynamic(() => import("./growth-tab"), { loading: () => <TabChunkSkeleton /> });
+const SurgeryTab = dynamic(() => import("./surgery-tab"), { loading: () => <TabChunkSkeleton /> });
+const ReferralsTab = dynamic(() => import("./referrals-tab"), { loading: () => <TabChunkSkeleton /> });
+const ReconciliationTab = dynamic(() => import("./reconciliation-tab"), { loading: () => <TabChunkSkeleton /> });
+const ConsentTab = dynamic(() => import("./consent-tab"), { loading: () => <TabChunkSkeleton /> });
+const CertificatesTab = dynamic(() => import("./certificates-tab"), { loading: () => <TabChunkSkeleton /> });
+const ExportTab = dynamic(() => import("./export-tab"), { loading: () => <TabChunkSkeleton /> });
+const ImagingViewer = dynamic(() => import("./imaging-viewer"), { loading: () => <TabChunkSkeleton /> });
+const PortalAccess = dynamic(() => import("./portal-access"), { loading: () => <TabChunkSkeleton /> });
+const DrugSafetyCheck = dynamic(() => import("./drug-safety-check"), { loading: () => <TabChunkSkeleton /> });
+const BreakGlass = dynamic(() => import("./break-glass"), { loading: () => <TabChunkSkeleton /> });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -156,6 +172,9 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const status = normalizeStatus(patient.status ?? patientStore.status);
   const canManageBilling = role === "FrontDesk" || role === "Admin";
   const canViewBilling = canManageBilling || role === "Doctor";
+  // New clinical modules: who may author each record type.
+  const canEditClinical = role === "Doctor" || role === "Nurse";
+  const canEditFrontDesk = role === "FrontDesk" || role === "Admin";
 
   const { data: staff = [] } = useQuery({ queryKey: ["staffs"], queryFn: getAllStaffs });
 
@@ -217,6 +236,80 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         accent: "text-amber-600", activeBar: "bg-amber-500",
         group: "general" as TabGroup,
         show: true,
+      },
+      {
+        // Structured allergies — power the offline prescription safety check
+        value: "allergies", label: "Allergies", icon: ShieldAlert,
+        accent: "text-red-600", activeBar: "bg-red-500",
+        group: "general" as TabGroup,
+        show: true,
+      },
+      {
+        value: "immunizations", label: "Immunizations", icon: Syringe,
+        accent: "text-teal-600", activeBar: "bg-teal-500",
+        group: "nursing" as TabGroup,
+        show: true,
+      },
+      {
+        value: "trends", label: "Trends", icon: TrendingUp,
+        accent: "text-emerald-600", activeBar: "bg-emerald-500",
+        group: "nursing" as TabGroup,
+        show: true,
+      },
+      {
+        value: "growth", label: "Growth", icon: Ruler,
+        accent: "text-pink-600", activeBar: "bg-pink-500",
+        group: "nursing" as TabGroup,
+        show: true,
+      },
+      {
+        value: "surgery", label: "Surgery", icon: Scissors,
+        accent: "text-rose-600", activeBar: "bg-rose-500",
+        group: "doctor" as TabGroup,
+        show: true,
+      },
+      {
+        value: "referrals", label: "Referrals", icon: Send,
+        accent: "text-indigo-600", activeBar: "bg-indigo-500",
+        group: "doctor" as TabGroup,
+        show: true,
+      },
+      {
+        value: "reconciliation", label: "Med Rec", icon: ListChecks,
+        accent: "text-violet-600", activeBar: "bg-violet-500",
+        group: "nursing" as TabGroup,
+        show: true,
+      },
+      {
+        value: "consent", label: "Consent", icon: FileSignature,
+        accent: "text-emerald-600", activeBar: "bg-emerald-500",
+        group: "billing" as TabGroup,
+        show: true,
+      },
+      {
+        value: "certificates", label: "Certificates", icon: FileHeart,
+        accent: "text-gray-600", activeBar: "bg-gray-500",
+        group: "doctor" as TabGroup,
+        show: true,
+      },
+      {
+        value: "imaging", label: "Imaging", icon: ImageIcon,
+        accent: "text-cyan-600", activeBar: "bg-cyan-500",
+        group: "general" as TabGroup,
+        show: true,
+      },
+      {
+        value: "exports", label: "Export", icon: FileDown,
+        accent: "text-slate-600", activeBar: "bg-slate-500",
+        group: "general" as TabGroup,
+        show: true,
+      },
+      {
+        // Portal management — Front Desk / Admin only
+        value: "portal", label: "Portal", icon: MonitorSmartphone,
+        accent: "text-sky-600", activeBar: "bg-sky-500",
+        group: "billing" as TabGroup,
+        show: role === "FrontDesk" || role === "Admin",
       },
     ] as const;
 
@@ -288,6 +381,11 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="min-w-0 w-full space-y-5">
+      {patient.id && (
+        <div className="flex justify-end">
+          <BreakGlass patientId={patient.id} />
+        </div>
+      )}
       <div className="rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
         <div className="flex items-center justify-between px-1 pb-1.5 sm:hidden">
           <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Patient record sections</p>
@@ -400,6 +498,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               </Panel>
             </div>
           )}
+          <DrugSafetyCheck patientId={patient.id} />
         </div>
       </TabsContent>
 
@@ -466,6 +565,116 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               canUpload={canManageBilling}
             />
           </TabsContent>
+
+          {/* ── Structured allergies (powers prescription safety checks) ── */}
+          <TabsContent value="allergies" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={ShieldAlert} color="text-red-600" bg="bg-red-50"
+                title="Allergies" subtitle="Structured allergy list — checked automatically against new prescriptions" />
+              <AllergiesTab patientId={patient.id} canEdit={canEditClinical || canEditFrontDesk} />
+            </div>
+          </TabsContent>
+
+          {/* ── Immunizations ── */}
+          <TabsContent value="immunizations" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={Syringe} color="text-teal-600" bg="bg-teal-50"
+                title="Immunization Record" subtitle="Vaccination history with dose tracking and next-due dates" />
+              <ImmunizationsTab patientId={patient.id} canEdit={canEditClinical} />
+            </div>
+          </TabsContent>
+
+          {/* ── Vitals & lab trends ── */}
+          <TabsContent value="trends" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={TrendingUp} color="text-emerald-600" bg="bg-emerald-50"
+                title="Trends" subtitle="Longitudinal charts for vitals and numeric lab results" />
+              <TrendsTab patientId={patient.id} />
+            </div>
+          </TabsContent>
+
+          {/* ── Growth charts ── */}
+          <TabsContent value="growth" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={Ruler} color="text-pink-600" bg="bg-pink-50"
+                title="Growth Charts (WHO)" subtitle="Weight / height / BMI percentiles for children 0–60 months" />
+              <GrowthTab patient={patient} />
+            </div>
+          </TabsContent>
+
+          {/* ── Surgery / OT ── */}
+          <TabsContent value="surgery" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={Scissors} color="text-rose-600" bg="bg-rose-50"
+                title="Surgery & Theatre" subtitle="Scheduling, status flow and operation notes" />
+              <SurgeryTab patientId={patient.id} staffId={staffId} canEdit={role === "Doctor" || role === "Admin"} />
+            </div>
+          </TabsContent>
+
+          {/* ── Referrals ── */}
+          <TabsContent value="referrals" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={Send} color="text-indigo-600" bg="bg-indigo-50"
+                title="Referrals" subtitle="External referrals with printable referral letters" />
+              <ReferralsTab patient={patient} canEdit={role === "Doctor" || role === "Admin"} />
+            </div>
+          </TabsContent>
+
+          {/* ── Medication reconciliation ── */}
+          <TabsContent value="reconciliation" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={ListChecks} color="text-violet-600" bg="bg-violet-50"
+                title="Medication Reconciliation" subtitle="Compare and reconcile meds at admission, transfer and discharge" />
+              <ReconciliationTab patientId={patient.id} canEdit={canEditClinical || role === "Pharmacist"} />
+            </div>
+          </TabsContent>
+
+          {/* ── Consent management ── */}
+          <TabsContent value="consent" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={FileSignature} color="text-emerald-600" bg="bg-emerald-50"
+                title="Consent Management" subtitle="Versioned consent records with printable forms" />
+              <ConsentTab patient={patient} canEdit={canEditFrontDesk} />
+            </div>
+          </TabsContent>
+
+          {/* ── Death / birth certificates ── */}
+          <TabsContent value="certificates" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={FileHeart} color="text-gray-600" bg="bg-gray-50"
+                title="Certificates" subtitle="Death and birth certificates with printable drafts" />
+              <CertificatesTab patient={patient} canEdit={role === "Doctor" || role === "Nurse" || canEditFrontDesk} role={role} />
+            </div>
+          </TabsContent>
+
+          {/* ── Imaging viewer ── */}
+          <TabsContent value="imaging" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={ImageIcon} color="text-cyan-600" bg="bg-cyan-50"
+                title="Imaging" subtitle="Study browser and zoomable viewer for attached films / scans" />
+              <ImagingViewer patientId={patient.id} />
+            </div>
+          </TabsContent>
+
+          {/* ── Interop exports ── */}
+          <TabsContent value="exports" className="mt-0 min-w-0">
+            <div className="space-y-4">
+              <SectionHeader icon={FileDown} color="text-slate-600" bg="bg-slate-50"
+                title="Record Export" subtitle="FHIR R4 / HL7 v2 / CSV exports of this patient's record" />
+              <ExportTab patientId={patient.id} />
+            </div>
+          </TabsContent>
+
+          {/* ── Patient portal management ── */}
+          {canEditFrontDesk && (
+            <TabsContent value="portal" className="mt-0 min-w-0">
+              <div className="space-y-4">
+                <SectionHeader icon={MonitorSmartphone} color="text-sky-600" bg="bg-sky-50"
+                  title="Patient Portal" subtitle="Enable the patient's self-service login to their own records" />
+                <PortalAccess patient={patient} />
+              </div>
+            </TabsContent>
+          )}
         </>
       )}
     </Tabs>

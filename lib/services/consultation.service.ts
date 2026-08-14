@@ -15,6 +15,8 @@ export interface CreateConsultationInput {
     referredTo?: string;
     assignedStaffId?: string;
     status?: string;
+    /** ICD-10 codes assigned to the diagnosis. */
+    icd10Codes?: string[];
 }
 
 export async function createConsultation(
@@ -34,6 +36,7 @@ export async function createConsultation(
             referred_to: input.referredTo ?? null,
             assigned_staff_id: input.assignedStaffId ?? null,
             status: input.status ?? "underConsultation",
+            icd10_codes: input.icd10Codes ?? [],
         }])
         .select()
         .single();
