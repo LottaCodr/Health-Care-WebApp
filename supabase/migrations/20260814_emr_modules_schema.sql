@@ -221,9 +221,72 @@ alter table public.drug_administration_records add column if not exists witnesse
 alter table public.drug_administration_records add column if not exists signed_at timestamptz;
 
 -- ── 15. Dispensing batch tracking ───────────────────────────────────────────
+-- `drug_dispensing` predates this repo's migration history on most
+-- deployments (it was created directly in the original database), so it is
+-- created here defensively if missing. The columns match what the pharmacy
+-- service writes/reads (see lib/services/pharmacy.service.ts and
+-- lib/services/reporting.service.ts).
+create table if not exists public.drug_dispensing (
+    id              uuid primary key default gen_random_uuid(),
+    prescription_id uuid references public.prescriptions(id) on delete set null,
+    patient_id      uuid not null references public.patients(id) on delete cascade,
+    dispensed_by    uuid references public.staffs(id) on delete set null,
+    dispensed_at    timestamptz not null default now(),
+    drug_name       text,
+    quantity        integer not null default 1,
+    batch_number    text,
+    created_at      timestamptz not null default now()
+);
+
+create index if not exists idx_drug_dispensing_patient on public.drug_dispensing(patient_id, dispensed_at desc);
+
+-- For deployments where the table already existed without batch tracking.
 alter table public.drug_dispensing add column if not exists batch_number text;
 
+-- ── 15b. Fluid balance chart (defensive) ────────────────────────────────────
+-- Also referenced by 20260814_enable_rls_security.sql and the fluid-chart
+-- migration below; create it here if the legacy database predates it.
+create table if not exists public.fluid_balance (
+    id               uuid primary key default gen_random_uuid(),
+    patient_id       uuid not null references public.patients(id) on delete cascade,
+    record_date      date not null,
+    record_time      time not null,
+    -- Intake
+    oral_ml          integer not null default 0,
+    iv_ml            integer not null default 0,
+    ng_ml            integer not null default 0,
+    other_input_ml   integer not null default 0,
+    other_input_type text,
+    -- Output
+    urine_ml         integer not null default 0,
+    aspirate_ml      integer not null default 0,
+    vomit_ml         integer not null default 0,
+    bowel_ml         integer not null default 0,
+    drain_ml         integer not null default 0,
+    other_output_ml  integer not null default 0,
+    signed_by        text,
+    notes            text,
+    created_at       timestamptz not null default now()
+);
+
+create index if not exists idx_fluid_balance_patient_date
+    on public.fluid_balance(patient_id, record_date desc, record_time desc);
+
 -- ── 16. Audit index for patient-scoped review ───────────────────────────────
+-- `audit_logs` also predates the repo's migration history on some
+-- deployments — create it defensively if missing. Columns mirror the audit
+-- service (lib/services/audit.service.ts) and the admin audit trail UI.
+create table if not exists public.audit_logs (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid,
+    action      text not null,
+    entity_type text,
+    entity_id   text,
+    changes     jsonb not null default '{}'::jsonb,
+    timestamp   timestamptz not null default now(),
+    created_at  timestamptz not null default now()
+);
+
 create index if not exists idx_audit_logs_timestamp on public.audit_logs(timestamp desc);
 create index if not exists idx_audit_logs_entity on public.audit_logs(entity_type, entity_id);
 
@@ -233,6 +296,47 @@ create index if not exists idx_audit_logs_entity on public.audit_logs(entity_typ
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- helpers
+-- These three are also defined in 20260814_enable_rls_security.sql, but the
+-- policies below need them even when that file has not run yet (and on
+-- databases where they were never created out-of-band). `create or replace`
+-- keeps both copies idempotent.
+create or replace function public.is_staff()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (select 1 from public.staffs where id = auth.uid());
+$$;
+
+create or replace function public.staff_has_role(role_group text)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  with s as (
+    select lower(regexp_replace(role, '[^a-z]', '', 'g')) as compact
+    from public.staffs where id = auth.uid()
+  )
+  select exists (
+    select 1 from s
+    where case role_group
+      when 'FrontDesk'     then s.compact like any (array['%front%','%reception%'])
+      when 'Doctor'        then s.compact like any (array['%doctor%','%physician%','%consultant%'])
+      when 'Nurse'         then s.compact like any (array['%nurse%','%nursing%'])
+      when 'LabTechnician' then s.compact like any (array['%lab%','%laboratory%'])
+      when 'Pharmacist'    then s.compact like any (array['%pharm%'])
+      when 'Radiologist'   then s.compact like any (array['%radio%','%imaging%'])
+      when 'Admin'         then s.compact like any (array['%admin%'])
+      else false
+    end
+  );
+$$;
+
+create or replace function public.staff_can(role_group text)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select public.staff_has_role('Admin') or public.staff_has_role(role_group);
+$$;
+
 create or replace function public.patient_self_id()
 returns uuid language sql stable security definer set search_path = public as $$
   select id from public.patients where portal_user_id = auth.uid() and portal_enabled limit 1;
