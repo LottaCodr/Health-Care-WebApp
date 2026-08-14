@@ -15,6 +15,7 @@ import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
 import supabase from "@/utils/supabase/client";
 import { refreshNotificationPrefs } from "@/hooks/use-realtime";
+import MfaSettings from "./components/mfa-settings";
 import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
 import { useNetworkStore } from "@/store/network-store";
 
@@ -591,6 +592,7 @@ export default function SettingsComponent() {
 
             <AccountSettings />
             <SecuritySettings />
+            <MfaSettings />
             <NotificationSettings />
             <DangerZone />
         </div>

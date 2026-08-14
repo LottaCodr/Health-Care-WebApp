@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import NetworkStatusBanner from "@/components/layout/NetworkStatusBanner";
 import { sanitizeNextPath } from "@/lib/security";
+import supabase from "@/utils/supabase/client";
 
 
 // ─── Features list ────────────────────────────────────────────────────────────
@@ -40,6 +41,9 @@ function LoginForm(props: {
 
     const searchParams = useSearchParams();
     const router = useRouter();
+    const [mfaPending, setMfaPending] = useState(false);
+    const [mfaCode, setMfaCode] = useState("");
+    const [pendingNext, setPendingNext] = useState("");
 
     // create confetti when user logs in
     const fireConfetti = () => {
@@ -61,6 +65,16 @@ function LoginForm(props: {
             setError(null);
             const result = await login(email.trim(), password);
             if (!result.success) {
+                if (result.mfaRequired) {
+                    // Supabase requires a second factor (TOTP). Collect the
+                    // code and verify before redirecting.
+                    const rawNext = searchParams.get("next");
+                    setPendingNext(sanitizeNextPath(rawNext) ?? getDashboardRoute(result.staff?.role));
+                    setMfaPending(true);
+                    setError(null);
+                    setLoading(false);
+                    return;
+                }
                 setError(result.message || "Invalid credentials. Please try again.");
                 setLoading(false);
                 return;
@@ -74,6 +88,31 @@ function LoginForm(props: {
             router.replace(next); 
         } catch (err) {
             setError(err instanceof Error ? err.message : "Login failed. Please try again.");
+            setLoading(false);
+        }
+    };
+
+    const verifyMfa = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+            const totp = factors?.totp?.[0];
+            if (listError || !totp) throw new Error("No authenticator factor found on this account.");
+            const { error } = await supabase.auth.mfa.challengeAndVerify({
+                factorId: totp.id,
+                code: mfaCode.trim(),
+            });
+            if (error) {
+                setError(error.message || "That code was not accepted.");
+                setLoading(false);
+                return;
+            }
+            fireConfetti();
+            router.replace(pendingNext || "/doctor/dashboard");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "MFA verification failed.");
             setLoading(false);
         }
     };
