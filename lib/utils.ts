@@ -149,3 +149,57 @@ export function calcAge(dob?: string): string {
 export function stripRadiologyPrefix(testType: string): string {
     return (testType ?? "").replace(/^\[RADIOLOGY\]\s*/, "");
 }
+
+// ─── Allergy detection ────────────────────────────────────────────────────────
+
+/**
+ * Free-text values commonly used to indicate the ABSENCE of a documented
+ * allergy on legacy patient records. Anything matching one of these should NOT
+ * trigger an allergy alert. Values are compared after lowercasing and stripping
+ * all punctuation/whitespace.
+ */
+const NO_ALLERGY_MARKERS = new Set([
+    "none",
+    "nil",
+    "no",
+    "na", // "N/A", "NA"
+    "nka", // no known allergies
+    "nkda", // no known drug allergies
+    "nkfa", // no known food allergies
+    "noneknown",
+    "notknown",
+    "noknown",
+    "noknownallergies",
+    "noknowndrugallergies",
+    "noknowndrugallergy",
+    "noknownfoodallergies",
+    "noknownfoodallergy",
+    "noallergies",
+    "noallergy",
+    "noknownallergy",
+    "noneknownallergies",
+    "noallergichistory",
+    "deniesallergies",
+    "negative",
+    "unknown",
+    "nonenoted",
+    "noneallergic",
+    "notallergic",
+    "notapplicable",
+]);
+
+/**
+ * True when the given free-text allergies field describes an actual allergy
+ * (e.g. "Penicillin", "Peanuts") rather than the absence of one ("none", "N/A",
+ * "no known drug allergies", etc.). Used to decide whether an allergy alert
+ * should be shown for legacy patient records.
+ */
+export function hasActualAllergy(value?: string | null): boolean {
+    if (value == null) return false;
+    const normalized = value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+    if (!normalized) return false;
+    return !NO_ALLERGY_MARKERS.has(normalized);
+}

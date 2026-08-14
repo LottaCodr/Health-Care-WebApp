@@ -25,6 +25,7 @@ import {
     Clock, Loader2,
 } from "lucide-react";
 import { Patient } from "@/types/models";
+import { hasActualAllergy } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -235,7 +236,7 @@ export default function PatientRecordPage({ patient }: Props) {
                         { label: "Occupation", value: patient.occupation },
                         { label: "Religion", value: patient.religion },
                         { label: "Address", value: patient.address },
-                        { label: "Allergies", value: patient.allergies, red: true },
+                        { label: "Allergies", value: patient.allergies, red: hasActualAllergy(patient.allergies) },
                         { label: "Medical History", value: patient.significant_medication_history },
                         { label: "Long-term Meds", value: patient.long_term_medication },
                     ]} />

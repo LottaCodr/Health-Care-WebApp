@@ -23,7 +23,7 @@ import {
     ChevronUp, Layers, Sparkles, FileText, Syringe, FileCheck,
     X, Baby, Briefcase, ChevronRight,
 } from "lucide-react";
-import { fmtFull, calcAge } from "@/lib/utils";
+import { fmtFull, calcAge, hasActualAllergy } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PatientRecordDownload, { DownloadOptions } from "@/components/patients/patient-record-download";
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
@@ -891,7 +891,7 @@ export default function PatientTimelinePage() {
                                     </span>
                                 )}
                             </div>
-                            {patient.allergies && patient.allergies !== "None" && (
+                            {hasActualAllergy(patient.allergies) && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200">
                                     <ShieldAlert size={12} className="text-rose-500 shrink-0" />
                                     Allergy: {patient.allergies}

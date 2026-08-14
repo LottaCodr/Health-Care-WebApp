@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useAllergies } from "@/hooks/emr/use-clinical-modules";
+import { hasActualAllergy } from "@/lib/utils";
 import { ShieldAlert, ArrowRight } from "lucide-react";
 
 const SEVERITY_RANK: Record<string, number> = {
@@ -32,7 +33,7 @@ export default function AllergyAlertBanner({ patientId, legacyAllergies, onViewA
         [allergies]
     );
 
-    const legacy = legacyAllergies?.trim();
+    const legacy = hasActualAllergy(legacyAllergies) ? legacyAllergies!.trim() : "";
 
     if ((isLoading && !legacy) || (!active.length && !legacy)) return null;
 
