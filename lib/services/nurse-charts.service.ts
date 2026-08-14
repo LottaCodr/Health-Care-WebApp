@@ -120,6 +120,8 @@ export interface CreateFluidEntryInput {
     ngMl?:          number;
     otherInputMl?:  number;
     otherInputType?:string;
+    /** Free-text description of the intake fluid/solution (e.g. 0.9% Normal Saline). */
+    inputFluidType?:string;
     urineMl?:       number;
     aspirateMl?:    number;
     vomitMl?:       number;
@@ -142,6 +144,7 @@ export async function createFluidEntry(input: CreateFluidEntryInput) {
         ng_ml:            input.ngMl            ?? 0,
         other_input_ml:   input.otherInputMl    ?? 0,
         other_input_type: input.otherInputType  ?? null,
+        input_fluid_type: input.inputFluidType  ?? null,
         urine_ml:         input.urineMl         ?? 0,
         aspirate_ml:      input.aspirateMl      ?? 0,
         vomit_ml:         input.vomitMl         ?? 0,

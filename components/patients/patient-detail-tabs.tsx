@@ -1,13 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Activity, Pill, Stethoscope, FlaskConical, AlertCircle, CheckCircle2,
   Radio, Syringe, Droplets, ClipboardCheck, CreditCard, Calendar, FolderOpen,
-  ShieldAlert, TrendingUp, Ruler, Scissors, Send, TestTube2, ListChecks,
-  FileSignature, FileHeart, ImageIcon, FileDown, MonitorSmartphone, Siren,
+  ShieldAlert, TrendingUp, Ruler, Scissors, Send, ListChecks,
+  FileSignature, FileHeart, ImageIcon, FileDown, MonitorSmartphone,
+  Search, X, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -20,6 +21,7 @@ import { getAllStaffs } from "@/actions/staff/get.staff";
 import { Staff } from "@/actions/staff/types";
 import { calculateAge } from "@/utils/export";
 import { normalizeUserRole } from "@/lib/roles";
+import { useAllergies } from "@/hooks/emr/use-clinical-modules";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
 
@@ -72,6 +74,8 @@ type TabDef = {
   accent: string;
   activeBar: string;
   group: TabGroup;
+  /** Extra search terms so staff can find a section by synonyms ("bp" → Vitals). */
+  keywords?: string[];
 };
 
 const GROUP_LABELS: Record<TabGroup, string> = {
@@ -81,12 +85,21 @@ const GROUP_LABELS: Record<TabGroup, string> = {
   general: "General",
 };
 
+// The role's own sections come first in the strip so the most-used tabs are
+// immediately visible; all other groups keep their default order.
+const DEFAULT_GROUP_ORDER: TabGroup[] = ["nursing", "doctor", "billing", "general"];
+const ROLE_FIRST_GROUP: Partial<Record<string, TabGroup>> = {
+  Doctor: "doctor",
+  Nurse: "nursing",
+  FrontDesk: "billing",
+};
+
 const BASE_TABS: TabDef[] = [
-  { value: "vitals", label: "Vitals", icon: Activity, accent: "text-blue-600", activeBar: "bg-blue-500", group: "nursing" },
-  { value: "consultations", label: "Consultations", icon: Stethoscope, accent: "text-red-600", activeBar: "bg-red-500", group: "doctor" },
-  { value: "prescriptions", label: "Prescriptions", icon: Pill, accent: "text-violet-600", activeBar: "bg-violet-500", group: "general" },
-  { value: "lab", label: "Lab Results", icon: FlaskConical, accent: "text-indigo-600", activeBar: "bg-indigo-500", group: "general" },
-  { value: "radiology", label: "Radiology", icon: Radio, accent: "text-cyan-600", activeBar: "bg-cyan-500", group: "general" },
+  { value: "vitals", label: "Vitals", icon: Activity, accent: "text-blue-600", activeBar: "bg-blue-500", group: "nursing", keywords: ["bp", "blood pressure", "pulse", "temperature", "spo2", "observations"] },
+  { value: "consultations", label: "Consultations", icon: Stethoscope, accent: "text-red-600", activeBar: "bg-red-500", group: "doctor", keywords: ["notes", "assessment", "diagnosis", "complaint"] },
+  { value: "prescriptions", label: "Prescriptions", icon: Pill, accent: "text-violet-600", activeBar: "bg-violet-500", group: "general", keywords: ["medication", "drugs", "rx", "pharmacy"] },
+  { value: "lab", label: "Lab Results", icon: FlaskConical, accent: "text-indigo-600", activeBar: "bg-indigo-500", group: "general", keywords: ["tests", "blood", "pathology", "investigations"] },
+  { value: "radiology", label: "Radiology", icon: Radio, accent: "text-cyan-600", activeBar: "bg-cyan-500", group: "general", keywords: ["x-ray", "ultrasound", "scan", "imaging"] },
 ];
 
 const DISCHARGE_STATUSES = new Set([
@@ -161,10 +174,19 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Navigation UX state
+  const [query, setQuery] = useState("");
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
   const consultationStore = useConsultationStore();
   const patientStore = usePatientStore();
   const dischargeStore = useDischargeStore();
   const formRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const groupRefs = useRef<Partial<Record<TabGroup, HTMLDivElement | null>>>({});
+  const lastPatientRef = useRef<string | null>(null);
   const { user } = useAuth();
 
   const role = normalizeUserRole(user?.role);
@@ -177,6 +199,14 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const canEditFrontDesk = role === "FrontDesk" || role === "Admin";
 
   const { data: staff = [] } = useQuery({ queryKey: ["staffs"], queryFn: getAllStaffs });
+
+  // Structured allergies — powers the alert badge on the Allergies tab chip.
+  const { data: allergies = [] } = useAllergies(patient?.id ?? "");
+  const activeAllergyCount = useMemo(
+    () => allergies.filter((a) => a.status !== "resolved").length,
+    [allergies]
+  );
+  const hasLegacyAllergy = Boolean((patient as any)?.allergies?.trim());
 
   const availableStaff = useMemo(() =>
     staff.filter((s: Staff) =>
@@ -197,21 +227,21 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         // Drug chart — Nursing group; nurses can write, everyone else read-only
         value: "drug-chart", label: "Drug Chart", icon: Syringe,
         accent: "text-teal-600", activeBar: "bg-teal-500",
-        group: "nursing" as TabGroup,
+        group: "nursing" as TabGroup, keywords: ["mar", "administration", "doses"],
         show: true,
       },
       {
         // Fluid balance — Nursing group; nurses can write, everyone else read-only
         value: "fluid-balance", label: "Fluid Balance", icon: Droplets,
         accent: "text-sky-600", activeBar: "bg-sky-500",
-        group: "nursing" as TabGroup,
+        group: "nursing" as TabGroup, keywords: ["intake", "output", "iv fluids", "i/o"],
         show: true,
       },
       {
         // Discharge — Doctor group; only doctors see this tab at all
         value: "discharge", label: "Discharge", icon: ClipboardCheck,
         accent: "text-emerald-600", activeBar: "bg-emerald-500",
-        group: "doctor" as TabGroup,
+        group: "doctor" as TabGroup, keywords: ["summary", "release"],
         show: role === "Doctor" && DISCHARGE_STATUSES.has(status as PatientStatus),
       },
       {
@@ -220,101 +250,101 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         // before discharge). Not shown to Nurse / Lab / Radiology / Pharmacist.
         value: "billing", label: "Billing", icon: CreditCard,
         accent: "text-orange-600", activeBar: "bg-orange-500",
-        group: "billing" as TabGroup,
+        group: "billing" as TabGroup, keywords: ["payments", "invoice", "charges", "hmo"],
         show: canViewBilling,
       },
       {
         // Appointments — General group, always visible to all roles
         value: "appointments", label: "Appointments", icon: Calendar,
         accent: "text-blue-600", activeBar: "bg-blue-500",
-        group: "general" as TabGroup,
+        group: "general" as TabGroup, keywords: ["booking", "schedule", "visits"],
         show: true,
       },
       {
         // Documents — General group; upload: FrontDesk/Admin; view: all roles
         value: "documents", label: "Documents", icon: FolderOpen,
         accent: "text-amber-600", activeBar: "bg-amber-500",
-        group: "general" as TabGroup,
+        group: "general" as TabGroup, keywords: ["files", "uploads", "attachments"],
         show: true,
       },
       {
         // Structured allergies — power the offline prescription safety check
         value: "allergies", label: "Allergies", icon: ShieldAlert,
         accent: "text-red-600", activeBar: "bg-red-500",
-        group: "general" as TabGroup,
+        group: "general" as TabGroup, keywords: ["allergy", "adr", "reactions", "sensitivity"],
         show: true,
       },
       {
         value: "immunizations", label: "Immunizations", icon: Syringe,
         accent: "text-teal-600", activeBar: "bg-teal-500",
-        group: "nursing" as TabGroup,
+        group: "nursing" as TabGroup, keywords: ["vaccines", "vaccination", "shots"],
         show: true,
       },
       {
         value: "trends", label: "Trends", icon: TrendingUp,
         accent: "text-emerald-600", activeBar: "bg-emerald-500",
-        group: "nursing" as TabGroup,
+        group: "nursing" as TabGroup, keywords: ["charts", "graphs", "longitudinal"],
         show: true,
       },
       {
         value: "growth", label: "Growth", icon: Ruler,
         accent: "text-pink-600", activeBar: "bg-pink-500",
-        group: "nursing" as TabGroup,
+        group: "nursing" as TabGroup, keywords: ["weight", "height", "bmi", "who", "percentile"],
         show: true,
       },
       {
         value: "surgery", label: "Surgery", icon: Scissors,
         accent: "text-rose-600", activeBar: "bg-rose-500",
-        group: "doctor" as TabGroup,
+        group: "doctor" as TabGroup, keywords: ["operation", "theatre", "ot", "procedure"],
         show: true,
       },
       {
         value: "referrals", label: "Referrals", icon: Send,
         accent: "text-indigo-600", activeBar: "bg-indigo-500",
-        group: "doctor" as TabGroup,
+        group: "doctor" as TabGroup, keywords: ["letters", "specialist", "external"],
         show: true,
       },
       {
         value: "reconciliation", label: "Med Rec", icon: ListChecks,
         accent: "text-violet-600", activeBar: "bg-violet-500",
-        group: "nursing" as TabGroup,
+        group: "nursing" as TabGroup, keywords: ["medication reconciliation", "meds", "admission"],
         show: true,
       },
       {
         value: "consent", label: "Consent", icon: FileSignature,
         accent: "text-emerald-600", activeBar: "bg-emerald-500",
-        group: "billing" as TabGroup,
+        group: "billing" as TabGroup, keywords: ["forms", "authorization"],
         show: true,
       },
       {
         value: "certificates", label: "Certificates", icon: FileHeart,
         accent: "text-gray-600", activeBar: "bg-gray-500",
-        group: "doctor" as TabGroup,
+        group: "doctor" as TabGroup, keywords: ["birth", "death"],
         show: true,
       },
       {
         value: "imaging", label: "Imaging", icon: ImageIcon,
         accent: "text-cyan-600", activeBar: "bg-cyan-500",
-        group: "general" as TabGroup,
+        group: "general" as TabGroup, keywords: ["films", "scans", "viewer"],
         show: true,
       },
       {
         value: "exports", label: "Export", icon: FileDown,
         accent: "text-slate-600", activeBar: "bg-slate-500",
-        group: "general" as TabGroup,
+        group: "general" as TabGroup, keywords: ["fhir", "hl7", "csv", "download"],
         show: true,
       },
       {
         // Portal management — Front Desk / Admin only
         value: "portal", label: "Portal", icon: MonitorSmartphone,
         accent: "text-sky-600", activeBar: "bg-sky-500",
-        group: "billing" as TabGroup,
+        group: "billing" as TabGroup, keywords: ["patient login", "self-service", "access"],
         show: role === "FrontDesk" || role === "Admin",
       },
     ] as const;
 
     for (const d of conditionalDefs) {
-      if (d.show) extra.push({ value: d.value, label: d.label, icon: d.icon, accent: d.accent, activeBar: d.activeBar, group: d.group });
+      if (d.show) extra.push({ value: d.value, label: d.label, icon: d.icon, accent: d.accent, activeBar: d.activeBar, group: d.group, keywords: d.keywords ? [...d.keywords] : undefined });
     }
 
     return [...BASE_TABS, ...extra];
@@ -323,12 +353,30 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   // Group tabs by department for the segmented TabsList layout below.
   // Empty groups (e.g. "Doctor" for a non-doctor role with no visible
   // doctor-only tabs) are simply omitted — no empty section renders.
+  // The active role's own group is promoted to the front of the strip.
   const groupedTabs = useMemo(() => {
-    const order: TabGroup[] = ["nursing", "doctor", "billing", "general"];
+    const roleFirst = ROLE_FIRST_GROUP[role];
+    const order = roleFirst
+      ? [roleFirst, ...DEFAULT_GROUP_ORDER.filter((g) => g !== roleFirst)]
+      : DEFAULT_GROUP_ORDER;
     return order
       .map(group => ({ group, tabs: visibleTabs.filter(t => t.group === group) }))
       .filter(g => g.tabs.length > 0);
-  }, [visibleTabs]);
+  }, [visibleTabs, role]);
+
+  // Search filter applied on top of role visibility.
+  const filteredGroups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return groupedTabs;
+    return groupedTabs
+      .map(g => ({
+        ...g,
+        tabs: g.tabs.filter(t =>
+          `${t.label} ${t.keywords?.join(" ") ?? ""}`.toLowerCase().includes(q)
+        ),
+      }))
+      .filter(g => g.tabs.length > 0);
+  }, [groupedTabs, query]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -354,14 +402,37 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
   // Deep-link: /front-desk/patient/[id]?tab=lab (or billing, consultations…)
   // opens that section directly — used by dashboard quick actions.
-  const tabParamApplied = useRef(false);
+  // Also restores the last section the staff member was viewing for this
+  // patient (per-patient memory, session only).
   useEffect(() => {
-    if (tabParamApplied.current || typeof window === "undefined") return;
-    tabParamApplied.current = true;
+    if (typeof window === "undefined" || !patient.id) return;
+    if (lastPatientRef.current === patient.id) return;
+    lastPatientRef.current = patient.id;
+
     const params = new URLSearchParams(window.location.search);
     const requested = params.get("tab");
-    if (requested && visibleTabs.some((t) => t.value === requested)) setTab(requested);
-  }, [visibleTabs]);
+    if (requested && visibleTabs.some((t) => t.value === requested)) {
+      setTab(requested);
+      return;
+    }
+    try {
+      const saved = sessionStorage.getItem(`emr:last-tab:${patient.id}`);
+      if (saved && visibleTabs.some((t) => t.value === saved)) setTab(saved);
+    } catch { /* storage unavailable */ }
+  }, [patient.id, visibleTabs]);
+
+  // Remember the section per patient (session only — no PHI persisted).
+  useEffect(() => {
+    if (!patient.id) return;
+    try { sessionStorage.setItem(`emr:last-tab:${patient.id}`, tab); } catch { /* ignore */ }
+  }, [patient.id, tab]);
+
+  // Allergy banner deep-link: scrolls/opens the Allergies tab.
+  useEffect(() => {
+    const open = () => setTab("allergies");
+    window.addEventListener("emr:open-allergies", open);
+    return () => window.removeEventListener("emr:open-allergies", open);
+  }, []);
 
   useEffect(() => {
     if (!visibleTabs.some(t => t.value === tab)) setTab("vitals");
@@ -375,308 +446,457 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     if (successMessage) { const t = setTimeout(() => setSuccessMessage(null), 4000); return () => clearTimeout(t); }
   }, [successMessage]);
 
+  // ── Strip scroll state (arrows + edge fades) ──────────────────────────────
+  const updateArrows = useCallback(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    updateArrows();
+    const el = stripRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(el);
+    window.addEventListener("resize", updateArrows);
+    return () => { ro.disconnect(); window.removeEventListener("resize", updateArrows); };
+  }, [updateArrows, groupedTabs, filteredGroups]);
+
+  // Keep the active chip in view whenever the section changes.
+  useEffect(() => {
+    const el = stripRef.current?.querySelector(`[data-tab-value="${tab}"]`);
+    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [tab]);
+
+  const scrollStrip = (dir: "left" | "right") => {
+    stripRef.current?.scrollBy({ left: dir === "right" ? 260 : -260, behavior: "smooth" });
+  };
+
+  const jumpToGroup = (group: TabGroup) => {
+    groupRefs.current[group]?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+  };
+
+  // Switch tab + bring the panel into view below the sticky header.
+  const handleTabChange = useCallback((value: string) => {
+    setTab(value);
+    requestAnimationFrame(() => {
+      contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
+  // Home/End shortcuts jump to the first/last section in the strip.
+  const handleListKeyDown = (e: React.KeyboardEvent) => {
+    const first = filteredGroups[0]?.tabs[0]?.value;
+    const lastGroup = filteredGroups[filteredGroups.length - 1];
+    const last = lastGroup?.tabs[lastGroup.tabs.length - 1]?.value;
+    if (e.key === "Home" && first) { e.preventDefault(); handleTabChange(first); }
+    if (e.key === "End" && last) { e.preventDefault(); handleTabChange(last); }
+  };
+
   const billingReadOnly = !canManageBilling;
+  const allergyBadgeCount = activeAllergyCount || (hasLegacyAllergy ? "!" : 0);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <Tabs value={tab} onValueChange={setTab} className="min-w-0 w-full space-y-5">
+    <Tabs value={tab} onValueChange={handleTabChange} className="min-w-0 w-full">
       {patient.id && (
         <div className="flex justify-end">
           <BreakGlass patientId={patient.id} />
         </div>
       )}
-      <div className="rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
-        <div className="flex items-center justify-between px-1 pb-1.5 sm:hidden">
-          <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Patient record sections</p>
-          <p className="text-[9px] font-semibold text-gray-400">Swipe to explore →</p>
-        </div>
-        <div className="scrollbar-hide max-w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain">
-          <TabsList aria-label="Patient record sections" className="inline-flex h-auto min-w-max flex-nowrap items-stretch justify-start gap-1 bg-transparent p-0 shadow-none">
-            {groupedTabs.map(({ group, tabs }, groupIdx) => (
-              <Fragment key={group}>
-                <div className="flex shrink-0 flex-col gap-1 rounded-xl bg-gray-50/50 p-1">
-                  <p className="px-1 text-[9px] font-black uppercase tracking-widest text-gray-400">
-                    {GROUP_LABELS[group]}
-                  </p>
-                  <div className="flex flex-nowrap gap-1">
-                    {tabs.map(({ value, label, icon: Icon, accent, activeBar }) => {
-                      const isActive = tab === value;
-                      return (
-                        <TabsTrigger key={value} value={value}
-                          className={`relative min-h-10 snap-start gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-all duration-200 ${
-                            isActive
-                              ? `border-gray-200 bg-white shadow-sm ${accent}`
-                              : "border-transparent bg-transparent text-gray-500 hover:border-gray-100 hover:bg-white hover:text-gray-700"
-                          }`}>
-                          {isActive && <span className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${activeBar}`} />}
-                          <Icon size={14} className="shrink-0" />
-                          <span>{label}</span>
-                        </TabsTrigger>
-                      );
-                    })}
-                  </div>
-                </div>
-                {groupIdx < groupedTabs.length - 1 && (
-                  <div aria-hidden="true" className="mx-1.5 w-px shrink-0 self-stretch bg-gray-100" />
-                )}
-              </Fragment>
+
+      {/* ── Sticky navigation header ─────────────────────────────────────────── */}
+      <div className="sticky top-0 z-30 -mx-0.5 rounded-b-2xl bg-slate-50/95 px-0.5 pb-2 pt-1 backdrop-blur-md">
+        {/* Toolbar: search + group jump pills */}
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[170px] flex-1 sm:w-72 sm:flex-none">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search sections — e.g. bp, notes, bill…"
+              aria-label="Search patient record sections"
+              className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-xs font-semibold text-gray-700 shadow-sm outline-none placeholder:font-medium placeholder:text-gray-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Group jump pills (desktop) */}
+          <div className="ml-auto hidden max-w-[360px] items-center gap-1.5 overflow-x-auto scrollbar-hide md:flex">
+            {groupedTabs.map(({ group, tabs: gtabs }) => (
+              <button
+                key={group}
+                type="button"
+                onClick={() => jumpToGroup(group)}
+                title={`Jump to ${GROUP_LABELS[group]} sections`}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-bold text-gray-500 shadow-sm transition-colors hover:border-gray-300 hover:text-gray-800"
+              >
+                {GROUP_LABELS[group]}
+                <span className="rounded-full bg-gray-100 px-1.5 py-px text-[9px] font-black text-gray-400">{gtabs.length}</span>
+              </button>
             ))}
-          </TabsList>
+          </div>
+        </div>
+
+        {/* Tab strip with arrows + edge fades */}
+        <div className="relative">
+          {canLeft && (
+            <button
+              type="button"
+              aria-label="Scroll sections left"
+              onClick={() => scrollStrip("left")}
+              className="absolute -left-0.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:text-gray-800"
+            >
+              <ChevronLeft size={15} />
+            </button>
+          )}
+          {canRight && (
+            <button
+              type="button"
+              aria-label="Scroll sections right"
+              onClick={() => scrollStrip("right")}
+              className="absolute -right-0.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:text-gray-800"
+            >
+              <ChevronRight size={15} />
+            </button>
+          )}
+          <div aria-hidden="true"
+            className={`pointer-events-none absolute inset-y-0 left-0 z-[5] w-6 bg-gradient-to-r from-slate-50 to-transparent transition-opacity ${canLeft ? "opacity-100" : "opacity-0"}`}
+          />
+          <div aria-hidden="true"
+            className={`pointer-events-none absolute inset-y-0 right-0 z-[5] w-6 bg-gradient-to-l from-slate-50 to-transparent transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`}
+          />
+
+          <div
+            ref={stripRef}
+            onScroll={updateArrows}
+            className="scrollbar-hide max-w-full snap-x overflow-x-auto overscroll-x-contain rounded-2xl border border-gray-100 bg-white/80 p-1.5 shadow-sm"
+          >
+            <TabsList
+              aria-label="Patient record sections"
+              onKeyDown={handleListKeyDown}
+              className="inline-flex h-auto min-w-max flex-nowrap items-stretch justify-start gap-1 bg-transparent p-0 shadow-none"
+            >
+              {filteredGroups.map(({ group, tabs }, groupIdx) => (
+                <Fragment key={group}>
+                  <div
+                    ref={(el) => { groupRefs.current[group] = el; }}
+                    className="flex shrink-0 flex-col gap-1 rounded-xl bg-gray-50/60 p-1"
+                  >
+                    <p className="px-1 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                      {GROUP_LABELS[group]}
+                    </p>
+                    <div className="flex flex-nowrap gap-1">
+                      {tabs.map(({ value, label, icon: Icon, accent, activeBar }) => {
+                        const isActive = tab === value;
+                        const allergyBadge = value === "allergies" && allergyBadgeCount ? allergyBadgeCount : null;
+                        return (
+                          <TabsTrigger
+                            key={value}
+                            value={value}
+                            data-tab-value={value}
+                            className={`relative min-h-10 snap-start gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-all duration-200 ${
+                              isActive
+                                ? `border-gray-200 bg-white shadow-sm ${accent}`
+                                : "border-transparent bg-transparent text-gray-500 hover:border-gray-100 hover:bg-white hover:text-gray-700"
+                            }`}
+                          >
+                            {isActive && <span className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${activeBar}`} />}
+                            <Icon size={14} className="shrink-0" />
+                            <span>{label}</span>
+                            {allergyBadge !== null && (
+                              <span className="ml-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 py-px text-[9px] font-black text-white shadow-sm"
+                                aria-label={`${allergyBadge === "!" ? "allergy on record" : `${allergyBadge} active allergies`}`}>
+                                {allergyBadge}
+                              </span>
+                            )}
+                          </TabsTrigger>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {groupIdx < filteredGroups.length - 1 && (
+                    <div aria-hidden="true" className="mx-1.5 w-px shrink-0 self-stretch bg-gray-100" />
+                  )}
+                </Fragment>
+              ))}
+            </TabsList>
+          </div>
+
+          {filteredGroups.length === 0 && query && (
+            <p className="mt-2 rounded-xl border border-dashed border-gray-200 bg-white px-3 py-2 text-center text-xs text-gray-400">
+              No sections match “{query}”.
+            </p>
+          )}
         </div>
       </div>
 
-      {/* ── Vitals ── */}
-      <TabsContent value="vitals" className="mt-0 min-w-0">
-        <div className="space-y-5">
-          <SectionHeader icon={Activity} color="text-blue-600" bg="bg-blue-50"
-            title="Vitals Recording" subtitle="Patient measurements and clinical observations" />
-          {!patient.id ? (
-            <NoPatient icon={Activity} label="Select a patient to view or record vitals" />
-          ) : (
-            <div className={`grid gap-5 ${role === "Nurse" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
-              <Panel accent="bg-blue-500" label="Latest Record">
-                <VitalsRecordDisplay patientId={patient.id} />
-              </Panel>
-              {role === "Nurse" && (
-                <Panel accent="bg-green-500" label="Record New Vitals">
-                  <VitalsCheckinAdvancedComponent patientId={patient.id} />
+      {/* ── Panels ── */}
+      <div ref={contentRef} className="scroll-mt-36 space-y-5 pt-5">
+        {/* ── Vitals ── */}
+        <TabsContent value="vitals" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+          <div className="space-y-5">
+            <SectionHeader icon={Activity} color="text-blue-600" bg="bg-blue-50"
+              title="Vitals Recording" subtitle="Patient measurements and clinical observations" />
+            {!patient.id ? (
+              <NoPatient icon={Activity} label="Select a patient to view or record vitals" />
+            ) : (
+              <div className={`grid gap-5 ${role === "Nurse" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
+                <Panel accent="bg-blue-500" label="Latest Record">
+                  <VitalsRecordDisplay patientId={patient.id} />
                 </Panel>
-              )}
-            </div>
-          )}
-        </div>
-      </TabsContent>
-
-      {/* ── Consultations ── */}
-      <TabsContent value="consultations" className="mt-0 min-w-0">
-        <div className="space-y-5">
-          <SectionHeader icon={Stethoscope} color="text-red-600" bg="bg-red-50"
-            title="Consultations" subtitle="Clinical findings and patient routing" />
-          {(role === "Doctor" || role === "Admin") && patient?.id && (
-            <Panel accent="bg-indigo-500" label="Quick Route — no consultation needed">
-              <QuickRoutePanel patient={patient} />
-            </Panel>
-          )}
-          {role === "Doctor" && patient?.id && (
-            <Panel accent="bg-red-500" label="New Consultation">
-              <div ref={formRef}>
-                {formError && <AlertBanner type="error" message={formError} />}
-                {successMessage && <AlertBanner type="success" message={successMessage} />}
-                <ConsultationForm
-                  patientId={patient.id}
-                  availableStaff={availableStaff}
-                  patientAge={age}
-                  patientMedicalHistory={patient?.significant_medication_history!}
-                  patientGender={patient?.gender}
-                />
+                {role === "Nurse" && (
+                  <Panel accent="bg-green-500" label="Record New Vitals">
+                    <VitalsCheckinAdvancedComponent patientId={patient.id} />
+                  </Panel>
+                )}
               </div>
-            </Panel>
-          )}
-          <Panel accent="bg-gray-300" label="Consultation History">
-            <ConsultationHistoryTable patientId={patient?.id!} />
-          </Panel>
-        </div>
-      </TabsContent>
+            )}
+          </div>
+        </TabsContent>
 
-      {/* ── Prescriptions ── */}
-      <TabsContent value="prescriptions" className="mt-0 min-w-0">
-        <div className="space-y-5">
-          <SectionHeader icon={Pill} color="text-violet-600" bg="bg-violet-50"
-            title="Prescriptions" subtitle="Medication records and dispensing history" />
-          {!patient.id ? (
-            <NoPatient icon={Pill} label="Select a patient to view prescriptions" />
-          ) : (
-            <div className={`grid gap-5 ${role === "Pharmacist" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
-              {role === "Pharmacist" && (
-                <Panel accent="bg-violet-500" label="New Prescription">
-                  <PrescriptionDetails patientId={patient.id} patient={patient} />
-                </Panel>
-              )}
-              <Panel accent="bg-blue-500" label="Prescription History">
-                <PrescriptionHistory patientId={patient.id} />
+        {/* ── Consultations ── */}
+        <TabsContent value="consultations" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+          <div className="space-y-5">
+            <SectionHeader icon={Stethoscope} color="text-red-600" bg="bg-red-50"
+              title="Consultations" subtitle="Clinical findings and patient routing" />
+            {(role === "Doctor" || role === "Admin") && patient?.id && (
+              <Panel accent="bg-indigo-500" label="Quick Route — no consultation needed">
+                <QuickRoutePanel patient={patient} />
               </Panel>
-            </div>
-          )}
-          <DrugSafetyCheck patientId={patient.id} />
-        </div>
-      </TabsContent>
-
-      {/* ── Lab ── */}
-      <TabsContent value="lab" className="mt-0 min-w-0"><LabTab patient={patient} userRole={user?.role} /></TabsContent>
-      <TabsContent value="radiology" className="mt-0 min-w-0"><RadiologyTab patient={patient} userRole={user?.role} /></TabsContent>
-
-      {patient.id && (
-        <>
-          {/* ── Nurse charts ── */}
-          <TabsContent value="drug-chart" className="mt-0 min-w-0">
-            <DrugChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
-          </TabsContent>
-          <TabsContent value="fluid-balance" className="mt-0 min-w-0">
-            <FluidBalanceChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
-          </TabsContent>
-
-          {/* ── Discharge ── */}
-          <TabsContent value="discharge" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={ClipboardCheck} color="text-emerald-600" bg="bg-emerald-50"
-                title="Discharge Summary" subtitle="Complete before sending patient to billing" />
-              <DischargeNoteForm staffId={staffId} embedded
-                onSuccess={() => setSuccessMessage("Discharge note saved successfully.")} />
-            </div>
-          </TabsContent>
-
-          {/* ── Billing ── */}
-          <TabsContent value="billing" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={CreditCard} color="text-orange-600" bg="bg-orange-50"
-                title="Payment History"
-                subtitle={canManageBilling ? "View and settle invoices for this patient" : "Read-only billing records"} />
-              {status === "awaiting-payment" && canManageBilling && (
-                <div className="px-4 py-3 rounded-xl bg-orange-50 border border-orange-100 text-xs text-orange-800 font-medium">
-                  This patient is awaiting payment. Confirm pending items below or use the{" "}
-                  <a href="/front-desk/payment" className="underline font-semibold">checkout queue</a>.
+            )}
+            {role === "Doctor" && patient?.id && (
+              <Panel accent="bg-red-500" label="New Consultation">
+                <div ref={formRef}>
+                  {formError && <AlertBanner type="error" message={formError} />}
+                  {successMessage && <AlertBanner type="success" message={successMessage} />}
+                  <ConsultationForm
+                    patientId={patient.id}
+                    availableStaff={availableStaff}
+                    patientAge={age}
+                    patientMedicalHistory={patient?.significant_medication_history!}
+                    patientGender={patient?.gender}
+                  />
                 </div>
-              )}
-              <PaymentHistory
-                patientId={patient.id}
-                patient={patient}
-                readOnly={billingReadOnly}
-                cashierId={staffId}
-              />
-            </div>
-          </TabsContent>
+              </Panel>
+            )}
+            <Panel accent="bg-gray-300" label="Consultation History">
+              <ConsultationHistoryTable patientId={patient?.id!} />
+            </Panel>
+          </div>
+        </TabsContent>
 
-          {/* ── Appointments — all roles, patient-scoped ── */}
-          <TabsContent value="appointments" className="mt-0 min-w-0">
-            <AppointmentComponent
-              staffId={staffId}
-              patientId={patient.id}
-              inPatientContext
-              canManage={canManageBilling}
-            />
-          </TabsContent>
+        {/* ── Prescriptions ── */}
+        <TabsContent value="prescriptions" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+          <div className="space-y-5">
+            <SectionHeader icon={Pill} color="text-violet-600" bg="bg-violet-50"
+              title="Prescriptions" subtitle="Medication records and dispensing history" />
+            {!patient.id ? (
+              <NoPatient icon={Pill} label="Select a patient to view prescriptions" />
+            ) : (
+              <div className={`grid gap-5 ${role === "Pharmacist" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
+                {role === "Pharmacist" && (
+                  <Panel accent="bg-violet-500" label="New Prescription">
+                    <PrescriptionDetails patientId={patient.id} patient={patient} />
+                  </Panel>
+                )}
+                <Panel accent="bg-blue-500" label="Prescription History">
+                  <PrescriptionHistory patientId={patient.id} />
+                </Panel>
+              </div>
+            )}
+            <DrugSafetyCheck patientId={patient.id} />
+          </div>
+        </TabsContent>
 
-          {/* ── Documents — upload: FrontDesk/Admin; view: all roles ── */}
-          <TabsContent value="documents" className="mt-0 min-w-0">
-            <PatientDocumentsTab
-              patientId={patient.id}
-              staffId={staffId}
-              canUpload={canManageBilling}
-            />
-          </TabsContent>
+        {/* ── Lab ── */}
+        <TabsContent value="lab" className="mt-0 min-w-0 animate-in fade-in-0 duration-150"><LabTab patient={patient} userRole={user?.role} /></TabsContent>
+        <TabsContent value="radiology" className="mt-0 min-w-0 animate-in fade-in-0 duration-150"><RadiologyTab patient={patient} userRole={user?.role} /></TabsContent>
 
-          {/* ── Structured allergies (powers prescription safety checks) ── */}
-          <TabsContent value="allergies" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={ShieldAlert} color="text-red-600" bg="bg-red-50"
-                title="Allergies" subtitle="Structured allergy list — checked automatically against new prescriptions" />
-              <AllergiesTab patientId={patient.id} canEdit={canEditClinical || canEditFrontDesk} />
-            </div>
-          </TabsContent>
+        {patient.id && (
+          <>
+            {/* ── Nurse charts ── */}
+            <TabsContent value="drug-chart" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <DrugChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
+            </TabsContent>
+            <TabsContent value="fluid-balance" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <FluidBalanceChart patientId={patient.id} staffId={staffId} readOnly={role !== "Nurse"} />
+            </TabsContent>
 
-          {/* ── Immunizations ── */}
-          <TabsContent value="immunizations" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={Syringe} color="text-teal-600" bg="bg-teal-50"
-                title="Immunization Record" subtitle="Vaccination history with dose tracking and next-due dates" />
-              <ImmunizationsTab patientId={patient.id} canEdit={canEditClinical} />
-            </div>
-          </TabsContent>
-
-          {/* ── Vitals & lab trends ── */}
-          <TabsContent value="trends" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={TrendingUp} color="text-emerald-600" bg="bg-emerald-50"
-                title="Trends" subtitle="Longitudinal charts for vitals and numeric lab results" />
-              <TrendsTab patientId={patient.id} />
-            </div>
-          </TabsContent>
-
-          {/* ── Growth charts ── */}
-          <TabsContent value="growth" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={Ruler} color="text-pink-600" bg="bg-pink-50"
-                title="Growth Charts (WHO)" subtitle="Weight / height / BMI percentiles for children 0–60 months" />
-              <GrowthTab patient={patient} />
-            </div>
-          </TabsContent>
-
-          {/* ── Surgery / OT ── */}
-          <TabsContent value="surgery" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={Scissors} color="text-rose-600" bg="bg-rose-50"
-                title="Surgery & Theatre" subtitle="Scheduling, status flow and operation notes" />
-              <SurgeryTab patientId={patient.id} staffId={staffId} canEdit={role === "Doctor" || role === "Admin"} />
-            </div>
-          </TabsContent>
-
-          {/* ── Referrals ── */}
-          <TabsContent value="referrals" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={Send} color="text-indigo-600" bg="bg-indigo-50"
-                title="Referrals" subtitle="External referrals with printable referral letters" />
-              <ReferralsTab patient={patient} canEdit={role === "Doctor" || role === "Admin"} />
-            </div>
-          </TabsContent>
-
-          {/* ── Medication reconciliation ── */}
-          <TabsContent value="reconciliation" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={ListChecks} color="text-violet-600" bg="bg-violet-50"
-                title="Medication Reconciliation" subtitle="Compare and reconcile meds at admission, transfer and discharge" />
-              <ReconciliationTab patientId={patient.id} canEdit={canEditClinical || role === "Pharmacist"} />
-            </div>
-          </TabsContent>
-
-          {/* ── Consent management ── */}
-          <TabsContent value="consent" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={FileSignature} color="text-emerald-600" bg="bg-emerald-50"
-                title="Consent Management" subtitle="Versioned consent records with printable forms" />
-              <ConsentTab patient={patient} canEdit={canEditFrontDesk} />
-            </div>
-          </TabsContent>
-
-          {/* ── Death / birth certificates ── */}
-          <TabsContent value="certificates" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={FileHeart} color="text-gray-600" bg="bg-gray-50"
-                title="Certificates" subtitle="Death and birth certificates with printable drafts" />
-              <CertificatesTab patient={patient} canEdit={role === "Doctor" || role === "Nurse" || canEditFrontDesk} role={role} />
-            </div>
-          </TabsContent>
-
-          {/* ── Imaging viewer ── */}
-          <TabsContent value="imaging" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={ImageIcon} color="text-cyan-600" bg="bg-cyan-50"
-                title="Imaging" subtitle="Study browser and zoomable viewer for attached films / scans" />
-              <ImagingViewer patientId={patient.id} />
-            </div>
-          </TabsContent>
-
-          {/* ── Interop exports ── */}
-          <TabsContent value="exports" className="mt-0 min-w-0">
-            <div className="space-y-4">
-              <SectionHeader icon={FileDown} color="text-slate-600" bg="bg-slate-50"
-                title="Record Export" subtitle="FHIR R4 / HL7 v2 / CSV exports of this patient's record" />
-              <ExportTab patientId={patient.id} />
-            </div>
-          </TabsContent>
-
-          {/* ── Patient portal management ── */}
-          {canEditFrontDesk && (
-            <TabsContent value="portal" className="mt-0 min-w-0">
+            {/* ── Discharge ── */}
+            <TabsContent value="discharge" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
               <div className="space-y-4">
-                <SectionHeader icon={MonitorSmartphone} color="text-sky-600" bg="bg-sky-50"
-                  title="Patient Portal" subtitle="Enable the patient's self-service login to their own records" />
-                <PortalAccess patient={patient} />
+                <SectionHeader icon={ClipboardCheck} color="text-emerald-600" bg="bg-emerald-50"
+                  title="Discharge Summary" subtitle="Complete before sending patient to billing" />
+                <DischargeNoteForm staffId={staffId} embedded
+                  onSuccess={() => setSuccessMessage("Discharge note saved successfully.")} />
               </div>
             </TabsContent>
-          )}
-        </>
-      )}
+
+            {/* ── Billing ── */}
+            <TabsContent value="billing" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={CreditCard} color="text-orange-600" bg="bg-orange-50"
+                  title="Payment History"
+                  subtitle={canManageBilling ? "View and settle invoices for this patient" : "Read-only billing records"} />
+                {status === "awaiting-payment" && canManageBilling && (
+                  <div className="px-4 py-3 rounded-xl bg-orange-50 border border-orange-100 text-xs text-orange-800 font-medium">
+                    This patient is awaiting payment. Confirm pending items below or use the{" "}
+                    <a href="/front-desk/payment" className="underline font-semibold">checkout queue</a>.
+                  </div>
+                )}
+                <PaymentHistory
+                  patientId={patient.id}
+                  patient={patient}
+                  readOnly={billingReadOnly}
+                  cashierId={staffId}
+                />
+              </div>
+            </TabsContent>
+
+            {/* ── Appointments — all roles, patient-scoped ── */}
+            <TabsContent value="appointments" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <AppointmentComponent
+                staffId={staffId}
+                patientId={patient.id}
+                inPatientContext
+                canManage={canManageBilling}
+              />
+            </TabsContent>
+
+            {/* ── Documents — upload: FrontDesk/Admin; view: all roles ── */}
+            <TabsContent value="documents" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <PatientDocumentsTab
+                patientId={patient.id}
+                staffId={staffId}
+                canUpload={canManageBilling}
+              />
+            </TabsContent>
+
+            {/* ── Structured allergies (powers prescription safety checks) ── */}
+            <TabsContent value="allergies" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={ShieldAlert} color="text-red-600" bg="bg-red-50"
+                  title="Allergies" subtitle="Structured allergy list — checked automatically against new prescriptions" />
+                <AllergiesTab patientId={patient.id} canEdit={canEditClinical || canEditFrontDesk} />
+              </div>
+            </TabsContent>
+
+            {/* ── Immunizations ── */}
+            <TabsContent value="immunizations" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={Syringe} color="text-teal-600" bg="bg-teal-50"
+                  title="Immunization Record" subtitle="Vaccination history with dose tracking and next-due dates" />
+                <ImmunizationsTab patientId={patient.id} canEdit={canEditClinical} />
+              </div>
+            </TabsContent>
+
+            {/* ── Vitals & lab trends ── */}
+            <TabsContent value="trends" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={TrendingUp} color="text-emerald-600" bg="bg-emerald-50"
+                  title="Trends" subtitle="Longitudinal charts for vitals and numeric lab results" />
+                <TrendsTab patientId={patient.id} />
+              </div>
+            </TabsContent>
+
+            {/* ── Growth charts ── */}
+            <TabsContent value="growth" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={Ruler} color="text-pink-600" bg="bg-pink-50"
+                  title="Growth Charts (WHO)" subtitle="Weight / height / BMI percentiles for children 0–60 months" />
+                <GrowthTab patient={patient} />
+              </div>
+            </TabsContent>
+
+            {/* ── Surgery / OT ── */}
+            <TabsContent value="surgery" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={Scissors} color="text-rose-600" bg="bg-rose-50"
+                  title="Surgery & Theatre" subtitle="Scheduling, status flow and operation notes" />
+                <SurgeryTab patientId={patient.id} staffId={staffId} canEdit={role === "Doctor" || role === "Admin"} />
+              </div>
+            </TabsContent>
+
+            {/* ── Referrals ── */}
+            <TabsContent value="referrals" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={Send} color="text-indigo-600" bg="bg-indigo-50"
+                  title="Referrals" subtitle="External referrals with printable referral letters" />
+                <ReferralsTab patient={patient} canEdit={role === "Doctor" || role === "Admin"} />
+              </div>
+            </TabsContent>
+
+            {/* ── Medication reconciliation ── */}
+            <TabsContent value="reconciliation" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={ListChecks} color="text-violet-600" bg="bg-violet-50"
+                  title="Medication Reconciliation" subtitle="Compare and reconcile meds at admission, transfer and discharge" />
+                <ReconciliationTab patientId={patient.id} canEdit={canEditClinical || role === "Pharmacist"} />
+              </div>
+            </TabsContent>
+
+            {/* ── Consent management ── */}
+            <TabsContent value="consent" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={FileSignature} color="text-emerald-600" bg="bg-emerald-50"
+                  title="Consent Management" subtitle="Versioned consent records with printable forms" />
+                <ConsentTab patient={patient} canEdit={canEditFrontDesk} />
+              </div>
+            </TabsContent>
+
+            {/* ── Death / birth certificates ── */}
+            <TabsContent value="certificates" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={FileHeart} color="text-gray-600" bg="bg-gray-50"
+                  title="Certificates" subtitle="Death and birth certificates with printable drafts" />
+                <CertificatesTab patient={patient} canEdit={role === "Doctor" || role === "Nurse" || canEditFrontDesk} role={role} />
+              </div>
+            </TabsContent>
+
+            {/* ── Imaging viewer ── */}
+            <TabsContent value="imaging" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={ImageIcon} color="text-cyan-600" bg="bg-cyan-50"
+                  title="Imaging" subtitle="Study browser and zoomable viewer for attached films / scans" />
+                <ImagingViewer patientId={patient.id} />
+              </div>
+            </TabsContent>
+
+            {/* ── Interop exports ── */}
+            <TabsContent value="exports" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+              <div className="space-y-4">
+                <SectionHeader icon={FileDown} color="text-slate-600" bg="bg-slate-50"
+                  title="Record Export" subtitle="FHIR R4 / HL7 v2 / CSV exports of this patient's record" />
+                <ExportTab patientId={patient.id} />
+              </div>
+            </TabsContent>
+
+            {/* ── Patient portal management ── */}
+            {canEditFrontDesk && (
+              <TabsContent value="portal" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
+                <div className="space-y-4">
+                  <SectionHeader icon={MonitorSmartphone} color="text-sky-600" bg="bg-sky-50"
+                    title="Patient Portal" subtitle="Enable the patient's self-service login to their own records" />
+                  <PortalAccess patient={patient} />
+                </div>
+              </TabsContent>
+            )}
+          </>
+        )}
+      </div>
     </Tabs>
   );
 }

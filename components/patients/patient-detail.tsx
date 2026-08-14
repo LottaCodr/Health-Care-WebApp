@@ -9,6 +9,7 @@ import { Patient, PatientStatus } from "@/types/models";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-provider";
 import ReturnPatient from "./return-patient";
+import AllergyAlertBanner from "./allergy-alert-banner";
 import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
 // processReturnVisit is called internally by ReturnPatient — no import needed here.
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
@@ -214,6 +215,14 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Allergy alert — always the first thing staff see on this record */}
+            {patient.id && (
+                <AllergyAlertBanner
+                    patientId={patient.id}
+                    legacyAllergies={(patient as any).allergies}
+                />
+            )}
 
             {/* Profile card */}
             <PatientProfile

@@ -29,6 +29,7 @@ export interface FluidEntryForm {
     ngMl: string;
     otherInputMl: string;
     otherInputType: string;
+    inputFluidType: string;
     // Output
     urineMl: string;
     aspirateMl: string;
@@ -95,6 +96,7 @@ const initialFluidForm: FluidEntryForm = {
     ngMl: "",
     otherInputMl: "",
     otherInputType: "",
+    inputFluidType: "",
     urineMl: "",
     aspirateMl: "",
     vomitMl: "",
