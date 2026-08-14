@@ -6,6 +6,8 @@ import type {
     CreateAdmissionInput,
     AssignWardInput,
 } from "@/types/admission.types";
+import { UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
 
 const SELECT_FIELDS = `
     *,
@@ -24,6 +26,7 @@ const SELECT_FIELDS = `
  * single source of truth for the admissions queue.
  */
 export async function getActiveAdmissions(): Promise<PatientAdmission[]> {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("patient_admissions")
@@ -36,6 +39,7 @@ export async function getActiveAdmissions(): Promise<PatientAdmission[]> {
 }
 
 export async function getAdmissionById(admissionId: string): Promise<PatientAdmission | null> {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("patient_admissions")
@@ -48,6 +52,7 @@ export async function getAdmissionById(admissionId: string): Promise<PatientAdmi
 }
 
 export async function getAdmissionsByPatient(patientId: string): Promise<PatientAdmission[]> {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("patient_admissions")
@@ -64,6 +69,7 @@ export async function getAdmissionsByPatient(patientId: string): Promise<Patient
  * Creates a pending admission record so it appears in the front-desk queue.
  */
 export async function createAdmission(input: CreateAdmissionInput): Promise<PatientAdmission> {
+    await requireStaff([UserRole.FrontDesk, UserRole.Doctor, UserRole.Nurse]);
     const sb = await createClient();
     const { data, error } = await sb
         .from("patient_admissions")
@@ -87,6 +93,7 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Pati
 }
 
 export async function assignWard(input: AssignWardInput): Promise<PatientAdmission> {
+    await requireStaff([UserRole.FrontDesk, UserRole.Doctor, UserRole.Nurse]);
     const sb = await createClient();
     const { data, error } = await sb
         .from("patient_admissions")
@@ -105,6 +112,7 @@ export async function assignWard(input: AssignWardInput): Promise<PatientAdmissi
 }
 
 export async function dischargeFromWard(admissionId: string): Promise<void> {
+    await requireStaff([UserRole.FrontDesk, UserRole.Doctor, UserRole.Nurse]);
     const sb = await createClient();
 
     // Get patient_id first so we can update patient status

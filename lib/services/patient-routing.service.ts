@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { UserRole } from "@/types/models";
 import { createNotification } from "./notification.service";
+import { requireStaff } from "./auth-guard";
 import { createLabRequest } from "./lab.service";
 import { createRadiologyRequest } from "./radiology.service";
 import { createPrescription } from "./pharmacy.service";
@@ -97,6 +99,8 @@ const DESTINATION_LABEL: Record<RouteDestination, string> = {
 export async function routePatientWithoutConsultation(
     input: RoutePatientInput
 ): Promise<RoutePatientResult> {
+    await requireStaff([UserRole.Doctor, UserRole.FrontDesk]);
+
     if (!input.patientId) throw new Error("patientId is required.");
     if (!input.routedBy) throw new Error("routedBy (staff id) is required.");
 

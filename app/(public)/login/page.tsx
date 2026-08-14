@@ -9,6 +9,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import NetworkStatusBanner from "@/components/layout/NetworkStatusBanner";
+import { sanitizeNextPath } from "@/lib/security";
 
 
 // ─── Features list ────────────────────────────────────────────────────────────
@@ -66,7 +67,10 @@ function LoginForm(props: {
             }
 
             fireConfetti();
-            const next = searchParams.get("next") || getDashboardRoute(result.staff?.role);
+            const rawNext = searchParams.get("next");
+            // Open-redirect guard: never `router.replace` to a value an
+            // attacker controls unless it is a safe same-origin path.
+            const next = sanitizeNextPath(rawNext) ?? getDashboardRoute(result.staff?.role);
             router.replace(next); 
         } catch (err) {
             setError(err instanceof Error ? err.message : "Login failed. Please try again.");

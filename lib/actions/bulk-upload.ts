@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { UserRole } from "@/types/models";
+import { requireStaff } from "@/lib/services/auth-guard";
 
 // ── Table names — update if your schema differs ───────────────────────────────
 const TABLES = {
@@ -23,6 +25,7 @@ export async function checkExistingRecords(
     type: UploadType,
     values: string[],
 ): Promise<string[]> {
+    await requireStaff();
     if (!values.length) return [];
     const sb    = await createClient();
     const field = type === "patients" ? "phone" : type === "drug_inventory" ? "drug_name" : "test_code";
@@ -94,6 +97,14 @@ export async function bulkUploadChunk(
     rows:      Record<string, string>[],
     rowOffset: number,
 ): Promise<ChunkResult> {
+    // Only the role that owns each catalog may bulk-load into it.
+    const roleByType: Record<UploadType, UserRole> = {
+        patients: UserRole.FrontDesk,
+        drug_inventory: UserRole.Pharmacist,
+        lab_test_catalog: UserRole.LabTechnician,
+    };
+    await requireStaff([roleByType[type]]);
+
     const sb     = await createClient();
     const errors: { row: number; reason: string }[] = [];
     let success  = 0;

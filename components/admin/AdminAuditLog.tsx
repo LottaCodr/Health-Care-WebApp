@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import supabase from "@/utils/supabase/client";
+import { listAuditLogs } from "@/lib/services/audit.service";
 import {
     ScrollText, Search, X, RefreshCcw,
     ChevronDown, Loader2, AlertTriangle,
@@ -63,12 +63,14 @@ export default function AdminAuditLog() {
 
     const fetchLogs = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from("audit_logs")
-            .select("*")
-            .order("timestamp", { ascending: false })
-            .limit(500);
-        if (!error) setLogs(data ?? []);
+        // Server-side read, Admin-only (enforced in the service, not just in
+        // the UI) — replaces the direct anon-key query used before.
+        try {
+            const logs = await listAuditLogs(500);
+            setLogs(logs ?? []);
+        } catch {
+            setLogs([]);
+        }
         setLoading(false);
     };
 

@@ -13,7 +13,6 @@
 // import { SelectItem } from "../ui/select";
 
 // // import { Doctors } from "@/constants";
-// import { createAppointment, updateAppointment } from "@/actions/appointments/appointment.action";
 // import { getAppointmentSchema } from "@/lib/validation";
 // import { FormFieldType } from "./PatientForm";
 // import { Appointment } from "@/actions/appointments/types";

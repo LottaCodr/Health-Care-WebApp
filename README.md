@@ -124,6 +124,22 @@ Open [http://localhost:3000](http://localhost:3000).
 - Refreshes the Supabase session on each request
 - Redirects unauthenticated users to `/login`
 - Restricts each role to its route prefix (e.g. `/doctor`, `/nurse`, `/front-desk`)
+- Only exempts `/api/auth/*` from authentication; adds baseline security headers
+
+Page redirects are **not** the security boundary — see `SECURITY_REPORT.md`.
+The real enforcement lives in:
+
+1. **`lib/services/auth-guard.ts`** — every server-side service action checks the
+   caller's staff role (`requireStaff(...)`) before touching data.
+2. **Supabase Row-Level Security** — apply `supabase/migrations/20260814_enable_rls_security.sql`
+   with `supabase db push` so the public anon key can never read/write patient data.
+3. **`lib/services/audit.service.ts`** — session-derived audit trail for clinical
+   and financial actions (Admin-only read via `listAuditLogs`).
+4. **`lib/security.ts#sanitizeNextPath`** — open-redirect protection for `?next=`.
+
+Reminders for production: disable public signups in Supabase Auth, keep the
+service-role key server-only, and add storage-bucket policies for
+`patient-documents`.
 
 ---
 

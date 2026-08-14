@@ -1,7 +1,10 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { LabRequest } from "@/types/models";
+import { LabRequest, UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
+
 import { createNotification } from "./notification.service";
 import { createPayment } from "./payment.service";
 
@@ -20,6 +23,7 @@ export interface CreateLabRequestInput {
 export async function createLabRequest(
     input: CreateLabRequestInput
 ): Promise<LabRequest> {
+    await requireStaff([UserRole.Doctor, UserRole.FrontDesk]);
     const supabase = await createClient();
 
     // 1. Resolve test price (from input or catalog)
@@ -107,6 +111,7 @@ export async function createLabRequest(
 }
 
 export async function getLabRequestById(id: string): Promise<LabRequest | null> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_requests")
@@ -128,6 +133,7 @@ export async function getLabRequestById(id: string): Promise<LabRequest | null> 
 export async function listLabRequestsByPatient(
     patientId: string
 ): Promise<LabRequest[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_requests")
@@ -141,6 +147,7 @@ export async function listLabRequestsByPatient(
 }
 
 export async function listPendingLabRequests(): Promise<LabRequest[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_requests")
@@ -162,6 +169,7 @@ export async function listPendingLabRequests(): Promise<LabRequest[]> {
 }
 
 export async function listCompletedLabRequests(): Promise<LabRequest[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_requests")
@@ -193,6 +201,7 @@ export async function updateLabRequest(
         price?: number;
     }
 ): Promise<LabRequest> {
+    await requireStaff([UserRole.LabTechnician, UserRole.Doctor]);
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_requests")
@@ -298,6 +307,7 @@ export interface LabTestCatalogItem {
 }
 
 export async function listActiveLabTests(): Promise<LabTestCatalogItem[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_test_catalog")
@@ -311,6 +321,7 @@ export async function listActiveLabTests(): Promise<LabTestCatalogItem[]> {
 }
 
 export async function listAllLabTests(): Promise<LabTestCatalogItem[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_test_catalog")
@@ -326,6 +337,7 @@ export async function upsertLabTest(
     test: Partial<LabTestCatalogItem>,
     id?: string
 ): Promise<LabTestCatalogItem> {
+    await requireStaff([UserRole.LabTechnician]);
     const supabase = await createClient();
     const { data, error } = id
         ? await supabase.from("lab_test_catalog").update(test).eq("id", id).select().single()
@@ -336,6 +348,7 @@ export async function upsertLabTest(
 }
 
 export async function deleteLabTest(id: string): Promise<void> {
+    await requireStaff([UserRole.LabTechnician]);
     const supabase = await createClient();
     const { error } = await supabase.from("lab_test_catalog").delete().eq("id", id);
     if (error) { console.error("[lab] deleteTest:", error); throw error; }
@@ -345,6 +358,7 @@ export async function toggleLabTestActive(
     id: string,
     current: boolean
 ): Promise<void> {
+    await requireStaff([UserRole.LabTechnician]);
     const supabase = await createClient();
     const { error } = await supabase
         .from("lab_test_catalog")

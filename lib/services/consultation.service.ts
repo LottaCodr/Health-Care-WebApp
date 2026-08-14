@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { Consultation } from "@/types/models";
+import { Consultation, UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
 
 export interface CreateConsultationInput {
     patientId: string;
@@ -18,6 +20,7 @@ export interface CreateConsultationInput {
 export async function createConsultation(
     input: CreateConsultationInput
 ): Promise<Consultation> {
+    const actor = await requireStaff([UserRole.Doctor]);
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("consultations")
@@ -36,10 +39,18 @@ export async function createConsultation(
         .single();
 
     if (error) { console.error("[consultation] create:", error); throw error; }
+
+    await logAction("CONSULTATION_CREATED", "consultations", data.id, {
+        patient_id: input.patientId,
+        doctor_id: input.doctorId,
+        created_by: actor.userId,
+    });
+
     return data as unknown as Consultation;
 }
 
 export async function getConsultationById(id: string): Promise<Consultation | null> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("consultations")
@@ -54,6 +65,7 @@ export async function getConsultationById(id: string): Promise<Consultation | nu
 export async function listConsultationsByPatient(
     patientId: string
 ): Promise<Consultation[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("consultations")
@@ -68,6 +80,7 @@ export async function listConsultationsByPatient(
 export async function listConsultationsByDoctor(
     doctorId: string
 ): Promise<Consultation[]> {
+    await requireStaff();
     const supabase = await createClient();
     // Join the patient record so dashboards can show real names instead of ids.
     const withPatient = await supabase
@@ -103,6 +116,7 @@ export async function updateConsultation(
     id: string,
     updates: Partial<Consultation>
 ): Promise<Consultation> {
+    await requireStaff([UserRole.Doctor]);
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("consultations")
@@ -116,6 +130,7 @@ export async function updateConsultation(
 }
 
 export async function deleteConsultation(id: string): Promise<void> {
+    await requireStaff([UserRole.Doctor]);
     const supabase = await createClient();
     const { error } = await supabase
         .from("consultations")
@@ -123,4 +138,6 @@ export async function deleteConsultation(id: string): Promise<void> {
         .eq("id", id);
 
     if (error) { console.error("[consultation] delete:", error); throw error; }
+
+    await logAction("CONSULTATION_DELETED", "consultations", id);
 }

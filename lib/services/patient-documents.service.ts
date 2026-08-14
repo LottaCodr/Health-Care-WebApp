@@ -2,6 +2,8 @@
 
 import { createClient } from "@/utils/supabase/server";
 import type { DocumentType, PatientDocument } from "@/lib/patient-documents.types";
+import { UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
 
 const BUCKET = "patient-documents";
 
@@ -18,6 +20,7 @@ export async function uploadPatientDocument(input: {
     documentType:    DocumentType;
     uploadedBy:      string;
 }): Promise<PatientDocument> {
+    await requireStaff([UserRole.FrontDesk]);
     const sb = await createClient();
 
     const binary = Uint8Array.from(atob(input.fileBase64), c => c.charCodeAt(0));
@@ -58,6 +61,7 @@ export async function uploadPatientDocument(input: {
 // ─── List ─────────────────────────────────────────────────────────────────────
 
 export async function listPatientDocuments(patientId: string): Promise<PatientDocument[]> {
+    await requireStaff();
     const sb = await createClient();
 
     const { data, error } = await sb
@@ -84,6 +88,7 @@ export async function listPatientDocuments(patientId: string): Promise<PatientDo
 // ─── Delete ───────────────────────────────────────────────────────────────────
 
 export async function deletePatientDocument(id: string, storagePath: string): Promise<void> {
+    await requireStaff([UserRole.FrontDesk]);
     const sb = await createClient();
 
     const { error: storageError } = await sb.storage.from(BUCKET).remove([storagePath]);

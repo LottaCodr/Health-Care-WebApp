@@ -4,6 +4,10 @@ import { createClient } from "@/utils/supabase/server";
 import { Prescription, DrugInventoryItem } from "@/types/models";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 import { createPayment } from "./payment.service";
+import { UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
+
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────
 
@@ -21,6 +25,7 @@ export interface CreatePrescriptionInput {
 export async function createPrescription(
     input: CreatePrescriptionInput
 ): Promise<Prescription> {
+    await requireStaff([UserRole.Doctor]);
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("prescriptions")
@@ -69,6 +74,7 @@ export async function createPrescription(
 }
 
 export async function getPrescriptionById(id: string): Promise<Prescription | null> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("prescriptions")
@@ -81,6 +87,7 @@ export async function getPrescriptionById(id: string): Promise<Prescription | nu
 }
 
 export async function listPrescriptionsByPatient(patientId: string): Promise<Prescription[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("prescriptions")
@@ -93,6 +100,7 @@ export async function listPrescriptionsByPatient(patientId: string): Promise<Pre
 }
 
 export async function listPendingPrescriptions(): Promise<Prescription[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("prescriptions")
@@ -106,6 +114,7 @@ export async function listPendingPrescriptions(): Promise<Prescription[]> {
 }
 
 export async function listCompletedPrescriptionsToday(): Promise<Prescription[]> {
+    await requireStaff();
     const supabase = await createClient();
     const startOfToday = new Date(`${toHospitalISODate()}T00:00:00+01:00`);
 
@@ -124,6 +133,9 @@ export async function updatePrescription(
     id: string,
     updates: Partial<Prescription>
 ): Promise<Prescription> {
+    // Dispensing (marking dispensed) is done by the pharmacist; doctors edit
+    // their own prescriptions. Both roles are allowed.
+    await requireStaff([UserRole.Doctor, UserRole.Pharmacist]);
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("prescriptions")
@@ -168,6 +180,7 @@ export async function updatePrescription(
 // ─── Drug Dispensing ──────────────────────────────────────────────────────────
 
 export async function createDispensingRecord(dispensingData: any) {
+    await requireStaff([UserRole.Pharmacist]);
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("drug_dispensing")
@@ -180,6 +193,7 @@ export async function createDispensingRecord(dispensingData: any) {
 }
 
 export async function listDispensingByPatient(patientId: string) {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("drug_dispensing")
@@ -194,6 +208,7 @@ export async function listDispensingByPatient(patientId: string) {
 // ─── Drug Inventory ───────────────────────────────────────────────────────────
 
 export async function listDrugInventory(): Promise<DrugInventoryItem[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("drug_inventory")
@@ -206,6 +221,7 @@ export async function listDrugInventory(): Promise<DrugInventoryItem[]> {
 }
 
 export async function listAllDrugs(): Promise<DrugInventoryItem[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("drug_inventory")
@@ -220,6 +236,7 @@ export async function upsertDrug(
     drug: Partial<DrugInventoryItem>,
     id?: string
 ): Promise<DrugInventoryItem> {
+    await requireStaff([UserRole.Pharmacist]);
     const supabase = await createClient();
     const { data, error } = id
         ? await supabase.from("drug_inventory").update(drug).eq("id", id).select().single()
@@ -230,12 +247,14 @@ export async function upsertDrug(
 }
 
 export async function deleteDrug(id: string): Promise<void> {
+    await requireStaff([UserRole.Pharmacist]);
     const supabase = await createClient();
     const { error } = await supabase.from("drug_inventory").delete().eq("id", id);
     if (error) { console.error("[pharmacy] deleteDrug:", error); throw error; }
 }
 
 export async function restockDrug(id: string, addQty: number): Promise<DrugInventoryItem> {
+    await requireStaff([UserRole.Pharmacist]);
     const supabase = await createClient();
     // Fetch then update (RPC not always available)
     const { data: current } = await supabase
@@ -253,6 +272,7 @@ export async function restockDrug(id: string, addQty: number): Promise<DrugInven
 }
 
 export async function toggleDrugActive(id: string, current: boolean): Promise<void> {
+    await requireStaff([UserRole.Pharmacist]);
     const supabase = await createClient();
     const { error } = await supabase
         .from("drug_inventory")

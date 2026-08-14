@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { Payment } from "@/types/models";
+import { Payment, UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
 import {
     computeDiscountKobo,
     resolvePayerFromPatient,
@@ -251,6 +253,7 @@ async function tryUpdatePayment(
  * and every settlement path, so the payer is never guessed by hand.
  */
 export async function getPatientPayer(patientId: string) {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("patients")
@@ -269,6 +272,16 @@ export async function getPatientPayer(patientId: string) {
 // ─── Create / read / edit ─────────────────────────────────────────────────────
 
 export async function createPayment(input: CreatePaymentInput): Promise<Payment> {
+    // Bills may be auto-created by doctors (pharmacy dispense / lab orders) in
+    // addition to front desk. Only Front Desk may set a payment to "paid" —
+    // auto-generated bills are always "pending" until the desk confirms them.
+    const actor = await requireStaff([
+        UserRole.FrontDesk,
+        UserRole.Doctor,
+        UserRole.Pharmacist,
+        UserRole.LabTechnician,
+    ]);
+
     if (!input.patient_id) throw new Error("patient_id is required to create a payment.");
     if (!input.description?.trim()) throw new Error("description is required to create a payment.");
     if (!Number.isFinite(input.amount) || input.amount < 0) {
@@ -276,7 +289,14 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
     }
 
     const supabase = await createClient();
-    const status = input.status ?? "pending";
+    // The person who recorded the bill is the signed-in staff member — never
+    // a value supplied by the caller.
+    const processedBy = actor.userId;
+    // Only Front Desk can book money as received at creation time.
+    const status =
+        actor.role === UserRole.FrontDesk
+            ? (input.status ?? "pending")
+            : "pending";
     const method = normalizeMethod(input.method);
     const amountKobo = Math.round(input.amount * 100);
     const now = new Date().toISOString();
@@ -300,7 +320,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
         payer: input.payer ?? null,
         payer_reference: input.payer_reference ?? null,
         payer_code: input.payer_code ?? null,
-        processed_by: input.processed_by ?? null,
+        processed_by: processedBy,
         processed_date: status === "paid" ? now : null,
         paid_at: status === "paid" ? now : null,
         invoice_no: invoiceNo,
@@ -313,7 +333,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
         description: input.description,
         status,
         method,
-        processed_by: input.processed_by ?? null,
+        processed_by: processedBy,
     };
 
     const minimalPayload = {
@@ -325,7 +345,15 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
 
     try {
         const data = await tryInsertPayment(supabase, [fullPayload, compatiblePayload, minimalPayload]);
-        return normalizePayment(data);
+        const created = normalizePayment(data);
+        await logAction("PAYMENT_CREATED", "payments", created.id, {
+            patient_id: created.patient_id,
+            amount: created.amount,
+            status,
+            category: input.category ?? "other",
+            created_by: processedBy,
+        });
+        return created;
     } catch (error) {
         console.error("[payment] create:", error);
         throw error;
@@ -333,6 +361,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
 }
 
 export async function getPaymentById(id: string): Promise<Payment | null> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("payments")
@@ -360,6 +389,8 @@ export interface UpdatePendingBillInput {
  * Edit an outstanding (pending / partially paid) bill *before* it is settled.
  */
 export async function updatePendingBill(input: UpdatePendingBillInput): Promise<Payment> {
+    await requireStaff([UserRole.FrontDesk]);
+
     if (!input.id) throw new Error("id is required to update a bill.");
 
     const supabase = await createClient();
@@ -451,6 +482,7 @@ async function listDepositRows(supabase: Sb, patientId: string): Promise<any[]> 
  * deposits collected minus the part already applied to bills.
  */
 export async function getPatientDepositCredit(patientId: string) {
+    await requireStaff();
     const supabase = await createClient();
     const deposits = await listDepositRows(supabase, patientId);
 
@@ -577,6 +609,11 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
     const input: ConfirmPaymentInput =
         typeof inputOrId === "string" ? { id: inputOrId, method: methodArg } : inputOrId;
 
+    // Settling bills = booking money. Front Desk (or Admin) only — and the
+    // cashier recorded in the ledger is the signed-in user, never the caller.
+    const actor = await requireStaff([UserRole.FrontDesk]);
+    input.cashierId = actor.userId;
+
     const supabase = await createClient();
     const existing = await getPaymentById(input.id);
 
@@ -675,6 +712,10 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
 
         await applyDepositCreditInternal(supabase, existing.patient_id!, existing.id);
         await dischargeIfBillingCleared(supabase, normalizePayment(depositRow));
+        await logAction("PAYMENT_CONFIRMED", "payments", input.id, {
+            type: "deposit_applied",
+            confirmed_by: actor.userId,
+        });
         return normalizePayment(depositRow);
     }
 
@@ -746,6 +787,11 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
         );
 
         await dischargeIfBillingCleared(supabase, updated);
+        await logAction("PAYMENT_CONFIRMED", "payments", input.id, {
+            amount_paid_kobo: updated.amount_paid_kobo,
+            method: updated.method ?? updated.payment_method,
+            confirmed_by: actor.userId,
+        });
         return updated;
     } catch (error) {
         console.error("[payment] confirm:", error);
@@ -769,6 +815,9 @@ export interface RecordDepositInput {
 }
 
 export async function recordDeposit(input: RecordDepositInput): Promise<Payment> {
+    const actor = await requireStaff([UserRole.FrontDesk]);
+    input.cashierId = actor.userId;
+
     if (!input.patient_id) throw new Error("patient_id is required to record a deposit.");
     const amountKobo = Math.round((input.amount ?? 0) * 100);
     if (!Number.isFinite(amountKobo) || amountKobo <= 0) {
@@ -862,6 +911,9 @@ export interface SettleAllResult {
 }
 
 export async function settleAllPatientBills(input: SettleAllPatientBillsInput): Promise<SettleAllResult> {
+    const actor = await requireStaff([UserRole.FrontDesk]);
+    if (typeof (input as any).cashierId === "string") (input as any).cashierId = actor.userId;
+
     if (!input.patientId) throw new Error("patientId is required.");
 
     const supabase = await createClient();
@@ -1023,6 +1075,9 @@ export interface SettleQueueResult {
 }
 
 export async function settleAllPendingBills(input: SettleQueueBillsInput): Promise<SettleQueueResult> {
+    const actor = await requireStaff([UserRole.FrontDesk]);
+    if (typeof (input as any).cashierId === "string") (input as any).cashierId = actor.userId;
+
     const supabase = await createClient();
     const { data: rows, error } = await supabase
         .from("payments")
@@ -1134,6 +1189,7 @@ async function dischargeIfBillingCleared(
 // ─── Listing ──────────────────────────────────────────────────────────────────
 
 export async function listPaymentsByPatient(patientId: string): Promise<Payment[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("payments")
@@ -1150,6 +1206,7 @@ export async function listPaymentsByPatient(patientId: string): Promise<Payment[
 }
 
 export async function listPendingPayments(): Promise<Payment[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("payments")

@@ -1,5 +1,8 @@
 "use server";
 
+import { UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+
 import { createClient } from "@/utils/supabase/server";
 
 export type ReadmissionType = "followup" | "emergency" | "readmission" | "pharmacy";
@@ -37,6 +40,7 @@ const STATUS_MAP: Record<ReadmissionType, string> = {
 export async function getPatientEncounterHistory(
     patientId: string
 ): Promise<PatientEncounterHistory> {
+    await requireStaff();
     const sb = await createClient();
 
     const [{ count }, { data: lastVisit }, { data: lastDischarge }, { data: lastAdmission }] =
@@ -61,6 +65,7 @@ export async function getPatientEncounterHistory(
 export async function processReturnVisit(
     input: ReadmissionInput
 ): Promise<{ success: boolean }> {
+    await requireStaff([UserRole.FrontDesk]);
     const sb        = await createClient();
     const newStatus = STATUS_MAP[input.visitType];
 

@@ -19,6 +19,7 @@ import { useCacheStore, useUserStore, useUIStore } from "@/store/store";
 import { LogoutOverlay } from "@/components/layout/LogoutOverlay";
 import { normalizeUserRole } from "@/lib/roles";
 import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
+import { loginRateLimiter } from "@/lib/auth-utils";
 
 interface AuthContextType {
     user: any | null;
@@ -182,6 +183,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 };
             }
 
+            // ── Brute-force throttle ─────────────────────────────────────────────
+            // In-memory limiter keyed by normalized email (see lib/auth-utils.ts).
+            // This is defense-in-depth only: the authoritative protection must be
+            // Supabase Auth's own rate limits (and, ideally, per-account lockout).
+            const identifier = email.trim().toLowerCase();
+            if (loginRateLimiter.isBlocked(identifier)) {
+                return {
+                    success: false,
+                    message:
+                        "Too many failed login attempts. Please wait 15 minutes and try again.",
+                };
+            }
+
             const { data, error } = await withTimeout(
                 supabase.auth.signInWithPassword({ email, password }),
                 20_000,
@@ -189,7 +203,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             );
 
             if (error) {
-                return { success: false, message: friendlyErrorMessage(error, error.message) };
+                const attempt = loginRateLimiter.recordAttempt(identifier);
+                const message = friendlyErrorMessage(error, error.message);
+                return {
+                    success: false,
+                    message: attempt.blocked
+                        ? "Too many failed login attempts. Please wait 15 minutes and try again."
+                        : `${message} (${attempt.remainingAttempts} attempts left before a temporary lockout)`,
+                };
             }
 
             if (data?.user) {
@@ -223,6 +244,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (typeof window !== "undefined" && profile) {
                     localStorage.setItem("nile_user_profile", JSON.stringify(profile));
                 }
+
+                loginRateLimiter.clearAttempts(identifier);
 
                 return {
                     success: true,

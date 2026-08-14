@@ -1,6 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
 
 // ─── Drug Chart ───────────────────────────────────────────────────────────────
 
@@ -18,6 +21,7 @@ export interface CreateDrugChartInput {
 }
 
 export async function createDrugChartEntry(input: CreateDrugChartInput) {
+    await requireStaff([UserRole.Nurse]);
     const sb = await createClient();
     const { data, error } = await sb.from("nurse_drug_chart").insert([{
         patient_id:    input.patientId,
@@ -37,6 +41,7 @@ export async function createDrugChartEntry(input: CreateDrugChartInput) {
 }
 
 export async function listDrugChartByPatient(patientId: string) {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("nurse_drug_chart")
@@ -48,6 +53,7 @@ export async function listDrugChartByPatient(patientId: string) {
 }
 
 export async function updateDrugChartEntry(id: string, updates: Partial<CreateDrugChartInput & { isActive: boolean }>) {
+    await requireStaff([UserRole.Nurse]);
     const sb = await createClient();
     const mapped: Record<string, any> = {};
     if (updates.drugName    !== undefined) mapped.drug_name     = updates.drugName;
@@ -63,6 +69,7 @@ export async function updateDrugChartEntry(id: string, updates: Partial<CreateDr
 }
 
 export async function deleteDrugChartEntry(id: string) {
+    await requireStaff([UserRole.Nurse]);
     const sb = await createClient();
     const { error } = await sb.from("nurse_drug_chart").delete().eq("id", id);
     if (error) throw error;
@@ -79,6 +86,7 @@ export async function logDrugAdministration(input: {
     administeredAt?: string;
     notes?:          string;
 }) {
+    await requireStaff([UserRole.Nurse]);
     const sb = await createClient();
     const { data, error } = await sb.from("drug_administration_records").insert([{
         drug_chart_id:   input.drugChartId,
@@ -115,6 +123,7 @@ export interface CreateFluidEntryInput {
 }
 
 export async function createFluidEntry(input: CreateFluidEntryInput) {
+    await requireStaff([UserRole.Nurse]);
     const sb = await createClient();
     const { data, error } = await sb.from("fluid_balance").insert([{
         patient_id:       input.patientId,
@@ -139,6 +148,7 @@ export async function createFluidEntry(input: CreateFluidEntryInput) {
 }
 
 export async function listFluidBalanceByPatientDate(patientId: string, date: string) {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("fluid_balance")
@@ -151,6 +161,7 @@ export async function listFluidBalanceByPatientDate(patientId: string, date: str
 }
 
 export async function deleteFluidEntry(id: string) {
+    await requireStaff([UserRole.Nurse]);
     const sb = await createClient();
     const { error } = await sb.from("fluid_balance").delete().eq("id", id);
     if (error) throw error;
