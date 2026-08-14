@@ -19,6 +19,7 @@ import { useCacheStore, useUserStore, useUIStore } from "@/store/store";
 import { LogoutOverlay } from "@/components/layout/LogoutOverlay";
 import { normalizeUserRole } from "@/lib/roles";
 import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
+import { loginRateLimiter } from "@/lib/auth-utils";
 
 interface AuthContextType {
     user: any | null;
@@ -29,7 +30,13 @@ interface AuthContextType {
     login: (
         email: string,
         password: string
-    ) => Promise<{ success: boolean; message: string; staff?: any }>;
+    ) => Promise<{
+        success: boolean;
+        message: string;
+        staff?: any;
+        /** True when Supabase requires a second factor before the session is usable. */
+        mfaRequired?: boolean;
+    }>;
     logout: () => Promise<void>;
     /**
      * Re-fetch the current staff profile from the DB and update `user` +
@@ -182,6 +189,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 };
             }
 
+            // ── Brute-force throttle ─────────────────────────────────────────────
+            // In-memory limiter keyed by normalized email (see lib/auth-utils.ts).
+            // This is defense-in-depth only: the authoritative protection must be
+            // Supabase Auth's own rate limits (and, ideally, per-account lockout).
+            const identifier = email.trim().toLowerCase();
+            if (loginRateLimiter.isBlocked(identifier)) {
+                return {
+                    success: false,
+                    message:
+                        "Too many failed login attempts. Please wait 15 minutes and try again.",
+                };
+            }
+
             const { data, error } = await withTimeout(
                 supabase.auth.signInWithPassword({ email, password }),
                 20_000,
@@ -189,7 +209,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             );
 
             if (error) {
-                return { success: false, message: friendlyErrorMessage(error, error.message) };
+                const attempt = loginRateLimiter.recordAttempt(identifier);
+                const message = friendlyErrorMessage(error, error.message);
+                return {
+                    success: false,
+                    message: attempt.blocked
+                        ? "Too many failed login attempts. Please wait 15 minutes and try again."
+                        : `${message} (${attempt.remainingAttempts} attempts left before a temporary lockout)`,
+                };
             }
 
             if (data?.user) {
@@ -222,6 +249,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(profile);
                 if (typeof window !== "undefined" && profile) {
                     localStorage.setItem("nile_user_profile", JSON.stringify(profile));
+                }
+
+                loginRateLimiter.clearAttempts(identifier);
+
+                // MFA: if the project requires AAL2 (TOTP verified), the session
+                // is not fully usable yet — surface the second-factor step.
+                try {
+                    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+                    if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+                        return {
+                            success: false,
+                            mfaRequired: true,
+                            staff: profile,
+                            message: "Enter the 6-digit code from your authenticator app to continue.",
+                        };
+                    }
+                } catch {
+                    // MFA disabled / unavailable in this environment — proceed.
                 }
 
                 return {

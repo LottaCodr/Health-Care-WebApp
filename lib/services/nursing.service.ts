@@ -2,6 +2,10 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
+import { UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
+
 
 // PostgREST join — requires nursing_actions_patient_id_fkey to exist (see migration)
 const SELECT_WITH_PATIENT = `
@@ -28,7 +32,8 @@ export interface UpdateNursingActionInput {
     completionTime?: string;
 }
 
-export async function createNursingAction(input: CreateNursingActionInput) {
+export async function createNursingAction(input: CreateNursingActionInput){
+    await requireStaff([UserRole.Nurse]);
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")
@@ -48,7 +53,8 @@ export async function createNursingAction(input: CreateNursingActionInput) {
     return data;
 }
 
-export async function getNursingActionById(id: string) {
+export async function getNursingActionById(id: string){
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")
@@ -60,7 +66,8 @@ export async function getNursingActionById(id: string) {
     return data;
 }
 
-export async function listNursingActionsByPatient(patientId: string) {
+export async function listNursingActionsByPatient(patientId: string){
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")
@@ -72,7 +79,8 @@ export async function listNursingActionsByPatient(patientId: string) {
     return data;
 }
 
-export async function listPendingNursingActions() {
+export async function listPendingNursingActions(){
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")
@@ -84,7 +92,8 @@ export async function listPendingNursingActions() {
     return data;
 }
 
-export async function listCompletedNursingActions() {
+export async function listCompletedNursingActions(){
+    await requireStaff();
     const supabase = await createClient();
     const startOfToday = new Date(`${toHospitalISODate()}T00:00:00+01:00`);
     const { data, error } = await supabase
@@ -98,7 +107,8 @@ export async function listCompletedNursingActions() {
     return data;
 }
 
-export async function updateNursingAction(id: string, input: UpdateNursingActionInput) {
+export async function updateNursingAction(id: string, input: UpdateNursingActionInput){
+    await requireStaff([UserRole.Nurse]);
     const supabase = await createClient();
     const mapped: Record<string, any> = {};
     if (input.status !== undefined) mapped.status = input.status;

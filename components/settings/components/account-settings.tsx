@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { User } from "lucide-react";
 
-import { updateStaff } from "@/actions/staff/update.deletestaff";
+import { updateOwnProfile } from "@/lib/services/staff.service";
 import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 
@@ -51,7 +51,9 @@ export default function AccountSettings() {
     const onSubmit = async (data: FormData) => {
         try {
 
-            await updateStaff(user?.$id || "", {
+            // Server-side, session-scoped update: the service derives the
+            // caller's own staff id — the client cannot edit anyone else.
+            await updateOwnProfile({
                 name: data.full_name,
                 email: data.email,
                 phone_number: data.phone_number,

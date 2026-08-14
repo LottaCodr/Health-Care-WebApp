@@ -1,6 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
 
 const SELECT = `
     *,
@@ -26,6 +29,7 @@ export interface CreateDischargeNoteInput {
 }
 
 export async function createDischargeNote(input: CreateDischargeNoteInput) {
+    await requireStaff([UserRole.Doctor]);
     const sb = await createClient();
     const { data, error } = await sb
         .from("discharge_notes")
@@ -52,6 +56,7 @@ export async function createDischargeNote(input: CreateDischargeNoteInput) {
 }
 
 export async function getDischargeNoteByPatient(patientId: string) {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("discharge_notes")
@@ -65,6 +70,7 @@ export async function getDischargeNoteByPatient(patientId: string) {
 }
 
 export async function listDischargeNotes() {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("discharge_notes")

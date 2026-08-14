@@ -1,5 +1,7 @@
 "use server";
 
+import { requireStaff } from "./auth-guard";
+
 /**
  * Nile Valley Hospital — AI Clinical Service
  * All AI features powered by Claude (Anthropic API)
@@ -52,6 +54,9 @@ export async function getAIClinicalAssistance(input: {
     icd10Codes: { code: string; description: string }[];
     clinicalNotes: string;
 }> {
+    // PHI leaves the hospital here: only signed-in staff may invoke AI, and
+    // callers should only send the minimum data needed for the decision.
+    await requireStaff();
     const system = `You are an expert clinical decision support AI for Nile Valley Hospital in Nigeria.
 Analyse patient presentations and return ONLY valid JSON matching this exact structure:
 {
@@ -106,6 +111,7 @@ export async function getAITriageScore(vitals: {
     actions: string[];
     escalate: boolean;
 }> {
+    await requireStaff();
     const system = `You are a clinical triage AI for Nile Valley Hospital.
 Analyse patient vitals and return ONLY valid JSON:
 {
@@ -156,6 +162,7 @@ export async function getAILabInterpretation(input: {
     recommendations: string[];
     urgency: "Routine" | "Soon" | "Urgent" | "Immediate";
 }> {
+    await requireStaff();
     const system = `You are a clinical laboratory AI for Nile Valley Hospital, Nigeria.
 Interpret lab results and return ONLY valid JSON:
 {
@@ -209,6 +216,7 @@ export async function getAIPrescriptionSafetyCheck(input: {
     contraindications: string[];
     pharmacistNotes: string;
 }> {
+    await requireStaff();
     const system = `You are a clinical pharmacology AI for Nile Valley Hospital, Nigeria.
 Check prescription safety and return ONLY valid JSON:
 {
@@ -272,6 +280,7 @@ export async function getAIPatientSummary(input: {
     followUpActions: string[];
     riskFlags: string[];
 }> {
+    await requireStaff();
     const system = `You are a clinical AI summariser for Nile Valley Hospital, Nigeria.
 Generate a patient clinical briefing and return ONLY valid JSON:
 {

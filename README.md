@@ -35,6 +35,12 @@ Built with **Next.js 16** (App Router), **React 19**, **Supabase**, and **Zustan
 
 Other services: `patient`, `consultation`, `nursing`, `payment`, `radiology`, `audit`, `ai-service`, `patient-routing` (doctor quick routing without a consultation).
 
+### Completeness modules (2026-08-14)
+
+- **Clinical:** structured allergies + offline drug-safety engine, immunizations, vitals/lab trends (recharts), WHO growth charts, surgery/OT module with theatre schedule, referrals with printable letters, lab specimen tracking with barcode labels, ward & bed board, drug batches & expiry alerts, medication reconciliation, MAR witness/e-signature, break-glass emergency access, death/birth certificates with mortality register.
+- **Compliance & ops:** consent management (versioned), MFA/TOTP (Supabase Auth), audit review + CSV export, data retention & backup policy (`DATA_RETENTION_POLICY.md`), FHIR R4 / HL7 v2 / CSV exports, ICD-10/LOINC/SNOMED coding fields, SMS/email messaging (Termii/SendGrid/console), patient portal (`/portal`), offline mutation queue, admin reports & analytics, multi-facility support.
+- **Migration:** apply `supabase/migrations/20260814_emr_modules_schema.sql` (schema + RLS) with `supabase db push` — see `SECURITY_REPORT.md` for the full status table and what still needs external configuration (MFA enablement, messaging keys, service-role key for portal account creation).
+
 ### Billing schema
 
 The billing workflow uses extra columns on `payments` (`payment_type`, `discount_kobo`, `discount_percent`, `discount_amount_kobo`, `payer`, `payer_reference`, `payer_code`, `applied_kobo`). The app degrades gracefully when they are missing, but run the idempotent migration in `supabase/migrations/20260813_billing_payment_types_discount_payer_deposit.sql` to fully track payment types, discounts, payer identity and deposit-credit accounting.
@@ -124,6 +130,22 @@ Open [http://localhost:3000](http://localhost:3000).
 - Refreshes the Supabase session on each request
 - Redirects unauthenticated users to `/login`
 - Restricts each role to its route prefix (e.g. `/doctor`, `/nurse`, `/front-desk`)
+- Only exempts `/api/auth/*` from authentication; adds baseline security headers
+
+Page redirects are **not** the security boundary — see `SECURITY_REPORT.md`.
+The real enforcement lives in:
+
+1. **`lib/services/auth-guard.ts`** — every server-side service action checks the
+   caller's staff role (`requireStaff(...)`) before touching data.
+2. **Supabase Row-Level Security** — apply `supabase/migrations/20260814_enable_rls_security.sql`
+   with `supabase db push` so the public anon key can never read/write patient data.
+3. **`lib/services/audit.service.ts`** — session-derived audit trail for clinical
+   and financial actions (Admin-only read via `listAuditLogs`).
+4. **`lib/security.ts#sanitizeNextPath`** — open-redirect protection for `?next=`.
+
+Reminders for production: disable public signups in Supabase Auth, keep the
+service-role key server-only, and add storage-bucket policies for
+`patient-documents`.
 
 ---
 

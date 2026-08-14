@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireStaff } from "./auth-guard";
 
 export interface CreateNotificationInput {
     recipient_id?: string;
@@ -12,6 +13,7 @@ export interface CreateNotificationInput {
 }
 
 export async function createNotification(input: CreateNotificationInput) {
+    await requireStaff();
     const supabase = await createClient();
 
     try {

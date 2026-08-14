@@ -1,11 +1,28 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { Patient, PatientStatus } from "@/types/models";
+import { Patient, PatientStatus, UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
+
+/**
+ * Roles that may advance a patient through the workflow state machine
+ * (QueueSuite/front desk, nurse vitals, lab results, radiology reports,
+ * discharge notes — all call updatePatientStatus in this codebase).
+ */
+const STATUS_CHANGE_ROLES: UserRole[] = [
+    UserRole.FrontDesk,
+    UserRole.Doctor,
+    UserRole.Nurse,
+    UserRole.LabTechnician,
+    UserRole.Pharmacist,
+    UserRole.Radiologist,
+];
 
 export async function createPatient(
     data: Omit<Patient, "id" | "created_at" | "updated_at">
 ): Promise<Patient> {
+    const actor = await requireStaff([UserRole.FrontDesk]);
     const supabase = await createClient();
     const { data: result, error } = await supabase
         .from("patients")
@@ -14,10 +31,17 @@ export async function createPatient(
         .single();
 
     if (error) { console.error("[patient] createPatient:", error); throw error; }
+
+    await logAction("PATIENT_REGISTERED", "patients", result.id, {
+        name: result.name,
+        registered_by: actor.userId,
+    });
+
     return result as unknown as Patient;
 }
 
 export async function getPatientById(id: string): Promise<Patient | null> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("patients")
@@ -33,6 +57,7 @@ export async function updatePatient(
     id: string,
     updates: Partial<Patient>
 ): Promise<Patient> {
+    await requireStaff([UserRole.FrontDesk, UserRole.Doctor, UserRole.Nurse]);
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("patients")
@@ -49,7 +74,15 @@ export async function updatePatientStatus(
     id: string,
     status: PatientStatus
 ): Promise<Patient> {
+    const actor = await requireStaff(STATUS_CHANGE_ROLES);
+
     const supabase = await createClient();
+    const { data: before } = await supabase
+        .from("patients")
+        .select("status")
+        .eq("id", id)
+        .maybeSingle();
+
     const { data, error } = await supabase
         .from("patients")
         .update({ status })
@@ -58,12 +91,20 @@ export async function updatePatientStatus(
         .single();
 
     if (error) { console.error("[patient] updatePatientStatus:", error); throw error; }
+
+    await logAction("PATIENT_STATUS_CHANGED", "patients", id, {
+        from: before?.status ?? null,
+        to: status,
+        changed_by: actor.userId,
+    });
+
     return data  as Patient;
 }
 
 export async function listPatientsByStatus(
     status: PatientStatus
 ): Promise<Patient[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("patients")
@@ -76,6 +117,7 @@ export async function listPatientsByStatus(
 }
 
 export async function searchPatients(query: string): Promise<Patient[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("patients")
@@ -91,6 +133,7 @@ export async function getAllPatients(
     page = 0,
     limit = 100
 ): Promise<Patient[]> {
+    await requireStaff();
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("patients")

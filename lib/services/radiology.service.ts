@@ -9,6 +9,9 @@
 // ══════════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "@/utils/supabase/server";
+import { UserRole } from "@/types/models";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
 
 const PREFIX = "[RADIOLOGY]";
 
@@ -41,6 +44,7 @@ export interface RadiologyRequest {
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function listPendingRadiologyRequests() {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("lab_requests")
@@ -53,6 +57,7 @@ export async function listPendingRadiologyRequests() {
 }
 
 export async function listCompletedRadiologyRequests() {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("lab_requests")
@@ -65,6 +70,7 @@ export async function listCompletedRadiologyRequests() {
 }
 
 export async function listRadiologyRequestsByPatient(patientId: string) {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("lab_requests")
@@ -77,6 +83,7 @@ export async function listRadiologyRequestsByPatient(patientId: string) {
 }
 
 export async function getRadiologyRequestById(id: string) {
+    await requireStaff();
     const sb = await createClient();
     const { data, error } = await sb
         .from("lab_requests")
@@ -98,6 +105,7 @@ export interface CreateRadiologyRequestInput {
 }
 
 export async function createRadiologyRequest(input: CreateRadiologyRequestInput) {
+    await requireStaff([UserRole.Doctor]);
     const sb = await createClient();
     const { data, error } = await sb
         .from("lab_requests")
@@ -128,6 +136,7 @@ export async function submitRadiologyReport(
     id: string,
     report: SubmitRadiologyReportInput
 ) {
+    await requireStaff([UserRole.Radiologist]);
     const sb = await createClient();
     const { data, error } = await sb
         .from("lab_requests")

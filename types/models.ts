@@ -62,6 +62,9 @@ export interface Patient {
     private_client?: boolean;
     status: PatientStatus;
     notes: string;
+    facility_id?: string;
+    portal_user_id?: string;
+    portal_enabled?: boolean;
     created_at?: string;
     updated_at?: string;
 }
@@ -104,6 +107,7 @@ export interface Consultation {
     diagnosis: string;
     prescriptions?: string | null;
     recommendations?: string | null;
+    icd10_codes?: string[];
 
     // Routing
     referred_to?: string | null;         // Target department or staff role
@@ -372,3 +376,203 @@ export interface Notification {
     link?: string;
     created_at: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMR completeness modules (2026-08-14)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PatientAllergy {
+    id: string;
+    patient_id: string;
+    allergen: string;
+    category: "drug" | "food" | "environmental" | "other";
+    reaction?: string;
+    severity: "mild" | "moderate" | "severe" | "life-threatening";
+    status: "active" | "resolved";
+    onset_date?: string;
+    recorded_by?: string;
+    notes?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface Immunization {
+    id: string;
+    patient_id: string;
+    vaccine: string;
+    dose_number: number;
+    administered_date: string;
+    administered_by?: string;
+    site?: string;
+    route?: string;
+    lot_number?: string;
+    manufacturer?: string;
+    next_due_date?: string;
+    notes?: string;
+    created_at?: string;
+}
+
+export type SurgeryStatus = "scheduled" | "in-progress" | "completed" | "cancelled";
+
+export interface Surgery {
+    id: string;
+    patient_id: string;
+    surgeon_id?: string;
+    anaesthetist_id?: string;
+    procedure_name: string;
+    urgency: "elective" | "urgent" | "emergency";
+    status: SurgeryStatus;
+    theatre?: string;
+    scheduled_at?: string;
+    started_at?: string;
+    completed_at?: string;
+    pre_op_diagnosis?: string;
+    post_op_diagnosis?: string;
+    anaesthesia_type?: string;
+    findings?: string;
+    procedure_details?: string;
+    complications?: string;
+    blood_loss_ml?: number;
+    disposition?: string;
+    notes?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface Referral {
+    id: string;
+    patient_id: string;
+    referred_by?: string;
+    referred_to_facility: string;
+    referred_to_department?: string;
+    referred_to_doctor?: string;
+    reason: string;
+    clinical_summary?: string;
+    urgency: "routine" | "urgent" | "emergency";
+    status: "pending" | "sent" | "accepted" | "declined" | "completed";
+    sent_at?: string;
+    response_notes?: string;
+    created_at?: string;
+}
+
+export type SpecimenStatus = "collected" | "received" | "processing" | "completed" | "rejected";
+
+export interface LabSpecimen {
+    id: string;
+    lab_request_id?: string;
+    patient_id: string;
+    specimen_type: string;
+    container?: string;
+    barcode: string;
+    collection_at?: string;
+    collected_by?: string;
+    received_at?: string;
+    received_by?: string;
+    status: SpecimenStatus;
+    rejection_reason?: string;
+    notes?: string;
+    created_at?: string;
+}
+
+export interface Ward {
+    id: string;
+    name: string;
+    department?: string;
+    total_beds: number;
+    is_active: boolean;
+    created_at?: string;
+}
+
+export interface DrugBatch {
+    id: string;
+    drug_id: string;
+    batch_number: string;
+    manufacturer?: string;
+    expiry_date: string;
+    quantity: number;
+    received_at?: string;
+    received_by?: string;
+    notes?: string;
+    created_at?: string;
+}
+
+export interface MedReconciliation {
+    id: string;
+    patient_id: string;
+    admission_id?: string;
+    encounter_type: "admission" | "discharge" | "transfer";
+    medications: MedReconciliationItem[];
+    changes_summary?: string;
+    performed_by?: string;
+    performed_at?: string;
+    created_at?: string;
+}
+
+export interface MedReconciliationItem {
+    drugName: string;
+    dosage: string;
+    frequency: string;
+    route: string;
+    action: "continue" | "stop" | "change" | "start";
+}
+
+export type ConsentType = "treatment" | "procedure" | "data_privacy" | "research" | "photography";
+
+export interface ConsentRecord {
+    id: string;
+    patient_id: string;
+    consent_type: ConsentType;
+    version: number;
+    status: "signed" | "declined" | "withdrawn";
+    signed_by_patient: boolean;
+    witness_id?: string;
+    signed_at?: string;
+    expires_at?: string;
+    document_id?: string;
+    notes?: string;
+    created_at?: string;
+}
+
+export interface DeathCertificate {
+    id: string;
+    patient_id: string;
+    certifying_doctor?: string;
+    date_of_death: string;
+    time_of_death?: string;
+    place_of_death?: string;
+    immediate_cause?: string;
+    icd10_immediate?: string;
+    antecedent_cause?: string;
+    icd10_antecedent?: string;
+    other_conditions?: string;
+    manner_of_death: "natural" | "accident" | "suicide" | "homicide" | "undetermined";
+    issued_at?: string;
+    created_at?: string;
+}
+
+export interface BirthCertificate {
+    id: string;
+    child_name: string;
+    sex?: "male" | "female";
+    date_of_birth: string;
+    time_of_birth?: string;
+    place_of_birth?: string;
+    weight_kg?: number;
+    mother_patient_id?: string;
+    father_name?: string;
+    attending_staff?: string;
+    created_at?: string;
+}
+
+export interface Facility {
+    id: string;
+    name: string;
+    code: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+    is_active: boolean;
+    created_at?: string;
+}
+

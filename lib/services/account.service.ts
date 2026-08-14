@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireStaff } from "./auth-guard";
+import { logAction } from "./audit.service";
 
 export interface DeleteAccountResult {
     success: boolean;
@@ -17,6 +19,7 @@ export interface DeleteAccountResult {
  *    service-role key to remove the Auth user itself).
  */
 export async function deleteOwnAccount(): Promise<DeleteAccountResult> {
+    await requireStaff();
     const supabase = await createClient();
 
     const {
@@ -61,5 +64,6 @@ export async function deleteOwnAccount(): Promise<DeleteAccountResult> {
         );
     }
 
+    await logAction("ACCOUNT_SELF_DELETED", "staffs", user.id);
     return { success: true, message: "Your account has been deleted." };
 }

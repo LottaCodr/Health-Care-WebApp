@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
-import supabase from "@/utils/supabase/client";
+import { listAuditLogs } from "@/lib/services/audit.service";
 import {
     ScrollText, Search, X, RefreshCcw,
     ChevronDown, Loader2, AlertTriangle,
@@ -61,14 +61,40 @@ export default function AdminAuditLog() {
     const [entity, setEntity] = useState("all");
     const [expanded, setExpanded] = useState<string | null>(null);
 
+    const exportCsv = () => {
+        const escape = (v: any) => {
+            const str = v === null || v === undefined ? "" : String(v);
+            return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+        };
+        const rows = filtered.map((l) => ({
+            timestamp: l.timestamp,
+            action: l.action,
+            entity_type: l.entity_type,
+            entity_id: l.entity_id,
+            user_id: l.user_id,
+            changes: JSON.stringify(l.changes ?? {}),
+        }));
+        const csv = ["timestamp,action,entity_type,entity_id,user_id,changes",
+            ...rows.map((r) => `${escape(r.timestamp)},${escape(r.action)},${escape(r.entity_type)},${escape(r.entity_id)},${escape(r.user_id)},${escape(r.changes)}`)].join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "audit_log.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const fetchLogs = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from("audit_logs")
-            .select("*")
-            .order("timestamp", { ascending: false })
-            .limit(500);
-        if (!error) setLogs(data ?? []);
+        // Server-side read, Admin-only (enforced in the service, not just in
+        // the UI) — replaces the direct anon-key query used before.
+        try {
+            const logs = await listAuditLogs(500);
+            setLogs(logs ?? []);
+        } catch {
+            setLogs([]);
+        }
         setLoading(false);
     };
 
@@ -99,10 +125,16 @@ export default function AdminAuditLog() {
                     <h1 className="text-xl font-black text-gray-900">Audit Log</h1>
                     <p className="text-xs text-gray-400 mt-0.5">{filtered.length} of {logs.length} entries</p>
                 </div>
-                <button onClick={fetchLogs}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-700 shadow-sm transition-all">
-                    <RefreshCcw size={13} /> Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={exportCsv}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-700 shadow-sm transition-all">
+                        Export CSV
+                    </button>
+                    <button onClick={fetchLogs}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-700 shadow-sm transition-all">
+                        <RefreshCcw size={13} /> Refresh
+                    </button>
+                </div>
             </div>
 
             {/* ── Main card ── */}
