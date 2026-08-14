@@ -21,6 +21,7 @@ import { getAllStaffs } from "@/actions/staff/get.staff";
 import { Staff } from "@/actions/staff/types";
 import { calculateAge } from "@/utils/export";
 import { normalizeUserRole } from "@/lib/roles";
+import { hasActualAllergy } from "@/lib/utils";
 import { useAllergies } from "@/hooks/emr/use-clinical-modules";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
@@ -206,7 +207,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     () => allergies.filter((a) => a.status !== "resolved").length,
     [allergies]
   );
-  const hasLegacyAllergy = Boolean((patient as any)?.allergies?.trim());
+  const hasLegacyAllergy = hasActualAllergy((patient as any)?.allergies);
 
   const availableStaff = useMemo(() =>
     staff.filter((s: Staff) =>

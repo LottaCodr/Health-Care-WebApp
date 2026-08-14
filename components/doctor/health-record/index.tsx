@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { useAllPatients } from "@/hooks/emr/use-patients";
 import { useRoleProtection } from "@/lib/role-utils";
+import { hasActualAllergy } from "@/lib/utils";
 import Link from "next/link";
 import { UserRole } from "@/types/models";
 import {
@@ -160,7 +161,7 @@ function PatientRow({ patient }: { patient: any }) {
                 </div>
             </td>
             <td className="px-4 py-3.5">
-                {patient.allergies ? (
+                {hasActualAllergy(patient.allergies) ? (
                     <div className="flex items-center gap-1.5">
                         <AlertCircle size={11} className="text-red-500 shrink-0" />
                         <p className="text-xs text-red-700 font-medium line-clamp-1">{patient.allergies}</p>

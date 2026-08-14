@@ -3,6 +3,7 @@
 import React from "react";
 import { Patient } from "@/types/models";
 import { StatusBadge } from "./StatusBadge";
+import { hasActualAllergy } from "@/lib/utils";
 import { Mail, Phone, User, Droplets, MapPin, AlertTriangle } from "lucide-react";
 
 export function PatientInfoCard({ patient }: { patient: Patient }) {
@@ -57,7 +58,7 @@ export function PatientInfoCard({ patient }: { patient: Patient }) {
                     <p className="text-sm font-bold text-gray-800">{patient.address}</p>
                 </div>
 
-                {patient.allergies && (
+                {hasActualAllergy(patient.allergies) && (
                     <div className="col-span-full mt-4 p-4 bg-red-50 rounded-2xl border border-red-100 flex items-start gap-3">
                         <AlertTriangle className="text-red-600 shrink-0" size={20} />
                         <div>

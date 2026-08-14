@@ -6,6 +6,7 @@
 import React from "react";
 import Link from "next/link";
 import { Patient, PatientStatus, Consultation, Payment } from "@/types/models";
+import { hasActualAllergy } from "@/lib/utils";
 import {
   User, Phone, Mail, MapPin, Droplets, AlertCircle,
   Stethoscope, ChevronRight, CheckCircle2, Clock,
@@ -97,7 +98,7 @@ export function PatientInfoCard({ patient }: { patient: Patient | any }) {
             <InfoItem icon={MapPin} label="Address" value={patient.address} />
           </div>
         )}
-        {(patient.allergies) && (
+        {hasActualAllergy(patient.allergies) && (
           <div className="sm:col-span-2">
             <InfoItem icon={AlertCircle} label="Allergies" value={patient.allergies} red />
           </div>
