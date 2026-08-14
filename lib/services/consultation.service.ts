@@ -72,7 +72,7 @@ export async function listConsultationsByPatient(
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("consultations")
-        .select("*")
+        .select("*, staffs:doctor_id(name)")
         .eq("patient_id", patientId)
         .order("created_at", { ascending: false });
 

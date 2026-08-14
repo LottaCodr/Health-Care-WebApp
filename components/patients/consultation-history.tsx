@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
@@ -11,11 +11,12 @@ import {
     Trash2, CheckCircle2, Loader2, AlertTriangle,
     RefreshCcw, Lock, Eye, EyeOff, Baby, Heart, Brain,
     Activity, ChevronDown, LayoutGrid, GalleryHorizontal, Sparkles,
+    Search, Table2, UserRound, X,
 } from "lucide-react";
 import { deleteConsultation, listConsultationsByPatient } from "@/lib/services";
 
 type AccessLevel = "full" | "nursing" | "lab" | "radiology" | "pharmacy" | "admin" | "minimal";
-type ViewMode = "carousel" | "timeline";
+type ViewMode = "results" | "cards" | "timeline";
 
 function getAccessLevel(role?: string): AccessLevel {
     switch (role) {
@@ -57,6 +58,71 @@ function extractSection(text: string, label: string): string {
     return match?.[1]?.trim() ?? "";
 }
 
+function getDoctorName(c: any): string {
+    return (c as any).staffs?.name ?? (c as any).doctor_name ?? "";
+}
+
+function getComplaint(c: any): string {
+    return extractSection(c.symptoms ?? "", "Presenting Complaint") ||
+        (c.symptoms ?? "").split("\n\n")[0]?.replace("Presenting Complaint:", "").trim() ||
+        "";
+}
+
+function getAssessment(c: any): string {
+    return extractSection(c.recommendations ?? "", "Assessment") ||
+        extractSection(c.diagnosis ?? "", "Summary") ||
+        (c.diagnosis ?? "").split("\n\n")[0]?.replace("General Examination:", "").trim().slice(0, 120) ||
+        "";
+}
+
+/** Role-relevant fields visible to non-doctor staff (shared by cards + results views). */
+function getVisibleFields(consultation: any, accessLevel: AccessLevel) {
+    const date = getDate(consultation);
+    const symptoms = consultation.symptoms ?? "";
+    const recommendations = consultation.recommendations ?? "";
+    const doctor = getDoctorName(consultation);
+    const base = [
+        { label: "Date", value: `${fmt(date)} · ${fmtTime(date)}` },
+        { label: "Doctor", value: doctor },
+    ];
+    switch (accessLevel) {
+        case "nursing":
+            return [
+                ...base,
+                { label: "Referred To", value: consultation.referred_to },
+                { label: "Status", value: consultation.status },
+                { label: "Recommendations", value: extractSection(recommendations, "Recommendations") || consultation.recommendations?.slice(0, 200) },
+            ];
+        case "lab":
+            return [
+                ...base,
+                { label: "Test Requested", value: extractSection(symptoms, "Investigations") || "See lab request" },
+                { label: "Clinical Notes", value: extractSection(recommendations, "Investigations") },
+                { label: "Referred To", value: consultation.referred_to },
+            ];
+        case "radiology":
+            return [
+                ...base,
+                { label: "Investigation", value: extractSection(symptoms, "Investigations") || "See radiology request" },
+                { label: "Clinical Indication", value: extractSection(recommendations, "Investigations") },
+                { label: "Referred To", value: consultation.referred_to },
+            ];
+        case "pharmacy":
+            return [
+                ...base,
+                { label: "Prescriptions", value: consultation.prescriptions },
+                { label: "Drug Allergies", value: extractSection(symptoms, "Drug History") },
+                { label: "Referred To", value: consultation.referred_to },
+            ];
+        default:
+            return [
+                ...base,
+                { label: "Status", value: consultation.status },
+                { label: "Referred To", value: consultation.referred_to },
+            ];
+    }
+}
+
 // ─── Role access banner ────────────────────────────────────────────────────────
 
 function AccessBanner({ level }: { level: AccessLevel }) {
@@ -80,7 +146,7 @@ function AccessBanner({ level }: { level: AccessLevel }) {
     );
 }
 
-// ─── Latest badge ─────────────────────────────────────────────────────────────
+// ─── Latest badge ──────────────────────────────────────────────────────────────
 
 function LatestBadge() {
     return (
@@ -109,9 +175,10 @@ function DoctorConsultationCard({
     const diagnosis = consultation.diagnosis ?? "";
     const recommendations = consultation.recommendations ?? "";
     const prescriptions = consultation.prescriptions ?? "";
+    const doctor = getDoctorName(consultation);
 
-    const presentingComplaint = extractSection(symptoms, "Presenting Complaint") ||
-                                symptoms.split("\n\n")[0]?.replace("Presenting Complaint:", "").trim();
+    const presentingComplaint = getComplaint(consultation);
+    const assessment = getAssessment(consultation);
 
     return (
         <div className={`${fullWidth ? "w-full" : "min-w-[340px] max-w-[340px] flex-shrink-0 snap-start"} bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden ${
@@ -135,6 +202,11 @@ function DoctorConsultationCard({
                         <p className="text-xs text-gray-400 mt-0.5 pl-5">
                             {fmtTime(date)}{rel && <span className="text-gray-300"> · {rel}</span>}
                         </p>
+                        {doctor && (
+                            <p className="flex items-center gap-1 text-xs text-gray-500 mt-1 pl-5">
+                                <UserRound size={11} className="text-gray-400" /> Dr. {doctor}
+                            </p>
+                        )}
                         <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                             {isPaed && (
                                 <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
@@ -165,7 +237,7 @@ function DoctorConsultationCard({
                     </div>
                 </div>
 
-                {consultation.diagnosis && (
+                {assessment && (
                     <div className="flex items-start gap-2.5">
                         <div className="w-5 h-5 rounded-md bg-amber-50 flex items-center justify-center shrink-0 mt-0.5">
                             <Brain size={10} className="text-amber-500" />
@@ -173,10 +245,7 @@ function DoctorConsultationCard({
                         <div className="min-w-0">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Assessment</p>
                             <p className="text-xs text-gray-700 font-medium mt-0.5 line-clamp-2 leading-relaxed">
-                                {extractSection(recommendations, "Assessment") ||
-                                 extractSection(diagnosis, "Summary") ||
-                                 diagnosis.split("\n\n")[0]?.replace("General Examination:", "").trim().slice(0, 120) ||
-                                 <span className="italic text-gray-300">See full record</span>}
+                                {assessment}
                             </p>
                         </div>
                     </div>
@@ -241,49 +310,8 @@ function RestrictedConsultationCard({
 }) {
     const date = getDate(consultation);
     const rel = relativeDay(date);
-    const symptoms = consultation.symptoms ?? "";
-    const recommendations = consultation.recommendations ?? "";
 
-    const getVisibleFields = () => {
-        switch (accessLevel) {
-            case "nursing":
-                return [
-                    { label: "Date", value: `${fmt(date)} · ${fmtTime(date)}` },
-                    { label: "Referred To", value: consultation.referred_to },
-                    { label: "Status", value: consultation.status },
-                    { label: "Recommendations", value: extractSection(recommendations, "Recommendations") || consultation.recommendations?.slice(0, 200) },
-                ];
-            case "lab":
-                return [
-                    { label: "Date", value: `${fmt(date)} · ${fmtTime(date)}` },
-                    { label: "Test Requested", value: extractSection(symptoms, "Investigations") || "See lab request" },
-                    { label: "Clinical Notes", value: extractSection(recommendations, "Investigations") },
-                    { label: "Referred To", value: consultation.referred_to },
-                ];
-            case "radiology":
-                return [
-                    { label: "Date", value: `${fmt(date)} · ${fmtTime(date)}` },
-                    { label: "Investigation", value: extractSection(symptoms, "Investigations") || "See radiology request" },
-                    { label: "Clinical Indication", value: extractSection(recommendations, "Investigations") },
-                    { label: "Referred To", value: consultation.referred_to },
-                ];
-            case "pharmacy":
-                return [
-                    { label: "Date", value: `${fmt(date)} · ${fmtTime(date)}` },
-                    { label: "Prescriptions", value: consultation.prescriptions },
-                    { label: "Drug Allergies", value: extractSection(symptoms, "Drug History") },
-                    { label: "Referred To", value: consultation.referred_to },
-                ];
-            default:
-                return [
-                    { label: "Date", value: `${fmt(date)} · ${fmtTime(date)}` },
-                    { label: "Status", value: consultation.status },
-                    { label: "Referred To", value: consultation.referred_to },
-                ];
-        }
-    };
-
-    const fields = getVisibleFields().filter(f => f.value?.trim());
+    const fields = getVisibleFields(consultation, accessLevel).filter(f => f.value?.trim());
 
     const accentColors: Record<string, string> = {
         nursing: "border-teal-200 bg-teal-50/30",
@@ -322,6 +350,237 @@ function RestrictedConsultationCard({
     );
 }
 
+// ─── Results table view (default) ─────────────────────────────────────────────
+
+function ResultsTableView({
+    data, accessLevel, deletingId, onDelete, canDel,
+}: {
+    data: any[]; accessLevel: AccessLevel; deletingId: string | null;
+    onDelete: (id: string) => void; canDel: boolean;
+}) {
+    const [q, setQ] = useState("");
+    const [openId, setOpenId] = useState<string | null>(null);
+
+    const filtered = useMemo(() => {
+        const needle = q.trim().toLowerCase();
+        if (!needle) return data;
+        return data.filter((c) =>
+            [c.symptoms, c.diagnosis, c.recommendations, c.prescriptions, c.referred_to, getDoctorName(c)]
+                .filter(Boolean).join(" ").toLowerCase().includes(needle)
+        );
+    }, [data, q]);
+
+    if (!filtered.length && q) {
+        return (
+            <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
+                <Search size={18} className="mx-auto text-gray-300" />
+                <p className="mt-2 text-sm font-semibold text-gray-600">No consultations match “{q}”</p>
+                <button onClick={() => setQ("")} className="mt-2 text-xs font-bold text-blue-600 hover:underline">Clear search</button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/60 px-4 py-2.5">
+                <p className="text-xs font-bold text-gray-600">
+                    {filtered.length} {filtered.length === 1 ? "consultation" : "consultations"}
+                    {accessLevel !== "full" && <span className="text-gray-400"> · limited view</span>}
+                </p>
+                <div className="relative w-full sm:w-60">
+                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                        placeholder="Search complaints, diagnosis…"
+                        aria-label="Search consultations"
+                        className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-7 text-xs font-medium text-gray-700 outline-none placeholder:text-gray-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                    />
+                    {q && (
+                        <button onClick={() => setQ("")} aria-label="Clear search"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <X size={12} />
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-xs">
+                    <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50/80 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <th className="w-10 px-3 py-2.5">#</th>
+                            <th className="px-3 py-2.5">Date</th>
+                            <th className="px-3 py-2.5">Type</th>
+                            <th className="px-3 py-2.5">Complaint / Details</th>
+                            <th className="px-3 py-2.5">Assessment</th>
+                            <th className="px-3 py-2.5">Route</th>
+                            <th className="w-10 px-3 py-2.5" />
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {filtered.map((c: any, idx: number) => {
+                            const id = getId(c);
+                            const open = openId === id;
+                            const date = getDate(c);
+                            const rel = relativeDay(date);
+                            const isLatest = idx === 0 && !q;
+                            const isPaed = c.consultation_type === "paediatric" ||
+                                (c.symptoms ?? "").includes("Antenatal/Delivery History");
+                            const isFem = (c.symptoms ?? "").includes("LMP:");
+                            const doctor = getDoctorName(c);
+
+                            const complaint = getComplaint(c);
+                            const assessment = getAssessment(c);
+                            const restricted = accessLevel !== "full"
+                                ? getVisibleFields(c, accessLevel).filter(f => f.value?.trim())
+                                : null;
+
+                            const expandable = accessLevel === "full";
+
+                            return (
+                                <Fragment key={id}>
+                                    <tr
+                                        onClick={expandable ? () => setOpenId(open ? null : id) : undefined}
+                                        className={`align-top transition-colors ${
+                                            expandable ? "cursor-pointer" : "cursor-default"
+                                        } ${open ? "bg-blue-50/50" : isLatest ? "bg-red-50/40 hover:bg-red-50/70" : expandable ? "hover:bg-gray-50" : ""}`}
+                                    >
+                                        <td className="px-3 py-3 font-black text-gray-300">#{String(idx + 1).padStart(2, "0")}</td>
+                                        <td className="px-3 py-3">
+                                            <p className="font-bold text-gray-800">{fmt(date)}</p>
+                                            <p className="text-[10px] text-gray-400">{fmtTime(date)}{rel && <span> · {rel}</span>}</p>
+                                            {doctor && accessLevel === "full" && (
+                                                <p className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-gray-500">
+                                                    <UserRound size={10} className="text-gray-400" /> Dr. {doctor}
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-3">
+                                            <div className="flex flex-col items-start gap-1">
+                                                {isLatest && <LatestBadge />}
+                                                {isPaed && (
+                                                    <span className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-blue-600">
+                                                        <Baby size={9} /> Paediatric
+                                                    </span>
+                                                )}
+                                                {isFem && (
+                                                    <span className="inline-flex items-center gap-1 rounded-full border border-pink-100 bg-pink-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-pink-600">
+                                                        <Heart size={9} /> Obstetric
+                                                    </span>
+                                                )}
+                                                {!isLatest && !isPaed && !isFem && <span className="text-gray-300">—</span>}
+                                            </div>
+                                        </td>
+                                        <td className="max-w-[280px] px-3 py-3">
+                                            {restricted ? (
+                                                <div className="space-y-0.5">
+                                                    {restricted.map((f) => (
+                                                        <p key={f.label} className="leading-snug text-gray-600">
+                                                            <span className="font-bold text-gray-400">{f.label}:</span> {f.value}
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="line-clamp-2 font-medium leading-relaxed text-gray-700">
+                                                    {complaint || <span className="italic text-gray-300">Not provided</span>}
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td className="max-w-[240px] px-3 py-3">
+                                            {restricted ? (
+                                                <span className="text-gray-300">—</span>
+                                            ) : (
+                                                <p className="line-clamp-2 leading-relaxed text-gray-600">
+                                                    {assessment || <span className="italic text-gray-300">See full record</span>}
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-3">
+                                            {c.referred_to ? (
+                                                <span className="inline-flex items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-[10px] font-bold capitalize text-blue-700">
+                                                    <ArrowRight size={10} /> {c.referred_to}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-300">—</span>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-3">
+                                            {expandable && (
+                                                <ChevronDown size={15}
+                                                    className={`text-gray-400 transition-transform duration-200 ${open ? "rotate-180 text-blue-600" : ""}`} />
+                                            )}
+                                        </td>
+                                    </tr>
+
+                                    {open && (
+                                        <tr className="bg-blue-50/20">
+                                            <td colSpan={7} className="px-4 pb-4 pt-1">
+                                                {accessLevel === "full" ? (
+                                                    <div className="grid gap-3 md:grid-cols-2">
+                                                        {[
+                                                            { label: "History (A)", text: c.symptoms, icon: ClipboardList, color: "text-red-500", bg: "bg-red-50" },
+                                                            { label: "Examination (B+C)", text: c.diagnosis, icon: Activity, color: "text-blue-500", bg: "bg-blue-50" },
+                                                            { label: "Assessment / Mgmt (E+F)", text: c.recommendations, icon: Brain, color: "text-amber-500", bg: "bg-amber-50" },
+                                                            { label: "Treatment / Rx", text: c.prescriptions, icon: Pill, color: "text-violet-500", bg: "bg-violet-50" },
+                                                        ].map(({ label, text, icon: Icon, color, bg }) => text && (
+                                                            <div key={label} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                                                                <div className="mb-1.5 flex items-center gap-1.5">
+                                                                    <div className={`flex h-5 w-5 items-center justify-center rounded-md ${bg}`}>
+                                                                        <Icon size={11} className={color} />
+                                                                    </div>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</p>
+                                                                </div>
+                                                                <pre className="whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-gray-700">{text}</pre>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-xs text-amber-700">
+                                                        Full clinical notes are restricted to your role.
+                                                    </p>
+                                                )}
+
+                                                <div className="mt-3 flex flex-wrap items-center gap-3">
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Meta</span>
+                                                    {doctor && accessLevel === "full" && (
+                                                        <span className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-gray-600">
+                                                            <UserRound size={10} className="text-gray-400" /> Dr. {doctor}
+                                                        </span>
+                                                    )}
+                                                    <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-semibold capitalize text-gray-600">
+                                                        {c.status ?? "—"}
+                                                    </span>
+                                                    {c.referred_to && (
+                                                        <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold capitalize text-blue-700">
+                                                            → {c.referred_to}
+                                                        </span>
+                                                    )}
+                                                    {canDel && (
+                                                        <button
+                                                            onClick={() => onDelete(id)}
+                                                            disabled={deletingId === id}
+                                                            className="ml-auto flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50"
+                                                        >
+                                                            {deletingId === id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                                                            Delete
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </Fragment>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ConsultationHistoryTable({ patientId }: { patientId: string }) {
@@ -329,7 +588,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
     const queryClient = useQueryClient();
     const carouselRef = useRef<HTMLDivElement>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<ViewMode>("carousel");
+    const [viewMode, setViewMode] = useState<ViewMode>("results");
     const accessLevel = getAccessLevel(user?.role);
 
     const { data: rawData, isPending, isError } = useQuery({
@@ -425,13 +684,22 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                 <div className="flex items-center gap-1.5">
                     {/* View mode toggle */}
                     <div className="flex bg-gray-100 rounded-xl p-0.5 gap-0.5">
-                        <button onClick={() => setViewMode("carousel")}
+                        <button onClick={() => setViewMode("results")}
+                            title="Results — tabular list with expandable rows"
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                                viewMode === "carousel" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                viewMode === "results" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
                             }`}>
-                            <GalleryHorizontal size={12} /> Carousel
+                            <Table2 size={12} /> Results
+                        </button>
+                        <button onClick={() => setViewMode("cards")}
+                            title="Cards — swipeable card carousel"
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                viewMode === "cards" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                            }`}>
+                            <GalleryHorizontal size={12} /> Cards
                         </button>
                         <button onClick={() => setViewMode("timeline")}
+                            title="Timeline — vertical chronological view"
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                                 viewMode === "timeline" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
                             }`}>
@@ -439,7 +707,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                         </button>
                     </div>
 
-                    {viewMode === "carousel" && data.length > 1 && (
+                    {viewMode === "cards" && data.length > 1 && (
                         <>
                             <button onClick={() => scroll("left")} className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors shadow-sm">
                                 <ChevronLeft size={15} />
@@ -454,8 +722,19 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
 
             <AccessBanner level={accessLevel} />
 
-            {/* Carousel view */}
-            {viewMode === "carousel" && (
+            {/* Results view (default) */}
+            {viewMode === "results" && (
+                <ResultsTableView
+                    data={data}
+                    accessLevel={accessLevel}
+                    deletingId={deletingId}
+                    onDelete={handleDelete}
+                    canDel={false}
+                />
+            )}
+
+            {/* Cards view */}
+            {viewMode === "cards" && (
                 <div ref={carouselRef} className="flex gap-4 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory scrollbar-hide">
                     {data.map((c: any, idx: number) =>
                         accessLevel === "full" ? (

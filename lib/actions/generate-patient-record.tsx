@@ -83,6 +83,35 @@ function naira(kobo: number): string {
     });
 }
 
+// ─── Formatting helpers ───────────────────────────────────────────────────────
+
+function fmtDate(v?: string): string {
+    if (!v) return "—";
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return v;
+    return d.toLocaleDateString("en-GB");
+}
+
+function fmtDateTime(v?: string): string {
+    if (!v) return "—";
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return v;
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** Pulls a labelled block out of the free-text consultation sections. */
+function extractLabeledSection(text: string, label: string): string {
+    if (!text) return "";
+    const regex = new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n\\n[A-Z]|$)`, "i");
+    const match = text.match(regex);
+    return match?.[1]?.trim() ?? "";
+}
+
+function firstBlock(text?: string): string {
+    return (text ?? "").split("\n\n")[0]?.trim() ?? "";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  PDF DOCUMENT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -135,27 +164,29 @@ const S = StyleSheet.create({
     patientGrid:   { flexDirection: "row", flexWrap: "wrap", padding: 8 },
     patientField:  { width: "33.33%", paddingRight: 6, marginBottom: 7 },
     fieldLabel:    { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.muted, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 2 },
-    fieldValue:    { fontSize: 8.5, color: C.text },
+    fieldValue:    { fontSize: 8.5, color: C.text, lineHeight: 1.4 },
 
     // Section
     sectionRow:    { flexDirection: "row", alignItems: "center", marginBottom: 7, marginTop: 14 },
     sectionBar:    { width: 3.5, height: 14, borderRadius: 2, marginRight: 7 },
     sectionTitle:  { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: C.primary, textTransform: "uppercase", letterSpacing: 0.5 },
 
-    // Table
+    // Table — every column gets an explicit percentage width so long values
+    // wrap inside their column and rows stay aligned like a proper table.
     table:         { borderRadius: 4, border: `1pt solid ${C.border}`, overflow: "hidden", marginBottom: 6 },
     tHdrRow:       { flexDirection: "row", backgroundColor: C.primary, paddingVertical: 5, paddingHorizontal: 6 },
     tHdrCell:      { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.white },
     tRow:          { flexDirection: "row", paddingVertical: 4, paddingHorizontal: 6, borderBottom: `0.5pt solid ${C.border}` },
     tRowAlt:       { backgroundColor: "#F9FAFB" },
-    tCell:         { fontSize: 8, color: C.text, paddingRight: 4 },
+    tCell:         { fontSize: 8, color: C.text, lineHeight: 1.45 },
+    tFootRow:      { flexDirection: "row", paddingVertical: 5, paddingHorizontal: 6, backgroundColor: "#EDF2F7", borderTop: `1pt solid ${C.border}` },
     noData:        { fontSize: 8, color: C.muted, fontStyle: "italic", padding: 8, textAlign: "center" },
 
     // KV pairs
     kvGrid:  { flexDirection: "row", flexWrap: "wrap", border: `1pt solid ${C.border}`, borderRadius: 4, overflow: "hidden", marginBottom: 6 },
     kvItem:  { width: "50%", padding: 7, borderBottom: `0.5pt solid ${C.border}` },
     kvLabel: { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.muted, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 2 },
-    kvValue: { fontSize: 8.5, color: C.text },
+    kvValue: { fontSize: 8.5, color: C.text, lineHeight: 1.45 },
 
     // Stamp
     stampSection: { marginTop: 24, borderTop: `1pt solid ${C.border}`, paddingTop: 16 },
@@ -174,7 +205,7 @@ const S = StyleSheet.create({
     footerConfidential: { fontSize: 7, color: C.danger, fontFamily: "Helvetica-Bold" },
 });
 
-// ── PDF sub-components ────────────────────────────────────────────────────────
+// ─── PDF sub-components ────────────────────────────────────────────────────────
 
 function PDFHeader({ logoBase64 }: { logoBase64: string | null }) {
     return (
@@ -194,16 +225,21 @@ function PDFHeader({ logoBase64 }: { logoBase64: string | null }) {
     );
 }
 
-function PatientCard({ patient }: { patient: any }) {
+function PatientCard({ patient, allergies }: { patient: any; allergies: string }) {
+    const allergyValue = [allergies, patient.allergies]
+        .map((v) => (v ?? "").trim())
+        .filter(Boolean)
+        .join(" · ") || "None known";
+
     const fields = [
         { label: "Patient ID",   value: patient.id },
         { label: "Gender",       value: patient.gender },
-        { label: "Date of Birth",value: patient.birth_date ? new Date(patient.birth_date).toLocaleDateString("en-GB") : "—" },
+        { label: "Date of Birth",value: patient.birth_date ? fmtDate(patient.birth_date) : "—" },
         { label: "Blood Group",  value: patient.blood_group  || "—" },
         { label: "Genotype",     value: patient.geno_type    || "—" },
         { label: "Phone",        value: patient.phone        || "—" },
         { label: "Address",      value: patient.address      || "—" },
-        { label: "Allergies",    value: patient.allergies    || "None known" },
+        { label: "Allergies",    value: allergyValue },
         { label: "HMO",          value: patient.hmo ? (patient.hmo_name || "Yes") : "No" },
     ];
     return (
@@ -226,23 +262,48 @@ function PatientCard({ patient }: { patient: any }) {
     );
 }
 
-interface ColDef { header: string; key: string; flex: number }
+// Column definitions: each column has an explicit percentage width so the
+// table renders as a proper aligned grid and long text wraps inside its cell.
+interface ColDef { header: string; key: string; w: number; align?: "left" | "center" | "right" }
 
-function DataTable({ columns, rows }: { columns: ColDef[]; rows: Record<string, any>[] }) {
+function DataTable({
+    columns, rows, footer,
+}: {
+    columns: ColDef[];
+    rows: Record<string, any>[];
+    footer?: Record<string, any>[];
+}) {
     if (!rows.length) return <Text style={S.noData}>No records found.</Text>;
+
+    const alignStyle = (a?: ColDef["align"]): { textAlign: "left" | "center" | "right" } =>
+        ({ textAlign: a ?? "left" });
+
     return (
         <View style={S.table}>
             <View style={S.tHdrRow}>
                 {columns.map((c) => (
-                    <Text key={c.key} style={[S.tHdrCell, { flex: c.flex }]}>{c.header}</Text>
+                    <View key={c.key} style={{ width: `${c.w}%`, paddingRight: 5 }}>
+                        <Text style={[S.tHdrCell, alignStyle(c.align)]}>{c.header}</Text>
+                    </View>
                 ))}
             </View>
             {rows.map((row, i) => (
-                <View key={i} style={[S.tRow, i % 2 === 1 ? S.tRowAlt : {}]}>
+                <View key={i} style={[S.tRow, i % 2 === 1 ? S.tRowAlt : {}]} wrap={false}>
                     {columns.map((c) => (
-                        <Text key={c.key} style={[S.tCell, { flex: c.flex }]}>
-                            {String(row[c.key] ?? "—")}
-                        </Text>
+                        <View key={c.key} style={{ width: `${c.w}%`, paddingRight: 5 }}>
+                            <Text style={[S.tCell, alignStyle(c.align)]}>{String(row[c.key] ?? "—")}</Text>
+                        </View>
+                    ))}
+                </View>
+            ))}
+            {footer?.map((frow, i) => (
+                <View key={`f${i}`} style={S.tFootRow}>
+                    {columns.map((c) => (
+                        <View key={c.key} style={{ width: `${c.w}%`, paddingRight: 5 }}>
+                            <Text style={[S.tCell, { fontFamily: "Helvetica-Bold" }, alignStyle(c.align)]}>
+                                {String(frow[c.key] ?? "")}
+                            </Text>
+                        </View>
                     ))}
                 </View>
             ))}
@@ -290,12 +351,13 @@ function StampBlock() {
     );
 }
 
-// ── Main PDF document ─────────────────────────────────────────────────────────
+// ─── Main PDF document ─────────────────────────────────────────────────────────
 
 interface DocProps {
     patient:      any;
     sections:     RecordSection[];
     data:         Record<string, any[]>;
+    allergies:    string;
     includeStamp: boolean;
     logoBase64:   string | null;
     dateFrom:     string;
@@ -304,12 +366,30 @@ interface DocProps {
 }
 
 function PatientRecordPDF({
-    patient, sections, data, includeStamp,
+    patient, sections, data, allergies, includeStamp,
     logoBase64, dateFrom, dateTo, generatedAt,
 }: DocProps) {
     const dateRange = dateFrom || dateTo
         ? `${dateFrom || "start"} → ${dateTo || "today"}`
         : "All records";
+
+    // Fluid totals (shared between the table and its footer row)
+    const fluidTotals = (() => {
+        const rows = data.fluid_balance ?? [];
+        const inTotal = rows.reduce((acc, f) =>
+            acc + (f.oral_ml || 0) + (f.iv_ml || 0) + (f.ng_ml || 0) + (f.other_input_ml || 0), 0);
+        const outTotal = rows.reduce((acc, f) =>
+            acc + (f.urine_ml || 0) + (f.aspirate_ml || 0) + (f.vomit_ml || 0) + (f.bowel_ml || 0) + (f.drain_ml || 0) + (f.other_output_ml || 0), 0);
+        return { inTotal, outTotal, balance: inTotal - outTotal };
+    })();
+
+    const paymentTotals = (() => {
+        const rows = data.payments ?? [];
+        return {
+            billed: rows.reduce((acc, p) => acc + (p.amount_kobo ?? 0), 0),
+            paid:   rows.reduce((acc, p) => acc + (p.amount_paid_kobo ?? 0), 0),
+        };
+    })();
 
     return (
         <Document>
@@ -336,21 +416,21 @@ function PatientRecordPDF({
                     </View>
                 </View>
 
-                <PatientCard patient={patient} />
+                <PatientCard patient={patient} allergies={allergies} />
 
                 {/* ── Vitals / Nursing ── */}
                 {sections.includes("vitals") && (
                     <Section title="Vital Signs & Nursing Observations" color={C.sky}>
                         <DataTable
                             columns={[
-                                { header: "Date",        key: "date",        flex: 1.5 },
-                                { header: "Type",        key: "type",        flex: 1.5 },
-                                { header: "Details",     key: "description", flex: 4   },
-                                { header: "Nurse",       key: "nurse",       flex: 2   },
-                                { header: "Status",      key: "status",      flex: 1   },
+                                { header: "Date & Time", key: "date",        w: 16 },
+                                { header: "Type",        key: "type",        w: 12 },
+                                { header: "Details",     key: "description", w: 44 },
+                                { header: "Nurse",       key: "nurse",       w: 16 },
+                                { header: "Status",      key: "status",      w: 12, align: "center" },
                             ]}
                             rows={(data.vitals ?? []).map((v: any) => ({
-                                date:        v.created_at ? new Date(v.created_at).toLocaleDateString("en-GB") : "—",
+                                date:        fmtDateTime(v.created_at),
                                 type:        v.action_type ?? "Vitals",
                                 description: v.description ?? "—",
                                 nurse:       v.assigned_nurse ?? v.completed_by ?? "—",
@@ -360,22 +440,28 @@ function PatientRecordPDF({
                     </Section>
                 )}
 
-                {/* ── Consultations ── */}
+                {/* ── Consultations — structured rows for every part of the note ── */}
                 {sections.includes("consultations") && (
                     <Section title="Consultation History" color={C.danger}>
                         <DataTable
                             columns={[
-                                { header: "Date",        key: "date",       flex: 1.5 },
-                                { header: "Doctor",      key: "doctor",     flex: 2   },
-                                { header: "Diagnosis",   key: "diagnosis",  flex: 3   },
-                                { header: "Management",  key: "management", flex: 3   },
-                                { header: "Referred To", key: "referred",   flex: 1.5 },
+                                { header: "Date & Time",      key: "date",       w: 13 },
+                                { header: "Doctor",           key: "doctor",     w: 13 },
+                                { header: "Presenting Complaint", key: "complaint",  w: 22 },
+                                { header: "Assessment / Diagnosis", key: "diagnosis",  w: 20 },
+                                { header: "Management Plan",  key: "management", w: 20 },
+                                { header: "Referred To",      key: "referred",   w: 12, align: "center" },
                             ]}
                             rows={(data.consultations ?? []).map((c: any) => ({
-                                date:       c.created_at ? new Date(c.created_at).toLocaleDateString("en-GB") : "—",
+                                date:       fmtDateTime(c.created_at),
                                 doctor:     c.staffs?.name ?? "—",
-                                diagnosis:  c.diagnosis  ?? c.presenting_complaint ?? "—",
-                                management: c.management ?? c.plan ?? "—",
+                                complaint:  extractLabeledSection(c.symptoms ?? "", "Presenting Complaint") ||
+                                            firstBlock(c.symptoms)?.replace("Presenting Complaint:", "").trim() || "—",
+                                diagnosis:  extractLabeledSection(c.recommendations ?? "", "Assessment") ||
+                                            extractLabeledSection(c.diagnosis ?? "", "Summary") ||
+                                            firstBlock(c.diagnosis)?.replace("General Examination:", "").trim() || "—",
+                                management: extractLabeledSection(c.recommendations ?? "", "Recommendations") ||
+                                            firstBlock(c.recommendations) || "—",
                                 referred:   c.referred_to ?? "—",
                             }))}
                         />
@@ -387,14 +473,14 @@ function PatientRecordPDF({
                     <Section title="Prescriptions & Medications" color={C.teal}>
                         <DataTable
                             columns={[
-                                { header: "Date",     key: "date",     flex: 1.5 },
-                                { header: "Drug",     key: "drug",     flex: 2.5 },
-                                { header: "Dosage",   key: "dose",     flex: 1.5 },
-                                { header: "Duration", key: "duration", flex: 1.5 },
-                                { header: "Status",   key: "status",   flex: 1   },
+                                { header: "Date",     key: "date",     w: 15 },
+                                { header: "Drug",     key: "drug",     w: 30 },
+                                { header: "Dosage",   key: "dose",     w: 20 },
+                                { header: "Duration", key: "duration", w: 15 },
+                                { header: "Status",   key: "status",   w: 20, align: "center" },
                             ]}
                             rows={(data.prescriptions ?? []).map((p: any) => ({
-                                date:     p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB") : "—",
+                                date:     fmtDate(p.created_at),
                                 drug:     p.drug_name ?? "—",
                                 dose:     p.dosage ?? "—",
                                 duration: p.duration ?? "—",
@@ -409,13 +495,13 @@ function PatientRecordPDF({
                     <Section title="Laboratory Results" color={C.indigo}>
                         <DataTable
                             columns={[
-                                { header: "Date",         key: "date",   flex: 1.5 },
-                                { header: "Test",         key: "test",   flex: 3   },
-                                { header: "Status",       key: "status", flex: 1.5 },
-                                { header: "Result",       key: "result", flex: 3.5 },
+                                { header: "Date",         key: "date",   w: 15 },
+                                { header: "Test",         key: "test",   w: 35 },
+                                { header: "Status",       key: "status", w: 15, align: "center" },
+                                { header: "Result",       key: "result", w: 35 },
                             ]}
                             rows={(data.lab_results ?? []).map((l: any) => ({
-                                date:   l.created_at ? new Date(l.created_at).toLocaleDateString("en-GB") : "—",
+                                date:   fmtDate(l.created_at),
                                 test:   l.test_type ?? "—",
                                 status: l.status ?? "—",
                                 result: l.result ?? l.result_value ?? (l.status === "completed" ? "Completed" : "Pending"),
@@ -429,13 +515,13 @@ function PatientRecordPDF({
                     <Section title="Radiology Reports" color={C.cyan}>
                         <DataTable
                             columns={[
-                                { header: "Date",   key: "date",   flex: 1.5 },
-                                { header: "Study",  key: "study",  flex: 3   },
-                                { header: "Status", key: "status", flex: 1.5 },
-                                { header: "Report", key: "report", flex: 4   },
+                                { header: "Date",   key: "date",   w: 15 },
+                                { header: "Study",  key: "study",  w: 30 },
+                                { header: "Status", key: "status", w: 15, align: "center" },
+                                { header: "Report", key: "report", w: 40 },
                             ]}
                             rows={(data.radiology ?? []).map((r: any) => ({
-                                date:   r.created_at ? new Date(r.created_at).toLocaleDateString("en-GB") : "—",
+                                date:   fmtDate(r.created_at),
                                 study:  String(r.test_type ?? "").replace("[RADIOLOGY]", "").trim(),
                                 status: r.status ?? "—",
                                 report: r.result ?? r.radiologist_notes ?? (r.status === "completed" ? "Completed" : "Pending"),
@@ -449,23 +535,29 @@ function PatientRecordPDF({
                     <Section title="Inpatient Drug Administration Chart" color={C.teal}>
                         <DataTable
                             columns={[
-                                { header: "Drug",      key: "drug",  flex: 2.5 },
-                                { header: "Dose",      key: "dose",  flex: 1.5 },
-                                { header: "Route",     key: "route", flex: 1   },
-                                { header: "Frequency", key: "freq",  flex: 1   },
-                                { header: "Start",     key: "start", flex: 1.5 },
-                                { header: "End",       key: "end",   flex: 1.5 },
-                                { header: "Status",    key: "active",flex: 1   },
+                                { header: "Drug",      key: "drug",  w: 22 },
+                                { header: "Dose",      key: "dose",  w: 13 },
+                                { header: "Route",     key: "route", w: 10 },
+                                { header: "Frequency", key: "freq",  w: 10 },
+                                { header: "Start",     key: "start", w: 13 },
+                                { header: "End",       key: "end",   w: 13 },
+                                { header: "Given",     key: "given", w: 11, align: "center" },
+                                { header: "Status",    key: "active",w: 8,  align: "center" },
                             ]}
-                            rows={(data.drug_chart ?? []).map((d: any) => ({
-                                drug:   `${d.drug_name}${d.generic_name ? ` (${d.generic_name})` : ""}`,
-                                dose:   d.dose      ?? "—",
-                                route:  d.route     ?? "—",
-                                freq:   d.frequency ?? "—",
-                                start:  d.start_date ?? "—",
-                                end:    d.end_date   ?? "—",
-                                active: d.is_active ? "Active" : "D/C",
-                            }))}
+                            rows={(data.drug_chart ?? []).map((d: any) => {
+                                const admins = d.drug_administration_records ?? [];
+                                const given = admins.filter((r: any) => r.status === "given").length;
+                                return {
+                                    drug:   `${d.drug_name}${d.generic_name ? ` (${d.generic_name})` : ""}`,
+                                    dose:   d.dose      ?? "—",
+                                    route:  d.route     ?? "—",
+                                    freq:   d.frequency ?? "—",
+                                    start:  fmtDate(d.start_date),
+                                    end:    d.end_date ? fmtDate(d.end_date) : "Ongoing",
+                                    given:  admins.length ? `${given}/${admins.length}` : "—",
+                                    active: d.is_active ? "Active" : "D/C",
+                                };
+                            })}
                         />
                     </Section>
                 )}
@@ -475,32 +567,38 @@ function PatientRecordPDF({
                     <Section title="Fluid Balance Chart" color={C.sky}>
                         <DataTable
                             columns={[
-                                { header: "Date",    key: "date",    flex: 1.5 },
-                                { header: "Time",    key: "time",    flex: 1   },
-                                { header: "Oral",    key: "oral",    flex: 0.8 },
-                                { header: "IV",      key: "iv",      flex: 0.8 },
-                                { header: "Urine",   key: "urine",   flex: 0.8 },
-                                { header: "Vomit",   key: "vomit",   flex: 0.8 },
-                                { header: "Drain",   key: "drain",   flex: 0.8 },
-                                { header: "Balance", key: "balance", flex: 1.2 },
-                                { header: "Signed",  key: "signed",  flex: 1.5 },
+                                { header: "Date",         key: "date",    w: 12 },
+                                { header: "Time",         key: "time",    w: 8,  align: "center" },
+                                { header: "Fluid / Solution", key: "fluid",w: 26 },
+                                { header: "Intake (mL)",  key: "in",      w: 12, align: "right" },
+                                { header: "Output (mL)",  key: "out",     w: 12, align: "right" },
+                                { header: "Balance",      key: "balance", w: 12, align: "right" },
+                                { header: "Notes",        key: "notes",   w: 12 },
+                                { header: "Signed By",    key: "signed",  w: 6 },
                             ]}
                             rows={(data.fluid_balance ?? []).map((f: any) => {
-                                const totalIn  = (f.oral_ml || 0) + (f.iv_ml || 0) + (f.ng_ml || 0) + (f.other_input_ml || 0);
-                                const totalOut = (f.urine_ml || 0) + (f.aspirate_ml || 0) + (f.vomit_ml || 0) + (f.bowel_ml || 0) + (f.drain_ml || 0) + (f.other_output_ml || 0);
-                                const bal      = totalIn - totalOut;
+                                const inTotal  = (f.oral_ml || 0) + (f.iv_ml || 0) + (f.ng_ml || 0) + (f.other_input_ml || 0);
+                                const outTotal = (f.urine_ml || 0) + (f.aspirate_ml || 0) + (f.vomit_ml || 0) + (f.bowel_ml || 0) + (f.drain_ml || 0) + (f.other_output_ml || 0);
+                                const bal = inTotal - outTotal;
                                 return {
                                     date:    f.record_date ?? "—",
-                                    time:    (f.record_time ?? "").slice(0, 5),
-                                    oral:    f.oral_ml  || 0,
-                                    iv:      f.iv_ml    || 0,
-                                    urine:   f.urine_ml || 0,
-                                    vomit:   f.vomit_ml || 0,
-                                    drain:   f.drain_ml || 0,
+                                    time:    (f.record_time ?? "").slice(0, 5) || "—",
+                                    fluid:   f.input_fluid_type ?? f.other_input_type ?? "—",
+                                    in:      inTotal,
+                                    out:     outTotal,
                                     balance: `${bal >= 0 ? "+" : ""}${bal} mL`,
+                                    notes:   f.notes ?? "—",
                                     signed:  f.signed_by ?? "—",
                                 };
                             })}
+                            footer={[
+                                {
+                                    date: "Totals", time: "", fluid: "",
+                                    in: fluidTotals.inTotal, out: fluidTotals.outTotal,
+                                    balance: `${fluidTotals.balance >= 0 ? "+" : ""}${fluidTotals.balance} mL`,
+                                    notes: "", signed: "",
+                                },
+                            ]}
                         />
                     </Section>
                 )}
@@ -522,7 +620,7 @@ function PatientRecordPDF({
                                 { label: "Diet Instructions",         value: d.diet_instructions },
                                 { label: "Emergency Return Criteria", value: d.emergency_return_criteria },
                                 { label: "Discharged By",             value: d.staffs?.name ?? d.discharged_by },
-                                { label: "Discharge Date",            value: d.created_at ? new Date(d.created_at).toLocaleDateString("en-GB") : "—" },
+                                { label: "Discharge Date",            value: d.created_at ? fmtDate(d.created_at) : "—" },
                             ]} />
                         </Section>
                     );
@@ -533,21 +631,31 @@ function PatientRecordPDF({
                     <Section title="Payment History" color={C.amber}>
                         <DataTable
                             columns={[
-                                { header: "Date",        key: "date",   flex: 1.5 },
-                                { header: "Description", key: "desc",   flex: 3   },
-                                { header: "Category",    key: "cat",    flex: 1.5 },
-                                { header: "Billed (₦)",  key: "billed", flex: 1.5 },
-                                { header: "Paid (₦)",    key: "paid",   flex: 1.5 },
-                                { header: "Status",      key: "status", flex: 1   },
+                                { header: "Date",        key: "date",   w: 13 },
+                                { header: "Description", key: "desc",   w: 28 },
+                                { header: "Category",    key: "cat",    w: 12 },
+                                { header: "Billed (₦)",  key: "billed", w: 13, align: "right" },
+                                { header: "Paid (₦)",    key: "paid",   w: 13, align: "right" },
+                                { header: "Method",      key: "method", w: 11, align: "center" },
+                                { header: "Status",      key: "status", w: 10, align: "center" },
                             ]}
                             rows={(data.payments ?? []).map((p: any) => ({
-                                date:   p.payment_date ? new Date(p.payment_date).toLocaleDateString("en-GB") : "—",
+                                date:   p.payment_date ? fmtDate(p.payment_date) : "—",
                                 desc:   p.description ?? "—",
                                 cat:    p.category    ?? "—",
                                 billed: naira(p.amount_kobo      ?? 0),
                                 paid:   naira(p.amount_paid_kobo ?? 0),
+                                method: p.method ?? p.payment_method ?? "—",
                                 status: p.status ?? "—",
                             }))}
+                            footer={[
+                                {
+                                    date: "Totals", desc: "", cat: "",
+                                    billed: naira(paymentTotals.billed),
+                                    paid:   naira(paymentTotals.paid),
+                                    method: "", status: "",
+                                },
+                            ]}
                         />
                     </Section>
                 )}
@@ -566,6 +674,7 @@ function buildPrintHTML(
     patient:      any,
     sections:     RecordSection[],
     data:         Record<string, any[]>,
+    allergies:    string,
     includeStamp: boolean,
     generatedAt:  string,
     dateFrom:     string,
@@ -575,26 +684,50 @@ function buildPrintHTML(
         ? `${dateFrom || "start"} → ${dateTo || "today"}`
         : "All records";
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
+    // ── Escaping helpers (PHI must never break the HTML document) ────────────
+    function esc(v: any): string {
+        return String(v ?? "—")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+    function escNL(v: any): string {
+        return esc(v).replace(/\n/g, "<br/>");
+    }
 
-    function tbl(cols: { h: string; k: string }[], rows: Record<string, any>[]): string {
+    // ── Table helper: explicit column widths, zebra rows, optional totals ────
+    function tbl(
+        cols: { h: string; k: string; w: number; align?: "left" | "center" | "right" }[],
+        rows: Record<string, any>[],
+        footer?: Record<string, any>[],
+    ): string {
         if (!rows.length) return `<p class="no-data">No records found.</p>`;
-        return `
-        <table>
-          <thead><tr>${cols.map(c => `<th>${c.h}</th>`).join("")}</tr></thead>
-          <tbody>${rows.map(r => `<tr>${cols.map(c => `<td>${r[c.k] ?? "—"}</td>`).join("")}</tr>`).join("")}</tbody>
-        </table>`;
+        const colgroup = `<colgroup>${cols.map(c => `<col style="width:${c.w}%">`).join("")}</colgroup>`;
+        const thead = `<thead><tr>${cols.map(c =>
+            `<th style="text-align:${c.align ?? "left"}">${esc(c.h)}</th>`).join("")}</tr></thead>`;
+        const tbody = `<tbody>${rows.map(r =>
+            `<tr>${cols.map(c =>
+                `<td style="text-align:${c.align ?? "left"}">${escNL(r[c.k])}</td>`).join("")}</tr>`
+        ).join("")}</tbody>`;
+        const tfoot = footer?.length
+            ? `<tfoot>${footer.map(f =>
+                `<tr>${cols.map(c =>
+                    `<td style="text-align:${c.align ?? "left"};font-weight:700">${escNL(f[c.k])}</td>`).join("")}</tr>`
+            ).join("")}</tfoot>`
+            : "";
+        return `<table>${colgroup}${thead}${tbody}${tfoot}</table>`;
     }
 
     function kvGrid(pairs: { label: string; value: any }[]): string {
         return `<div class="kv-grid">${pairs.map(p =>
-            `<div class="kv-item"><div class="kv-label">${p.label}</div><div class="kv-value">${p.value ?? "—"}</div></div>`
+            `<div class="kv-item"><div class="kv-label">${esc(p.label)}</div><div class="kv-value">${escNL(p.value)}</div></div>`
         ).join("")}</div>`;
     }
 
     function sec(title: string, color: string, body: string): string {
         return `<div class="section">
-          <div class="sec-hdr" style="border-left-color:${color}"><h2>${title}</h2></div>
+          <div class="sec-hdr" style="border-left-color:${color}"><h2>${esc(title)}</h2></div>
           ${body}
         </div>`;
     }
@@ -602,9 +735,15 @@ function buildPrintHTML(
     // ── Section bodies ─────────────────────────────────────────────────────────
 
     const vitals = !sections.includes("vitals") ? "" : sec("Vital Signs & Nursing Observations", C.sky, tbl(
-        [{ h: "Date", k: "date" }, { h: "Type", k: "type" }, { h: "Details", k: "description" }, { h: "Nurse", k: "nurse" }, { h: "Status", k: "status" }],
+        [
+            { h: "Date & Time", k: "date", w: 16 },
+            { h: "Type", k: "type", w: 12 },
+            { h: "Details", k: "description", w: 44 },
+            { h: "Nurse", k: "nurse", w: 16 },
+            { h: "Status", k: "status", w: 12, align: "center" },
+        ],
         (data.vitals ?? []).map((v: any) => ({
-            date:        v.created_at ? new Date(v.created_at).toLocaleDateString("en-GB") : "—",
+            date:        fmtDateTime(v.created_at),
             type:        v.action_type ?? "Vitals",
             description: v.description ?? "—",
             nurse:       v.assigned_nurse ?? v.completed_by ?? "—",
@@ -613,20 +752,38 @@ function buildPrintHTML(
     ));
 
     const consultations = !sections.includes("consultations") ? "" : sec("Consultation History", C.danger, tbl(
-        [{ h: "Date", k: "date" }, { h: "Doctor", k: "doctor" }, { h: "Diagnosis", k: "diagnosis" }, { h: "Management", k: "management" }, { h: "Referred To", k: "referred" }],
+        [
+            { h: "Date & Time", k: "date", w: 13 },
+            { h: "Doctor", k: "doctor", w: 13 },
+            { h: "Presenting Complaint", k: "complaint", w: 22 },
+            { h: "Assessment / Diagnosis", k: "diagnosis", w: 20 },
+            { h: "Management Plan", k: "management", w: 20 },
+            { h: "Referred To", k: "referred", w: 12, align: "center" },
+        ],
         (data.consultations ?? []).map((c: any) => ({
-            date:       c.created_at ? new Date(c.created_at).toLocaleDateString("en-GB") : "—",
+            date:       fmtDateTime(c.created_at),
             doctor:     c.staffs?.name ?? "—",
-            diagnosis:  c.diagnosis  ?? c.presenting_complaint ?? "—",
-            management: c.management ?? c.plan ?? "—",
+            complaint:  extractLabeledSection(c.symptoms ?? "", "Presenting Complaint") ||
+                        firstBlock(c.symptoms)?.replace("Presenting Complaint:", "").trim() || "—",
+            diagnosis:  extractLabeledSection(c.recommendations ?? "", "Assessment") ||
+                        extractLabeledSection(c.diagnosis ?? "", "Summary") ||
+                        firstBlock(c.diagnosis)?.replace("General Examination:", "").trim() || "—",
+            management: extractLabeledSection(c.recommendations ?? "", "Recommendations") ||
+                        firstBlock(c.recommendations) || "—",
             referred:   c.referred_to ?? "—",
         }))
     ));
 
     const prescriptions = !(sections.includes("prescriptions") || sections.includes("drug_chart")) ? "" : sec("Prescriptions & Medications", C.teal, tbl(
-        [{ h: "Date", k: "date" }, { h: "Drug", k: "drug" }, { h: "Dosage", k: "dose" }, { h: "Duration", k: "duration" }, { h: "Status", k: "status" }],
+        [
+            { h: "Date", k: "date", w: 15 },
+            { h: "Drug", k: "drug", w: 30 },
+            { h: "Dosage", k: "dose", w: 20 },
+            { h: "Duration", k: "duration", w: 15 },
+            { h: "Status", k: "status", w: 20, align: "center" },
+        ],
         (data.prescriptions ?? []).map((p: any) => ({
-            date:     p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB") : "—",
+            date:     fmtDate(p.created_at),
             drug:     p.drug_name ?? "—",
             dose:     p.dosage ?? "—",
             duration: p.duration ?? "—",
@@ -635,9 +792,14 @@ function buildPrintHTML(
     ));
 
     const labResults = !sections.includes("lab_results") ? "" : sec("Laboratory Results", C.indigo, tbl(
-        [{ h: "Date", k: "date" }, { h: "Test", k: "test" }, { h: "Status", k: "status" }, { h: "Result", k: "result" }],
+        [
+            { h: "Date", k: "date", w: 15 },
+            { h: "Test", k: "test", w: 35 },
+            { h: "Status", k: "status", w: 15, align: "center" },
+            { h: "Result", k: "result", w: 35 },
+        ],
         (data.lab_results ?? []).map((l: any) => ({
-            date:   l.created_at ? new Date(l.created_at).toLocaleDateString("en-GB") : "—",
+            date:   fmtDate(l.created_at),
             test:   l.test_type ?? "—",
             status: l.status    ?? "—",
             result: l.result ?? l.result_value ?? (l.status === "completed" ? "Completed" : "Pending"),
@@ -645,9 +807,14 @@ function buildPrintHTML(
     ));
 
     const radiology = !sections.includes("radiology") ? "" : sec("Radiology Reports", C.cyan, tbl(
-        [{ h: "Date", k: "date" }, { h: "Study", k: "study" }, { h: "Status", k: "status" }, { h: "Report", k: "report" }],
+        [
+            { h: "Date", k: "date", w: 15 },
+            { h: "Study", k: "study", w: 30 },
+            { h: "Status", k: "status", w: 15, align: "center" },
+            { h: "Report", k: "report", w: 40 },
+        ],
         (data.radiology ?? []).map((r: any) => ({
-            date:   r.created_at ? new Date(r.created_at).toLocaleDateString("en-GB") : "—",
+            date:   fmtDate(r.created_at),
             study:  String(r.test_type ?? "").replace("[RADIOLOGY]", "").trim(),
             status: r.status ?? "—",
             report: r.result ?? r.radiologist_notes ?? (r.status === "completed" ? "Completed" : "Pending"),
@@ -655,43 +822,76 @@ function buildPrintHTML(
     ));
 
     const drugChart = !sections.includes("drug_chart") || !(data.drug_chart ?? []).length ? "" : sec("Inpatient Drug Administration Chart", C.teal, tbl(
-        [{ h: "Drug", k: "drug" }, { h: "Dose", k: "dose" }, { h: "Route", k: "route" }, { h: "Frequency", k: "freq" }, { h: "Start", k: "start" }, { h: "End", k: "end" }, { h: "Status", k: "active" }],
-        (data.drug_chart ?? []).map((d: any) => ({
-            drug:   `${d.drug_name}${d.generic_name ? ` (${d.generic_name})` : ""}`,
-            dose:   d.dose      ?? "—",
-            route:  d.route     ?? "—",
-            freq:   d.frequency ?? "—",
-            start:  d.start_date ?? "—",
-            end:    d.end_date   ?? "—",
-            active: d.is_active ? "Active" : "D/C",
-        }))
-    ));
-
-    const fluidBalance = !sections.includes("fluid_balance") ? "" : sec("Fluid Balance Chart", C.sky, tbl(
         [
-            { h: "Date", k: "date" }, { h: "Time", k: "time" },
-            { h: "Oral (mL)", k: "oral" }, { h: "IV (mL)", k: "iv" },
-            { h: "Urine (mL)", k: "urine" }, { h: "Vomit (mL)", k: "vomit" },
-            { h: "Drain (mL)", k: "drain" }, { h: "Balance", k: "balance" },
-            { h: "Signed By", k: "signed" },
+            { h: "Drug", k: "drug", w: 22 },
+            { h: "Dose", k: "dose", w: 13 },
+            { h: "Route", k: "route", w: 10 },
+            { h: "Frequency", k: "freq", w: 10 },
+            { h: "Start", k: "start", w: 13 },
+            { h: "End", k: "end", w: 13 },
+            { h: "Given", k: "given", w: 11, align: "center" },
+            { h: "Status", k: "active", w: 8, align: "center" },
         ],
-        (data.fluid_balance ?? []).map((f: any) => {
-            const totalIn  = (f.oral_ml || 0) + (f.iv_ml || 0) + (f.ng_ml || 0) + (f.other_input_ml || 0);
-            const totalOut = (f.urine_ml || 0) + (f.aspirate_ml || 0) + (f.vomit_ml || 0) + (f.bowel_ml || 0) + (f.drain_ml || 0) + (f.other_output_ml || 0);
-            const bal      = totalIn - totalOut;
+        (data.drug_chart ?? []).map((d: any) => {
+            const admins = d.drug_administration_records ?? [];
+            const given = admins.filter((r: any) => r.status === "given").length;
             return {
-                date:    f.record_date ?? "—",
-                time:    (f.record_time ?? "").slice(0, 5),
-                oral:    f.oral_ml  || 0,
-                iv:      f.iv_ml    || 0,
-                urine:   f.urine_ml || 0,
-                vomit:   f.vomit_ml || 0,
-                drain:   f.drain_ml || 0,
-                balance: `${bal >= 0 ? "+" : ""}${bal} mL`,
-                signed:  f.signed_by ?? "—",
+                drug:   `${d.drug_name}${d.generic_name ? ` (${d.generic_name})` : ""}`,
+                dose:   d.dose      ?? "—",
+                route:  d.route     ?? "—",
+                freq:   d.frequency ?? "—",
+                start:  fmtDate(d.start_date),
+                end:    d.end_date ? fmtDate(d.end_date) : "Ongoing",
+                given:  admins.length ? `${given}/${admins.length}` : "—",
+                active: d.is_active ? "Active" : "D/C",
             };
         })
     ));
+
+    const fluidBalance = (() => {
+        if (!sections.includes("fluid_balance")) return "";
+        const rows = data.fluid_balance ?? [];
+        const inTotal = rows.reduce((acc, f) =>
+            acc + (f.oral_ml || 0) + (f.iv_ml || 0) + (f.ng_ml || 0) + (f.other_input_ml || 0), 0);
+        const outTotal = rows.reduce((acc, f) =>
+            acc + (f.urine_ml || 0) + (f.aspirate_ml || 0) + (f.vomit_ml || 0) + (f.bowel_ml || 0) + (f.drain_ml || 0) + (f.other_output_ml || 0), 0);
+        const bal = inTotal - outTotal;
+        return sec("Fluid Balance Chart", C.sky, tbl(
+            [
+                { h: "Date", k: "date", w: 12 },
+                { h: "Time", k: "time", w: 8, align: "center" },
+                { h: "Fluid / Solution", k: "fluid", w: 26 },
+                { h: "Intake (mL)", k: "in", w: 12, align: "right" },
+                { h: "Output (mL)", k: "out", w: 12, align: "right" },
+                { h: "Balance", k: "balance", w: 12, align: "right" },
+                { h: "Notes", k: "notes", w: 12 },
+                { h: "Signed By", k: "signed", w: 6 },
+            ],
+            rows.map((f: any) => {
+                const fIn  = (f.oral_ml || 0) + (f.iv_ml || 0) + (f.ng_ml || 0) + (f.other_input_ml || 0);
+                const fOut = (f.urine_ml || 0) + (f.aspirate_ml || 0) + (f.vomit_ml || 0) + (f.bowel_ml || 0) + (f.drain_ml || 0) + (f.other_output_ml || 0);
+                const fBal = fIn - fOut;
+                return {
+                    date:    f.record_date ?? "—",
+                    time:    (f.record_time ?? "").slice(0, 5) || "—",
+                    fluid:   f.input_fluid_type ?? f.other_input_type ?? "—",
+                    in:      fIn,
+                    out:     fOut,
+                    balance: `${fBal >= 0 ? "+" : ""}${fBal} mL`,
+                    notes:   f.notes ?? "—",
+                    signed:  f.signed_by ?? "—",
+                };
+            }),
+            [
+                {
+                    date: "Totals", time: "", fluid: "",
+                    in: inTotal, out: outTotal,
+                    balance: `${bal >= 0 ? "+" : ""}${bal} mL`,
+                    notes: "", signed: "",
+                },
+            ]
+        ));
+    })();
 
     const dn = data.discharge_note?.[0];
     const dischargeNote = (!sections.includes("discharge_note") || !dn) ? "" : sec("Discharge Summary", C.success, kvGrid([
@@ -706,20 +906,38 @@ function buildPrintHTML(
         { label: "Diet Instructions",         value: dn.diet_instructions },
         { label: "Emergency Return Criteria", value: dn.emergency_return_criteria },
         { label: "Discharged By",             value: dn.staffs?.name ?? dn.discharged_by },
-        { label: "Discharge Date",            value: dn.created_at ? new Date(dn.created_at).toLocaleDateString("en-GB") : "—" },
+        { label: "Discharge Date",            value: dn.created_at ? fmtDate(dn.created_at) : "—" },
     ]));
 
-    const payments = !sections.includes("payments") ? "" : sec("Payment History", C.amber, tbl(
-        [{ h: "Date", k: "date" }, { h: "Description", k: "desc" }, { h: "Category", k: "cat" }, { h: "Billed", k: "billed" }, { h: "Paid", k: "paid" }, { h: "Status", k: "status" }],
-        (data.payments ?? []).map((p: any) => ({
-            date:   p.payment_date ? new Date(p.payment_date).toLocaleDateString("en-GB") : "—",
-            desc:   p.description ?? "—",
-            cat:    p.category    ?? "—",
-            billed: naira(p.amount_kobo      ?? 0),
-            paid:   naira(p.amount_paid_kobo ?? 0),
-            status: p.status ?? "—",
-        }))
-    ));
+    const payments = (() => {
+        if (!sections.includes("payments")) return "";
+        const rows = data.payments ?? [];
+        const billed = rows.reduce((acc, p) => acc + (p.amount_kobo ?? 0), 0);
+        const paid   = rows.reduce((acc, p) => acc + (p.amount_paid_kobo ?? 0), 0);
+        return sec("Payment History", C.amber, tbl(
+            [
+                { h: "Date", k: "date", w: 13 },
+                { h: "Description", k: "desc", w: 28 },
+                { h: "Category", k: "cat", w: 12 },
+                { h: "Billed (₦)", k: "billed", w: 13, align: "right" },
+                { h: "Paid (₦)", k: "paid", w: 13, align: "right" },
+                { h: "Method", k: "method", w: 11, align: "center" },
+                { h: "Status", k: "status", w: 10, align: "center" },
+            ],
+            rows.map((p: any) => ({
+                date:   p.payment_date ? fmtDate(p.payment_date) : "—",
+                desc:   p.description ?? "—",
+                cat:    p.category    ?? "—",
+                billed: naira(p.amount_kobo      ?? 0),
+                paid:   naira(p.amount_paid_kobo ?? 0),
+                method: p.method ?? p.payment_method ?? "—",
+                status: p.status ?? "—",
+            })),
+            [
+                { date: "Totals", desc: "", cat: "", billed: naira(billed), paid: naira(paid), method: "", status: "" },
+            ]
+        ));
+    })();
 
     const stamp = !includeStamp ? "" : `
     <div class="stamp-section">
@@ -732,16 +950,20 @@ function buildPrintHTML(
     </div>`;
 
     // ── Patient fields grid ────────────────────────────────────────────────────
+    const allergyValue = [allergies, patient.allergies]
+        .map((v) => (v ?? "").trim())
+        .filter(Boolean)
+        .join(" · ") || "None known";
 
     const patientFields: [string, string][] = [
         ["Patient ID",   patient.id],
         ["Gender",       patient.gender],
-        ["Date of Birth",patient.birth_date ? new Date(patient.birth_date).toLocaleDateString("en-GB") : "—"],
+        ["Date of Birth",patient.birth_date ? fmtDate(patient.birth_date) : "—"],
         ["Blood Group",  patient.blood_group  || "—"],
         ["Genotype",     patient.geno_type    || "—"],
         ["Phone",        patient.phone        || "—"],
         ["Address",      patient.address      || "—"],
-        ["Allergies",    patient.allergies    || "None known"],
+        ["Allergies",    allergyValue],
         ["HMO",          patient.hmo ? (patient.hmo_name || "Yes") : "No"],
     ];
 
@@ -751,7 +973,7 @@ function buildPrintHTML(
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Patient Record — ${patient.name ?? ""}</title>
+  <title>Patient Record — ${esc(patient.name ?? "")}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1F2937; background: #fff; padding: 36px 40px; }
@@ -781,26 +1003,31 @@ function buildPrintHTML(
     .patient-grid    { display: grid; grid-template-columns: repeat(3, 1fr); }
     .patient-field   { padding: 8px 12px; border-right: 1px solid #F1F5F9; border-bottom: 1px solid #F1F5F9; }
     .field-label     { font-size: 7.5px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
-    .field-value     { font-size: 10px; color: #1F2937; }
+    .field-value     { font-size: 10px; color: #1F2937; overflow-wrap: anywhere; }
 
     /* ── Sections ── */
     .section   { margin-bottom: 22px; page-break-inside: avoid; }
     .sec-hdr   { border-left: 4px solid; padding: 4px 0 4px 10px; margin-bottom: 9px; }
     .sec-hdr h2{ font-size: 11px; font-weight: 700; color: #0B3D6B; text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* ── Table ── */
-    table      { width: 100%; border-collapse: collapse; border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden; font-size: 9.5px; margin-bottom: 4px; }
+    /* ── Tables: fixed layout + explicit column widths keeps every report
+          in a clean, aligned tabular format; long text wraps in its cell ── */
+    table      { width: 100%; table-layout: fixed; border-collapse: collapse; border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden; font-size: 9.5px; margin-bottom: 4px; }
+    thead      { display: table-header-group; }
     thead tr   { background: #0B3D6B; }
-    thead th   { padding: 6px 8px; text-align: left; color: #fff; font-size: 8.5px; font-weight: 700; }
+    thead th   { padding: 6px 8px; text-align: left; color: #fff; font-size: 8.5px; font-weight: 700; overflow-wrap: anywhere; }
     tbody tr:nth-child(even) { background: #F9FAFB; }
-    tbody td   { padding: 5px 8px; border-bottom: 1px solid #F1F5F9; }
+    tbody td   { padding: 5px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: top; overflow-wrap: anywhere; word-wrap: break-word; }
+    tbody tr   { break-inside: avoid; page-break-inside: avoid; }
+    tfoot      { display: table-footer-group; }
+    tfoot td   { padding: 6px 8px; background: #EDF2F7; border-top: 1px solid #CBD5E1; font-weight: 700; overflow-wrap: anywhere; }
     .no-data   { font-size: 9px; color: #9CA3AF; font-style: italic; padding: 8px; text-align: center; }
 
     /* ── KV grid ── */
     .kv-grid   { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden; }
     .kv-item   { padding: 8px 12px; border-bottom: 1px solid #F1F5F9; border-right: 1px solid #F1F5F9; }
     .kv-label  { font-size: 7.5px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
-    .kv-value  { font-size: 9.5px; color: #1F2937; }
+    .kv-value  { font-size: 9.5px; color: #1F2937; overflow-wrap: anywhere; }
 
     /* ── Stamp ── */
     .stamp-section { margin-top: 32px; border-top: 1px solid #E2E8F0; padding-top: 20px; }
@@ -831,9 +1058,9 @@ function buildPrintHTML(
   <!-- Header -->
   <div class="header">
     <div>
-      <div class="hospital-name">${H.name}</div>
-      <div class="hospital-sub">${H.address}</div>
-      <div class="hospital-sub">Tel: ${H.phone}</div>
+      <div class="hospital-name">${esc(H.name)}</div>
+      <div class="hospital-sub">${esc(H.address)}</div>
+      <div class="hospital-sub">Tel: ${esc(H.phone)}</div>
     </div>
   </div>
   <div class="header-divider"></div>
@@ -841,20 +1068,20 @@ function buildPrintHTML(
   <!-- Title -->
   <div class="title-block">
     <div class="title-main">PATIENT MEDICAL RECORD</div>
-    <div class="title-meta">Period: ${dateRange}<br/>Generated: ${generatedAt}</div>
+    <div class="title-meta">Period: ${esc(dateRange)}<br/>Generated: ${esc(generatedAt)}</div>
   </div>
 
   <!-- Patient card -->
   <div class="patient-card">
     <div class="patient-hdr">
-      <span class="patient-name">${patient.name ?? "Unknown Patient"}</span>
-      <span class="patient-badge">${String(patient.status ?? "").replace(/-/g, " ")}</span>
+      <span class="patient-name">${esc(patient.name ?? "Unknown Patient")}</span>
+      <span class="patient-badge">${esc(String(patient.status ?? "").replace(/-/g, " "))}</span>
     </div>
     <div class="patient-grid">
       ${patientFields.map(([l, v]) =>
           `<div class="patient-field">
-            <div class="field-label">${l}</div>
-            <div class="field-value">${v ?? "—"}</div>
+            <div class="field-label">${esc(l)}</div>
+            <div class="field-value">${escNL(v)}</div>
           </div>`
       ).join("")}
     </div>
@@ -872,7 +1099,7 @@ function buildPrintHTML(
   ${stamp}
 
   <div class="doc-footer">
-    <span>${H.name} · Generated ${generatedAt}</span>
+    <span>${esc(H.name)} · Generated ${esc(generatedAt)}</span>
     <span class="confidential">CONFIDENTIAL – MEDICAL RECORD</span>
   </div>
 
@@ -892,6 +1119,29 @@ async function fetchPatient(sb: Awaited<ReturnType<typeof createClient>>, patien
         .single();
     if (error) throw new Error(`Failed to fetch patient: ${error.message}`);
     return data;
+}
+
+/** Structured allergies are always included in the demographics summary. */
+async function fetchActiveAllergies(
+    sb: Awaited<ReturnType<typeof createClient>>,
+    patientId: string,
+): Promise<string> {
+    try {
+        const { data } = await sb
+            .from("patient_allergies")
+            .select("*")
+            .eq("patient_id", patientId)
+            .eq("status", "active")
+            .order("created_at", { ascending: false });
+        if (!data?.length) return "";
+        return data
+            .map((a: any) =>
+                `${a.allergen} (${a.severity ?? "unspecified"})${a.reaction ? ` — ${a.reaction}` : ""}`
+            )
+            .join("; ");
+    } catch {
+        return "";
+    }
 }
 
 async function fetchAllSections(
@@ -1040,8 +1290,9 @@ export async function generatePatientRecord(
         timeStyle: "short",
     });
 
-    const [patient, data] = await Promise.all([
+    const [patient, allergies, data] = await Promise.all([
         fetchPatient(sb, input.patientId),
+        fetchActiveAllergies(sb, input.patientId),
         fetchAllSections(sb, input.patientId, input.sections, input.dateFrom, input.dateTo),
     ]);
 
@@ -1053,6 +1304,7 @@ export async function generatePatientRecord(
                 patient,
                 input.sections,
                 data,
+                allergies,
                 input.includeStamp,
                 generatedAt,
                 input.dateFrom,
@@ -1069,6 +1321,7 @@ export async function generatePatientRecord(
             patient,
             sections:     input.sections,
             data,
+            allergies,
             includeStamp: input.includeStamp,
             logoBase64,
             dateFrom:     input.dateFrom,

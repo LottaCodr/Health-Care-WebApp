@@ -150,12 +150,23 @@ const config = {
 					'20%,50%': {
 						opacity: '0'
 					}
+				},
+				// Soft red glow for the allergy alert banner — draws the eye
+				// without the harsh full-opacity blink of the default pulse.
+				'alert-glow': {
+					'0%, 100%': {
+						boxShadow: '0 0 0 0 rgba(220, 38, 38, 0.25)'
+					},
+					'50%': {
+						boxShadow: '0 0 0 7px rgba(220, 38, 38, 0.06)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'caret-blink': 'caret-blink 1.25s ease-out infinite'
+				'caret-blink': 'caret-blink 1.25s ease-out infinite',
+				'alert-glow': 'alert-glow 2s ease-in-out infinite'
 			}
 		}
 	},

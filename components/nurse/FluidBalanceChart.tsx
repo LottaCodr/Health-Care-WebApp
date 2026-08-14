@@ -59,6 +59,7 @@ function FluidFormModal({ patientId, staffId }: FluidFormModalProps) {
             ngMl:           toNum(form.ngMl),
             otherInputMl:   toNum(form.otherInputMl),
             otherInputType: form.otherInputType || undefined,
+            inputFluidType: form.inputFluidType || undefined,
             urineMl:        toNum(form.urineMl),
             aspirateMl:     toNum(form.aspirateMl),
             vomitMl:        toNum(form.vomitMl),
@@ -110,6 +111,18 @@ function FluidFormModal({ patientId, staffId }: FluidFormModalProps) {
                             <div>
                                 <label className="label-xs">Other Input</label>
                                 {inputNum("otherInputMl", "0")}
+                            </div>
+                            <div className="col-span-2 rounded-xl bg-teal-50/50 border border-teal-100 p-3">
+                                <label className="label-xs !text-teal-700">Fluid / Solution — what was given</label>
+                                <input
+                                    value={form.inputFluidType}
+                                    onChange={(e) => store.setFluidField("inputFluidType", e.target.value)}
+                                    placeholder="e.g. 0.9% Normal Saline, D5W, Ringer's Lactate, water, NG formula…"
+                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                                />
+                                <p className="mt-1 text-[10px] text-slate-500">
+                                    Describe the fluid given with any of the volumes above (optional, recommended for IV).
+                                </p>
                             </div>
                             <div className="col-span-2">
                                 <label className="label-xs">Other Input Type</label>
@@ -256,6 +269,7 @@ export default function FluidBalanceChart({ patientId, staffId, readOnly = false
                                 <th className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">IV</th>
                                 <th className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">NG</th>
                                 <th className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">Other In</th>
+                                <th className="px-3 py-2.5 text-left font-medium">Fluid / Solution</th>
                                 {/* Output */}
                                 <th className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Urine</th>
                                 <th className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Aspirate</th>
@@ -280,6 +294,15 @@ export default function FluidBalanceChart({ patientId, staffId, readOnly = false
                                         <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.iv_ml)}</td>
                                         <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.ng_ml)}</td>
                                         <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.other_input_ml)}</td>
+                                        <td className="px-3 py-2.5 text-left text-slate-600">
+                                            {row.input_fluid_type || row.other_input_type ? (
+                                                <span className="inline-block max-w-[160px] truncate align-middle font-medium text-slate-700" title={row.input_fluid_type || row.other_input_type}>
+                                                    {row.input_fluid_type || row.other_input_type}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-300">—</span>
+                                            )}
+                                        </td>
                                         <td className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.urine_ml)}</td>
                                         <td className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.aspirate_ml)}</td>
                                         <td className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.vomit_ml)}</td>
