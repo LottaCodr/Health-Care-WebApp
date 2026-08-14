@@ -299,12 +299,16 @@ create index if not exists idx_audit_logs_entity on public.audit_logs(entity_typ
 -- These three are also defined in 20260814_enable_rls_security.sql, but the
 -- policies below need them even when that file has not run yet (and on
 -- databases where they were never created out-of-band). `create or replace`
--- keeps both copies idempotent.
+-- keeps both copies idempotent. Cast IDs to text because the legacy schema
+-- stores staffs.id as text while auth.uid() returns uuid; this also works when
+-- staffs.id is uuid in a newer deployment.
 create or replace function public.is_staff()
 returns boolean
 language sql stable security definer set search_path = public
 as $$
-  select exists (select 1 from public.staffs where id = auth.uid());
+  select exists (
+    select 1 from public.staffs where id::text = auth.uid()::text
+  );
 $$;
 
 create or replace function public.staff_has_role(role_group text)
@@ -313,7 +317,7 @@ language sql stable security definer set search_path = public
 as $$
   with s as (
     select lower(regexp_replace(role, '[^a-z]', '', 'g')) as compact
-    from public.staffs where id = auth.uid()
+    from public.staffs where id::text = auth.uid()::text
   )
   select exists (
     select 1 from s

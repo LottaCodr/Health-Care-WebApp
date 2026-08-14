@@ -20,11 +20,17 @@
 
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 -- True when the JWT's auth.uid() has a staff profile row.
+--
+-- `staffs.id` is text in the legacy production schema, while auth.uid()
+-- returns uuid. Cast both sides to text so this migration also remains
+-- compatible with newer deployments that created staffs.id as uuid.
 create or replace function public.is_staff()
 returns boolean
 language sql stable security definer set search_path = public
 as $$
-  select exists (select 1 from public.staffs where id = auth.uid());
+  select exists (
+    select 1 from public.staffs where id::text = auth.uid()::text
+  );
 $$;
 
 -- Role check with the same fuzzy matching the app uses (normalizeUserRole):
@@ -35,7 +41,7 @@ language sql stable security definer set search_path = public
 as $$
   with s as (
     select lower(regexp_replace(role, '[^a-z]', '', 'g')) as compact
-    from public.staffs where id = auth.uid()
+    from public.staffs where id::text = auth.uid()::text
   )
   select exists (
     select 1 from s
@@ -104,7 +110,7 @@ create policy "patients delete admin" on public.patients
 drop policy if exists "staffs select self or admin" on public.staffs;
 create policy "staffs select self or admin" on public.staffs
   for select to authenticated
-  using (id = auth.uid() or public.staff_has_role('Admin'));
+  using (id::text = auth.uid()::text or public.staff_has_role('Admin'));
 
 drop policy if exists "staffs insert admin" on public.staffs;
 create policy "staffs insert admin" on public.staffs
@@ -115,8 +121,8 @@ create policy "staffs insert admin" on public.staffs
 drop policy if exists "staffs update self or admin" on public.staffs;
 create policy "staffs update self or admin" on public.staffs
   for update to authenticated
-  using (id = auth.uid() or public.staff_has_role('Admin'))
-  with check (id = auth.uid() or public.staff_has_role('Admin'));
+  using (id::text = auth.uid()::text or public.staff_has_role('Admin'))
+  with check (id::text = auth.uid()::text or public.staff_has_role('Admin'));
 
 drop policy if exists "staffs delete admin" on public.staffs;
 create policy "staffs delete admin" on public.staffs
@@ -131,7 +137,7 @@ begin
   if new.role is distinct from old.role and not public.staff_has_role('Admin') then
     raise exception 'Only administrators may change staff roles';
   end if;
-  if new.id <> auth.uid() and not public.staff_has_role('Admin') then
+  if new.id::text <> auth.uid()::text and not public.staff_has_role('Admin') then
     raise exception 'Only administrators may edit other staff members';
   end if;
   return new;
@@ -427,9 +433,9 @@ drop policy if exists "notifications select own" on public.notifications;
 create policy "notifications select own" on public.notifications
   for select to authenticated
   using (
-    recipient_id = auth.uid()
+    recipient_id::text = auth.uid()::text
     or lower(role) = lower(
-         coalesce((select s.role from public.staffs s where s.id = auth.uid() limit 1), '')
+         coalesce((select s.role from public.staffs s where s.id::text = auth.uid()::text limit 1), '')
        )
     or public.staff_has_role('Admin')
   );
@@ -442,16 +448,16 @@ drop policy if exists "notifications update own" on public.notifications;
 create policy "notifications update own" on public.notifications
   for update to authenticated
   using (
-    recipient_id = auth.uid()
+    recipient_id::text = auth.uid()::text
     or lower(role) = lower(
-         coalesce((select s.role from public.staffs s where s.id = auth.uid() limit 1), '')
+         coalesce((select s.role from public.staffs s where s.id::text = auth.uid()::text limit 1), '')
        )
     or public.staff_has_role('Admin')
   )
   with check (
-    recipient_id = auth.uid()
+    recipient_id::text = auth.uid()::text
     or lower(role) = lower(
-         coalesce((select s.role from public.staffs s where s.id = auth.uid() limit 1), '')
+         coalesce((select s.role from public.staffs s where s.id::text = auth.uid()::text limit 1), '')
        )
     or public.staff_has_role('Admin')
   );
