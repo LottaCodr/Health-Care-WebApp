@@ -70,13 +70,30 @@ export async function listConsultationsByPatient(
 ): Promise<Consultation[]> {
     await requireStaff();
     const supabase = await createClient();
-    const { data, error } = await supabase
+    // Join the staff record so cards can show real doctor names instead of ids.
+    const withDoctor = await supabase
         .from("consultations")
         .select("*, staffs:doctor_id(name)")
         .eq("patient_id", patientId)
         .order("created_at", { ascending: false });
 
-    if (error) { console.error("[consultation] listByPatient:", error); return []; }
+    let data = withDoctor.data;
+
+    if (withDoctor.error) {
+        // Relationship may be missing in some schemas — fall back to plain rows.
+        // Without this fallback the whole list fails and the consultation
+        // history appears empty even though records exist (PostgREST rejects
+        // the entire query when it can't resolve the doctor_id -> staffs FK).
+        console.warn("[consultation] listByPatient doctor join failed, using plain rows:", withDoctor.error.message);
+        const plain = await supabase
+            .from("consultations")
+            .select("*")
+            .eq("patient_id", patientId)
+            .order("created_at", { ascending: false });
+        if (plain.error) { console.error("[consultation] listByPatient:", plain.error); return []; }
+        data = plain.data;
+    }
+
     return data as unknown as Consultation[];
 }
 
