@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { useLabStore } from "@/store/lab-store";
 import { calculateAge } from "@/utils/export";
+import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
+import HematologyAnalyzerReport from "./HematologyAnalyzerReport";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,38 +46,9 @@ function getInitials(name?: string) {
     return name.split(" ").map(n=>n[0]).slice(0,2).join("").toUpperCase();
 }
 
-function parseStructuredResult(result?: string) {
-    if (!result) return null;
-    const lines = result.split("\n");
-    const headerIdx = lines.findIndex(l => l.includes("TEST NAME") && l.includes("RESULT"));
-    if (headerIdx === -1) {
-        return { type: "free" as const, text: result };
-    }
-    const category = lines[0]?.trim() ?? "";
-    const name = lines[1]?.trim() ?? "";
-    const rows: { label: string; value: string; ref: string; unit: string }[] = [];
-    let note: string | null = null;
-    for (let i = headerIdx + 2; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line || line.startsWith("─")) continue;
-        if (line.startsWith("Note:")) { note = line.replace("Note:", "").trim(); break; }
-        if (line.includes("Additional Notes")) { note = lines.slice(i).join("\n"); break; }
-        const parts = lines[i].split("\t");
-        if (parts.length >= 2) {
-            rows.push({
-                label: parts[0]?.trim() ?? "",
-                value: parts[1]?.trim() ?? "",
-                ref: parts[2]?.trim() ?? "—",
-                unit: parts[3]?.trim() ?? "",
-            });
-        }
-    }
-    const additionalIdx = lines.findIndex(l => l.includes("Additional Notes"));
-    if (additionalIdx !== -1) {
-        note = (note ? note + "\n\n" : "") + lines.slice(additionalIdx).join("\n");
-    }
-    return { type: "structured" as const, category, name, rows, note };
-}
+// Shared structured-result parser (handles both the legacy 4-column format
+// and the analyzer 5-column format with flags) — lives in the clinical module.
+const parseStructuredResult = parseLabResult;
 
 // ─── Result detail panel ──────────────────────────────────────────────────────
 
@@ -148,12 +121,17 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                             <Beaker size={12} className="text-indigo-500" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Structured Result</p>
                         </div>
-                        {parsed?.type === "structured" && parsed.rows.length > 0 ? (
+                        {parsed?.kind === "hematology-analyzer" && parsed.rows.length > 0 ? (
+                            <HematologyAnalyzerReport request={req} />
+                        ) : parsed?.kind !== "free" && parsed && parsed.rows.length > 0 ? (
                             <div className="space-y-3">
                                 {(parsed.category || parsed.name) && (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         {parsed.category && <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">{parsed.category}</span>}
                                         <span className="text-xs font-bold text-gray-800">{parsed.name}</span>
+                                        {parsed.referenceSet && (
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{parsed.referenceSet}</span>
+                                        )}
                                     </div>
                                 )}
                                 <div className="overflow-hidden rounded-xl border border-gray-200">
@@ -161,6 +139,9 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                                         <thead>
                                             <tr className="bg-gray-50 border-b border-gray-200">
                                                 <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Test</th>
+                                                {parsed.rows.some((r) => r.flag) && (
+                                                    <th className="text-center px-2 py-2 font-black uppercase tracking-widest text-gray-500 w-10">Flag</th>
+                                                )}
                                                 <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Result</th>
                                                 <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500 hidden sm:table-cell">Ref.</th>
                                                 <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Unit</th>
@@ -170,8 +151,19 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                                             {parsed.rows.map((r, i) => (
                                                 <tr key={i} className="hover:bg-gray-50/50">
                                                     <td className="px-3 py-2 font-semibold text-gray-800">{r.label}</td>
+                                                    {parsed.rows.some((rr) => rr.flag) && (
+                                                        <td className="px-2 py-2 text-center">
+                                                            {r.flag && (
+                                                                <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-black border ${
+                                                                    r.flag === "H" ? "bg-red-50 text-red-700 border-red-200" : "bg-sky-50 text-sky-700 border-sky-200"
+                                                                }`}>
+                                                                    {r.flag}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    )}
                                                     <td className="px-3 py-2 font-bold text-indigo-700">{r.value || "—"}</td>
-                                                    <td className="px-3 py-2 text-gray-500 hidden sm:table-cell">{r.ref}</td>
+                                                    <td className="px-3 py-2 text-gray-500 hidden sm:table-cell">{r.ref || "—"}</td>
                                                     <td className="px-3 py-2 text-gray-500 font-mono text-[11px]">{r.unit || "—"}</td>
                                                 </tr>
                                             ))}

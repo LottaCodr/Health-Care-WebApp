@@ -42,7 +42,7 @@ function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ─── Single request form ──────────────────────────────────────────────────────
 
-function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
+function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => void; patient?: any }) {
     const router = useRouter();
     const { user } = useAuth();
 
@@ -162,6 +162,14 @@ function RequestForm({ req, onSuccess }: { req: any; onSuccess?: () => void }) {
                         testType={req.test_type ?? ""}
                         onSubmit={handleTemplateSubmit}
                         submitting={completing}
+                        patient={{
+                            age: patient?.birth_date
+                                ? Math.max(0, (Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000))
+                                : null,
+                            gender: patient?.gender ?? null,
+                            name: patient?.name ?? null,
+                        }}
+                        sampleId={req.visit_id ?? null}
                     />
 
                     {/* File upload */}
@@ -341,7 +349,7 @@ export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFor
 
             <div className="space-y-4">
                 {pendingRequests.map((req: any) => (
-                    <RequestForm key={req.id} req={req} onSuccess={onSuccess} />
+                    <RequestForm key={req.id} req={req} onSuccess={onSuccess} patient={patient as any} />
                 ))}
             </div>
         </div>

@@ -4,6 +4,14 @@ import { createClient } from "@/utils/supabase/server";
 import { requireStaff, getCurrentStaff } from "./auth-guard";
 import { getCurrentPortalPatient } from "./portal.service";
 import { logAction } from "./audit.service";
+import {
+    parseLabResult,
+    getParameter,
+    resolveHematologyCategory,
+    rangeFor,
+    parseRangeDisplay,
+    toUcum,
+} from "@/lib/clinical/hematology-reference-ranges";
 
 /**
  * Interoperability exports: FHIR R4 (JSON bundle) and HL7 v2 (ADT).
@@ -94,28 +102,87 @@ export async function buildFhirBundle(patientId: string): Promise<{ bundle: any;
         }
     }
 
+    // Resolve the age/sex partition once for the whole bundle (used for the
+    // per-parameter reference ranges on CBC panel exports below).
+    const patientAgeYears = patient.birth_date
+        ? Math.max(0, (Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000))
+        : null;
+    const { category: resolvedCategory } = resolveHematologyCategory(patientAgeYears, patient.gender);
+
     for (const l of labRequests.data ?? []) {
         const isRadiology = String(l.test_type ?? "").startsWith("[RADIOLOGY]");
-        resources.push(
-            isRadiology
-                ? {
-                      resourceType: "DiagnosticReport",
-                      id: l.id,
-                      status: l.status === "completed" ? "final" : "registered",
-                      subject: { reference: ref },
-                      code: { text: String(l.test_type).replace(/^\[RADIOLOGY\]\s*/i, "") },
-                      conclusion: l.result ?? undefined,
-                  }
-                : {
-                      resourceType: "Observation",
-                      id: l.id,
-                      status: l.status === "completed" ? "final" : "registered",
-                      category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "laboratory" }] }],
-                      code: { text: l.test_type },
-                      subject: { reference: ref },
-                      valueString: l.result ?? undefined,
-                  }
-        );
+        const parsedResult = parseLabResult(l.result);
+        const isAnalyzerPanel = !isRadiology && parsedResult?.kind === "hematology-analyzer" && parsedResult.rows.length > 0;
+
+        if (isAnalyzerPanel && parsedResult) {
+            // FHIR R4 CBC panel: one Observation whose component[] carries each
+            // analyzer parameter with its age/sex-partitioned referenceRange
+            // (CLSI EP28-A3c partitioning; see docs/HEMATOLOGY_ANALYZER_REFERENCE_RANGES.md).
+            resources.push({
+                resourceType: "Observation",
+                id: `${l.id}-cbc`,
+                status: l.status === "completed" ? "final" : "registered",
+                category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "laboratory" }] }],
+                code: {
+                    coding: [{ system: "http://loinc.org", code: "58410-2", display: "CBC with Differential panel - Blood" }],
+                    text: l.test_type,
+                },
+                subject: { reference: ref },
+                effectiveDateTime: l.completed_at ?? l.created_at ?? undefined,
+                component: parsedResult.rows
+                    .map((row) => {
+                        const param = getParameter(row.label);
+                        const numeric = Number(String(row.value).replace(/,/g, ""));
+                        const unit = toUcum(row.unit);
+                        const rangeDisplay = param && resolvedCategory ? rangeFor(param, resolvedCategory) : row.ref;
+                        const bounds = parseRangeDisplay(rangeDisplay);
+
+                        const comp: any = {
+                            code: param?.loinc
+                                ? { coding: [{ system: "http://loinc.org", code: param.loinc }], text: row.label }
+                                : { text: row.label },
+                        };
+                        if (Number.isFinite(numeric) && String(row.value) !== "—") {
+                            comp.valueQuantity = { value: numeric, ...(unit ? { unit, system: "http://unitsofmeasure.org", code: unit } : {}) };
+                        } else {
+                            comp.valueString = row.value;
+                        }
+                        if (bounds.low !== null || bounds.high !== null) {
+                            comp.referenceRange = [{
+                                ...(bounds.low !== null ? { low: { value: bounds.low, ...(unit ? { unit, system: "http://unitsofmeasure.org", code: unit } : {}) } } : {}),
+                                ...(bounds.high !== null ? { high: { value: bounds.high, ...(unit ? { unit, system: "http://unitsofmeasure.org", code: unit } : {}) } } : {}),
+                                text: rangeDisplay,
+                            }];
+                        }
+                        return comp;
+                    }),
+                note: [
+                    { text: parsedResult.referenceSet ?? "" },
+                    { text: l.result ?? "" },
+                ].filter((n) => n.text?.trim()),
+            });
+        } else {
+            resources.push(
+                isRadiology
+                    ? {
+                          resourceType: "DiagnosticReport",
+                          id: l.id,
+                          status: l.status === "completed" ? "final" : "registered",
+                          subject: { reference: ref },
+                          code: { text: String(l.test_type).replace(/^\[RADIOLOGY\]\s*/i, "") },
+                          conclusion: l.result ?? undefined,
+                      }
+                    : {
+                          resourceType: "Observation",
+                          id: l.id,
+                          status: l.status === "completed" ? "final" : "registered",
+                          category: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/observation-category", code: "laboratory" }] }],
+                          code: { text: l.test_type },
+                          subject: { reference: ref },
+                          valueString: l.result ?? undefined,
+                      }
+            );
+        }
     }
 
     for (const p of prescriptions.data ?? []) {

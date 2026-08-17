@@ -69,6 +69,11 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
     const patient: any = (request as any)?.patients ?? null;
     const patientName = patient?.name ?? null;
     const patientAge = patient?.birth_date ? calculateAge(patient.birth_date) : null;
+    // Precise age in years — required by the hematology analyzer template so
+    // the newborn (0–28 days) vs child (28 days–17 yrs) boundary is exact.
+    const patientAgePrecise = patient?.birth_date
+        ? Math.max(0, (Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000))
+        : null;
 
     return (
         <div className="space-y-6">
@@ -206,6 +211,8 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                     testType={request?.test_type ?? ""}
                     onSubmit={handleTemplateSubmit}
                     submitting={submitting}
+                    patient={{ age: patientAgePrecise, gender: patient?.gender ?? null, name: patientName }}
+                    sampleId={request?.visit_id ?? request?.patient_id ?? null}
                 />
             </div>
         </div>

@@ -30,6 +30,7 @@ Built with **Next.js 16** (App Router), **React 19**, **Supabase**, and **Zustan
 | **Appointments** | `appoointment-store.ts` | `appointment.service.ts` |
 | **Admin** | — | Staff dashboard, `AdminStaffPage`, `staff.service.ts` |
 | **Lab** | `lab-store.ts` | `lab.service.ts` — requests and test catalog |
+| **Hematology analyzer** | `lib/clinical/hematology-reference-ranges.ts` — age/sex-partitioned CBC reference sets (Newborn / Children M/F / Adult M/F), H/L flag engine, NLR/PLR derivation, analyzer printout result format | `HematologyAnalyzerForm.tsx` (entry), `HematologyAnalyzerReport.tsx` (printout viewer + print), FHIR CBC-panel export in `interop.service.ts` — see `docs/HEMATOLOGY_ANALYZER_REFERENCE_RANGES.md` |
 | **Pharmacy** | `pharmacy-store.ts` | `pharmacy.service.ts` |
 | **Bulk patient upload** | `bulk-upload-store.ts` | — |
 
