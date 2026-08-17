@@ -58,10 +58,20 @@ function getInitials(name?: string) {
 }
 
 // ─── Result preview parser for completed ─────────────────────────────────────
+const PREVIEW_SKIP = [
+    "TEST NAME", "PARAMETER", "─", "Note:", "Additional Notes",
+    "Reference set:", "Sample ID:", "Mode:", "Test Time:",
+    "HEMATOLOGY ANALYZER", "Full Blood Count (FBC)",
+    "[The test result only accounts for this test sample]",
+];
+
 function parseResultPreview(result?: string, maxLen = 80) {
     if (!result) return "Result recorded";
     // Try to extract first meaningful lines after header
-    const lines = result.split("\n").filter(l => l.trim() && !l.includes("TEST NAME") && !l.includes("─") && !l.startsWith("Note:") && l.trim() !== "");
+    const lines = result.split("\n").filter(l => {
+        const t = l.trim();
+        return t && !PREVIEW_SKIP.some((s) => t.includes(s));
+    });
     // Skip category and name lines if they look like headers
     const meaningful = lines.slice(2).join(" • ") || result;
     return meaningful.slice(0, maxLen) + (meaningful.length > maxLen ? "…" : "");

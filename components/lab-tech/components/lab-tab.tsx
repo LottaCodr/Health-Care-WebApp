@@ -21,6 +21,7 @@ import { Patient } from "@/types/models";
 import { AILabInterpretation } from "@/components/ai/AIComponents";
 import TestTemplateForm from "../TestTemplateForm";
 import { calculateAge } from "@/utils/export";
+import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
 
 // ─── Priority badge ───────────────────────────────────────────────────────────
 
@@ -39,62 +40,31 @@ function PriorityBadge({ priority }: { priority?: string }) {
     );
 }
 
-// ─── Structured result parser ──────────────────────────────────────────────────
-
-function parseStructuredResult(result?: string) {
-    if (!result) return null;
-    const lines = result.split("\n");
-    // Find header row
-    const headerIdx = lines.findIndex(l => l.includes("TEST NAME") && l.includes("RESULT"));
-    if (headerIdx === -1) {
-        // Free text
-        return { type: "free" as const, text: result };
-    }
-    const category = lines[0]?.trim() ?? "";
-    const name = lines[1]?.trim() ?? "";
-    const separatorIdx = headerIdx + 1;
-    const rows: { label: string; value: string; ref: string; unit: string }[] = [];
-    let note: string | null = null;
-    for (let i = separatorIdx + 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        if (line.startsWith("Note:")) { note = line.replace("Note:", "").trim(); break; }
-        if (line.startsWith("Additional Notes")) { note = lines.slice(i).join("\n"); break; }
-        const parts = lines[i].split("\t");
-        if (parts.length >= 2) {
-            rows.push({
-                label: parts[0]?.trim() ?? "",
-                value: parts[1]?.trim() ?? "",
-                ref: parts[2]?.trim() ?? "—",
-                unit: parts[3]?.trim() ?? "",
-            });
-        }
-    }
-    // Also check for additional notes at end
-    const additionalIdx = lines.findIndex(l => l.includes("Additional Notes"));
-    if (additionalIdx !== -1) {
-        note = (note ? note + "\n\n" : "") + lines.slice(additionalIdx).join("\n");
-    }
-    return { type: "structured" as const, category, name, rows, note };
-}
+// ─── Structured result display ────────────────────────────────────────────────
+// Uses the shared parser (handles both the legacy 4-column format and the
+// analyzer 5-column format with H/L flags).
 
 function StructuredResultDisplay({ result }: { result?: string }) {
-    const parsed = parseStructuredResult(result);
+    const parsed = parseLabResult(result);
     if (!parsed) return <p className="text-xs text-gray-400 italic">No result text recorded.</p>;
-    if (parsed.type === "free") {
+    if (parsed.kind === "free") {
         return (
             <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 rounded-xl border border-gray-100 px-4 py-3">
-                {parsed.text}
+                {parsed.note}
             </pre>
         );
     }
-    const { category, name, rows, note } = parsed;
+    const { category, name, rows, note, referenceSet } = parsed;
+    const hasFlags = rows.some((r) => r.flag);
     return (
         <div className="space-y-3">
             {(category || name) && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {category && <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">{category}</span>}
                     {name && <span className="text-xs font-bold text-gray-800">{name}</span>}
+                    {referenceSet && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{referenceSet}</span>
+                    )}
                 </div>
             )}
             {rows.length > 0 ? (
@@ -103,6 +73,9 @@ function StructuredResultDisplay({ result }: { result?: string }) {
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200">
                                 <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Test</th>
+                                {hasFlags && (
+                                    <th className="text-center px-2 py-2 font-black uppercase tracking-widest text-gray-500 w-10">Flag</th>
+                                )}
                                 <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Result</th>
                                 <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500 hidden sm:table-cell">Ref. Range</th>
                                 <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Unit</th>
@@ -112,8 +85,19 @@ function StructuredResultDisplay({ result }: { result?: string }) {
                             {rows.map((r, i) => (
                                 <tr key={i} className="hover:bg-gray-50/50">
                                     <td className="px-3 py-2.5 font-semibold text-gray-800">{r.label}</td>
+                                    {hasFlags && (
+                                        <td className="px-2 py-2.5 text-center">
+                                            {r.flag && (
+                                                <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-black border ${
+                                                    r.flag === "H" ? "bg-red-50 text-red-700 border-red-200" : "bg-sky-50 text-sky-700 border-sky-200"
+                                                }`}>
+                                                    {r.flag}
+                                                </span>
+                                            )}
+                                        </td>
+                                    )}
                                     <td className="px-3 py-2.5 font-bold text-indigo-700">{r.value || "—"}</td>
-                                    <td className="px-3 py-2.5 text-gray-500 hidden sm:table-cell">{r.ref}</td>
+                                    <td className="px-3 py-2.5 text-gray-500 hidden sm:table-cell">{r.ref || "—"}</td>
                                     <td className="px-3 py-2.5 text-gray-500 font-mono text-[11px]">{r.unit || "—"}</td>
                                 </tr>
                             ))}
@@ -249,7 +233,7 @@ function PendingCard({ req }: { req: any }) {
 
 // ─── Pending row WITH inline result entry (lab-tech role) ─────────────────────
 
-function LabTechPendingRow({ req, patientId, onSubmitted }: { req: any; patientId: string; onSubmitted: () => void }) {
+function LabTechPendingRow({ req, patientId, patient, onSubmitted }: { req: any; patientId: string; patient?: Patient; onSubmitted: () => void }) {
     const { user } = useAuth();
     const { mutate: updateLabRequest, isPending: saving } = useUpdateLabRequest();
     const [open, setOpen] = useState(false);
@@ -335,6 +319,14 @@ function LabTechPendingRow({ req, patientId, onSubmitted }: { req: any; patientI
                         testType={req.test_type ?? ""}
                         submitting={saving}
                         onSubmit={async (resultString) => handleSubmit(resultString)}
+                        patient={{
+                            age: patient?.birth_date
+                                ? Math.max(0, (Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000))
+                                : null,
+                            gender: patient?.gender ?? null,
+                            name: patient?.name ?? null,
+                        }}
+                        sampleId={req.visit_id ?? null}
                     />
 
                     <div className="flex justify-end pt-1">
@@ -747,7 +739,7 @@ export default function LabTab({ patient, userRole }: Props) {
                     </div>
                     {isLabTech
                         ? pendingRequests.map((req: any) => (
-                              <LabTechPendingRow key={req.id} req={req} patientId={patient.id} onSubmitted={() => setTimeout(() => refetch(), 0)} />
+                              <LabTechPendingRow key={req.id} req={req} patientId={patient.id} patient={patient} onSubmitted={() => setTimeout(() => refetch(), 0)} />
                           ))
                         : pendingRequests.map((req: any) => <PendingCard key={req.id} req={req} />)
                     }

@@ -12,13 +12,27 @@ import {
     type InterpretationTable,
     type TemplateField,
 } from "./test-templates";
+import HematologyAnalyzerForm from "./HematologyAnalyzerForm";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
+
+export interface PatientContext {
+    age?: number | null;
+    gender?: string | null;
+    name?: string | null;
+}
 
 interface TestTemplateFormProps {
     testType: string;
     onSubmit: (resultString: string) => void | Promise<void>;
     submitting?: boolean;
+    /**
+     * Patient age (years) and gender — used by age/sex-partitioned templates
+     * (e.g. the hematology analyzer) to pick the correct reference set.
+     */
+    patient?: PatientContext | null;
+    /** Sample / visit id shown on analyzer printouts. */
+    sampleId?: string | null;
 }
 
 // ─── Colour helpers ─────────────────────────────────────────────────────────
@@ -187,7 +201,7 @@ function InterpretationCard({ table }: { table: InterpretationTable }) {
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function TestTemplateForm({ testType, onSubmit, submitting }: TestTemplateFormProps) {
+export default function TestTemplateForm({ testType, onSubmit, submitting, patient, sampleId }: TestTemplateFormProps) {
     const template = useMemo(() => findTemplate(testType), [testType]);
     const [values, setValues] = useState<Record<string, string>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -232,6 +246,22 @@ export default function TestTemplateForm({ testType, onSubmit, submitting }: Tes
 
         await onSubmit(resultString);
     };
+
+    // ─── Age/sex-partitioned analyzer template (hematology) ───
+    // Rendered after all hooks for rules-of-hooks compliance. The analyzer
+    // form resolves the reference set from the patient's age & sex, computes
+    // H/L flags live, auto-derives NLR/PLR, and emits the printout format.
+    if (template?.kind === "hematology-analyzer") {
+        return (
+            <HematologyAnalyzerForm
+                testType={testType}
+                onSubmit={onSubmit}
+                submitting={submitting}
+                patient={patient ?? null}
+                sampleId={sampleId ?? null}
+            />
+        );
+    }
 
     // ─── No template found → free-text fallback ───
     if (!template) {

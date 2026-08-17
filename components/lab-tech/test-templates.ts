@@ -49,6 +49,13 @@ export interface TestTemplate {
     name: string;
     /** Department / section header */
     category: string;
+    /**
+     * Optional renderer kind. `"hematology-analyzer"` routes the FBC to the
+     * dedicated analyzer form (`HematologyAnalyzerForm`) which uses age/sex-
+     * partitioned reference ranges (newborn / children / adult by sex), live
+     * H/L flags, auto-computed NLR & PLR, and the printout result format.
+     */
+    kind?: "hematology-analyzer";
     /** Substrings (lowercase) to match against test_type */
     match: string[];
     /** Form fields */
@@ -72,7 +79,13 @@ export const TEST_TEMPLATES: TestTemplate[] = [
     {
         name: "Full Blood Count (FBC)",
         category: "HEMATOLOGY",
-        match: ["full blood count", "fbc", "complete blood count", "cbc"],
+        kind: "hematology-analyzer",
+        match: ["hematology analyzer", "full blood count", "fbc", "complete blood count", "cbc", "hemogram", "5-part", "five-part", "differential count"],
+        // NOTE: The generic fields below keep adult reference ranges for
+        // backward compatibility (free-text / legacy paths). The dedicated
+        // HematologyAnalyzerForm is used whenever this template matches — it
+        // resolves the reference set from the patient's age & sex (Newborn,
+        // Children M/F, Adult M/F) per lib/clinical/hematology-reference-ranges.ts.
         fields: [
             { label: "WBC", key: "wbc", type: "numeric", unit: "10^9/L", refRange: "4.00–10.00" },
             { label: "Lym#", key: "lym", type: "numeric", unit: "10^9/L", refRange: "0.80–4.00" },
@@ -81,8 +94,8 @@ export const TEST_TEMPLATES: TestTemplate[] = [
             { label: "Lym%", key: "lym_pct", type: "numeric", unit: "%", refRange: "20.0–40.0" },
             { label: "Mid%", key: "mid_pct", type: "numeric", unit: "%", refRange: "1.0–15.0" },
             { label: "Gran%", key: "gran_pct", type: "numeric", unit: "%", refRange: "50.0–70.0" },
-            { label: "RBC", key: "rbc", type: "numeric", unit: "10^9/L", refRange: "3.50–5.50" },
-            { label: "HGB", key: "hgb", type: "numeric", unit: "g/L", refRange: "11.0–16.0" },
+            { label: "RBC", key: "rbc", type: "numeric", unit: "10^12/L", refRange: "3.50–5.50" },
+            { label: "HGB", key: "hgb", type: "numeric", unit: "g/dL", refRange: "11.0–16.0" },
             { label: "HCT", key: "hct", type: "numeric", unit: "%", refRange: "37.0–54.0" },
             { label: "MCV", key: "mcv", type: "numeric", unit: "fL", refRange: "80.0–100.0" },
             { label: "MCH", key: "mch", type: "numeric", unit: "pg", refRange: "27.0–34.0" },
@@ -90,13 +103,15 @@ export const TEST_TEMPLATES: TestTemplate[] = [
             { label: "RDW-CV", key: "rdw_cv", type: "numeric", unit: "%", refRange: "11.0–16.0" },
             { label: "RDW-SD", key: "rdw_sd", type: "numeric", unit: "fL", refRange: "35.0–56.0" },
             { label: "PLT", key: "plt", type: "numeric", unit: "10^9/L", refRange: "100–300" },
-            { label: "MPV", key: "mpv", type: "numeric", unit: "fL", refRange: "7.0–11.0" },
+            { label: "MPV", key: "mpv", type: "numeric", unit: "fL", refRange: "6.5–12.0" },
             { label: "PDW-CV", key: "pdw_cv", type: "numeric", unit: "%", refRange: "15.0–17.0" },
             { label: "PDW-SD", key: "pdw_sd", type: "numeric", unit: "fL", refRange: "9.0–17.0" },
             { label: "PCT", key: "pct", type: "numeric", unit: "%", refRange: "0.108–0.282" },
             { label: "P-LCC", key: "plcc", type: "numeric", unit: "10^9/L", refRange: "30–90" },
             { label: "P-LCR", key: "plcr", type: "numeric", unit: "%", refRange: "11.0–45.0" },
         ],
+        note: "Reference ranges are age- and sex-specific. The analyzer form selects the correct set automatically (Newborn < 28 days; Children 28 days–17 yrs; Adult ≥ 18 yrs, by sex) and flags H/L results — ranges follow the instrument's factory printouts and should be verified per CLSI EP28-A3c against the local population.",
+        comment: "Parameter set matches a Mindray BC-5130-class 5-part analyzer (WBC 5-part differential, RBC indices, platelet indices incl. P-LCC/P-LCR, NLR & PLR). Newborn intervals differ markedly from adults (HGB 17–20 g/dL, WBC 4–20 ×10^9/L, MCV 95–125 fL) — never interpret a neonatal CBC against adult ranges.",
     },
 
     {
