@@ -227,31 +227,55 @@ export async function updateLabRequest(
     if (typeof updates.price === "number" && updates.price > 0 && data?.visit_id) {
         try {
             const desc = `Lab Test: ${data.test_type}`;
-            const { data: existingPayments } = await supabase
+            // Locate the bill this price belongs to. Orders for tests that are
+            // not in the catalogue are auto-billed at ₦0, so the match has to be
+            // robust: exact description → fuzzy description → any zero-amount
+            // open lab bill for this patient (the orphan this order created).
+            const { data: openLabBills, error: payLookupError } = await supabase
                 .from("payments")
-                .select("id, amount, amount_kobo, status")
+                .select("id, amount, amount_kobo, status, description")
                 .eq("patient_id", data.visit_id)
                 .eq("category", "lab")
-                .ilike("description", `%${data.test_type}%`)
+                .in("status", ["pending", "partial"])
                 .order("created_at", { ascending: false })
-                .limit(1);
+                .limit(25);
 
-            const outstanding = existingPayments?.find(
-                (p: any) => p.status === "pending" || p.status === "partial"
-            );
+            if (payLookupError) {
+                console.error("[lab] bill lookup failed while setting price:", payLookupError);
+            }
 
-            if (outstanding) {
-                // Update the existing outstanding bill with the new price
-                await supabase
+            const candidates = (openLabBills ?? []) as any[];
+            const testTypeLower = String(data.test_type ?? "").trim().toLowerCase();
+            const exact = candidates.find((p) => String(p.description ?? "").trim().toLowerCase() === desc.trim().toLowerCase());
+            const fuzzy = candidates.find((p) => String(p.description ?? "").toLowerCase().includes(testTypeLower));
+            const zeroAmount = candidates.find((p) => !p.amount_kobo || p.amount_kobo <= 0);
+            const target = exact ?? fuzzy ?? zeroAmount;
+
+            if (target) {
+                // Schema-tolerant write: `updated_at` may be missing on older
+                // tables — retry without it instead of failing silently.
+                const pricePayload = {
+                    amount: updates.price,
+                    amount_kobo: Math.round(updates.price * 100),
+                    updated_at: new Date().toISOString(),
+                };
+                const { error: updateError } = await supabase
                     .from("payments")
-                    .update({
-                        amount: updates.price,
-                        amount_kobo: Math.round(updates.price * 100),
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", outstanding.id);
+                    .update(pricePayload)
+                    .eq("id", target.id);
+                if (updateError) {
+                    const { updated_at: _omit, ...retryPayload } = pricePayload;
+                    void _omit;
+                    const { error: retryError } = await supabase
+                        .from("payments")
+                        .update(retryPayload)
+                        .eq("id", target.id);
+                    if (retryError) {
+                        console.error("[lab] failed to update lab bill price:", retryError);
+                    }
+                }
             } else {
-                // No outstanding bill found — create one
+                // No open lab bill found — create one
                 await createPayment({
                     patient_id: data.visit_id,
                     amount: updates.price,
@@ -264,6 +288,8 @@ export async function updateLabRequest(
         } catch (payErr) {
             console.error("[lab] error updating/creating payment on lab update:", payErr);
         }
+    } else if (typeof updates.price === "number" && updates.price > 0 && !data?.visit_id) {
+        console.warn("[lab] price set but lab request has no visit_id — no bill was created or updated");
     }
 
     // ── Route patient after test completion ─────────────────────────────────────

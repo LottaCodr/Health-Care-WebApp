@@ -184,6 +184,17 @@ function isOutstanding(row: any): boolean {
     return amountToKobo(row) - paidToKobo(row) > 0;
 }
 
+/**
+ * Open bills — pending or partially paid, regardless of balance. Superset of
+ * `isOutstanding`: also covers zero-amount bills (e.g. lab tests auto-billed
+ * at ₦0 before the lab tech sets a price). Sweeping an open zero-amount bill
+ * closes it as paid at ₦0 instead of leaving it open forever.
+ */
+function isOpenBill(row: any): boolean {
+    if (isDepositRow(row)) return false;
+    return OUTSTANDING_STATUSES.has(normalizeStatus(row?.status));
+}
+
 function outstandingKobo(row: any): number {
     return Math.max(0, amountToKobo(row) - paidToKobo(row));
 }
@@ -396,8 +407,14 @@ export async function updatePendingBill(input: UpdatePendingBillInput): Promise<
     const supabase = await createClient();
     const existing = await getPaymentById(input.id);
     if (!existing) throw new Error("Bill was not found.");
-    if (!isOutstanding(existing)) {
-        throw new Error("Only outstanding bills can be edited. This bill is already settled.");
+
+    // Open bills (pending / partially paid) are editable regardless of their
+    // balance — a ₦0 lab bill that is waiting for the lab tech's price is
+    // exactly the bill the front desk needs to correct. Only final bills
+    // (paid / waived / refunded) and deposits are locked.
+    const existingStatus = normalizeStatus((existing as any).raw_status ?? existing.status);
+    if (isDepositRow(existing) || !OUTSTANDING_STATUSES.has(existingStatus)) {
+        throw new Error("Only open bills (pending / partially paid) can be edited. This bill is already settled.");
     }
 
     const now = new Date().toISOString();
@@ -618,7 +635,14 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
     const existing = await getPaymentById(input.id);
 
     if (!existing) throw new Error("Payment record was not found.");
-    if (!isOutstanding(existing)) {
+
+    // Any bill still OPEN (pending / partially paid) can be settled — including
+    // zero-amount bills. Lab tests that are not in the catalogue are auto-billed
+    // at ₦0 when the doctor orders them; if the lab tech's price never lands on
+    // that row, the front desk must still be able to close the bill instead of
+    // hitting a dead end. Only already-final bills are rejected.
+    const existingStatus = normalizeStatus((existing as any).raw_status ?? existing.status);
+    if (isDepositRow(existing) || !OUTSTANDING_STATUSES.has(existingStatus)) {
         throw new Error(
             `This payment cannot be settled — its current status is "${existing.status ?? "unknown"}". ` +
             `It may already be paid, waived, or fully refunded.`
@@ -925,7 +949,7 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
 
     if (error) throw error;
 
-    const bills = (rows ?? []).filter(isOutstanding);
+    const bills = (rows ?? []).filter(isOpenBill);
     if (bills.length === 0) {
         return {
             patientId: input.patientId,
@@ -1002,8 +1026,27 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
     let partiallyPaid = 0;
 
     for (const plan of billPlans) {
-        // Bills already fully covered by deposit credit or earlier payments.
+        // Bills already fully covered by deposit credit, earlier payments — or
+        // with nothing left to collect (₦0 bills waiting to be closed).
         if (paidToKobo(plan.bill) >= plan.totalKobo) {
+            // Zero-amount open bills still need their status closed in the DB,
+            // otherwise they linger as "pending" forever.
+            if (isOpenBill(plan.bill)) {
+                await updateRowPaidKobo(supabase, plan.bill.id, String((plan.bill as any).raw_status ?? plan.bill.status), {
+                    status: "paid" as PaymentStatus,
+                    amount_paid_kobo: paidToKobo(plan.bill),
+                    paid_at: now,
+                    processed_date: now,
+                    processed_by: input.cashierId ?? null,
+                    method,
+                    payment_method: methodLabel(method),
+                    payment_type: "full",
+                    payer,
+                    payer_reference: payerReference,
+                    payer_code: input.payerCode ?? null,
+                    updated_at: now,
+                });
+            }
             settled++;
             continue;
         }
@@ -1086,7 +1129,7 @@ export async function settleAllPendingBills(input: SettleQueueBillsInput): Promi
 
     if (error) throw error;
 
-    const bills = (rows ?? []).filter(isOutstanding);
+    const bills = (rows ?? []).filter(isOpenBill);
     if (bills.length === 0) {
         return { settled: 0, patientsCleared: 0, byPayer: { hmo: 0, company: 0, private: 0 } };
     }
