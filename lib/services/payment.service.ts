@@ -201,6 +201,29 @@ function outstandingKobo(row: any): number {
 
 // ─── Defensive insert / update (schema differences tolerated) ────────────────
 
+/** Turn any thrown value into a plain Error so Next.js can serialize it to the client. */
+function asActionError(error: unknown, fallback = "Payment operation failed."): Error {
+    if (error instanceof Error && error.message) return error;
+    if (typeof error === "string" && error.trim()) return new Error(error);
+    const msg =
+        (error as any)?.message ||
+        (error as any)?.error_description ||
+        (error as any)?.details ||
+        (error as any)?.hint ||
+        null;
+    if (typeof msg === "string" && msg.trim()) return new Error(msg);
+    try {
+        return new Error(JSON.stringify(error) || fallback);
+    } catch {
+        return new Error(fallback);
+    }
+}
+
+const RLS_WRITE_BLOCKED_MSG =
+    "The bill could not be saved — the database rejected the write " +
+    "(row-level security). Ask an admin to apply the staff-role RLS fix " +
+    "migration (20260829_fix_staff_role_matching_casing.sql), then retry.";
+
 async function tryInsertPayment(supabase: Sb, candidates: any[]) {
     let lastError: any = null;
 
@@ -215,7 +238,7 @@ async function tryInsertPayment(supabase: Sb, candidates: any[]) {
         lastError = error;
     }
 
-    throw lastError;
+    throw asActionError(lastError, "Failed to create payment record.");
 }
 
 async function tryUpdatePayment(
@@ -275,7 +298,7 @@ async function tryUpdatePayment(
         }
     }
 
-    throw lastError;
+    throw asActionError(lastError, RLS_WRITE_BLOCKED_MSG);
 }
 
 // ─── Payer auto-identification ────────────────────────────────────────────────
@@ -389,7 +412,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
         return created;
     } catch (error) {
         console.error("[payment] create:", error);
-        throw error;
+        throw asActionError(error, "Failed to create payment.");
     }
 }
 
@@ -488,7 +511,7 @@ export async function updatePendingBill(input: UpdatePendingBillInput): Promise<
         );
     } catch (error) {
         console.error("[payment] updatePendingBill:", error);
-        throw error;
+        throw asActionError(error, "Failed to update bill.");
     }
 }
 
@@ -541,40 +564,74 @@ export async function getPatientDepositCredit(patientId: string) {
 }
 
 async function updateRowPaidKobo(supabase: Sb, id: string, statusNow: string, payload: Record<string, any>) {
-    // Verify the write actually landed: with RLS (or a schema mismatch) a
-    // failing update reports ZERO changed rows and NO error — treating that
-    // as success is how "Settle All" ended up reporting bills as settled
-    // while every row stayed pending on the UI.
-    const { error, count } = await supabase
-        .from("payments")
-        .update(payload, { count: "exact" })
-        .eq("id", id)
-        .eq("status", statusNow);
+    // Shared by Settle All / deposit-credit paths. Uses tryUpdatePayment so we:
+    //   1. confirm the write landed (RLS silent no-ops throw),
+    //   2. tolerate older schemas by stripping newer columns on retry,
+    //   3. tolerate concurrent status changes without a hard crash.
+    //
+    // Candidates go from richest → leanest, but we NEVER invent fields that
+    // weren't in the original payload (e.g. must not write status: undefined).
+    const OPTIONAL_NEW_COLS = [
+        "applied_kobo",
+        "payment_type",
+        "discount_kobo",
+        "discount_percent",
+        "discount_amount_kobo",
+        "payer",
+        "payer_reference",
+        "payer_code",
+        "payment_method",
+        "amount_kobo",
+        "amount_paid_kobo",
+        "updated_at",
+        "processed_date",
+        "processed_by",
+    ] as const;
 
-    if (!error && (count ?? 0) > 0) return;
+    const candidates: Record<string, any>[] = [];
+    const pushUnique = (c: Record<string, any>) => {
+        // Drop keys whose value is strictly undefined — PostgREST would otherwise
+        // try to null-out columns we never meant to touch.
+        const clean: Record<string, any> = {};
+        for (const [k, v] of Object.entries(c)) {
+            if (v !== undefined) clean[k] = v;
+        }
+        if (Object.keys(clean).length === 0) return;
+        const key = JSON.stringify(clean);
+        if (candidates.some((x) => JSON.stringify(x) === key)) return;
+        candidates.push(clean);
+    };
 
-    // Retry without the newest columns (older schemas).
-    const { applied_kobo, payment_type, ...rest } = payload as any;
-    void applied_kobo;
-    void payment_type;
-    const { error: retryError, count: retryCount } = await supabase
-        .from("payments")
-        .update(rest, { count: "exact" })
-        .eq("id", id)
-        .eq("status", statusNow);
+    pushUnique(payload);
 
-    if (!retryError && (retryCount ?? 0) > 0) return;
+    // Progressively strip optional/newer columns (older schemas).
+    let stripped: Record<string, any> = { ...payload };
+    for (const col of OPTIONAL_NEW_COLS) {
+        if (!(col in stripped)) continue;
+        const next = { ...stripped };
+        delete next[col];
+        stripped = next;
+        pushUnique(stripped);
+    }
 
-    console.error(
-        `[payment] updateRowPaidKobo: write did not apply for id=${id} ` +
-        `(status filter="${statusNow}").`,
-        retryError ?? error ?? `0 rows matched`
-    );
-    throw new Error(
-        "A bill could not be updated — the database rejected the write " +
-        "(row-level security). Ask an admin to apply the staff-role RLS fix " +
-        "migration (20260829_fix_staff_role_matching_casing.sql), then retry."
-    );
+    // Absolute minimum for a settlement write: status + whatever paid marker exists.
+    const minimal: Record<string, any> = {};
+    if ("status" in payload) minimal.status = payload.status;
+    if ("paid_at" in payload) minimal.paid_at = payload.paid_at;
+    if ("method" in payload) minimal.method = payload.method;
+    if ("amount" in payload) minimal.amount = payload.amount;
+    if ("amount_paid_kobo" in payload) minimal.amount_paid_kobo = payload.amount_paid_kobo;
+    // Deposit-credit bookkeeping must keep applied_kobo if that was the whole point.
+    if ("applied_kobo" in payload && !("status" in payload)) {
+        minimal.applied_kobo = payload.applied_kobo;
+    }
+    pushUnique(minimal);
+
+    if (candidates.length === 0) {
+        throw new Error("Internal error: empty payment update payload.");
+    }
+
+    await tryUpdatePayment(supabase, id, statusNow, candidates);
 }
 
 /**
@@ -632,6 +689,10 @@ async function applyDepositCreditInternal(
         });
 
         // Consume from deposit rows FIFO.
+        // Track cumulative applied_kobo per deposit in-memory: the `deposits`
+        // snapshot is stale after the first write, and recomputing
+        // appliedToKobo(row)+take would clobber earlier consumes on the same
+        // deposit (e.g. one ₦5,000 deposit covering three bills).
         let remaining = pay;
         for (const [depositId, available] of creditByDeposit.entries()) {
             if (remaining <= 0) break;
@@ -640,7 +701,15 @@ async function applyDepositCreditInternal(
             creditByDeposit.set(depositId, available - take);
             remaining -= take;
             const row = deposits.find((d: any) => d.id === depositId);
-            const newApplied = appliedToKobo(row) + take;
+            if (!row) continue;
+            // Starting applied (at function entry) + everything consumed so far.
+            const startingApplied = appliedToKobo(row);
+            const startingAvailable = Math.max(0, paidToKobo(row) - startingApplied);
+            const consumedSoFar = startingAvailable - creditByDeposit.get(depositId)!;
+            const newApplied = startingApplied + consumedSoFar;
+            // Keep the in-memory row in sync so a later read of the same
+            // snapshot (if any) still makes sense.
+            (row as any).applied_kobo = newApplied;
             await updateRowPaidKobo(supabase, depositId, String((row as any).raw_status ?? row.status), {
                 applied_kobo: newApplied,
                 payment_type: "deposit",
@@ -856,7 +925,7 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
         return updated;
     } catch (error) {
         console.error("[payment] confirm:", error);
-        throw error;
+        throw asActionError(error, "Failed to settle payment.");
     }
 }
 
@@ -977,6 +1046,7 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
 
     if (!input.patientId) throw new Error("patientId is required.");
 
+    try {
     const supabase = await createClient();
     const { data: rows, error } = await supabase
         .from("payments")
@@ -984,7 +1054,7 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
         .eq("patient_id", input.patientId)
         .order("created_at", { ascending: true });
 
-    if (error) throw error;
+    if (error) throw asActionError(error, "Failed to load patient bills.");
 
     const bills = (rows ?? []).filter(isOpenBill);
     if (bills.length === 0) {
@@ -1037,16 +1107,49 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
     });
 
     // ── Deposit credit first ──
+    // Applying deposit credit mutates bill rows (and may fully settle some).
+    // Re-read open bills afterwards so the status-guarded writes below target
+    // the LIVE status — otherwise we try to update status="pending" on a row
+    // that is already "paid"/"partial" and throw a hard server-action error
+    // that Next.js surfaces as the generic "Server Components render" banner.
     let creditUsedKobo = 0;
+    let liveBills = bills;
+    let liveDiscounts = perBillDiscount;
     if (input.useDepositCredit) {
         const applied = await applyDepositCreditInternal(supabase, input.patientId);
         creditUsedKobo = applied.usedKobo;
+
+        if (creditUsedKobo > 0) {
+            const { data: refreshed, error: refreshError } = await supabase
+                .from("payments")
+                .select("*")
+                .eq("patient_id", input.patientId)
+                .order("created_at", { ascending: true });
+            if (refreshError) throw asActionError(refreshError);
+
+            // Keep only bills we originally intended to settle, in the same order,
+            // carrying forward each bill's discount share by original id.
+            const discountById = new Map(bills.map((b: any, i: number) => [b.id, perBillDiscount[i]]));
+            const originalIds = new Set(bills.map((b: any) => b.id));
+            liveBills = (refreshed ?? []).filter((b: any) => originalIds.has(b.id) && isOpenBill(b));
+            // Also include any of the original bills that are no longer "open"
+            // (fully settled by credit) so we can count them as settled without
+            // attempting another write.
+            const openIds = new Set(liveBills.map((b: any) => b.id));
+            const settledByCredit = bills.filter((b: any) => !openIds.has(b.id));
+            liveBills = [...liveBills, ...settledByCredit.map((b: any) => {
+                // Mark as already paid so the loop below just counts them.
+                const live = (refreshed ?? []).find((r: any) => r.id === b.id) ?? b;
+                return live;
+            })];
+            liveDiscounts = liveBills.map((b: any) => discountById.get(b.id) ?? 0);
+        }
     }
 
     // Recompute each bill's outstanding after credit + discount.
-    const billPlans = bills.map((b, i) => {
-        const totalKobo = Math.max(paidToKobo(b), amountToKobo(b) - perBillDiscount[i]);
-        return { bill: b, discountKobo: perBillDiscount[i], totalKobo, outstanding: Math.max(0, totalKobo - paidToKobo(b)) };
+    const billPlans = liveBills.map((b, i) => {
+        const totalKobo = Math.max(paidToKobo(b), amountToKobo(b) - liveDiscounts[i]);
+        return { bill: b, discountKobo: liveDiscounts[i], totalKobo, outstanding: Math.max(0, totalKobo - paidToKobo(b)) };
     });
 
     const afterCreditOutstanding = billPlans.reduce((s, p) => s + p.outstanding, 0);
@@ -1136,8 +1239,17 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
         remainingKobo,
     };
 
-    await dischargeIfBillingCleared(supabase, { patient_id: input.patientId } as any);
+    try {
+        await dischargeIfBillingCleared(supabase, { patient_id: input.patientId } as any);
+    } catch (dischargeErr) {
+        // Settlement already succeeded — don't fail the cashier for a discharge side-effect.
+        console.warn("[payment] settleAllPatientBills: discharge side-effect failed:", dischargeErr);
+    }
     return summary;
+    } catch (error) {
+        console.error("[payment] settleAllPatientBills:", error);
+        throw asActionError(error, "Failed to settle bills.");
+    }
 }
 
 // ─── Settle ALL pending bills in the checkout queue ───────────────────────────
@@ -1158,13 +1270,14 @@ export async function settleAllPendingBills(input: SettleQueueBillsInput): Promi
     const actor = await requireStaff([UserRole.FrontDesk]);
     if (typeof (input as any).cashierId === "string") (input as any).cashierId = actor.userId;
 
+    try {
     const supabase = await createClient();
     const { data: rows, error } = await supabase
         .from("payments")
         .select("*")
         .order("created_at", { ascending: true });
 
-    if (error) throw error;
+    if (error) throw asActionError(error, "Failed to load pending bills.");
 
     const bills = (rows ?? []).filter(isOpenBill);
     if (bills.length === 0) {
@@ -1229,6 +1342,10 @@ export async function settleAllPendingBills(input: SettleQueueBillsInput): Promi
     }
 
     return { settled: bills.length, patientsCleared, byPayer };
+    } catch (error) {
+        console.error("[payment] settleAllPendingBills:", error);
+        throw asActionError(error, "Failed to settle the checkout queue.");
+    }
 }
 
 // ─── Discharge when billing is fully cleared ──────────────────────────────────
