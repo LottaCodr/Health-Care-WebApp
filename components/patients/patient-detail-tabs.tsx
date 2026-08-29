@@ -103,6 +103,21 @@ const BASE_TABS: TabDef[] = [
   { value: "radiology", label: "Radiology", icon: Radio, accent: "text-cyan-600", activeBar: "bg-cyan-500", group: "general", keywords: ["x-ray", "ultrasound", "scan", "imaging"] },
 ];
 
+// TEMPORARY: sections hidden from the patient-details tab strip (feature flags,
+// not deletions — the panels and dynamic imports stay in place). To restore a
+// section, remove its value from this set.
+const TEMP_HIDDEN_TABS = new Set<string>([
+  "allergies",
+  "imaging",
+  "exports",
+  "certificates",
+  "referrals",
+  "reconciliation",
+  "growth",
+  "immunizations",
+  "consent",
+]);
+
 const DISCHARGE_STATUSES = new Set([
   PatientStatus.UnderConsultation, PatientStatus.Admitted, PatientStatus.AwaitingPayment,
   "under-consultation", "admitted", "awaiting-payment",
@@ -348,7 +363,8 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       if (d.show) extra.push({ value: d.value, label: d.label, icon: d.icon, accent: d.accent, activeBar: d.activeBar, group: d.group, keywords: d.keywords ? [...d.keywords] : undefined });
     }
 
-    return [...BASE_TABS, ...extra];
+    // Temporarily hide selected sections (see TEMP_HIDDEN_TABS above).
+    return [...BASE_TABS, ...extra].filter((t) => !TEMP_HIDDEN_TABS.has(t.value));
   }, [role, status, canViewBilling]);
 
   // Group tabs by department for the segmented TabsList layout below.
@@ -429,8 +445,11 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   }, [patient.id, tab]);
 
   // Allergy banner deep-link: scrolls/opens the Allergies tab.
+  // No-op while the Allergies section is temporarily hidden.
   useEffect(() => {
-    const open = () => setTab("allergies");
+    const open = () => {
+      if (!TEMP_HIDDEN_TABS.has("allergies")) setTab("allergies");
+    };
     window.addEventListener("emr:open-allergies", open);
     return () => window.removeEventListener("emr:open-allergies", open);
   }, []);
