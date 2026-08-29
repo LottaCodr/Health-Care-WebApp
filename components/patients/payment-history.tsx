@@ -378,7 +378,9 @@ export default function PaymentHistory({ patientId, patient = null, readOnly = f
     const payments = useMemo(() => mapPaymentsForHistory(raw as DbPayment[]), [raw]);
 
     const outstandingPayments = useMemo(
-        () => payments.filter((p) => p.status === "pending" || p.status === "partial" && p.category !== "deposit"),
+        () => payments.filter((p) =>
+            (p.status === "pending" || p.status === "partial") && p.category !== "deposit"
+        ),
         [payments]
     );
 

@@ -25,6 +25,29 @@ import {
 } from "@/lib/utils/billing";
 import type { Payment } from "@/components/patients/payment-history";
 
+
+/** Extract a human-readable message from a server-action / mutation error. */
+function mutationErrorMessage(err: unknown, fallback: string): string {
+    if (err instanceof Error && err.message) {
+        // Next.js sometimes wraps the real message; strip the boilerplate if present.
+        const m = err.message.trim();
+        if (m && !m.includes("An error occurred in the Server Components render")) return m;
+    }
+    if (typeof err === "string" && err.trim()) return err.trim();
+    const anyErr = err as any;
+    const nested =
+        anyErr?.message ||
+        anyErr?.error?.message ||
+        anyErr?.cause?.message ||
+        anyErr?.data?.message ||
+        null;
+    if (typeof nested === "string" && nested.trim()
+        && !nested.includes("An error occurred in the Server Components render")) {
+        return nested.trim();
+    }
+    return fallback;
+}
+
 // ─── Small shared pieces ──────────────────────────────────────────────────────
 
 export function PayerBadge({ payer, reference, className = "" }: {
@@ -283,7 +306,7 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                     }
                     onClose();
                 },
-                onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to settle payment."),
+                onError: (err) => toast.error(mutationErrorMessage(err, "Failed to settle payment.")),
             }
         );
     }
@@ -527,7 +550,7 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
                     );
                     onClose();
                 },
-                onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to settle bills."),
+                onError: (err) => toast.error(mutationErrorMessage(err, "Failed to settle bills.")),
             }
         );
     }
@@ -703,7 +726,7 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
                     toast.success(`Deposit of ${formatKobo(amountKobo)} recorded — applied to any outstanding bills.`);
                     onClose();
                 },
-                onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to record deposit."),
+                onError: (err) => toast.error(mutationErrorMessage(err, "Failed to record deposit.")),
             }
         );
     }
@@ -789,7 +812,7 @@ export function QueueSettleAllModal({ totalBills, totalKobo, cashierId, onClose 
                     );
                     onClose();
                 },
-                onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to settle queue."),
+                onError: (err) => toast.error(mutationErrorMessage(err, "Failed to settle queue.")),
             }
         );
     }

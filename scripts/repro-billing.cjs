@@ -364,10 +364,68 @@ async function scenarioRlsBlocked() {
     console.log("-- bill row:", JSON.stringify({ amount: db.payments[0].amount, status: db.payments[0].status }));
 }
 
+
+async function scenarioSettleAllWithDeposit() {
+    console.log("\n==== SCENARIO 4 - Settle All after deposit credit (stale-status bug):");
+    console.log("    deposit covers bill A fully and bill B partially; Settle All must still succeed.");
+    const { paymentService, labService } = await freshContext();
+
+    // Two lab bills
+    await labService.createLabRequest({ patientId: "patient-1", testType: "Test A", price: 1000, requestedBy: "doc" });
+    await labService.createLabRequest({ patientId: "patient-1", testType: "Test B", price: 3000, requestedBy: "doc" });
+
+    // Deposit of 1500 — fully covers A (1000), partially covers B (500 of 3000)
+    const dep = await paymentService.recordDeposit({
+        patient_id: "patient-1",
+        amount: 1500,
+        method: "cash",
+        applyToOutstanding: true,
+    });
+    console.log("-- deposit recorded:", dep.amount, dep.status);
+
+    const before = await paymentService.listPaymentsByPatient("patient-1");
+    console.log("-- bills before settle-all:", before.filter(b => b.category !== "deposit").map(b => ({
+        desc: b.description, amount: b.amount, paid: b.amount_paid_kobo/100, status: b.status
+    })));
+
+    const settle = await Promise.resolve()
+        .then(() => paymentService.settleAllPatientBills({
+            patientId: "patient-1",
+            paymentType: "full",
+            method: "cash",
+            useDepositCredit: true, // credit already applied, but flag may re-run
+        }))
+        .then((v) => ({ ok: true, v }), (e) => ({ ok: false, err: e && (e.message || String(e)) }));
+
+    console.log("-- settleAllPatientBills:", settle.ok ? JSON.stringify(settle.v) : "THREW: " + settle.err);
+
+    const after = await paymentService.listPaymentsByPatient("patient-1");
+    console.log("-- bills after:", after.filter(b => b.category !== "deposit").map(b => ({
+        desc: b.description, amount: b.amount, paid: b.amount_paid_kobo/100, status: b.status
+    })));
+}
+
+async function scenarioSettleAllSimple() {
+    console.log("\n==== SCENARIO 5 - plain Settle All (no deposit):");
+    const { paymentService, labService } = await freshContext();
+    await labService.createLabRequest({ patientId: "patient-1", testType: "CBC", price: 2500, requestedBy: "doc" });
+    await labService.createLabRequest({ patientId: "patient-1", testType: "LFT", price: 4000, requestedBy: "doc" });
+
+    const settle = await Promise.resolve()
+        .then(() => paymentService.settleAllPatientBills({ patientId: "patient-1", paymentType: "full", method: "cash" }))
+        .then((v) => ({ ok: true, v }), (e) => ({ ok: false, err: e && (e.message || String(e)) }));
+    console.log("-- settleAll:", settle.ok ? JSON.stringify(settle.v) : "THREW: " + settle.err);
+    const after = await paymentService.listPaymentsByPatient("patient-1");
+    console.log("-- statuses:", after.map(b => b.status));
+}
+
 async function main() {
     await scenarioHealthy();
     await scenarioRlsBlocked();
+    await scenarioSettleAllWithDeposit();
+    await scenarioSettleAllSimple();
     console.log("\nDone.");
 }
+
 
 main().catch((e) => { console.error("FATAL", e); process.exit(1); });
