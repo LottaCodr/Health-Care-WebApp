@@ -251,15 +251,15 @@ function LabTechPendingRow({ req, patientId, patient, onSubmitted }: { req: any;
                     completed_at: new Date().toISOString(),
                     ...(parsedPrice > 0 ? { price: parsedPrice } : {}),
                 },
-            },
-            {
-                onSuccess: () => { 
-                    toast.success("Result submitted and updated in billing."); 
-                    setOpen(false); 
-                    setPrice("");
-                    onSubmitted(); 
                 },
-                onError: () => toast.error("Failed to submit result."),
+            {
+                onSuccess: () => {
+                    toast.success("Result submitted and updated in billing.");
+                    setOpen(false);
+                    setPrice("");
+                    onSubmitted();
+                },
+                onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to submit result."),
             }
         );
     }

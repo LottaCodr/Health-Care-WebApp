@@ -78,6 +78,9 @@ The "Active Sessions" screen showed a hardcoded "1" — it looked secure but was
 
 **Verify:** `npx tsc --noEmit` → 0 errors · `npx eslint .` → 0 errors · `npm run build` → ✅ green.
 
+### 🔧 2026-08-29 — RLS role-matching hotfix (apply this migration)
+`staff_has_role()` lowercased the role **after** stripping non-lowercase characters, so any role stored with capital letters — including the canonical values this app writes (`"FrontDesk"`, `"Doctor"`, `"LabTechnician"`, …) — matched **no** policy group. Row-Level Security then silently reduced those staff to zero-row updates: the front desk could see bills but every Edit/Settle write to `payments` was quietly dropped (the UI toasted success while the data never changed). `supabase/migrations/20260829_fix_staff_role_matching_casing.sql` replaces the helper with normalization identical to the app's `normalizeUserRole()` (lowercase first, then strip spaces/underscores/hyphens). The service layer now also verifies every guarded write actually changed a row and fails loudly instead of faking success (`payment.service.ts`, `lab.service.ts`).
+
 ### ⚠️ One step needs the real database
 Run `supabase db push` (or execute `supabase/migrations/20260814_enable_rls_security.sql`) against your Supabase project, then also, in the Supabase dashboard:
 1. **Authentication → Sign In / Up:** turn **off** "Allow new users to sign up".

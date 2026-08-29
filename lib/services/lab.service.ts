@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { LabRequest, UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
@@ -224,6 +225,11 @@ export async function updateLabRequest(
     // ── Billing: create or update a pending payment when a price is set ────────
     // This covers both: (a) the lab tech entering a price at result-submission
     // time, and (b) any other code path that calls updateLabRequest with a price.
+    //
+    // A failed sync is remembered and rethrown AFTER routing below: the result
+    // itself is already saved, and the front desk MUST get the updated price —
+    // swallowing the failure here is how bills silently stayed at ₦0.
+    let billingSyncError: Error | null = null;
     if (typeof updates.price === "number" && updates.price > 0 && data?.visit_id) {
         try {
             const desc = `Lab Test: ${data.test_type}`;
@@ -254,24 +260,54 @@ export async function updateLabRequest(
             if (target) {
                 // Schema-tolerant write: `updated_at` may be missing on older
                 // tables — retry without it instead of failing silently.
+                //
+                // RLS: the `payments` table only allows FrontDesk/Admin to
+                // update rows, and this runs as the lab tech — so writing with
+                // the caller's session would silently match zero rows and the
+                // bill would stay at ₦0 forever (the exact "price not showing
+                // at the front desk" bug). The sync is a trusted server-side
+                // hand-off (the lab tech already passed requireStaff above),
+                // so prefer the service-role client when it is configured and
+                // verify every write actually changed a row.
                 const pricePayload = {
                     amount: updates.price,
                     amount_kobo: Math.round(updates.price * 100),
                     updated_at: new Date().toISOString(),
                 };
-                const { error: updateError } = await supabase
+
+                const writeClient = createAdminClient() ?? supabase;
+                const { error: updateError, count } = await writeClient
                     .from("payments")
-                    .update(pricePayload)
+                    .update(pricePayload, { count: "exact" })
                     .eq("id", target.id);
-                if (updateError) {
+
+                let applied = !updateError && (count ?? 0) > 0;
+
+                if (!applied) {
                     const { updated_at: _omit, ...retryPayload } = pricePayload;
                     void _omit;
-                    const { error: retryError } = await supabase
+                    const { error: retryError, count: retryCount } = await writeClient
                         .from("payments")
-                        .update(retryPayload)
+                        .update(retryPayload, { count: "exact" })
                         .eq("id", target.id);
-                    if (retryError) {
-                        console.error("[lab] failed to update lab bill price:", retryError);
+                    applied = !retryError && (retryCount ?? 0) > 0;
+                    if (!applied) {
+                        console.error(
+                            "[lab] failed to update lab bill price:",
+                            retryError ?? updateError ?? `${retryCount ?? 0} rows changed`,
+                            { billId: target.id, labRequestId: id }
+                        );
+                        if (writeClient === supabase) {
+                            // No service-role client configured AND the caller's
+                            // own session was filtered out by RLS — surface it
+                            // instead of letting the price silently vanish.
+                            throw new Error(
+                                "Lab result saved, but the price could not be written to the bill " +
+                                "(the database rejected the write). Apply migration " +
+                                "20260829_fix_staff_role_matching_casing.sql or configure " +
+                                "SUPABASE_SERVICE_ROLE_KEY, then set the price again."
+                            );
+                        }
                     }
                 }
             } else {
@@ -286,6 +322,9 @@ export async function updateLabRequest(
                 });
             }
         } catch (payErr) {
+            // Remember (don't throw yet) — patient routing below must still run.
+            billingSyncError =
+                payErr instanceof Error ? payErr : new Error(String(payErr));
             console.error("[lab] error updating/creating payment on lab update:", payErr);
         }
     } else if (typeof updates.price === "number" && updates.price > 0 && !data?.visit_id) {
@@ -312,6 +351,11 @@ export async function updateLabRequest(
             type: "success"
         });
     }
+
+    // Routing is done — now surface a failed price→bill sync so the lab tech
+    // sees exactly what happened and can retry the price (the result itself
+    // is already saved above).
+    if (billingSyncError) throw billingSyncError;
 
     return data as unknown as LabRequest;
 }
