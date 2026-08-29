@@ -238,15 +238,37 @@ async function tryUpdatePayment(
         if (!error) return data;
         lastError = error;
 
-        // PGRST116 = no rows changed. The row may have been settled concurrently —
-        // return the live record so the caller gets up-to-date state.
+        // PGRST116 = no rows changed. Two very different causes:
+        //
+        // 1. Concurrent modification — another cashier settled the bill a
+        //    moment ago, so the status guard no longer matches. The live
+        //    record reflects the newer state and is safe to return.
+        // 2. The write did not APPLY at all (e.g. an RLS policy quietly
+        //    filtered the update — PostgREST reports 0 changed rows, no
+        //    error). If the row is still in exactly the state we targeted,
+        //    returning it would fake success: the UI toasts "updated" and
+        //    then shows the same stale data forever. That must fail loudly.
         if (error.code === "PGRST116") {
             const existing = await getPaymentById(id);
             if (existing) {
+                const liveStatus = String((existing as any).raw_status ?? existing.status);
+                if (normalizeStatus(liveStatus) === normalizeStatus(currentStatus)) {
+                    console.error(
+                        `[payment] tryUpdatePayment: write did not apply for id=${id} ` +
+                        `(status filter="${currentStatus}"). The row is unchanged — ` +
+                        `a database policy (RLS) or schema is blocking updates to \`payments\`. ` +
+                        `Apply supabase/migrations/20260829_fix_staff_role_matching_casing.sql.`
+                    );
+                    throw new Error(
+                        "The bill could not be saved — the database rejected the write " +
+                        "(row-level security). Ask an admin to apply the staff-role RLS fix " +
+                        "migration (20260829_fix_staff_role_matching_casing.sql), then retry."
+                    );
+                }
                 console.warn(
                     `[payment] tryUpdatePayment: no row updated for id=${id} ` +
-                    `(status filter="${currentStatus}" — row may have been modified concurrently). ` +
-                    `Returning live record.`
+                    `(status filter="${currentStatus}" — row was modified concurrently ` +
+                    `(now "${liveStatus}")). Returning live record.`
                 );
                 return existing;
             }
@@ -519,25 +541,40 @@ export async function getPatientDepositCredit(patientId: string) {
 }
 
 async function updateRowPaidKobo(supabase: Sb, id: string, statusNow: string, payload: Record<string, any>) {
-    // Keep it simple: single payload + fallback without optional columns.
-    const { error } = await supabase
+    // Verify the write actually landed: with RLS (or a schema mismatch) a
+    // failing update reports ZERO changed rows and NO error — treating that
+    // as success is how "Settle All" ended up reporting bills as settled
+    // while every row stayed pending on the UI.
+    const { error, count } = await supabase
         .from("payments")
-        .update(payload)
+        .update(payload, { count: "exact" })
         .eq("id", id)
         .eq("status", statusNow);
 
-    if (error) {
-        // Retry without the newest columns.
-        const { applied_kobo, payment_type, ...rest } = payload as any;
-        void applied_kobo;
-        void payment_type;
-        const { error: retryError } = await supabase
-            .from("payments")
-            .update(rest)
-            .eq("id", id)
-            .eq("status", statusNow);
-        if (retryError) console.error("[payment] updateRowPaidKobo retry failed:", retryError);
-    }
+    if (!error && (count ?? 0) > 0) return;
+
+    // Retry without the newest columns (older schemas).
+    const { applied_kobo, payment_type, ...rest } = payload as any;
+    void applied_kobo;
+    void payment_type;
+    const { error: retryError, count: retryCount } = await supabase
+        .from("payments")
+        .update(rest, { count: "exact" })
+        .eq("id", id)
+        .eq("status", statusNow);
+
+    if (!retryError && (retryCount ?? 0) > 0) return;
+
+    console.error(
+        `[payment] updateRowPaidKobo: write did not apply for id=${id} ` +
+        `(status filter="${statusNow}").`,
+        retryError ?? error ?? `0 rows matched`
+    );
+    throw new Error(
+        "A bill could not be updated — the database rejected the write " +
+        "(row-level security). Ask an admin to apply the staff-role RLS fix " +
+        "migration (20260829_fix_staff_role_matching_casing.sql), then retry."
+    );
 }
 
 /**
