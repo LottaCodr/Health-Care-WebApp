@@ -7,6 +7,15 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverActions: {
+      // Raised from the 1MB default so uploads up to the app's 20MB file-size
+      // limit don't fail with 413. Patient documents are sent to the upload
+      // server action base64-encoded (~33% larger ≈ ~27MB), so the limit
+      // needs headroom above 20MB.
+      bodySizeLimit: "30mb",
+    },
+  },
   typescript: {
     // Surface type errors at build time (previously masked, hiding 53 errors).
     ignoreBuildErrors: false,

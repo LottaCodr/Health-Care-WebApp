@@ -59,8 +59,8 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > 10 * 1024 * 1024) {
-            setFileError("File must be under 10MB");
+        if (file.size > 20 * 1024 * 1024) {
+            setFileError("File must be under 20MB");
             return;
         }
         setResultFile(file);
@@ -180,7 +180,7 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
                             </div>
                             <div>
                                 <p className="text-sm font-bold text-gray-800">Attach Report (Optional)</p>
-                                <p className="text-xs text-gray-400 mt-0.5">PDF, DOC, JPG or PNG — max 10MB</p>
+                                <p className="text-xs text-gray-400 mt-0.5">PDF, DOC, JPG or PNG — max 20MB</p>
                             </div>
                         </div>
                         <div className="px-6 py-4">
