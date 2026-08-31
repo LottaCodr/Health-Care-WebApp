@@ -87,7 +87,7 @@ export default function AdminDashboard() {
     const pendingPay = awaitingPay.data?.length ?? 0;
 
     const stats = [
-        { label: "Total Patient Records", value: totalPatients, icon: Users, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+        { label: "Total Patient Records", value: totalPatients, icon: Users, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", href: "/admin/patient" },
         { label: "Awaiting Consultation", value: awaiting.data?.length ?? 0, icon: Stethoscope, color: "text-red-600", bg: "bg-red-50", border: "border-red-100", href: "/doctor/dashboard" },
         { label: "Pending Lab Tests", value: pendingLab, icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", href: "/lab-tech/dashboard" },
         { label: "Active Prescriptions", value: activePx, icon: Pill, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100", href: "/pharmacist/dashboard" },
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
             {/* ── Quick links ── */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
-                    { label: "Patient Records", href: "/doctor/health-records", color: "text-red-600", bg: "bg-red-50" },
+                    { label: "Patient Records", href: "/admin/patient", color: "text-red-600", bg: "bg-red-50" },
                     { label: "Lab Reports", href: "/lab-tech/reports", color: "text-indigo-600", bg: "bg-indigo-50" },
                     { label: "Drug Inventory", href: "/pharmacist/inventory", color: "text-violet-600", bg: "bg-violet-50" },
                     { label: "Payment Queue", href: "/front-desk/payment", color: "text-amber-600", bg: "bg-amber-50" },

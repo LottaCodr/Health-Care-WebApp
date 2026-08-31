@@ -75,6 +75,7 @@ const EXPECTED_HEADERS: Record<UploadType, string[]> = {
     "genotype",
     "next_of_kin_name",
     "next_of_kin_phone",
+    "hospital_number",
   ],
   drug_inventory: [
     "drug_name",
@@ -118,7 +119,7 @@ const VALID_DRUG_CATEGORIES = [
 ];
 
 const TEMPLATE_EXAMPLE: Record<UploadType, string> = {
-  patients: "Jane Doe,1990-06-15,female,+2348012345678,12 Aso Drive Abuja,A+,AA,John Doe,+2348098765432",
+  patients: "Jane Doe,1990-06-15,female,+2348012345678,12 Aso Drive Abuja,A+,AA,John Doe,+2348098765432,NVH-000001",
   drug_inventory: "Amoxicillin 500mg,Amoxicillin,TABLET,Pack,5,0,ACTIVE",
   lab_test_catalog: "Full Blood Count (FBC),T1,Haematology,,,0",
 };
@@ -462,6 +463,9 @@ function StepSelect({
           <span className="text-primary font-bold">*</span> Required columns · Others optional
           {uploadType === "drug_inventory" && (
             <> · category: {VALID_DRUG_CATEGORIES.join(", ")}</>
+          )}
+          {uploadType === "patients" && (
+            <> · hospital_number: leave blank to auto-assign (NVH-…), or paste the paper record's number</>
           )}
         </p>
       </div>

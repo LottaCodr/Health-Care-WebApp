@@ -26,6 +26,7 @@ import {
     PackageX,
     BarChart3,
     Building2,
+    FolderOpen,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -124,6 +125,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
     [UserRole.Admin]: {
         main: [
             { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
+            { title: "Patient Records", url: "/admin/patient", icon: FolderOpen },
             { title: "Staff Management", url: "/admin/staff", icon: UsersRound },
             { title: "Drugs Inventory", url: "/admin/stocked-drugs", icon: Pill },
             { title: "Tests Catalogue", url: "/admin/tests-catalogue", icon: Microscope },

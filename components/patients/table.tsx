@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw } from "lucide-react";
+import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw, ClipboardList } from "lucide-react";
 import ReturnPatient from "./return-patient";
 // import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
 import {
@@ -228,6 +228,9 @@ function PatientGrid({
 
                                 {/* Info */}
                                 <div className="space-y-2.5">
+                                    <InfoRow icon={<ClipboardList size={13} className="text-gray-400" />} label="HN">
+                                        <span className="font-mono">{patient.hospital_number ?? <span className="italic text-gray-300">—</span>}</span>
+                                    </InfoRow>
                                     <InfoRow icon={<Calendar size={13} className="text-gray-400" />}>
                                         {patient.created_at ? formatDate(patient.created_at) : <span className="italic text-gray-300">No date</span>}
                                     </InfoRow>

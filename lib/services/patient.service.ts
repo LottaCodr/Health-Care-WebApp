@@ -24,9 +24,22 @@ export async function createPatient(
 ): Promise<Patient> {
     const actor = await requireStaff([UserRole.FrontDesk]);
     const supabase = await createClient();
+
+    // Hospital number: patients registered in the EMR carry the NVHE prefix.
+    // Degrades gracefully if the hospital_number migration hasn't been applied.
+    let hospital_number: string | null = null;
+    try {
+        const { data: hn, error: hnError } = await supabase
+            .rpc("next_hospital_number", { p_prefix: "NVHE" });
+        if (!hnError && typeof hn === "string") hospital_number = hn;
+        else if (hnError) console.error("[patient] next_hospital_number:", hnError);
+    } catch (e) {
+        console.error("[patient] hospital number generation skipped:", e);
+    }
+
     const { data: result, error } = await supabase
         .from("patients")
-        .insert([data])
+        .insert([{ ...data, ...(hospital_number ? { hospital_number } : {}) }])
         .select()
         .single();
 
@@ -122,7 +135,8 @@ export async function searchPatients(query: string): Promise<Patient[]> {
     const { data, error } = await supabase
         .from("patients")
         .select("*")
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`)
+        .or(`name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,hospital_number.ilike.%${query}%`)
+        .order("created_at", { ascending: false })
         .limit(50);
 
     if (error) { console.error("[patient] searchPatients:", error); return []; }

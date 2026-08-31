@@ -169,7 +169,8 @@ export default function PatientsComponent() {
         const q = search.toLowerCase();
         return tabFiltered.filter((p) =>
             p.name?.toLowerCase().includes(q) ||
-            p.phone?.toLowerCase().includes(q)
+            p.phone?.toLowerCase().includes(q) ||
+            p.hospital_number?.toLowerCase().includes(q)
         );
     }, [tabFiltered, search]);
 
@@ -260,7 +261,7 @@ export default function PatientsComponent() {
                                 <SearchInput
                                     value={search}
                                     onChange={setSearch}
-                                    placeholder="Search by name or phone..."
+                                    placeholder="Search by name, phone, or hospital no..."
                                 />
                             </div>
                             <Button
