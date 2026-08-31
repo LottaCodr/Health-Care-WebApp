@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "@/lib/services/auth-guard";
+import { normalizeLabTestName } from "@/lib/utils/lab-catalog";
 
 // ── Table names — update if your schema differs ───────────────────────────────
 const TABLES = {
@@ -28,8 +29,25 @@ export async function checkExistingRecords(
     await requireStaff();
     if (!values.length) return [];
     const sb    = await createClient();
-    const field = type === "patients" ? "phone" : type === "drug_inventory" ? "drug_name" : "test_code";
 
+    // Lab tests are keyed by NAME (the business key the billing lookup uses),
+    // not by code — otherwise the same test uploaded under a different code
+    // slips through and creates duplicates.
+    if (type === "lab_test_catalog") {
+        const { data } = await sb
+            .from(TABLES[type])
+            .select("test_name, test_code");
+
+        const incoming = new Set(values.map((v) => normalizeLabTestName(v)));
+        const existing = (data ?? []).flatMap((r: any) => [
+            normalizeLabTestName(r.test_name),
+            String(r.test_code ?? "").trim().toLowerCase(),
+        ]);
+
+        return [...new Set(existing)].filter((v) => v && incoming.has(v));
+    }
+
+    const field = type === "patients" ? "phone" : "drug_name";
     const { data } = await sb
         .from(TABLES[type])
         .select(field)

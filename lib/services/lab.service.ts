@@ -5,6 +5,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { LabRequest, UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
+import { dedupeLabTests, normalizeLabTestName } from "@/lib/utils/lab-catalog";
 
 import { createNotification } from "./notification.service";
 import { createPayment } from "./payment.service";
@@ -32,10 +33,16 @@ export async function createLabRequest(
     if (testPrice === 0 && input.testType) {
         try {
             const cleanTestName = input.testType.replace(/^\[RADIOLOGY\]\s*/i, "").trim();
+            // Duplicate catalog rows used to make `.maybeSingle()` error out and
+            // silently bill ₦0. Prefer an active, priced row and cap at one so
+            // the lookup stays correct even if duplicates still exist.
             const { data: catalogItem } = await supabase
                 .from("lab_test_catalog")
                 .select("price")
                 .ilike("test_name", cleanTestName)
+                .order("is_active", { ascending: false })
+                .order("price", { ascending: false })
+                .limit(1)
                 .maybeSingle();
 
             if (catalogItem && typeof catalogItem.price === "number" && catalogItem.price > 0) {
@@ -391,7 +398,8 @@ export async function listActiveLabTests(): Promise<LabTestCatalogItem[]> {
         .order("test_name");
 
     if (error) { console.error("[lab] listActiveTests:", error); return []; }
-    return data as LabTestCatalogItem[];
+    // One row per test name so duplicate catalog rows never reach the UI.
+    return dedupeLabTests(data as LabTestCatalogItem[]);
 }
 
 export async function listAllLabTests(): Promise<LabTestCatalogItem[]> {
@@ -404,7 +412,7 @@ export async function listAllLabTests(): Promise<LabTestCatalogItem[]> {
         .order("test_name");
 
     if (error) { console.error("[lab] listAllTests:", error); return []; }
-    return data as LabTestCatalogItem[];
+    return dedupeLabTests(data as LabTestCatalogItem[]);
 }
 
 export async function upsertLabTest(
@@ -440,4 +448,120 @@ export async function toggleLabTestActive(
         .eq("id", id);
 
     if (error) { console.error("[lab] toggleActive:", error); throw error; }
+}
+
+// ─── Duplicate cleanup ───────────────────────────────────────────────────────
+
+export interface MergeDuplicateLabTestsResult {
+    /** Number of duplicate groups that were merged into a single test. */
+    merged: number;
+    /** Number of duplicate rows deleted. */
+    removed: number;
+    /** Number of tests that were already unique (untouched). */
+    kept: number;
+}
+
+/**
+ * One-click cleanup for duplicate lab tests. Groups rows by normalized test
+ * name, keeps the best row (active → priced → has code → lowest id), merges the
+ * core fields of the duplicates into it, then deletes the rest.
+ *
+ * Deletes/updates are performed with the service-role client when configured so
+ * the cleanup also works when triggered by an Admin (whose RLS role is not
+ * "LabTechnician" and would otherwise be filtered out by the delete policy).
+ */
+export async function mergeDuplicateLabTests(): Promise<MergeDuplicateLabTestsResult> {
+    await requireStaff([UserRole.LabTechnician]);
+    const supabase = await createClient();
+
+    const { data: tests, error } = await supabase
+        .from("lab_test_catalog")
+        .select("id, test_name, test_code, category, price, is_active");
+
+    if (error) { console.error("[lab] mergeDuplicates read:", error); throw error; }
+    if (!tests || tests.length === 0) {
+        return { merged: 0, removed: 0, kept: 0 };
+    }
+
+    // Group by normalized test name.
+    const groups = new Map<string, typeof tests>();
+    for (const t of tests) {
+        const key = normalizeLabTestName(t.test_name);
+        const group = groups.get(key) ?? [];
+        group.push(t);
+        groups.set(key, group);
+    }
+
+    const writeClient = createAdminClient() ?? supabase;
+
+    const textFields = ["test_code", "category"] as const;
+    let merged = 0;
+    let removed = 0;
+    let kept = 0;
+
+    for (const rows of groups.values()) {
+        if (rows.length < 2) { kept++; continue; }
+
+        // Deterministic keeper, matching the SQL migration's ordering.
+        const sorted = [...rows].sort((a, b) => {
+            const score = (t: any): [number, number, number] => [
+                t.is_active ? 0 : 1,
+                typeof t.price === "number" && t.price > 0 ? 0 : 1,
+                (t.test_code ?? "").trim() ? 0 : 1,
+            ];
+            const sa = score(a);
+            const sb = score(b);
+            for (let i = 0; i < sa.length; i++) if (sa[i] !== sb[i]) return sa[i] - sb[i];
+            return String(a.id).localeCompare(String(b.id));
+        });
+
+        const keeper = sorted[0];
+        const dups = sorted.slice(1);
+
+        // Merge the best available values from the duplicates into the keeper.
+        const patch: Record<string, unknown> = {};
+        for (const f of textFields) {
+            const current = (keeper[f] ?? "").toString().trim();
+            if (!current) {
+                const better = dups.find((d) => (d[f] ?? "").toString().trim());
+                if (better) patch[f] = better[f];
+            }
+        }
+        if (!(typeof keeper.price === "number" && keeper.price > 0)) {
+            const priced = dups.find((d) => typeof d.price === "number" && d.price > 0);
+            if (priced) patch.price = priced.price;
+        }
+        if (!keeper.is_active && dups.some((d) => d.is_active)) patch.is_active = true;
+
+        if (Object.keys(patch).length > 0) {
+            const { error: updErr } = await writeClient
+                .from("lab_test_catalog")
+                .update(patch)
+                .eq("id", keeper.id);
+            if (updErr) { console.error("[lab] mergeDuplicates update:", updErr); throw updErr; }
+        }
+
+        const dupIds = dups.map((d) => d.id);
+        const { error: delErr, count } = await writeClient
+            .from("lab_test_catalog")
+            .delete({ count: "exact" })
+            .in("id", dupIds);
+
+        if (delErr) { console.error("[lab] mergeDuplicates delete:", delErr); throw delErr; }
+
+        // If the write ran with the caller's session and RLS filtered it out,
+        // surface that instead of silently reporting success.
+        if (writeClient === supabase && (count ?? 0) < dupIds.length) {
+            throw new Error(
+                "Duplicates found but the database rejected the cleanup. " +
+                "Run supabase/migrations/20260831_dedupe_lab_test_catalog.sql " +
+                "or configure SUPABASE_SERVICE_ROLE_KEY, then try again."
+            );
+        }
+
+        merged++;
+        removed += dupIds.length;
+    }
+
+    return { merged, removed, kept };
 }

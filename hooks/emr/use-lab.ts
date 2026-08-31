@@ -218,3 +218,15 @@ export function useToggleLabTestActive() {
         },
     });
 }
+
+export function useMergeDuplicateLabTests() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => LS.mergeDuplicateLabTests(),
+        onSettled: () => {
+            qc.invalidateQueries({ queryKey: labKeys.catalog() });
+            qc.invalidateQueries({ queryKey: labKeys.catalogActive() });
+        },
+    });
+}

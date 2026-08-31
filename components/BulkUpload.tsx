@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import { checkExistingRecords, bulkUploadChunk } from "@/lib/actions/bulk-upload";
 import type { UploadType } from "@/lib/actions/bulk-upload";
+import { normalizeLabTestName } from "@/lib/utils/lab-catalog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -138,6 +139,28 @@ interface FailedRow {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// ─── Duplicate-key helpers ────────────────────────────────────────────────────
+// Lab tests are de-duplicated by NAME (the key the billing lookup uses), the
+// other upload types keep their existing keys (phone / drug name).
+
+function dedupeKey(type: UploadType): string {
+    return type === "patients" ? "phone" : type === "drug_inventory" ? "drug_name" : "test_name";
+}
+
+/** Value sent to the server for the existing-records lookup. */
+function queryKeyValue(type: UploadType, value?: string): string {
+    const v = (value ?? "").trim();
+    if (!v) return "";
+    return type === "lab_test_catalog" ? normalizeLabTestName(v) : v;
+}
+
+/** Case-insensitive key for comparing against the server's normalized set. */
+function normCompareKey(type: UploadType, value?: string): string {
+    const v = (value ?? "").trim();
+    if (!v) return "";
+    return type === "lab_test_catalog" ? normalizeLabTestName(v) : v.toLowerCase();
+}
 
 function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.trim().split("\n").filter(Boolean);
@@ -949,8 +972,8 @@ export default function BulkUploadDialog({
 
     // Async duplicate check
     if (missing.length === 0 && rows.length > 0) {
-      const key = localUploadType === "patients" ? "phone" : localUploadType === "drug_inventory" ? "drug_name" : "test_code";
-      const values = rows.map((r) => r[key]).filter(Boolean);
+      const key = dedupeKey(localUploadType);
+      const values = rows.map((r) => queryKeyValue(localUploadType, r[key])).filter(Boolean);
       if (values.length > 0) {
         const existing = await checkExistingRecords(localUploadType, values);
         setExistingCount(existing.length);
@@ -964,19 +987,22 @@ export default function BulkUploadDialog({
     setStep("uploading");
     setProgress({ current: 0, total: allRows.length, success: 0, failed: 0 });
 
-    const key =
-      localUploadType === "patients"
-        ? "phone"
-        : localUploadType === "drug_inventory"
-        ? "drug_name"
-        : "test_code";
+    const key = dedupeKey(localUploadType);
 
-    const values = allRows.map((r) => r[key]).filter(Boolean);
+    const values = allRows.map((r) => queryKeyValue(localUploadType, r[key])).filter(Boolean);
     const existing = values.length > 0 ? await checkExistingRecords(localUploadType, values) : [];
-    const existSet = new Set(existing.map((v) => v.toLowerCase().trim()));
-    const uploadRows = allRows.filter(
-      (r) => !existSet.has((r[key] ?? "").toLowerCase().trim())
-    );
+    const existSet = new Set(existing);
+    // Also drop rows that duplicate each other inside the same file (the batch
+    // insert path has no per-name uniqueness, so internal duplicates used to
+    // be written straight through).
+    const seen = new Set<string>();
+    const uploadRows = allRows.filter((r) => {
+      const k = normCompareKey(localUploadType, r[key]);
+      if (!k) return true; // let server-side validation report missing required fields
+      if (existSet.has(k) || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
     const skippedN = allRows.length - uploadRows.length;
 
     setSkipped(skippedN);
