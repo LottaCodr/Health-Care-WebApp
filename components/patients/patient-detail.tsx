@@ -278,6 +278,11 @@ function PatientProfile({
             { label: "Phone",       icon: <Phone size={14} />,     value: patient.phone },
             { label: "Address",     icon: <MapPin size={14} />,    value: patient.address },
             {
+                label: "Hospital Number",
+                icon: <ClipboardList size={14} />,
+                value: <span className="font-mono text-sm font-bold text-gray-800">{p.hospital_number || "—"}</span>,
+            },
+            {
                 label: "Patient ID",
                 icon: <ClipboardList size={14} />,
                 value: (
@@ -375,6 +380,13 @@ function PatientProfile({
                                     {showCopied ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
                                 </button>
                             </span>
+                            {p.hospital_number && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm">
+                                    <ClipboardList size={12} className="text-white/80" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/60">HN</span>
+                                    <span className="font-mono text-xs font-bold text-white tracking-wide">{p.hospital_number}</span>
+                                </span>
+                            )}
                             {patient.gender && (
                                 <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
                                     {patient.gender}

@@ -63,7 +63,8 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
     const num = (k: string, fb = 0)  => parseFloat(row[k] ?? "") || fb;
 
     switch (type) {
-        case "patients":
+        case "patients": {
+            const explicitHospitalNumber = str("hospital_number");
             return {
                 name:                     str("name"),
                 birth_date:               str("date_of_birth") || null,
@@ -74,8 +75,12 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
                 geno_type:                str("genotype")   || null,
                 emergency_contact_name:   str("next_of_kin_name")  || null,
                 emergency_contact_number: str("next_of_kin_phone") || null,
+                // Only include an explicit number; blank rows are auto-assigned
+                // in bulkUploadChunk (kept absent so pre-migration uploads work).
+                ...(explicitHospitalNumber ? { hospital_number: explicitHospitalNumber } : {}),
                 status:                   "registered",
             };
+        }
 
         case "drug_inventory":
             return {
@@ -140,6 +145,32 @@ export async function bulkUploadChunk(
     }
 
     if (!mapped.length) return { success, failed, errors };
+
+    // Hospital numbers for patients:
+    //  • an explicit number in the CSV (the paper record's NVH-…) is kept, and
+    //    the NVH counter is advanced past it so auto-assignment never collides;
+    //  • a blank hospital_number gets a fresh NVH-… assigned server-side.
+    if (type === "patients") {
+        for (const m of mapped) {
+            const explicit = String(m.data.hospital_number ?? "").trim();
+            if (!explicit) continue;
+            try {
+                await sb.rpc("advance_hospital_number_seq", { p_prefix: "NVH", p_number: explicit });
+            } catch (e) {
+                // Function may be missing pre-migration — keep the explicit value.
+                console.error("[bulk-upload] advance_hospital_number_seq:", e);
+            }
+        }
+        for (const m of mapped) {
+            if (String(m.data.hospital_number ?? "").trim()) continue;
+            try {
+                const { data: hn, error: hnError } = await sb.rpc("next_hospital_number", { p_prefix: "NVH" });
+                if (!hnError && typeof hn === "string") m.data.hospital_number = hn;
+            } catch (e) {
+                console.error("[bulk-upload] next_hospital_number:", e);
+            }
+        }
+    }
 
     // Try batch insert first (fast path)
     const { error: batchError } = await sb
