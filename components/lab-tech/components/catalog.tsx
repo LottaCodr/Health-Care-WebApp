@@ -17,6 +17,7 @@ import {
     useUpsertLabTest,
     useDeleteLabTest,
     useToggleLabTestActive,
+    useMergeDuplicateLabTests,
 } from "@/hooks/emr/use-lab";
 import BulkUploadDialog from "@/components/BulkUpload";
 import { Button } from "@/components/ui/button";
@@ -522,6 +523,7 @@ export default function LabTestCatalogPage() {
     const upsertMutation = useUpsertLabTest();
     const deleteMutation = useDeleteLabTest();
     const toggleMutation = useToggleLabTestActive();
+    const mergeDuplicatesMutation = useMergeDuplicateLabTests();
 
     const {
         catalogSearch: search, setField, catalogCategory: category,
@@ -531,6 +533,23 @@ export default function LabTestCatalogPage() {
     const [bulkImportOpen, setBulkImportOpen] = useState(false);
     const [previewTarget, setPreviewTarget] = useState<LabTest | null>(null);
     const [templatePreviewOpen, setTemplatePreviewOpen] = useState(false);
+
+    const handleMergeDuplicates = async () => {
+        try {
+            const res = await mergeDuplicatesMutation.mutateAsync();
+            if (res.removed === 0) {
+                toast.success("No duplicate tests found — the catalog is already clean.");
+            } else {
+                toast.success(
+                    `Merged ${res.merged} duplicate test${res.merged > 1 ? "s" : ""} ` +
+                    `and removed ${res.removed} duplicate row${res.removed > 1 ? "s" : ""}.`
+                );
+            }
+            await refetch();
+        } catch (error: any) {
+            toast.error(error?.message ?? "Failed to merge duplicates.");
+        }
+    };
 
     const filtered = useMemo(() => {
         if (!tests) return [];
@@ -598,6 +617,17 @@ export default function LabTestCatalogPage() {
                             View Template
                         </Button>
                     </div>
+                    <button
+                        onClick={handleMergeDuplicates}
+                        disabled={mergeDuplicatesMutation.isPending}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-sm font-semibold transition-all disabled:opacity-60"
+                        title="Remove duplicate lab tests (same name) from the catalog"
+                    >
+                        {mergeDuplicatesMutation.isPending
+                            ? <Loader2 size={14} className="animate-spin" />
+                            : <Copy size={14} />}
+                        Merge Duplicates
+                    </button>
                     <button
                         onClick={() => setBulkImportOpen(true)}
                         className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 text-sm font-semibold transition-all"
