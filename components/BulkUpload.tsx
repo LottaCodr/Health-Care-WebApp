@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 // ─── Config ────────────────────────────────────────────────────────────────────
 
 const CHUNK_SIZE = 25;
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 const UPLOAD_TYPE_CONFIG: Record<UploadType, {
   label: string;

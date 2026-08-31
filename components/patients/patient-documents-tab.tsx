@@ -9,7 +9,7 @@ import type { DocumentType, PatientDocument } from "@/lib/patient-documents.type
 
 const ACCEPTED_TYPES   = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
 const ACCEPTED_DISPLAY = ".pdf, .png, .jpg, .jpeg";
-const MAX_SIZE_MB       = 10;
+const MAX_SIZE_MB       = 20;
 const MAX_SIZE_BYTES    = MAX_SIZE_MB * 1024 * 1024;
 
 const DOC_ICONS: Record<string, string> = {
