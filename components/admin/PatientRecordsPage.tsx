@@ -72,7 +72,9 @@ function PatientRow({ patient }: { patient: Patient }) {
                     <User size={16} className="text-gray-500" />
                 </div>
                 <div className="min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{patient.name}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                        {patient.name || <span className="italic font-medium text-gray-400">Unnamed patient</span>}
+                    </p>
                     <p className="text-xs text-gray-400 truncate">
                         {[p.gender, age !== null ? `${age} yrs` : null].filter(Boolean).join(" · ") || "—"}
                     </p>

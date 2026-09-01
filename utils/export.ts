@@ -30,7 +30,9 @@ export function formatTime(time: string, format: "12h" | "24h" = "12h"): string 
     });
 }
 
-export function getInitials(name: string): string {
+export function getInitials(name?: string | null): string {
+    // Blank on purpose: a patient imported from paper may have no name yet.
+    if (!name) return "";
     return name.split(" ").map((n) => n[0]).join("");
 }
 

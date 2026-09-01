@@ -84,11 +84,13 @@ export default function WardBoard() {
                                 const patient = w.patients[i];
                                 return (
                                     <div key={i}
-                                        title={patient ? `${patient.name}${patient.bed_number ? ` (bed ${patient.bed_number})` : ""}` : "Free bed"}
+                                        title={patient ? `${patient.name || "Unnamed patient"}${patient.bed_number ? ` (bed ${patient.bed_number})` : ""}` : "Free bed"}
                                         className={`flex h-9 w-9 items-center justify-center rounded-lg border text-[10px] font-black ${
                                             patient ? "border-teal-200 bg-teal-50 text-teal-700" : "border-gray-100 bg-gray-50 text-gray-300"
                                         }`}>
-                                        {patient ? patient.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : i + 1}
+                                        {patient
+                                            ? (patient.name ? patient.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : "—")
+                                            : i + 1}
                                     </div>
                                 );
                             })}
