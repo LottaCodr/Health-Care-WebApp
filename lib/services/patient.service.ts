@@ -153,14 +153,26 @@ export async function listPatientsByStatus(
 ): Promise<Patient[]> {
     await requireStaff();
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from("patients")
-        .select("*")
-        .eq("status", status)
-        .order("created_at", { ascending: false });
+    const allData: Patient[] = [];
+    let from = 0;
+    const batchSize = 1000;
 
-    if (error) { console.error("[patient] listPatientsByStatus:", error); return []; }
-    return data as Patient[];
+    while (true) {
+        const { data, error } = await supabase
+            .from("patients")
+            .select("*")
+            .eq("status", status)
+            .order("created_at", { ascending: false })
+            .range(from, from + batchSize - 1);
+
+        if (error) { console.error("[patient] listPatientsByStatus:", error); break; }
+        if (!data || data.length === 0) break;
+        allData.push(...(data as Patient[]));
+        if (data.length < 100) break;
+        from += data.length;
+    }
+
+    return allData;
 }
 
 export async function searchPatients(query: string): Promise<Patient[]> {
@@ -171,7 +183,7 @@ export async function searchPatients(query: string): Promise<Patient[]> {
         .select("*")
         .or(`name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,hospital_number.ilike.%${query}%`)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(100);
 
     if (error) { console.error("[patient] searchPatients:", error); return []; }
     return data as Patient[];
@@ -179,16 +191,40 @@ export async function searchPatients(query: string): Promise<Patient[]> {
 
 export async function getAllPatients(
     page = 0,
-    limit = 5000
+    limit?: number
 ): Promise<Patient[]> {
     await requireStaff();
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from("patients")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .range(page * limit, (page + 1) * limit - 1);
 
-    if (error) { console.error("[patient] getAllPatients:", error); return []; }
-    return data as Patient[];
+    if (limit && limit <= 500) {
+        const { data, error } = await supabase
+            .from("patients")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .range(page * limit, (page + 1) * limit - 1);
+
+        if (error) { console.error("[patient] getAllPatients:", error); return []; }
+        return data as Patient[];
+    }
+
+    const allData: Patient[] = [];
+    let from = page * (limit ?? 0);
+    const batchSize = 1000;
+
+    while (true) {
+        const { data, error } = await supabase
+            .from("patients")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .range(from, from + batchSize - 1);
+
+        if (error) { console.error("[patient] getAllPatients:", error); break; }
+        if (!data || data.length === 0) break;
+        allData.push(...(data as Patient[]));
+        if (data.length < 100) break;
+        from += data.length;
+        if (limit && allData.length >= limit) break;
+    }
+
+    return allData;
 }
