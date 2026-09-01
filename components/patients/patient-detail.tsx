@@ -312,7 +312,7 @@ function PatientProfile({
             { label: "Allergies",                icon: <ShieldAlert size={14} />, value: patient.allergies },
             { label: "Blood Group",              icon: <Droplets size={14} />,   value: patient.blood_group },
             { label: "Genotype",                 icon: <Dna size={14} />,        value: patient.geno_type },
-            { label: "Current Medication",       icon: <Pill size={14} />,       value: patient.current_medication },
+
             { label: "Long-Term Medication",     icon: <Pill size={14} />,       value: patient.long_term_medication },
             { label: "Significant Med. History", icon: <History size={14} />,    value: patient.significant_medication_history },
             { label: "Covid Vaccination",        icon: <Syringe size={14} />,    value: patient.covid_vaccination_options },

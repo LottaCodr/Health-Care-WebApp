@@ -44,13 +44,13 @@ export interface Patient {
     blood_group: string;
     geno_type: string;
     allergies: string;
-    medical_history: string;
+
     emergency_contact_name: string;
     emergency_contact_email?: string;
     emergency_contact_address?: string;
     emergency_contact_number: string;
     emergency_contact_relationship: string;
-    current_medication?: string;
+
     long_term_medication?: string;
     significant_medication_history?: string;
     covid_vaccination_options?: string;

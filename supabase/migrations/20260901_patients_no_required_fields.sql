@@ -82,13 +82,13 @@ begin
     if new.blood_group is not null and trim(new.blood_group) = '' then new.blood_group := null; end if;
     if new.geno_type is not null and trim(new.geno_type) = '' then new.geno_type := null; end if;
     if new.allergies is not null and trim(new.allergies) = '' then new.allergies := null; end if;
-    if new.medical_history is not null and trim(new.medical_history) = '' then new.medical_history := null; end if;
+
     if new.emergency_contact_name is not null and trim(new.emergency_contact_name) = '' then new.emergency_contact_name := null; end if;
     if new.emergency_contact_number is not null and trim(new.emergency_contact_number) = '' then new.emergency_contact_number := null; end if;
     if new.emergency_contact_relationship is not null and trim(new.emergency_contact_relationship) = '' then new.emergency_contact_relationship := null; end if;
     if new.emergency_contact_email is not null and trim(new.emergency_contact_email) = '' then new.emergency_contact_email := null; end if;
     if new.emergency_contact_address is not null and trim(new.emergency_contact_address) = '' then new.emergency_contact_address := null; end if;
-    if new.current_medication is not null and trim(new.current_medication) = '' then new.current_medication := null; end if;
+
     if new.long_term_medication is not null and trim(new.long_term_medication) = '' then new.long_term_medication := null; end if;
     if new.significant_medication_history is not null and trim(new.significant_medication_history) = '' then new.significant_medication_history := null; end if;
     if new.covid_vaccination_options is not null and trim(new.covid_vaccination_options) = '' then new.covid_vaccination_options := null; end if;

@@ -40,13 +40,13 @@ alter table public.patients alter column religion drop not null;
 alter table public.patients alter column blood_group drop not null;
 alter table public.patients alter column geno_type drop not null;
 alter table public.patients alter column allergies drop not null;
-alter table public.patients alter column medical_history drop not null;
+
 alter table public.patients alter column emergency_contact_name drop not null;
 alter table public.patients alter column emergency_contact_number drop not null;
 alter table public.patients alter column emergency_contact_relationship drop not null;
 alter table public.patients alter column emergency_contact_email drop not null;
 alter table public.patients alter column emergency_contact_address drop not null;
-alter table public.patients alter column current_medication drop not null;
+
 alter table public.patients alter column long_term_medication drop not null;
 alter table public.patients alter column significant_medication_history drop not null;
 alter table public.patients alter column covid_vaccination_options drop not null;
@@ -70,13 +70,13 @@ update public.patients set religion = null where religion = '' or trim(religion)
 update public.patients set blood_group = null where blood_group = '' or trim(blood_group) = '';
 update public.patients set geno_type = null where geno_type = '' or trim(geno_type) = '';
 update public.patients set allergies = null where allergies = '' or trim(allergies) = '';
-update public.patients set medical_history = null where medical_history = '' or trim(medical_history) = '';
+
 update public.patients set emergency_contact_name = null where emergency_contact_name = '' or trim(emergency_contact_name) = '';
 update public.patients set emergency_contact_number = null where emergency_contact_number = '' or trim(emergency_contact_number) = '';
 update public.patients set emergency_contact_relationship = null where emergency_contact_relationship = '' or trim(emergency_contact_relationship) = '';
 update public.patients set emergency_contact_email = null where emergency_contact_email = '' or trim(emergency_contact_email) = '';
 update public.patients set emergency_contact_address = null where emergency_contact_address = '' or trim(emergency_contact_address) = '';
-update public.patients set current_medication = null where current_medication = '' or trim(current_medication) = '';
+
 update public.patients set long_term_medication = null where long_term_medication = '' or trim(long_term_medication) = '';
 update public.patients set significant_medication_history = null where significant_medication_history = '' or trim(significant_medication_history) = '';
 update public.patients set covid_vaccination_options = null where covid_vaccination_options = '' or trim(covid_vaccination_options) = '';
@@ -104,13 +104,13 @@ begin
   if new.blood_group is not null and trim(new.blood_group) = '' then new.blood_group := null; end if;
   if new.geno_type is not null and trim(new.geno_type) = '' then new.geno_type := null; end if;
   if new.allergies is not null and trim(new.allergies) = '' then new.allergies := null; end if;
-  if new.medical_history is not null and trim(new.medical_history) = '' then new.medical_history := null; end if;
+
   if new.emergency_contact_name is not null and trim(new.emergency_contact_name) = '' then new.emergency_contact_name := null; end if;
   if new.emergency_contact_number is not null and trim(new.emergency_contact_number) = '' then new.emergency_contact_number := null; end if;
   if new.emergency_contact_relationship is not null and trim(new.emergency_contact_relationship) = '' then new.emergency_contact_relationship := null; end if;
   if new.emergency_contact_email is not null and trim(new.emergency_contact_email) = '' then new.emergency_contact_email := null; end if;
   if new.emergency_contact_address is not null and trim(new.emergency_contact_address) = '' then new.emergency_contact_address := null; end if;
-  if new.current_medication is not null and trim(new.current_medication) = '' then new.current_medication := null; end if;
+
   if new.long_term_medication is not null and trim(new.long_term_medication) = '' then new.long_term_medication := null; end if;
   if new.significant_medication_history is not null and trim(new.significant_medication_history) = '' then new.significant_medication_history := null; end if;
   if new.covid_vaccination_options is not null and trim(new.covid_vaccination_options) = '' then new.covid_vaccination_options := null; end if;
