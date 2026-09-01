@@ -4,125 +4,100 @@ import { PatientStatus } from "@/types/models";
 export const UserFormValidation = z.object({
   name: z
     .string()
-    .min(2, "Name must be at least 2 characters")
-    .max(50, "Name must be at most 50 characters"),
-  email: z.string().email("Invalid email address"),
+    .min(2, "Full name must be at least 2 characters")
+    .max(100, "Full name must be at most 100 characters"),
+  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
   phone: z
     .string()
-    .refine((phone) => /^\+\d{10,15}$/.test(phone), "Invalid phone number"),
+    .min(7, "Please enter a valid phone number"),
 });
 
 export const PatientFormValidation = z
   .object({
-    // Step 1: Personal Information
+    // Step 1: Personal Information (Only name, birthDate, gender, phone are strictly required)
     name: z
       .string()
-      .min(2, "Name must be at least 2 characters")
-      .max(500, "Name must be at most 500 characters"),
-    religion: z.string().min(2, "Religion must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
+      .min(2, "Full name must be at least 2 characters")
+      .max(500, "Full name is too long"),
+    religion: z.string().optional().nullable().or(z.literal("")),
+    email: z
+      .string()
+      .optional()
+      .nullable()
+      .or(z.literal(""))
+      .refine(
+        (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+        "Please enter a valid email address (e.g. name@example.com)"
+      ),
     phone: z
       .string()
-      .refine((phone) => /^\+\d{10,15}$/.test(phone), "Invalid phone number"),
-    birthDate: z.coerce.date(),
-    gender: z.enum(["Male", "Female"]),
-    occupation: z
-      .string()
-      .min(2, "Occupation must be at least 2 characters")
-      .max(500, "Occupation must be at most 500 characters"),
-    address: z
-      .string()
-      .min(5, "Address must be at least 5 characters")
-      .max(500, "Address must be at most 500 characters"),
+      .min(1, "Phone number is required")
+      .refine((phone) => phone.trim().length >= 7, "Please enter a valid phone number"),
+    birthDate: z.coerce.date({
+      required_error: "Date of birth is required",
+      invalid_type_error: "Please select a valid date of birth",
+    }),
+    gender: z.enum(["Male", "Female", "Other", "male", "female", "other"], {
+      required_error: "Please select a gender",
+    }),
+    occupation: z.string().optional().nullable().or(z.literal("")),
+    address: z.string().optional().nullable().or(z.literal("")),
 
-    // Step 2: Emergency Contact
-    emergencyContactName: z
+    // Step 2: Emergency Contact (all optional)
+    emergencyContactName: z.string().optional().nullable().or(z.literal("")),
+    emergencyContactNumber: z.string().optional().nullable().or(z.literal("")),
+    emergencyContactRelationship: z.string().optional().nullable().or(z.literal("")),
+    emergencyContactEmail: z
       .string()
-      .min(2, "Contact name must be at least 2 characters")
-      .max(50, "Contact name must be at most 50 characters"),
-    emergencyContactNumber: z
-      .string()
+      .optional()
+      .nullable()
+      .or(z.literal(""))
       .refine(
-        (emergencyContactNumber) => /^\+\d{10,15}$/.test(emergencyContactNumber),
-        "Invalid phone number"
+        (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+        "Please enter a valid emergency contact email"
       ),
-    emergencyContactRelationship: z
-      .string()
-      .min(2, "Relationship must be at least 2 characters"),
-    emergencyContactEmail: z.string().email("Invalid emergency contact email"),
-    emergencyContactAddress: z
-      .string()
-      .min(5, "Address must be at least 5 characters"),
+    emergencyContactAddress: z.string().optional().nullable().or(z.literal("")),
 
-    // Step 3: General Medical History
-    allergies: z.string().optional(),
-    significantMedicationHistory: z.string().optional(),
-    longTermMedication: z.string().optional(),
-    covidVaccinationOptions: z.enum(["Vaccinated", "Not Vaccinated", "Partial"]),
-    bloodGroup: z.string().min(1, "Blood group is required"),
-    genoType: z.string().min(1, "Geno type is required"),
+    // Step 3: General Medical History (all optional)
+    allergies: z.string().optional().nullable().or(z.literal("")),
+    significantMedicationHistory: z.string().optional().nullable().or(z.literal("")),
+    longTermMedication: z.string().optional().nullable().or(z.literal("")),
+    covidVaccinationOptions: z.enum(["Vaccinated", "Not Vaccinated", "Partial", ""]).optional().nullable(),
+    bloodGroup: z.string().optional().nullable().or(z.literal("")),
+    genoType: z.string().optional().nullable().or(z.literal("")),
 
-    // ── Step 4: Medical Insurance Detail ──────────────────────────────────────
-    // hmoName / companyName / policyNumber are intentionally NOT required here
-    // unconditionally — whether they're required depends on which payment
-    // type (hmo / company / privateClient) is selected. That conditional
-    // logic lives in the .superRefine() below, where we have access to all
-    // three booleans at once. A bare z.string().min(2) on these fields was
-    // the root cause of self-pay patients being unable to register — those
-    // fields were validated even when not applicable to private/self-pay.
-    policyNumber: z.string().optional(),
-    hmo: z.boolean(),
-    hmoName: z.string().optional(),
-    company: z.boolean(),
-    companyName: z.string().optional(),
-    privateClient: z.boolean(),
+    // Step 4: Medical Insurance Detail
+    policyNumber: z.string().optional().nullable().or(z.literal("")),
+    hmo: z.boolean().optional().default(false),
+    hmoName: z.string().optional().nullable().or(z.literal("")),
+    company: z.boolean().optional().default(false),
+    companyName: z.string().optional().nullable().or(z.literal("")),
+    privateClient: z.boolean().optional().default(false),
 
     // Additional fields in Patient interface
     status: z.nativeEnum(PatientStatus).optional(),
-    userId: z.string().optional(),
-    notes: z.string().optional(),
-    symptoms: z.string().optional(),
-    diagnosis: z.string().optional(),
-    prescriptions: z.string().optional(),
-    recommendations: z.string().optional(),
+    userId: z.string().optional().nullable(),
+    notes: z.string().optional().nullable().or(z.literal("")),
+    symptoms: z.string().optional().nullable().or(z.literal("")),
+    diagnosis: z.string().optional().nullable().or(z.literal("")),
+    prescriptions: z.string().optional().nullable().or(z.literal("")),
+    recommendations: z.string().optional().nullable().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
-    const selectedCount = [data.hmo, data.company, data.privateClient].filter(Boolean).length;
-
-    // Exactly one payment type must be selected — none selected blocks
-    // submission with a clear message; more than one selected (shouldn't
-    // happen via the UI, but defends against direct API calls) also blocks.
-    if (selectedCount === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["privateClient"],
-        message: "Select a payment type — HMO, Company Insurance, or Private (Self-Pay).",
-      });
-      return;
-    }
-    if (selectedCount > 1) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["privateClient"],
-        message: "Only one payment type can be selected at a time.",
-      });
-      return;
-    }
-
     // HMO selected → hmoName and policyNumber become required
     if (data.hmo) {
       if (!data.hmoName || data.hmoName.trim().length < 2) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hmoName"],
-          message: "HMO provider name must be at least 2 characters",
+          message: "Please enter HMO provider name (at least 2 characters)",
         });
       }
       if (!data.policyNumber || data.policyNumber.trim().length < 2) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["policyNumber"],
-          message: "Policy number is required for HMO coverage",
+          message: "Please enter policy number for HMO coverage",
         });
       }
     }
@@ -133,50 +108,47 @@ export const PatientFormValidation = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["companyName"],
-          message: "Company name must be at least 2 characters",
+          message: "Please enter company name (at least 2 characters)",
         });
       }
       if (!data.policyNumber || data.policyNumber.trim().length < 2) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["policyNumber"],
-          message: "Policy number is required for company insurance",
+          message: "Please enter policy number for company insurance",
         });
       }
     }
-
-    // privateClient (self-pay) requires NOTHING further — this is the
-    // exact case that was previously blocked.
   });
 
 export const CreateAppointmentSchema = z.object({
-  primaryPhysician: z.string().min(2, "Select at least one doctor"),
-  schedule: z.coerce.date(),
+  primaryPhysician: z.string().min(2, "Please select at least one doctor"),
+  schedule: z.coerce.date({ required_error: "Please choose appointment date & time" }),
   reason: z
     .string()
-    .min(2, "Reason must be at least 2 characters")
-    .max(500, "Reason must be at most 500 characters"),
+    .min(2, "Please enter a reason (at least 2 characters)")
+    .max(500, "Reason is too long"),
   note: z.string().optional(),
   cancellationReason: z.string().optional(),
 });
 
 export const ScheduleAppointmentSchema = z.object({
-  primaryPhysician: z.string().min(2, "Select at least one doctor"),
-  schedule: z.coerce.date(),
+  primaryPhysician: z.string().min(2, "Please select at least one doctor"),
+  schedule: z.coerce.date({ required_error: "Please choose appointment date & time" }),
   reason: z.string().optional(),
   note: z.string().optional(),
   cancellationReason: z.string().optional(),
 });
 
 export const CancelAppointmentSchema = z.object({
-  primaryPhysician: z.string().min(2, "Select at least one doctor"),
+  primaryPhysician: z.string().min(2, "Please select at least one doctor"),
   schedule: z.coerce.date(),
   reason: z.string().optional(),
   note: z.string().optional(),
   cancellationReason: z
     .string()
-    .min(2, "Reason must be at least 2 characters")
-    .max(500, "Reason must be at most 500 characters"),
+    .min(2, "Please provide a reason for cancellation (at least 2 characters)")
+    .max(500, "Cancellation reason is too long"),
 });
 
 export function getAppointmentSchema(type: string) {

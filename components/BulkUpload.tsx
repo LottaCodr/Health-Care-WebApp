@@ -5,6 +5,8 @@ import { checkExistingRecords, bulkUploadChunk } from "@/lib/actions/bulk-upload
 import type { UploadType } from "@/lib/actions/bulk-upload";
 import { normalizeLabTestName } from "@/lib/utils/lab-catalog";
 import { HOSPITAL_NUMBER_PATTERN } from "@/lib/hospital-number";
+import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
+import { friendlyErrorMessage } from "@/lib/utils/network";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,11 +30,9 @@ import { cn } from "@/lib/utils";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
-// Rows per server-action call. 500 keeps each request body modest (~200KB,
-// far under the 30MB server-action limit) while turning a 5,000-row import
-// into just 10 calls — and CONCURRENT_UPLOADS sends several in parallel so
-// total wall-clock time is roughly one wave of chunks, not a long serial chain.
-const CHUNK_SIZE = 500;
+// Rows per server-action call. 250 keeps each request fast and resilient
+// while keeping server action execution well within timeouts.
+const CHUNK_SIZE = 250;
 const CONCURRENT_UPLOADS = 4;
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
@@ -201,11 +201,21 @@ function validateRows(
   rows.forEach((row, i) => {
     REQUIRED_HEADERS[type].forEach((field) => {
       if (!row[field]?.trim()) {
-        errors.push({ row: i + 2, field, message: `"${field}" is required` });
+        const fieldLabels: Record<string, string> = {
+          name: "Full Name",
+          date_of_birth: "Date of Birth",
+          gender: "Gender",
+          phone: "Phone Number",
+          drug_name: "Drug Name",
+          test_name: "Test Name",
+          test_code: "Test Code",
+        };
+        const label = fieldLabels[field] || `"${field}"`;
+        errors.push({ row: i + 2, field, message: `${label} is required` });
       }
     });
     if (type === "patients") {
-      if (row.gender && !["male", "female"].includes(row.gender.toLowerCase())) {
+      if (row.gender && !["male", "female", "other"].includes(row.gender.toLowerCase())) {
         errors.push({
           row: i + 2,
           field: "gender",
@@ -216,7 +226,7 @@ function validateRows(
         errors.push({
           row: i + 2,
           field: "date_of_birth",
-          message: "Invalid date — use YYYY-MM-DD",
+          message: "Invalid date — use YYYY-MM-DD (e.g. 1990-06-15)",
         });
       }
       if (row.hospital_number) {
@@ -225,7 +235,7 @@ function validateRows(
           errors.push({
             row: i + 2,
             field: "hospital_number",
-            message: "Must be NVH- followed by digits starting at 1 (e.g. NVH-00001)",
+            message: "Must be NVH- followed by digits (e.g. NVH-00001)",
           });
         }
       }
@@ -476,12 +486,12 @@ function StepSelect({
           ))}
         </div>
         <p className="text-[10px] text-gray-400 leading-relaxed">
-          <span className="text-primary font-bold">*</span> Required columns · Others optional
+          <span className="text-primary font-bold">*</span> Required columns · All other columns are optional
           {uploadType === "drug_inventory" && (
             <> · category: {VALID_DRUG_CATEGORIES.join(", ")}</>
           )}
           {uploadType === "patients" && (
-            <> · hospital_number: leave blank to auto-assign (NVH-00001…), or paste the paper record's number</>
+            <> · Only <b>name, date_of_birth, gender, phone</b> are required. Missing details will automatically be saved as empty (null). Leave hospital_number blank to auto-assign (NVH-00001…), or provide existing numbers.</>
           )}
         </p>
       </div>
@@ -1021,22 +1031,29 @@ export default function BulkUploadDialog({
 
     const key = dedupeKey(localUploadType);
 
-    // Reuse the duplicate scan from the preview step (awaiting it if it's still
-    // in flight) — re-scanning thousands of values here would double the lookup
-    // time for no real benefit (per-row error isolation still catches anything
-    // that appeared in the meantime).
     const existSet = new Set(
       existingScanRef.current ? await existingScanRef.current : existingKeys,
     );
-    // Also drop rows that duplicate each other inside the same file (the batch
-    // insert path has no per-name uniqueness, so internal duplicates used to
-    // be written straight through).
+    // Deduplicate against existing records and internal duplicates.
+    // For patients: use hospital_number if present, otherwise unique (name + phone)
+    // so distinct family members sharing a phone number are preserved.
     const seen = new Set<string>();
     const uploadRows = allRows.filter((r) => {
-      const k = normCompareKey(localUploadType, r[key]);
-      if (!k) return true; // let server-side validation report missing required fields
-      if (existSet.has(k) || seen.has(k)) return false;
-      seen.add(k);
+      let dedupeId = "";
+      if (localUploadType === "patients") {
+        const hn = (r.hospital_number ?? "").trim().toLowerCase();
+        if (hn) {
+          dedupeId = "hn:" + hn;
+        } else {
+          dedupeId = "p:" + (r.name ?? "").trim().toLowerCase() + "|" + (r.phone ?? "").trim().toLowerCase();
+        }
+      } else {
+        dedupeId = normCompareKey(localUploadType, r[key]);
+      }
+
+      if (!dedupeId) return true; // let server-side validation report missing required fields
+      if (existSet.has(normCompareKey(localUploadType, r[key])) || seen.has(dedupeId)) return false;
+      seen.add(dedupeId);
       return true;
     });
     const skippedN = allRows.length - uploadRows.length;
@@ -1044,10 +1061,8 @@ export default function BulkUploadDialog({
     setSkipped(skippedN);
     setProgress({ current: 0, total: uploadRows.length, success: 0, failed: 0 });
 
-    // Upload several chunks in parallel. Hospital-number allocation and the
-    // advance counter are sequence-based/idempotent server-side, so chunks
-    // never collide; a whole file is roughly one wave of concurrent requests
-    // instead of a long serial chain of round trips.
+    // Upload chunks in parallel. Hospital-number allocation and the
+    // advance counter are sequence-based/idempotent server-side.
     const chunks: { offset: number; rows: Record<string, string>[] }[] = [];
     for (let i = 0; i < uploadRows.length; i += CHUNK_SIZE) {
       chunks.push({ offset: i, rows: uploadRows.slice(i, i + CHUNK_SIZE) });
@@ -1065,14 +1080,15 @@ export default function BulkUploadDialog({
         try {
           res = await bulkUploadChunk(localUploadType, c.rows, c.offset);
         } catch (e: any) {
-          // A chunk-level failure (network hiccup, expired session) must not
-          // abort the rest of the file — report its rows and keep going.
+          // A chunk-level failure (network hiccup, expired session, timeout) must not
+          // crash the entire file upload — report its rows with a friendly message and keep going.
+          const friendly = formatFriendlyDbError(e, friendlyErrorMessage(e, "Upload request timed out or was interrupted. Please try again."));
           res = {
             success: 0,
             failed: c.rows.length,
             errors: c.rows.map((_, i) => ({
               row: c.offset + i + 2,
-              reason: e?.message ?? "Chunk upload failed",
+              reason: friendly,
             })),
           };
         }

@@ -23,14 +23,12 @@ export enum FormFieldType {
 }
 
 const QuickRegisterSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Enter a valid email address"),
-  phone: z.string().min(10, "Enter a valid phone number"),
+  name: z.string().min(2, "Full name must be at least 2 characters"),
+  email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
+  phone: z.string().min(7, "Enter a valid phone number"),
 });
 
 type QuickRegisterValues = z.infer<typeof QuickRegisterSchema>;
-
-
 
 const PatientForm = () => {
   const router = useRouter();
@@ -46,12 +44,13 @@ const PatientForm = () => {
     setLoading(true);
     try {
       const patient = await createPatient({
-        name: values.name,
-        email: values.email,
-        phone: values.phone,
+        name: values.name.trim(),
+        email: values.email?.trim() || null,
+        phone: values.phone.trim(),
+        birth_date: new Date().toISOString().split("T")[0],
+        gender: "Male",
+        address: null,
         status: "registered",
-        gender: "Male",        
-        address: "",
       } as any);
 
       toast.success("Patient created. Complete their registration now.");

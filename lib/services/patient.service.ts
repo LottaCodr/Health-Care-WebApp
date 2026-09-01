@@ -5,6 +5,7 @@ import { Patient, PatientStatus, UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
 import { normalizeHospitalNumber } from "@/lib/hospital-number";
+import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
 
 /**
  * Roles that may advance a patient through the workflow state machine
@@ -19,6 +20,20 @@ const STATUS_CHANGE_ROLES: UserRole[] = [
     UserRole.Pharmacist,
     UserRole.Radiologist,
 ];
+
+/** Convert empty/whitespace strings to null so they never violate constraints or store empty text */
+function cleanPatientPayload(data: Record<string, any>): Record<string, any> {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (typeof value === "string") {
+            const trimmed = value.trim();
+            cleaned[key] = trimmed.length > 0 ? trimmed : null;
+        } else {
+            cleaned[key] = value ?? null;
+        }
+    }
+    return cleaned;
+}
 
 export async function createPatient(
     data: Omit<Patient, "id" | "created_at" | "updated_at">
@@ -39,13 +54,22 @@ export async function createPatient(
         console.error("[patient] hospital number generation skipped:", e);
     }
 
+    const payload = cleanPatientPayload({
+        ...data,
+        ...(hospital_number ? { hospital_number } : {}),
+        status: data.status || "registered",
+    });
+
     const { data: result, error } = await supabase
         .from("patients")
-        .insert([{ ...data, ...(hospital_number ? { hospital_number } : {}) }])
+        .insert([payload])
         .select()
         .single();
 
-    if (error) { console.error("[patient] createPatient:", error); throw error; }
+    if (error) {
+        console.error("[patient] createPatient:", error);
+        throw new Error(formatFriendlyDbError(error, "Failed to register patient. Please check the entered details."));
+    }
 
     await logAction("PATIENT_REGISTERED", "patients", result.id, {
         name: result.name,
@@ -74,14 +98,19 @@ export async function updatePatient(
 ): Promise<Patient> {
     await requireStaff([UserRole.FrontDesk, UserRole.Doctor, UserRole.Nurse]);
     const supabase = await createClient();
+    const payload = cleanPatientPayload(updates);
+
     const { data, error } = await supabase
         .from("patients")
-        .update(updates)
+        .update(payload)
         .eq("id", id)
         .select()
         .single();
 
-    if (error) { console.error("[patient] updatePatient:", error); throw error; }
+    if (error) {
+        console.error("[patient] updatePatient:", error);
+        throw new Error(formatFriendlyDbError(error, "Failed to update patient record."));
+    }
     return data as unknown as Patient;
 }
 
@@ -105,7 +134,10 @@ export async function updatePatientStatus(
         .select()
         .single();
 
-    if (error) { console.error("[patient] updatePatientStatus:", error); throw error; }
+    if (error) {
+        console.error("[patient] updatePatientStatus:", error);
+        throw new Error(formatFriendlyDbError(error, "Failed to update patient status."));
+    }
 
     await logAction("PATIENT_STATUS_CHANGED", "patients", id, {
         from: before?.status ?? null,
@@ -113,7 +145,7 @@ export async function updatePatientStatus(
         changed_by: actor.userId,
     });
 
-    return data  as Patient;
+    return data as Patient;
 }
 
 export async function listPatientsByStatus(
@@ -128,7 +160,7 @@ export async function listPatientsByStatus(
         .order("created_at", { ascending: false });
 
     if (error) { console.error("[patient] listPatientsByStatus:", error); return []; }
-    return data  as Patient[];
+    return data as Patient[];
 }
 
 export async function searchPatients(query: string): Promise<Patient[]> {
