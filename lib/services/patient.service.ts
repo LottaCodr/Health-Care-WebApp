@@ -179,7 +179,7 @@ export async function searchPatients(query: string): Promise<Patient[]> {
 
 export async function getAllPatients(
     page = 0,
-    limit = 100
+    limit = 5000
 ): Promise<Patient[]> {
     await requireStaff();
     const supabase = await createClient();

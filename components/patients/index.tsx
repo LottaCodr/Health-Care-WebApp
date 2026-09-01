@@ -23,14 +23,17 @@ const ITEMS_PER_PAGE = 100;
 
 type PatientStatus =
     | "all"
+    | "registered"
     | "awaiting-consultation"
     | "under-consultation"
     | "sent-to-nurse"
     | "under-observation"
+    | "admitted"
     | "discharged"
     | "sent-to-lab"
     | "sent-to-pharmacy"
-    | "sent-to-radiology";
+    | "sent-to-radiology"
+    | "awaiting-payment";
 
 interface StatusTab {
     value:    PatientStatus;
@@ -42,26 +45,32 @@ interface StatusTab {
 
 const ALL_TABS: StatusTab[] = [
     { value: "all",                  label: "All Patients",         short: "All",       color: "bg-slate-800 text-white",           dot: "bg-slate-400" },
+    { value: "registered",           label: "Registered",           short: "Registered",color: "bg-gray-700 text-white",            dot: "bg-gray-400"  },
     { value: "sent-to-nurse",        label: "Sent to Nurse",        short: "Nursing",   color: "bg-teal-600 text-white",            dot: "bg-teal-500"  },
     { value: "awaiting-consultation",label: "Awaiting Consultation",short: "Awaiting",  color: "bg-blue-600 text-white",            dot: "bg-blue-500"  },
     { value: "under-consultation",   label: "In Consultation",      short: "Consulting",color: "bg-violet-600 text-white",          dot: "bg-violet-500"},
     { value: "under-observation",    label: "Under Observation",    short: "Obs",       color: "bg-cyan-600 text-white",            dot: "bg-cyan-500"  },
+    { value: "admitted",             label: "Admitted",             short: "Admitted",  color: "bg-blue-800 text-white",            dot: "bg-blue-600"  },
     { value: "sent-to-pharmacy",     label: "Pharmacy",             short: "Pharmacy",  color: "bg-pink-600 text-white",            dot: "bg-pink-500"  },
     { value: "sent-to-lab",          label: "Lab",                  short: "Lab",       color: "bg-orange-500 text-white",          dot: "bg-orange-400"},
     { value: "sent-to-radiology",    label: "Radiology",            short: "Radiology", color: "bg-indigo-600 text-white",          dot: "bg-indigo-500"},
-    { value: "discharged",            label: "Discharged",            short: "Discharged", color: "bg-emerald-600 text-white",         dot: "bg-emerald-500"},
+    { value: "awaiting-payment",     label: "Awaiting Payment",     short: "Payment",   color: "bg-amber-600 text-white",           dot: "bg-amber-500" },
+    { value: "discharged",           label: "Discharged",           short: "Discharged",color: "bg-emerald-600 text-white",         dot: "bg-emerald-500"},
 ];
 
 // All roles see every status tab.
 const ALL_STATUS_VALUES: PatientStatus[] = [
     "all",
+    "registered",
     "sent-to-nurse",
     "awaiting-consultation",
     "under-consultation",
     "under-observation",
+    "admitted",
     "sent-to-pharmacy",
     "sent-to-lab",
     "sent-to-radiology",
+    "awaiting-payment",
     "discharged",
 ];
 
