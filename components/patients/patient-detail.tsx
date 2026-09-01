@@ -363,7 +363,9 @@ function PatientProfile({
                     {/* Name & meta */}
                     <div className="flex-1 min-w-0">
                         <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Patient Profile</p>
-                        <h2 className="text-xl sm:text-2xl font-bold text-white break-words">{patient.name}</h2>
+                        <h2 className="text-xl sm:text-2xl font-bold text-white break-words">
+                            {patient.name || <span className="italic text-white/70">Unnamed patient</span>}
+                        </h2>
                         {/* Patient ID - prominently visible at top */}
                         <div className="flex flex-wrap items-center gap-2 mt-2.5">
                             <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm">

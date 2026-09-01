@@ -63,6 +63,15 @@ export function formatFriendlyDbError(err: unknown, fallback = "An unexpected er
         if (combined.includes("test_name") || combined.includes("test_code")) {
             return "Test name and test code are required.";
         }
+        // Name the offending column when Postgres tells us which one it is.
+        // "Please check all mandatory fields" leaves staff hunting through a
+        // twenty-column form for one blank cell.
+        const blankColumn =
+            /column\s+"([^"]+)"/i.exec(message)?.[1] ??
+            /column\s+"([^"]+)"/i.exec(details)?.[1];
+        if (blankColumn) {
+            return `${describeColumn(blankColumn)} is required and cannot be left blank.`;
+        }
         return "A required field was left blank. Please check all mandatory fields.";
     }
 
@@ -146,6 +155,17 @@ export function formatFriendlyDbError(err: unknown, fallback = "An unexpected er
     }
 
     return cleanErrorMessage(message, fallback);
+}
+
+/** `geno_type` → "Geno type" — a database column name, phrased for a person. */
+function describeColumn(column: string): string {
+    const label = String(column ?? "")
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+    if (!label) return "A required field";
+    return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 /** Strips raw SQL/code artifacts to make text readable */

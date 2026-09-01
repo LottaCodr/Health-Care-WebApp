@@ -10,6 +10,7 @@ import {
     normalizeHospitalNumber,
 } from "@/lib/hospital-number";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
+import { isBlankCsvRow, normalizeGender, parseBirthDate } from "@/lib/utils/patient-import";
 
 // ── Table names — update if your schema differs ───────────────────────────────
 const TABLES = {
@@ -24,6 +25,11 @@ export interface ChunkResult {
     success: number;
     failed:  number;
     errors:  { row: number; reason: string }[];
+    /**
+     * Non-blocking notes: values that were repaired, dropped or skipped. The
+     * row is still imported, so these are never reported as failures.
+     */
+    warnings?: { row: number; reason: string }[];
 }
 
 // ─── Check which records already exist ───────────────────────────────────────
@@ -133,8 +139,32 @@ export async function checkExistingRecords(
 }
 
 // ─── Map raw CSV row → DB shape ───────────────────────────────────────────────
+// Reading rules (dates, genders, blank rows) live in lib/utils/patient-import.ts
+// so the dialog's preview notes and the importer agree on what gets dropped.
 
-function mapRow(type: UploadType, row: Record<string, string>): Record<string, any> {
+interface MappedRow {
+    data:  Record<string, any>;
+    /** Values that had to be dropped or corrected, explained for the uploader. */
+    notes: string[];
+}
+
+/**
+ * True when a mapped patient row actually carries something from the file.
+ *
+ * `status` is supplied by the importer rather than read from the CSV, so it
+ * does not count. Without this, a file whose first line is not a header row
+ * (an Excel export pasted straight in, say) would map every column to nothing
+ * and create a hundred blank patient records instead of an error.
+ */
+function hasPatientData(data: Record<string, any>): boolean {
+    return Object.entries(data).some(([key, value]) => {
+        if (key === "status") return false;
+        if (value === null || value === undefined) return false;
+        return String(value).trim() !== "";
+    });
+}
+
+function mapRow(type: UploadType, row: Record<string, string>): MappedRow {
     const str = (k: string, fb = "") => (row[k] ?? fb).trim();
     const clean = (k: string) => {
         const v = (row[k] ?? "").trim();
@@ -144,55 +174,88 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
 
     switch (type) {
         case "patients": {
+            // No patient field is required. A blank column is "not recorded" and
+            // is stored as NULL; a column holding something the database could
+            // not use is dropped with a note so the patient is still registered.
+            const notes: string[] = [];
+
             // Accept legacy NVHE-*/NVH* values too, but always store them in the
             // canonical shared series (NVH- + zero-padded number).
-            const explicitHospitalNumber = normalizeHospitalNumber(str("hospital_number")) ?? "";
+            const rawHospitalNumber    = str("hospital_number");
+            const explicitHospitalNumber = normalizeHospitalNumber(rawHospitalNumber) ?? "";
+            if (rawHospitalNumber && !explicitHospitalNumber) {
+                notes.push(`Hospital number "${rawHospitalNumber}" is not a valid NVH-00001 number, so a new one was assigned instead.`);
+            }
+
+            const rawDob = clean("date_of_birth");
+            let birthDate: string | null = null;
+            if (rawDob) {
+                birthDate = parseBirthDate(rawDob);
+                if (!birthDate) {
+                    notes.push(`Date of birth "${rawDob}" could not be read, so it was left blank. Use YYYY-MM-DD (e.g. 1990-06-15) to record it later.`);
+                }
+            }
+
             const rawGender = clean("gender");
-            const normalizedGender = rawGender
-                ? (rawGender.charAt(0).toUpperCase() + rawGender.slice(1).toLowerCase())
-                : "Male";
+            let gender: string | null = null;
+            if (rawGender) {
+                gender = normalizeGender(rawGender);
+                if (!gender) {
+                    notes.push(`Gender "${rawGender}" was not recognised (Male, Female or Other), so it was left blank.`);
+                }
+            }
 
             return {
-                name:                     str("name"),
-                birth_date:               clean("date_of_birth"),
-                gender:                   normalizedGender,
-                phone:                    str("phone"),
-                address:                  clean("address"),
-                blood_group:              clean("blood_group"),
-                geno_type:                clean("genotype") || clean("geno_type"),
-                emergency_contact_name:   clean("next_of_kin_name") || clean("emergency_contact_name"),
-                emergency_contact_number: clean("next_of_kin_phone") || clean("emergency_contact_number"),
-                email:                    clean("email"),
-                // Only include an explicit number; blank rows are auto-assigned
-                // in bulkUploadChunk (kept absent so pre-migration uploads work).
-                ...(explicitHospitalNumber ? { hospital_number: explicitHospitalNumber } : {}),
-                status:                   "registered",
+                notes,
+                data: {
+                    name:                     clean("name"),
+                    birth_date:               birthDate,
+                    gender,
+                    phone:                    clean("phone"),
+                    address:                  clean("address"),
+                    blood_group:              clean("blood_group"),
+                    geno_type:                clean("genotype") || clean("geno_type"),
+                    emergency_contact_name:   clean("next_of_kin_name") || clean("emergency_contact_name"),
+                    emergency_contact_number: clean("next_of_kin_phone") || clean("emergency_contact_number"),
+                    email:                    clean("email"),
+                    // Only an explicit number is sent. A blank one is
+                    // auto-assigned in bulkUploadChunk (the key stays absent so
+                    // pre-migration databases keep working).
+                    ...(explicitHospitalNumber ? { hospital_number: explicitHospitalNumber } : {}),
+                    status:                   "registered",
+                },
             };
         }
 
         case "drug_inventory":
             return {
-                drug_name:     str("drug_name"),
-                generic_name:  clean("generic_name"),
-                category:      str("category").toUpperCase(),
-                unit:          str("unit") || "Pack",
-                reorder_level: num("reorder_level", 3),
-                price:         num("price", 0),
-                is_active:     (() => {
-                    const v = (row["is_active"] ?? "TRUE").trim().toUpperCase();
-                    return v !== "FALSE" && v !== "INACTIVE";
-                })(),
+                notes: [],
+                data: {
+                    drug_name:     str("drug_name"),
+                    generic_name:  clean("generic_name"),
+                    category:      str("category").toUpperCase(),
+                    unit:          str("unit") || "Pack",
+                    reorder_level: num("reorder_level", 3),
+                    price:         num("price", 0),
+                    is_active:     (() => {
+                        const v = (row["is_active"] ?? "TRUE").trim().toUpperCase();
+                        return v !== "FALSE" && v !== "INACTIVE";
+                    })(),
+                },
             };
 
         case "lab_test_catalog":
             return {
-                test_name:    str("test_name"),
-                test_code:    str("test_code"),
-                category:     clean("category"),
-                normal_range: clean("normal_range"),
-                unit:         clean("unit"),
-                price:        num("price", 0),
-                is_active:    true,
+                notes: [],
+                data: {
+                    test_name:    str("test_name"),
+                    test_code:    str("test_code"),
+                    category:     clean("category"),
+                    normal_range: clean("normal_range"),
+                    unit:         clean("unit"),
+                    price:        num("price", 0),
+                    is_active:    true,
+                },
             };
 
         default:
@@ -602,25 +665,47 @@ export async function bulkUploadChunk(
         }
 
         const sb     = await createClient();
-        const errors: { row: number; reason: string }[] = [];
+        const errors:   { row: number; reason: string }[] = [];
+        // Non-blocking notes about a row: values that could not be read and
+        // were left blank, empty rows that were passed over. The row itself is
+        // still imported whenever the database can accept it, so these never
+        // count as failures.
+        const warnings: { row: number; reason: string }[] = [];
         let success  = 0;
         let failed   = 0;
 
         // Map raw rows → DB objects, catching per-row mapping errors
         const mapped: Array<{ index: number; data: Record<string, any> }> = [];
         for (let i = 0; i < rows.length; i++) {
+            const fileRow = rowOffset + i + 2;
+            // Nothing is required, so a row whose every cell is blank would
+            // create an anonymous record. That is a stray line in the
+            // spreadsheet, not a patient: pass it over and say so.
+            if (isBlankCsvRow(rows[i])) {
+                warnings.push({ row: fileRow, reason: "This row is empty, so there was nothing to import." });
+                continue;
+            }
             try {
-                mapped.push({ index: i, data: mapRow(type, rows[i]) });
+                const { data, notes } = mapRow(type, rows[i]);
+                if (type === "patients" && !hasPatientData(data)) {
+                    warnings.push({
+                        row: fileRow,
+                        reason: "No column in this row matched a patient field. The first line of the file must be a header row (name, date_of_birth, gender, phone, …).",
+                    });
+                    continue;
+                }
+                for (const note of notes) warnings.push({ row: fileRow, reason: note });
+                mapped.push({ index: i, data });
             } catch (e: any) {
                 failed++;
                 errors.push({
-                    row: rowOffset + i + 2,
+                    row: fileRow,
                     reason: formatFriendlyDbError(e, "Invalid data in this row"),
                 });
             }
         }
 
-        if (!mapped.length) return { success, failed, errors };
+        if (!mapped.length) return { success, failed, errors, warnings };
 
         // Hospital numbers for patients (one shared NVH-XXXXX series)
         if (type === "patients") {
@@ -668,8 +753,9 @@ export async function bulkUploadChunk(
         // Errors are collected out of order (parallel isolation) — sort them so
         // the downloadable report reads top-to-bottom like the CSV.
         errors.sort((a, b) => a.row - b.row);
+        warnings.sort((a, b) => a.row - b.row);
 
-        return { success, failed, errors };
+        return { success, failed, errors, warnings };
     } catch (e: any) {
         // Never throw raw uncaught exceptions to the client — always return a structured result
         const msg = formatFriendlyDbError(e, "Failed to upload this chunk of records. Please try again.");

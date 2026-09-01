@@ -232,7 +232,9 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
     [staff, consultationStore.referredTo]
   );
 
-  const age = calculateAge(patient?.birth_date!);
+  // A patient imported from paper may have no date of birth (nothing in a
+  // bulk import is required). Report the age as unknown rather than NaN.
+  const age = patient?.birth_date ? calculateAge(patient.birth_date) : undefined;
 
   // ── Role-conditional extra tabs ────────────────────────────────────────────
   const visibleTabs = useMemo(() => {

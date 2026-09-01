@@ -4,7 +4,8 @@ import React, { useState, useRef } from "react";
 import { checkExistingRecords, bulkUploadChunk } from "@/lib/actions/bulk-upload";
 import type { UploadType } from "@/lib/actions/bulk-upload";
 import { normalizeLabTestName } from "@/lib/utils/lab-catalog";
-import { HOSPITAL_NUMBER_PATTERN } from "@/lib/hospital-number";
+import { normalizeHospitalNumber } from "@/lib/hospital-number";
+import { isBlankCsvRow, normalizeGender, parseBirthDate } from "@/lib/utils/patient-import";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
 import { friendlyErrorMessage, withTimeout } from "@/lib/utils/network";
 import { Button } from "@/components/ui/button";
@@ -110,8 +111,31 @@ const EXPECTED_HEADERS: Record<UploadType, string[]> = {
   ],
 };
 
+// Every column name the importer knows how to read, including the aliases
+// mapRow() accepts. Used only to tell "optional columns left out of the file"
+// apart from "this file has no header row at all".
+const KNOWN_HEADERS: Record<UploadType, string[]> = {
+  patients: Array.from(new Set([
+    ...EXPECTED_HEADERS.patients,
+    "email",
+    "geno_type",
+    "emergency_contact_name",
+    "emergency_contact_number",
+  ])),
+  drug_inventory: EXPECTED_HEADERS.drug_inventory,
+  lab_test_catalog: EXPECTED_HEADERS.lab_test_catalog,
+};
+
+// Columns a CSV must contain for the import to be offered at all.
+//
+// Nothing here means nothing is required: an absent column is simply treated as
+// blank, and a blank cell is stored as NULL (see the
+// 20260901_patients_no_required_fields migration, which dropped the NOT NULL
+// constraints that used to reject those rows). Patients are deliberately empty —
+// a paper register with a name and a phone number is still a registerable
+// patient, and refusing the file would only push staff to invent data.
 const REQUIRED_HEADERS: Record<UploadType, string[]> = {
-  patients: ["name", "date_of_birth", "gender", "phone"],
+  patients: [],
   drug_inventory: [
     "drug_name",
     "generic_name",
@@ -147,6 +171,13 @@ interface ValidationError {
   field: string;
   message: string;
 }
+
+/**
+ * Something the uploader should know about a row that is not a failure: a value
+ * that will be dropped or replaced because it could not be read. The import
+ * goes ahead regardless.
+ */
+type RowNote = ValidationError;
 
 interface FailedRow {
   row: number;
@@ -201,12 +232,30 @@ function parseCSV(text: string): { headers: string[]; rows: Record<string, strin
   return { headers, rows };
 }
 
+/**
+ * Splits a parsed file into problems that block the upload and notes that do
+ * not.
+ *
+ * Patients are note-only. No column is required, and a value the importer
+ * cannot use (an unreadable date, an unknown gender, a malformed hospital
+ * number) is left blank or replaced instead of rejecting the row — blocking a
+ * 900-line file over one unreadable cell is what used to send staff back to the
+ * paper register. The catalogues keep their hard checks: a drug without a name
+ * or a test without a code cannot be found from the billing screen at all.
+ */
 function validateRows(
   rows: Record<string, string>[],
   type: UploadType
-): ValidationError[] {
+): { errors: ValidationError[]; notes: RowNote[] } {
   const errors: ValidationError[] = [];
+  const notes: RowNote[] = [];
+
   rows.forEach((row, i) => {
+    if (type === "patients" && isBlankCsvRow(row)) {
+      notes.push({ row: i + 2, field: "-", message: "Empty row — it will be skipped." });
+      return;
+    }
+
     REQUIRED_HEADERS[type].forEach((field) => {
       if (!row[field]?.trim()) {
         const fieldLabels: Record<string, string> = {
@@ -222,32 +271,45 @@ function validateRows(
         errors.push({ row: i + 2, field, message: `${label} is required` });
       }
     });
+
     if (type === "patients") {
-      if (row.gender && !["male", "female", "other"].includes(row.gender.toLowerCase())) {
-        errors.push({
-          row: i + 2,
-          field: "gender",
-          message: 'Must be "male" or "female"',
-        });
-      }
-      if (row.date_of_birth && isNaN(Date.parse(row.date_of_birth))) {
-        errors.push({
+      // Reported, never enforced — `parseBirthDate` and `normalizeGender` are
+      // the same helpers the server action uses, so these notes match what the
+      // import actually does.
+      const dob = row.date_of_birth?.trim();
+      if (dob && !parseBirthDate(dob)) {
+        notes.push({
           row: i + 2,
           field: "date_of_birth",
-          message: "Invalid date — use YYYY-MM-DD (e.g. 1990-06-15)",
+          message: `"${dob}" is not a readable date, so the date of birth will be left blank (YYYY-MM-DD is understood as-is).`,
         });
       }
-      if (row.hospital_number) {
-        const hnMatch = row.hospital_number.trim().match(HOSPITAL_NUMBER_PATTERN);
-        if (!hnMatch || Number(hnMatch[1]) < 1) {
-          errors.push({
-            row: i + 2,
-            field: "hospital_number",
-            message: "Must be NVH- followed by digits (e.g. NVH-00001)",
-          });
-        }
+      const gender = row.gender?.trim();
+      if (gender && !normalizeGender(gender)) {
+        notes.push({
+          row: i + 2,
+          field: "gender",
+          message: `"${gender}" is not Male, Female or Other, so gender will be left blank.`,
+        });
       }
+      const hospitalNumber = row.hospital_number?.trim();
+      if (hospitalNumber && !normalizeHospitalNumber(hospitalNumber)) {
+        notes.push({
+          row: i + 2,
+          field: "hospital_number",
+          message: `"${hospitalNumber}" is not a valid NVH-00001 number, so the next free number will be assigned.`,
+        });
+      }
+      if (!row.name?.trim() && !row.phone?.trim() && !hospitalNumber) {
+        notes.push({
+          row: i + 2,
+          field: "name",
+          message: "This row has no name, phone or hospital number — the patient will be saved, but it will only be findable by its assigned number.",
+        });
+      }
+      return;
     }
+
     if (type === "drug_inventory") {
       if (
         row.category &&
@@ -281,7 +343,7 @@ function validateRows(
       errors.push({ row: i + 2, field: "price", message: "Must be a number" });
     }
   });
-  return errors;
+  return { errors, notes };
 }
 
 function downloadCSV(content: string, filename: string) {
@@ -465,7 +527,7 @@ function StepSelect({
       <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            CSV Columns Required
+            {REQUIRED_HEADERS[uploadType].length > 0 ? "CSV Columns Required" : "CSV Columns (all optional)"}
           </p>
           <Button
             variant="ghost"
@@ -494,12 +556,23 @@ function StepSelect({
           ))}
         </div>
         <p className="text-[10px] text-gray-400 leading-relaxed">
-          <span className="text-primary font-bold">*</span> Required columns · All other columns are optional
+          {REQUIRED_HEADERS[uploadType].length > 0 ? (
+            <>
+              <span className="text-primary font-bold">*</span> Required columns · All other columns are optional
+            </>
+          ) : (
+            <>No column is required here — send what your file has, in any order.</>
+          )}
           {uploadType === "drug_inventory" && (
             <> · category: {VALID_DRUG_CATEGORIES.join(", ")}</>
           )}
           {uploadType === "patients" && (
-            <> · Only <b>name, date_of_birth, gender, phone</b> are required. Missing details will automatically be saved as empty (null). Leave hospital_number blank to auto-assign (NVH-00001…), or provide existing numbers.</>
+            <>
+              {" · "}Anything left blank is saved as <b>not recorded</b>, and a blank
+              hospital_number is auto-assigned (NVH-00001...). A value the system cannot
+              read — an unrecognised date of birth, for example — is left blank rather
+              than rejecting the row, and listed as a note once the import finishes.
+            </>
           )}
         </p>
       </div>
@@ -566,7 +639,9 @@ function StepPreview({
   headers,
   allRows,
   validationErrors,
+  notes,
   missingColumns,
+  headerIssue,
   existingCount,
   onBack,
   onUpload,
@@ -576,19 +651,30 @@ function StepPreview({
   headers: string[];
   allRows: Record<string, string>[];
   validationErrors: ValidationError[];
+  notes: RowNote[];
   missingColumns: string[];
+  headerIssue: string | null;
   existingCount: number;
   onBack: () => void;
   onUpload: () => void;
 }) {
   const [showAllErrors, setShowAllErrors] = useState(false);
+  const [showAllNotes, setShowAllNotes] = useState(false);
   const PREVIEW_ROWS = 10;
   const preview = allRows.slice(0, PREVIEW_ROWS);
   const config = UPLOAD_TYPE_CONFIG[uploadType];
-  const hasBlockers = missingColumns.length > 0 || validationErrors.length > 0;
-  const netRows = allRows.length - existingCount;
+  const hasBlockers =
+    missingColumns.length > 0 || validationErrors.length > 0 || !!headerIssue;
+  // Empty patient rows are passed over rather than imported, so they never
+  // count towards what this file will add.
+  const importableRows =
+    uploadType === "patients"
+      ? allRows.filter((r) => !isBlankCsvRow(r)).length
+      : allRows.length;
+  const netRows = Math.max(0, importableRows - existingCount);
 
   const displayErrors = showAllErrors ? validationErrors : validationErrors.slice(0, 5);
+  const displayNotes = showAllNotes ? notes : notes.slice(0, 5);
 
   return (
     <div className="space-y-4">
@@ -619,7 +705,19 @@ function StepPreview({
         </button>
       </div>
 
-      {/* Missing columns — hard blocker */}
+      {/* No column matches the importer's field names: the file has no header
+          row to read. Not a required-field complaint — nothing can be mapped. */}
+      {headerIssue && (
+        <div className="rounded-2xl bg-red-50 border border-red-200 p-4">
+          <p className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2">
+            <AlertTriangle size={12} className="inline mr-1" />
+            Header row not recognised
+          </p>
+          <p className="text-xs text-red-600 leading-snug">{headerIssue}</p>
+        </div>
+      )}
+
+      {/* Missing columns — hard blocker (catalogues only: no patient column is required) */}
       {missingColumns.length > 0 && (
         <div className="rounded-2xl bg-red-50 border border-red-200 p-4">
           <p className="text-xs font-bold text-red-700 uppercase tracking-wide mb-2">
@@ -667,10 +765,42 @@ function StepPreview({
         </div>
       )}
 
+      {/* Notes — nothing here blocks the import, the rows are still saved */}
+      {notes.length > 0 && (
+        <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4">
+          <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-1">
+            {notes.length} note{notes.length > 1 ? "s" : ""} — these rows are still imported
+          </p>
+          <p className="text-[11px] text-blue-500 mb-2 leading-snug">
+            These are not errors — every row still goes in. A value that could not
+            be read is left blank (or replaced) and can be completed later from
+            the patient's record.
+          </p>
+          <div className="space-y-1 max-h-36 overflow-y-auto">
+            {displayNotes.map((n, i) => (
+              <p key={i} className="text-xs text-blue-700">
+                Row {n.row} · <span className="font-mono font-semibold">{n.field}</span>: {n.message}
+              </p>
+            ))}
+          </div>
+          {notes.length > 5 && (
+            <button
+              onClick={() => setShowAllNotes((v) => !v)}
+              className="text-xs text-blue-600 font-semibold hover:underline mt-2"
+            >
+              {showAllNotes ? "Show less" : `Show all ${notes.length} notes`}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Preview table */}
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
           Preview · showing {Math.min(PREVIEW_ROWS, allRows.length)} of {allRows.length} rows
+          {uploadType === "patients" && importableRows !== allRows.length && (
+            <span className="text-gray-400 font-normal"> · {importableRows} with data</span>
+          )}
         </p>
         <div className="overflow-x-auto rounded-2xl border border-gray-100 max-h-64 overflow-y-auto">
           <table className="w-full text-xs">
@@ -716,9 +846,13 @@ function StepPreview({
         className="w-full h-11 text-sm"
       >
         {hasBlockers ? (
-          "Fix errors before uploading"
+          headerIssue
+            ? "Add a header row to the file first"
+            : "Fix errors before uploading"
         ) : netRows === 0 ? (
-          "Nothing new to upload — all records already exist"
+          importableRows === 0
+            ? "No rows to import — every row in this file is empty"
+            : "Nothing new to upload — all records already exist"
         ) : (
           <>
             Upload {netRows} {config.label}
@@ -823,14 +957,17 @@ function StepDone({
   result,
   skipped,
   failedRows,
+  notes,
   onReset,
 }: {
   uploadType: UploadType;
   result: { total: number; success: number; failed: number };
   skipped: number;
   failedRows: FailedRow[];
+  notes: FailedRow[];
   onReset: () => void;
 }) {
+  const [showAllNotes, setShowAllNotes] = useState(false);
   const allGood = result.failed === 0;
   const config = UPLOAD_TYPE_CONFIG[uploadType];
 
@@ -928,6 +1065,31 @@ function StepDone({
         </div>
       )}
 
+      {/* Notes — rows that were saved with a value left out */}
+      {notes.length > 0 && (
+        <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 space-y-1">
+          <p className="text-xs font-semibold text-blue-700">
+            {notes.length} row{notes.length > 1 ? "s" : ""} saved with something left out — the detail can be
+            added later from the patient's record:
+          </p>
+          <div className="space-y-1">
+            {(showAllNotes ? notes : notes.slice(0, 5)).map((n, i) => (
+              <p key={i} className="text-xs text-blue-600">
+                Row {n.row}: {n.reason}
+              </p>
+            ))}
+          </div>
+          {notes.length > 5 && (
+            <button
+              onClick={() => setShowAllNotes((v) => !v)}
+              className="text-xs text-blue-600 font-semibold hover:underline"
+            >
+              {showAllNotes ? "Show less" : `Show all ${notes.length} notes`}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Upload another */}
       <Button
         onClick={onReset}
@@ -962,6 +1124,8 @@ export default function BulkUploadDialog({
   const [headers, setHeaders] = useState<string[]>([]);
   const [allRows, setAllRows] = useState<Record<string, string>[]>([]);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [previewNotes, setPreviewNotes] = useState<RowNote[]>([]);
+  const [headerIssue, setHeaderIssue] = useState<string | null>(null);
   const [missingColumns, setMissingColumns] = useState<string[]>([]);
   const [existingCount, setExistingCount] = useState(0);
   // Duplicate-scan keys from the preview step, reused by the upload step so a
@@ -976,6 +1140,9 @@ export default function BulkUploadDialog({
     failed: 0,
   });
   const [failedRows, setFailedRows] = useState<FailedRow[]>([]);
+  // Rows the importer saved with a value left out or replaced (see the
+  // `warnings` channel on ChunkResult). Not failures.
+  const [uploadNotes, setUploadNotes] = useState<FailedRow[]>([]);
   const [result, setResult] =
     useState<{ total: number; success: number; failed: number } | null>(null);
   const [skipped, setSkipped] = useState(0);
@@ -1007,21 +1174,37 @@ export default function BulkUploadDialog({
     const missing = REQUIRED_HEADERS[localUploadType].filter(
       (h) => !normalizedHeaders.includes(h)
     );
-    const errors =
-      missing.length === 0 ? validateRows(rows, localUploadType) : [];
+    // Nothing is required, but at least one column still has to be one the
+    // importer reads. Otherwise the file's first line was not a header row and
+    // every value in it would be dropped on the floor (silently creating
+    // nameless, detail-less patient records).
+    const recognised = normalizedHeaders.filter((h) =>
+      KNOWN_HEADERS[localUploadType].includes(h)
+    );
+    const headerProblem =
+      rows.length > 0 && recognised.length === 0
+        ? `None of the ${normalizedHeaders.length} column${normalizedHeaders.length === 1 ? "" : "s"} in this file is one the importer reads. The first line must be a header row — for patients: ${EXPECTED_HEADERS[localUploadType].join(", ")}.`
+        : null;
+
+    const { errors, notes } =
+      missing.length === 0 && !headerProblem
+        ? validateRows(rows, localUploadType)
+        : { errors: [], notes: [] };
 
     setFileName(file.name);
     setHeaders(normalizedHeaders);
     setAllRows(rows);
     setMissingColumns(missing);
+    setHeaderIssue(headerProblem);
     setValidationErrors(errors);
+    setPreviewNotes(notes);
     setExistingCount(0);
     setExistingKeys([]);
     existingScanRef.current = null;
     setStep("preview");
 
     // Async duplicate check — result is kept for the upload step (no rescan).
-    if (missing.length === 0 && rows.length > 0) {
+    if (missing.length === 0 && !headerProblem && rows.length > 0) {
       const key = dedupeKey(localUploadType);
       const values = rows.map((r) => queryKeyValue(localUploadType, r[key])).filter(Boolean);
       if (values.length > 0) {
@@ -1041,6 +1224,7 @@ export default function BulkUploadDialog({
 
   async function handleUpload() {
     setStep("uploading");
+    setUploadNotes([]);
 
     const key = dedupeKey(localUploadType);
 
@@ -1049,27 +1233,34 @@ export default function BulkUploadDialog({
     );
     // Deduplicate against existing records and internal duplicates.
     // For patients: use hospital_number if present, otherwise unique (name + phone)
-    // so distinct family members sharing a phone number are preserved.
+    // so distinct family members sharing a phone number are preserved. A row
+    // with none of the three has no key to match on: with nothing required, two
+    // such rows are two people, not one duplicated one.
     const seen = new Set<string>();
+    const blankRows =
+      localUploadType === "patients" ? allRows.filter((r) => isBlankCsvRow(r)).length : 0;
     const uploadRows = allRows.filter((r) => {
+      // An empty line in the spreadsheet still parses as a row. It holds
+      // nothing to import, so don't send it to the database at all.
+      if (localUploadType === "patients" && isBlankCsvRow(r)) return false;
+
       let dedupeId = "";
       if (localUploadType === "patients") {
         const hn = (r.hospital_number ?? "").trim().toLowerCase();
-        if (hn) {
-          dedupeId = "hn:" + hn;
-        } else {
-          dedupeId = "p:" + (r.name ?? "").trim().toLowerCase() + "|" + (r.phone ?? "").trim().toLowerCase();
-        }
+        const name = (r.name ?? "").trim().toLowerCase();
+        const phone = (r.phone ?? "").trim().toLowerCase();
+        if (hn) dedupeId = "hn:" + hn;
+        else if (name || phone) dedupeId = "p:" + name + "|" + phone;
       } else {
         dedupeId = normCompareKey(localUploadType, r[key]);
       }
 
-      if (!dedupeId) return true; // let server-side validation report missing required fields
+      if (!dedupeId) return true; // no identity to deduplicate on — the server decides
       if (existSet.has(normCompareKey(localUploadType, r[key])) || seen.has(dedupeId)) return false;
       seen.add(dedupeId);
       return true;
     });
-    const skippedN = allRows.length - uploadRows.length;
+    const skippedN = allRows.length - blankRows - uploadRows.length;
 
     setSkipped(skippedN);
     setProgress({ current: 0, total: uploadRows.length, success: 0, failed: 0 });
@@ -1084,6 +1275,9 @@ export default function BulkUploadDialog({
     let totalSuccess = 0;
     let totalFailed = 0;
     const allErrors: FailedRow[] = [];
+    // Per-row notes from the importer (values it could not read), kept apart
+    // from `allErrors` because these rows were saved.
+    const allNotes: FailedRow[] = [];
     let next = 0;
 
     async function worker() {
@@ -1116,6 +1310,7 @@ export default function BulkUploadDialog({
         totalSuccess += res.success;
         totalFailed += res.failed;
         allErrors.push(...res.errors);
+        if (res.warnings?.length) allNotes.push(...res.warnings);
 
         setProgress((p) => ({
           ...p,
@@ -1134,6 +1329,7 @@ export default function BulkUploadDialog({
     );
 
     setFailedRows(allErrors);
+    setUploadNotes(allNotes.sort((a, b) => a.row - b.row));
     setResult({ total: uploadRows.length, success: totalSuccess, failed: totalFailed });
     setStep("done");
   }
@@ -1146,7 +1342,10 @@ export default function BulkUploadDialog({
     setHeaders([]);
     setAllRows([]);
     setValidationErrors([]);
+    setPreviewNotes([]);
+    setHeaderIssue(null);
     setMissingColumns([]);
+    setUploadNotes([]);
     setExistingCount(0);
     setExistingKeys([]);
     existingScanRef.current = null;
@@ -1197,7 +1396,9 @@ export default function BulkUploadDialog({
               headers={headers}
               allRows={allRows}
               validationErrors={validationErrors}
+              notes={previewNotes}
               missingColumns={missingColumns}
+              headerIssue={headerIssue}
               existingCount={existingCount}
               onBack={handleReset}
               onUpload={handleUpload}
@@ -1214,6 +1415,7 @@ export default function BulkUploadDialog({
               result={result}
               skipped={skipped}
               failedRows={failedRows}
+              notes={uploadNotes}
               onReset={handleReset}
             />
           )}
