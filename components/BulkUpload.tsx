@@ -6,7 +6,7 @@ import type { UploadType } from "@/lib/actions/bulk-upload";
 import { normalizeLabTestName } from "@/lib/utils/lab-catalog";
 import { HOSPITAL_NUMBER_PATTERN } from "@/lib/hospital-number";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
-import { friendlyErrorMessage } from "@/lib/utils/network";
+import { friendlyErrorMessage, withTimeout } from "@/lib/utils/network";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,7 +33,15 @@ import { cn } from "@/lib/utils";
 // Rows per server-action call. 250 keeps each request fast and resilient
 // while keeping server action execution well within timeouts.
 const CHUNK_SIZE = 250;
-const CONCURRENT_UPLOADS = 4;
+// The server bounds each chunk to ~20s of work (see CHUNK_BUDGET_MS in
+// lib/actions/bulk-upload.ts) and can fan out up to 4 parallel database calls
+// while isolating bad rows, so 3 in-flight chunks keeps peak database
+// concurrency at a level Supabase's connection pooler is comfortable with.
+const CONCURRENT_UPLOADS = 3;
+// Safety net only. A chunk now always answers within its budget, so this
+// should never fire — it just stops a dead request from leaving the dialog
+// stuck on "Uploading…" forever.
+const CHUNK_TIMEOUT_MS = 90_000;
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 const UPLOAD_TYPE_CONFIG: Record<UploadType, {
@@ -912,6 +920,11 @@ function StepDone({
             <Download size={12} className="mr-1" />
             Download Error Report CSV
           </Button>
+          <p className="text-[11px] text-red-500 leading-snug">
+            Fix the rows listed above and re-upload only those — the rows that
+            succeeded have already been saved, so re-uploading the whole file
+            will report them as duplicates.
+          </p>
         </div>
       )}
 
@@ -1078,11 +1091,19 @@ export default function BulkUploadDialog({
         const c = chunks[next++]; // claimed synchronously — workers never overlap
         let res: Awaited<ReturnType<typeof bulkUploadChunk>>;
         try {
-          res = await bulkUploadChunk(localUploadType, c.rows, c.offset);
+          res = await withTimeout(
+            bulkUploadChunk(localUploadType, c.rows, c.offset),
+            CHUNK_TIMEOUT_MS,
+            // Deliberately avoids the word "timeout" so it isn't rewritten
+            // into the generic "check your connection" message below: the
+            // rows may well have been saved server-side.
+            "This batch did not finish in time. It may still have been saved — check the records before re-uploading these rows.",
+          );
         } catch (e: any) {
-          // A chunk-level failure (network hiccup, expired session, timeout) must not
-          // crash the entire file upload — report its rows with a friendly message and keep going.
-          const friendly = formatFriendlyDbError(e, friendlyErrorMessage(e, "Upload request timed out or was interrupted. Please try again."));
+          // A chunk-level failure (network hiccup, expired session, request
+          // killed by the platform) must not crash the entire file upload —
+          // report its rows with a friendly message and keep going.
+          const friendly = formatFriendlyDbError(e, friendlyErrorMessage(e, "Upload request did not complete. Please check your connection and try again."));
           res = {
             success: 0,
             failed: c.rows.length,
