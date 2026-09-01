@@ -39,17 +39,14 @@ function statusLabel(status?: string) {
     return (status ?? "no-status").replace(/-/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
-// ─── Hospital number badge — distinguishes EMR vs bulk-uploaded patients ─────
+// ─── Hospital number badge — one shared NVHXXXXX series for all patients ─────
 
 function HospitalNumber({ value }: { value?: string }) {
     if (!value) return <span className="text-gray-300 italic text-xs">—</span>;
-    const isEmr = /^NVHE/i.test(value);
     return (
         <span
-            className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-mono text-xs font-bold ${
-                isEmr ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-amber-50 text-amber-700 border border-amber-100"
-            }`}
-            title={isEmr ? "Created in the EMR" : "Imported via bulk upload"}
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-mono text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100"
+            title="Hospital number"
         >
             {value}
         </span>
@@ -175,7 +172,7 @@ export default function PatientRecordsPage() {
                     <input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search by name, phone, or hospital number (e.g. NVH-000042)…"
+                        placeholder="Search by name, phone, or hospital number (e.g. NVH00042)…"
                         aria-label="Search patient records"
                         className="w-full h-11 pl-10 pr-10 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 focus:bg-white transition-all"
                     />

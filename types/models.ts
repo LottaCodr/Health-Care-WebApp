@@ -65,7 +65,7 @@ export interface Patient {
     facility_id?: string;
     portal_user_id?: string;
     portal_enabled?: boolean;
-    /** Hospital number — NVHE-* for EMR-created patients, NVH-* for bulk uploads. */
+    /** Hospital number — one shared NVHXXXXX series for EMR and bulk imports (e.g. NVH00001). */
     hospital_number?: string;
     created_at?: string;
     updated_at?: string;

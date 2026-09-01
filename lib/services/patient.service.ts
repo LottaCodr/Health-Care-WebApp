@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { Patient, PatientStatus, UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
+import { normalizeHospitalNumber } from "@/lib/hospital-number";
 
 /**
  * Roles that may advance a patient through the workflow state machine
@@ -25,13 +26,14 @@ export async function createPatient(
     const actor = await requireStaff([UserRole.FrontDesk]);
     const supabase = await createClient();
 
-    // Hospital number: patients registered in the EMR carry the NVHE prefix.
+    // Hospital number: every patient — EMR-registered or bulk-imported — uses
+    // the same shared NVHXXXXX series (no E, no hyphen).
     // Degrades gracefully if the hospital_number migration hasn't been applied.
     let hospital_number: string | null = null;
     try {
         const { data: hn, error: hnError } = await supabase
-            .rpc("next_hospital_number", { p_prefix: "NVHE" });
-        if (!hnError && typeof hn === "string") hospital_number = hn;
+            .rpc("next_hospital_number", { p_prefix: "NVH" });
+        if (!hnError && typeof hn === "string") hospital_number = normalizeHospitalNumber(hn) ?? hn;
         else if (hnError) console.error("[patient] next_hospital_number:", hnError);
     } catch (e) {
         console.error("[patient] hospital number generation skipped:", e);
