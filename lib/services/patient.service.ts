@@ -27,7 +27,7 @@ export async function createPatient(
     const supabase = await createClient();
 
     // Hospital number: every patient — EMR-registered or bulk-imported — uses
-    // the same shared NVHXXXXX series (no E, no hyphen).
+    // the same shared NVH-XXXXX series.
     // Degrades gracefully if the hospital_number migration hasn't been applied.
     let hospital_number: string | null = null;
     try {
