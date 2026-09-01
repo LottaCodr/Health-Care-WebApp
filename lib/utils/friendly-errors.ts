@@ -106,19 +106,43 @@ export function formatFriendlyDbError(err: unknown, fallback = "An unexpected er
         return "You do not have permission to perform this action. Please log in with an authorized account.";
     }
 
-    // ── 8. Network, Timeout, Server Action issues ────────────────────────────
+    // ── 8. Database statement timeouts ───────────────────────────────────────
+    // Distinct from a network problem: the database aborted the statement, so
+    // nothing was written. Saying "check your connection" here sends staff
+    // chasing the wrong thing.
+    if (
+        code === "57014" ||
+        combined.includes("canceling statement") ||
+        combined.includes("canceling query") ||
+        combined.includes("statement timeout")
+    ) {
+        return "The database was too busy to save this record and gave up (the request timed out). Nothing was saved for this row — please try again.";
+    }
+
+    // ── 9. Network, Timeout, Server Action issues ────────────────────────────
+    // NOTE: keep these patterns tight. Substring-matching bare "504"/"503" or
+    // the word "network" anywhere in a message (including the row values
+    // PostgREST echoes back in `details`) used to re-label genuine data errors
+    // as network failures, which is why every row of a failing bulk upload
+    // reported "the server took too long to respond".
     if (
         combined.includes("unexpected response") ||
         combined.includes("fetch failed") ||
-        combined.includes("network") ||
+        combined.includes("failed to fetch") ||
+        combined.includes("load failed") ||
+        combined.includes("networkerror") ||
+        combined.includes("network request failed") ||
         combined.includes("econnreset") ||
-        combined.includes("timeout") ||
+        combined.includes("econnrefused") ||
+        combined.includes("socket hang up") ||
         combined.includes("gateway") ||
-        combined.includes("504") ||
-        combined.includes("502") ||
-        combined.includes("503")
+        combined.includes("timeout") ||
+        // Only treat 502/503/504 as an HTTP status, never as digits that
+        // happen to appear in a phone number or ID echoed back in `details`.
+        /(?:gateway|http|status|code|error|response)\D{0,12}50[234]\b/.test(combined) ||
+        /50[234]\D{0,20}(?:gateway|time[\s-]?out|unavailable)/.test(combined)
     ) {
-        return "The server took too long to respond or network connection was interrupted. Please check your connection and try again.";
+        return "The server took too long to respond or the connection was interrupted. Nothing was saved for this row — please check your connection and try again.";
     }
 
     return cleanErrorMessage(message, fallback);
