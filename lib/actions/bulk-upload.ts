@@ -36,59 +36,83 @@ export async function checkExistingRecords(
     type: UploadType,
     values: string[],
 ): Promise<string[]> {
-    await requireStaff();
-    if (!values.length) return [];
-    const sb    = await createClient();
+    try {
+        await requireStaff();
+        if (!values.length) return [];
+        const sb    = await createClient();
 
-    // Lab tests are keyed by NAME (the business key the billing lookup uses),
-    // not by code — otherwise the same test uploaded under a different code
-    // slips through and creates duplicates.
-    if (type === "lab_test_catalog") {
-        const { data } = await sb
-            .from(TABLES[type])
-            .select("test_name, test_code");
-
-        const incoming = new Set(values.map((v) => normalizeLabTestName(v)));
-        const existing = (data ?? []).flatMap((r: any) => [
-            normalizeLabTestName(r.test_name),
-            String(r.test_code ?? "").trim().toLowerCase(),
-        ]);
-
-        return [...new Set(existing)].filter((v) => v && incoming.has(v));
-    }
-
-    const field = type === "patients" ? "phone" : "drug_name";
-    const batches: string[][] = [];
-    for (let i = 0; i < values.length; i += EXISTING_CHECK_BATCH) {
-        batches.push(values.slice(i, i + EXISTING_CHECK_BATCH));
-    }
-
-    // Run the batches a few at a time — 5,000 values used to mean 25 strictly
-    // sequential queries before the upload could even start.
-    const found = new Set<string>();
-    const LOOKUP_CONCURRENCY = 4;
-    let next = 0;
-    await Promise.all(
-        Array.from({ length: Math.min(LOOKUP_CONCURRENCY, batches.length) }, async () => {
-            while (next < batches.length) {
-                const batch = batches[next++];
-                const { data, error } = await sb
+        // Lab tests are keyed by NAME (the business key the billing lookup uses),
+        // not by code — otherwise the same test uploaded under a different code
+        // slips through and creates duplicates.
+        if (type === "lab_test_catalog") {
+            try {
+                const { data } = await sb
                     .from(TABLES[type])
-                    .select(field)
-                    .in(field, batch);
-                if (error) {
-                    // Better to under-report duplicates than block the upload.
-                    console.error("[bulk-upload] checkExistingRecords:", error);
-                    continue;
-                }
-                for (const r of data ?? []) {
-                    found.add(String((r as any)[field] ?? "").toLowerCase().trim());
-                }
-            }
-        })
-    );
+                    .select("test_name, test_code");
 
-    return [...found];
+                const incoming = new Set(values.map((v) => normalizeLabTestName(v)));
+                const existing = (data ?? []).flatMap((r: any) => [
+                    normalizeLabTestName(r.test_name),
+                    String(r.test_code ?? "").trim().toLowerCase(),
+                ]);
+
+                return [...new Set(existing)].filter((v) => v && incoming.has(v));
+            } catch (e) {
+                console.error("[bulk-upload] checkExistingRecords (lab):", e);
+                return [];
+            }
+        }
+
+        const field = type === "patients" ? "phone" : "drug_name";
+        const batches: string[][] = [];
+        for (let i = 0; i < values.length; i += EXISTING_CHECK_BATCH) {
+            batches.push(values.slice(i, i + EXISTING_CHECK_BATCH));
+        }
+
+        // Run the batches a few at a time — 5,000 values used to mean 25 strictly
+        // sequential queries before the upload could even start.
+        const found = new Set<string>();
+        const LOOKUP_CONCURRENCY = 4;
+        let next = 0;
+        // Use a synchronous claim function to avoid race on `next`
+        const claimNext = () => {
+            if (next >= batches.length) return null;
+            return batches[next++];
+        };
+
+        await Promise.all(
+            Array.from({ length: Math.min(LOOKUP_CONCURRENCY, batches.length) }, async () => {
+                while (true) {
+                    const batch = claimNext();
+                    if (!batch) break;
+                    try {
+                        const { data, error } = await sb
+                            .from(TABLES[type])
+                            .select(field)
+                            .in(field, batch);
+                        if (error) {
+                            // Better to under-report duplicates than block the upload.
+                            console.error("[bulk-upload] checkExistingRecords:", error);
+                            continue;
+                        }
+                        for (const r of data ?? []) {
+                            found.add(String((r as any)[field] ?? "").toLowerCase().trim());
+                        }
+                    } catch (e) {
+                        console.error("[bulk-upload] checkExistingRecords batch:", e);
+                        continue;
+                    }
+                }
+            })
+        );
+
+        return [...found];
+    } catch (e) {
+        // Auth failure or unexpected error — log and return empty so upload can still proceed
+        // (per-row error isolation will catch real duplicates via DB unique constraints).
+        console.error("[bulk-upload] checkExistingRecords outer:", e);
+        return [];
+    }
 }
 
 // ─── Map raw CSV row → DB shape ───────────────────────────────────────────────
@@ -162,10 +186,23 @@ async function allocateHospitalNumbers(sb: any, count: number): Promise<string[]
     try {
         const { data, error } = await sb.rpc("next_hospital_numbers", { p_count: count });
         if (!error && Array.isArray(data) && data.length >= count) {
-            const parsed = data.slice(0, count).map((v: any) => normalizeHospitalNumber(String(v)));
+            // Supabase can return SETOF TEXT as string[] OR as object[] like
+            // { next_hospital_numbers: "NVH-00001" } depending on client version.
+            const rawStrings = data.slice(0, count).map((v: any) => {
+                if (typeof v === "string") return v;
+                if (v && typeof v === "object") {
+                    // Take first value if it's an object wrapper
+                    const vals = Object.values(v);
+                    if (vals.length && typeof vals[0] === "string") return vals[0] as string;
+                    // Fallback to JSON stringified? try to extract
+                    return String(vals[0] ?? "");
+                }
+                return String(v ?? "");
+            });
+            const parsed = rawStrings.map((s) => normalizeHospitalNumber(s));
             // Only trust the batch when every value parses as a hospital number;
             // an unexpected response shape falls through to the per-row path.
-            if (parsed.every((n): n is string => n !== null)) return parsed;
+            if (parsed.every((n): n is string => n !== null)) return parsed as string[];
             console.error("[bulk-upload] next_hospital_numbers: unexpected response shape", data?.[0]);
         }
         if (error) console.error("[bulk-upload] next_hospital_numbers:", error);
@@ -174,16 +211,31 @@ async function allocateHospitalNumbers(sb: any, count: number): Promise<string[]
     }
 
     // Fallback: one next_hospital_number call per row (pre-batch-migration DBs).
-    const out: string[] = [];
-    for (let i = 0; i < count; i++) {
-        try {
-            const { data: hn, error: hnError } = await sb.rpc("next_hospital_number", { p_prefix: "NVH" });
-            out.push(!hnError && typeof hn === "string" ? (normalizeHospitalNumber(hn) ?? hn) : "");
-        } catch (e) {
-            console.error("[bulk-upload] next_hospital_number:", e);
-            out.push("");
+    // Run with limited concurrency to avoid 500 sequential round-trips timing out
+    // the server action (which previously caused "unexpected response" for large chunks).
+    const FALLBACK_CONCURRENCY = 10;
+    const out: string[] = new Array(count).fill("");
+    let nextIdx = 0;
+
+    async function fallbackWorker() {
+        while (nextIdx < count) {
+            const idx = nextIdx++;
+            try {
+                const { data: hn, error: hnError } = await sb.rpc("next_hospital_number", { p_prefix: "NVH" });
+                if (!hnError && typeof hn === "string") {
+                    out[idx] = normalizeHospitalNumber(hn) ?? hn;
+                }
+            } catch (e) {
+                console.error("[bulk-upload] next_hospital_number:", e);
+                out[idx] = "";
+            }
         }
     }
+
+    await Promise.all(
+        Array.from({ length: Math.min(FALLBACK_CONCURRENCY, count) }, () => fallbackWorker())
+    );
+
     return out;
 }
 
@@ -201,22 +253,38 @@ async function insertResilient(
     rowOffset: number,
     errors: { row: number; reason: string }[],
 ): Promise<{ success: number; failed: number }> {
-    const { error } = await sb.from(table).insert(rows.map((r) => r.data));
-    if (!error) return { success: rows.length, failed: 0 };
+    try {
+        const { error } = await sb.from(table).insert(rows.map((r) => r.data));
+        if (!error) return { success: rows.length, failed: 0 };
 
-    if (rows.length === 1) {
-        const isDupe = error.code === "23505" || error.message.toLowerCase().includes("duplicate");
-        errors.push({
-            row:    rowOffset + rows[0].index + 2,
-            reason: isDupe ? "Already exists — duplicate record" : error.message,
-        });
-        return { success: 0, failed: 1 };
+        if (rows.length === 1) {
+            const isDupe = error.code === "23505" || error.message.toLowerCase().includes("duplicate");
+            errors.push({
+                row:    rowOffset + rows[0].index + 2,
+                reason: isDupe ? "Already exists — duplicate record" : error.message,
+            });
+            return { success: 0, failed: 1 };
+        }
+
+        const mid   = Math.ceil(rows.length / 2);
+        const left  = await insertResilient(sb, table, rows.slice(0, mid), rowOffset, errors);
+        const right = await insertResilient(sb, table, rows.slice(mid), rowOffset, errors);
+        return { success: left.success + right.success, failed: left.failed + right.failed };
+    } catch (e: any) {
+        // Network failure or thrown exception — treat as batch failure and bisect
+        // unless we're already at single row, in which case report the error.
+        if (rows.length === 1) {
+            errors.push({
+                row: rowOffset + rows[0].index + 2,
+                reason: e?.message ?? "Insert failed",
+            });
+            return { success: 0, failed: 1 };
+        }
+        const mid   = Math.ceil(rows.length / 2);
+        const left  = await insertResilient(sb, table, rows.slice(0, mid), rowOffset, errors);
+        const right = await insertResilient(sb, table, rows.slice(mid), rowOffset, errors);
+        return { success: left.success + right.success, failed: left.failed + right.failed };
     }
-
-    const mid   = Math.ceil(rows.length / 2);
-    const left  = await insertResilient(sb, table, rows.slice(0, mid), rowOffset, errors);
-    const right = await insertResilient(sb, table, rows.slice(mid), rowOffset, errors);
-    return { success: left.success + right.success, failed: left.failed + right.failed };
 }
 
 // ─── Upload one chunk ─────────────────────────────────────────────────────────
@@ -227,73 +295,90 @@ export async function bulkUploadChunk(
     rows:      Record<string, string>[],
     rowOffset: number,
 ): Promise<ChunkResult> {
-    // Only the role that owns each catalog may bulk-load into it.
-    const roleByType: Record<UploadType, UserRole> = {
-        patients: UserRole.FrontDesk,
-        drug_inventory: UserRole.Pharmacist,
-        lab_test_catalog: UserRole.LabTechnician,
-    };
-    await requireStaff([roleByType[type]]);
+    try {
+        // Only the role that owns each catalog may bulk-load into it.
+        const roleByType: Record<UploadType, UserRole> = {
+            patients: UserRole.FrontDesk,
+            drug_inventory: UserRole.Pharmacist,
+            lab_test_catalog: UserRole.LabTechnician,
+        };
+        await requireStaff([roleByType[type]]);
 
-    const sb     = await createClient();
-    const errors: { row: number; reason: string }[] = [];
-    let success  = 0;
-    let failed   = 0;
+        const sb     = await createClient();
+        const errors: { row: number; reason: string }[] = [];
+        let success  = 0;
+        let failed   = 0;
 
-    // Map raw rows → DB objects, catching per-row mapping errors
-    const mapped: Array<{ index: number; data: Record<string, any> }> = [];
-    for (let i = 0; i < rows.length; i++) {
-        try {
-            mapped.push({ index: i, data: mapRow(type, rows[i]) });
-        } catch (e: any) {
-            failed++;
-            errors.push({ row: rowOffset + i + 2, reason: e.message });
-        }
-    }
-
-    if (!mapped.length) return { success, failed, errors };
-
-    // Hospital numbers for patients (one shared NVH-XXXXX series):
-    //  • an explicit number in the CSV (e.g. NVH-00001 or a legacy NVH00001)
-    //    is normalized and kept, and the counter is advanced past it so
-    //    auto-assignment never collides;
-    //  • a blank hospital_number gets a fresh NVH-XXXXX assigned server-side.
-    // Both steps are batched (never one RPC per row) so 5k-row imports stay
-    // fast; they degrade to the old per-row path on pre-migration databases.
-    if (type === "patients") {
-        // advance_hospital_number_seq only ever moves the counter forward, so a
-        // single call carrying the chunk's highest explicit number covers the
-        // rest of the explicit numbers too.
-        const explicitMax = mapped.reduce((max, m) => {
-            const n = hospitalNumberSuffix(String(m.data.hospital_number ?? "").trim());
-            return n !== null && n > max ? n : max;
-        }, 0);
-        if (explicitMax > 0) {
+        // Map raw rows → DB objects, catching per-row mapping errors
+        const mapped: Array<{ index: number; data: Record<string, any> }> = [];
+        for (let i = 0; i < rows.length; i++) {
             try {
-                await sb.rpc("advance_hospital_number_seq", {
-                    p_prefix: "NVH",
-                    p_number: formatHospitalNumber(explicitMax),
-                });
-            } catch (e) {
-                // Function may be missing pre-migration — keep the explicit values.
-                console.error("[bulk-upload] advance_hospital_number_seq:", e);
+                mapped.push({ index: i, data: mapRow(type, rows[i]) });
+            } catch (e: any) {
+                failed++;
+                errors.push({ row: rowOffset + i + 2, reason: e?.message ?? "Invalid row data" });
             }
         }
 
-        const blanks = mapped.filter((m) => !String(m.data.hospital_number ?? "").trim());
-        if (blanks.length) {
-            const numbers = await allocateHospitalNumbers(sb, blanks.length);
-            blanks.forEach((m, i) => {
-                if (numbers[i]) m.data.hospital_number = numbers[i];
-            });
+        if (!mapped.length) return { success, failed, errors };
+
+        // Hospital numbers for patients (one shared NVH-XXXXX series):
+        //  • an explicit number in the CSV (e.g. NVH-00001 or a legacy NVH00001)
+        //    is normalized and kept, and the counter is advanced past it so
+        //    auto-assignment never collides;
+        //  • a blank hospital_number gets a fresh NVH-XXXXX assigned server-side.
+        // Both steps are batched (never one RPC per row) so 5k-row imports stay
+        // fast; they degrade to the old per-row path on pre-migration databases.
+        if (type === "patients") {
+            // advance_hospital_number_seq only ever moves the counter forward, so a
+            // single call carrying the chunk's highest explicit number covers the
+            // rest of the explicit numbers too.
+            const explicitMax = mapped.reduce((max, m) => {
+                const n = hospitalNumberSuffix(String(m.data.hospital_number ?? "").trim());
+                return n !== null && n > max ? n : max;
+            }, 0);
+            if (explicitMax > 0) {
+                try {
+                    const { error } = await sb.rpc("advance_hospital_number_seq", {
+                        p_prefix: "NVH",
+                        p_number: formatHospitalNumber(explicitMax),
+                    });
+                    if (error) console.error("[bulk-upload] advance_hospital_number_seq:", error);
+                } catch (e) {
+                    // Function may be missing pre-migration — keep the explicit values.
+                    console.error("[bulk-upload] advance_hospital_number_seq:", e);
+                }
+            }
+
+            const blanks = mapped.filter((m) => !String(m.data.hospital_number ?? "").trim());
+            if (blanks.length) {
+                const numbers = await allocateHospitalNumbers(sb, blanks.length);
+                blanks.forEach((m, i) => {
+                    if (numbers[i]) m.data.hospital_number = numbers[i];
+                });
+            }
         }
+
+        // One batch insert per chunk; failures are isolated by bisection (see
+        // insertResilient) instead of forcing a single-row insert for every row.
+        const inserted = await insertResilient(sb, TABLES[type], mapped, rowOffset, errors);
+        success += inserted.success;
+        failed  += inserted.failed;
+
+        return { success, failed, errors };
+    } catch (e: any) {
+        // Never throw "unexpected response" to the client — return a structured
+        // failure so the UI can show per-row errors and continue with other chunks.
+        // Auth errors (UNAUTHORIZED/FORBIDDEN) are still surfaced as messages.
+        const msg = e?.message ?? "Chunk upload failed";
+        console.error("[bulk-upload] bulkUploadChunk outer:", e);
+        return {
+            success: 0,
+            failed: rows.length,
+            errors: rows.map((_, i) => ({
+                row: rowOffset + i + 2,
+                reason: msg,
+            })),
+        };
     }
-
-    // One batch insert per chunk; failures are isolated by bisection (see
-    // insertResilient) instead of forcing a single-row insert for every row.
-    const inserted = await insertResilient(sb, TABLES[type], mapped, rowOffset, errors);
-    success += inserted.success;
-    failed  += inserted.failed;
-
-    return { success, failed, errors };
 }
