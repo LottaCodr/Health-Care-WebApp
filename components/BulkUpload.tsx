@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import { checkExistingRecords, bulkUploadChunk } from "@/lib/actions/bulk-upload";
 import type { UploadType } from "@/lib/actions/bulk-upload";
 import { normalizeLabTestName } from "@/lib/utils/lab-catalog";
+import { HOSPITAL_NUMBER_PATTERN } from "@/lib/hospital-number";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -119,7 +120,7 @@ const VALID_DRUG_CATEGORIES = [
 ];
 
 const TEMPLATE_EXAMPLE: Record<UploadType, string> = {
-  patients: "Jane Doe,1990-06-15,female,+2348012345678,12 Aso Drive Abuja,A+,AA,John Doe,+2348098765432,NVH-000001",
+  patients: "Jane Doe,1990-06-15,female,+2348012345678,12 Aso Drive Abuja,A+,AA,John Doe,+2348098765432,NVH00001",
   drug_inventory: "Amoxicillin 500mg,Amoxicillin,TABLET,Pack,5,0,ACTIVE",
   lab_test_catalog: "Full Blood Count (FBC),T1,Haematology,,,0",
 };
@@ -212,6 +213,16 @@ function validateRows(
           field: "date_of_birth",
           message: "Invalid date — use YYYY-MM-DD",
         });
+      }
+      if (row.hospital_number) {
+        const hnMatch = row.hospital_number.trim().match(HOSPITAL_NUMBER_PATTERN);
+        if (!hnMatch || Number(hnMatch[1]) < 1) {
+          errors.push({
+            row: i + 2,
+            field: "hospital_number",
+            message: "Must be NVH + digits starting at 1 (e.g. NVH00001)",
+          });
+        }
       }
     }
     if (type === "drug_inventory") {
@@ -465,7 +476,7 @@ function StepSelect({
             <> · category: {VALID_DRUG_CATEGORIES.join(", ")}</>
           )}
           {uploadType === "patients" && (
-            <> · hospital_number: leave blank to auto-assign (NVH-…), or paste the paper record's number</>
+            <> · hospital_number: leave blank to auto-assign (NVH00001…), or paste the paper record's number</>
           )}
         </p>
       </div>

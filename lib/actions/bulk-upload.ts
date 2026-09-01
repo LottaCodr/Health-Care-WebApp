@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "@/lib/services/auth-guard";
 import { normalizeLabTestName } from "@/lib/utils/lab-catalog";
+import { normalizeHospitalNumber } from "@/lib/hospital-number";
 
 // ── Table names — update if your schema differs ───────────────────────────────
 const TABLES = {
@@ -64,7 +65,9 @@ function mapRow(type: UploadType, row: Record<string, string>): Record<string, a
 
     switch (type) {
         case "patients": {
-            const explicitHospitalNumber = str("hospital_number");
+            // Accept legacy NVHE-*/NVH-* values too, but always store them in the
+            // canonical shared series (NVH + zero-padded number, no hyphen/E).
+            const explicitHospitalNumber = normalizeHospitalNumber(str("hospital_number")) ?? "";
             return {
                 name:                     str("name"),
                 birth_date:               str("date_of_birth") || null,
@@ -146,10 +149,11 @@ export async function bulkUploadChunk(
 
     if (!mapped.length) return { success, failed, errors };
 
-    // Hospital numbers for patients:
-    //  • an explicit number in the CSV (the paper record's NVH-…) is kept, and
-    //    the NVH counter is advanced past it so auto-assignment never collides;
-    //  • a blank hospital_number gets a fresh NVH-… assigned server-side.
+    // Hospital numbers for patients (one shared NVHXXXXX series):
+    //  • an explicit number in the CSV (e.g. NVH00001 or a legacy NVH-000001)
+    //    is normalized and kept, and the counter is advanced past it so
+    //    auto-assignment never collides;
+    //  • a blank hospital_number gets a fresh NVHXXXXX assigned server-side.
     if (type === "patients") {
         for (const m of mapped) {
             const explicit = String(m.data.hospital_number ?? "").trim();
@@ -165,7 +169,7 @@ export async function bulkUploadChunk(
             if (String(m.data.hospital_number ?? "").trim()) continue;
             try {
                 const { data: hn, error: hnError } = await sb.rpc("next_hospital_number", { p_prefix: "NVH" });
-                if (!hnError && typeof hn === "string") m.data.hospital_number = hn;
+                if (!hnError && typeof hn === "string") m.data.hospital_number = normalizeHospitalNumber(hn) ?? hn;
             } catch (e) {
                 console.error("[bulk-upload] next_hospital_number:", e);
             }
