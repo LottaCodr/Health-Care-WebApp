@@ -90,7 +90,7 @@ export async function checkExistingRecords(
             }
         }
 
-        const field = type === "patients" ? "phone" : "drug_name";
+        const field = type === "patients" ? "hospital_number" : "drug_name";
         const batches: string[][] = [];
         for (let i = 0; i < values.length; i += EXISTING_CHECK_BATCH) {
             batches.push(values.slice(i, i + EXISTING_CHECK_BATCH));
@@ -561,67 +561,46 @@ async function removeExistingPatients(
     rowOffset: number,
     errors:    { row: number; reason: string }[],
 ): Promise<PendingRow[]> {
-    const phones = new Set<string>();
     const numbers = new Set<string>();
 
     for (const r of rows) {
-        const phone = String(r.data.phone ?? "").trim().toLowerCase();
-        const hn    = normalizeHospitalNumber(String(r.data.hospital_number ?? ""));
-        if (phone) phones.add(phone);
+        const hn = normalizeHospitalNumber(String(r.data.hospital_number ?? ""));
         if (hn) numbers.add(hn);
     }
-    if (!phones.size && !numbers.size) return rows;
+    if (!numbers.size) return rows;
 
-    const foundPhones  = new Set<string>();
     const foundNumbers = new Set<string>();
 
-    const collect = async (field: string, values: string[], into: Set<string>) => {
-        for (let i = 0; i < values.length; i += EXISTING_CHECK_BATCH) {
-            const batch = values.slice(i, i + EXISTING_CHECK_BATCH);
-            try {
-                const { data, error } = await sb
-                    .from(TABLES.patients)
-                    .select(field)
-                    .in(field, batch);
-                if (error) {
-                    // Never block the import on a failed lookup — the insert
-                    // stage still reports real duplicates accurately.
-                    console.error("[bulk-upload] duplicate screening:", error);
-                    return;
-                }
-                for (const rec of data ?? []) {
-                    const raw = String((rec as any)?.[field] ?? "").trim();
-                    if (raw) into.add(field === "phone" ? raw.toLowerCase() : (normalizeHospitalNumber(raw) ?? raw));
-                }
-            } catch (e) {
-                console.error("[bulk-upload] duplicate screening batch:", e);
-                return;
+    for (let i = 0; i < [...numbers].length; i += EXISTING_CHECK_BATCH) {
+        const batch = [...numbers].slice(i, i + EXISTING_CHECK_BATCH);
+        try {
+            const { data, error } = await sb
+                .from(TABLES.patients)
+                .select("hospital_number")
+                .in("hospital_number", batch);
+            if (error) {
+                console.error("[bulk-upload] duplicate screening:", error);
+                return rows;
             }
+            for (const rec of data ?? []) {
+                const raw = String((rec as any)?.hospital_number ?? "").trim();
+                if (raw) foundNumbers.add(normalizeHospitalNumber(raw) ?? raw);
+            }
+        } catch (e) {
+            console.error("[bulk-upload] duplicate screening batch:", e);
+            return rows;
         }
-    };
+    }
 
-    await Promise.all([
-        phones.size  ? collect("phone", [...phones], foundPhones)   : Promise.resolve(),
-        numbers.size ? collect("hospital_number", [...numbers], foundNumbers) : Promise.resolve(),
-    ]);
-
-    if (!foundPhones.size && !foundNumbers.size) return rows;
+    if (!foundNumbers.size) return rows;
 
     const kept: PendingRow[] = [];
     for (const r of rows) {
-        const phone = String(r.data.phone ?? "").trim().toLowerCase();
-        const hn    = normalizeHospitalNumber(String(r.data.hospital_number ?? ""));
+        const hn = normalizeHospitalNumber(String(r.data.hospital_number ?? ""));
         if (hn && foundNumbers.has(hn)) {
             errors.push({
                 row:    rowOffset + r.index + 2,
                 reason: "This hospital number is already assigned to another patient.",
-            });
-            continue;
-        }
-        if (phone && foundPhones.has(phone)) {
-            errors.push({
-                row:    rowOffset + r.index + 2,
-                reason: "A patient with this phone number is already registered.",
             });
             continue;
         }

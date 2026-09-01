@@ -25,9 +25,7 @@ export function formatFriendlyDbError(err: unknown, fallback = "An unexpected er
         if (combined.includes("hospital_number")) {
             return "This hospital number is already assigned to another patient.";
         }
-        if (combined.includes("phone")) {
-            return "A patient with this phone number is already registered.";
-        }
+
         if (combined.includes("email")) {
             return "This email address is already registered in the system.";
         }
