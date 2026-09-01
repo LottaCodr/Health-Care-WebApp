@@ -17,7 +17,7 @@ alter table public.patients add column if not exists hospital_number text;
 
 create unique index if not exists idx_patients_hospital_number
     on public.patients (hospital_number)
-    where hospital_number is not null;
+    where hospital_number is not null;-
 
 -- 2. One sequence per prefix ──────────────────────────────────────────────────
 create sequence if not exists public.seq_hospital_number_nvhe start with 1;
