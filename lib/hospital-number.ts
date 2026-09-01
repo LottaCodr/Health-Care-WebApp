@@ -2,13 +2,13 @@
  * Hospital number rules.
  *
  * Every patient is numbered in one shared series:
- *   NVH00001, NVH00002, NVH00003, …
+ *   NVH-00001, NVH-00002, NVH-00003, …
  *
  * The same prefix is used for EMR registrations and bulk imports. The legacy
- * NVHE / hyphenated formats (NVHE-000001, NVH-000001) are accepted when reading
- * uploaded values and are rewritten to the canonical form below.
+ * NVHE / unhyphenated formats (NVHE-000001, NVH000001, NVH00001) are accepted
+ * when reading uploaded values and are rewritten to the canonical form below.
  */
-export const HOSPITAL_NUMBER_PREFIX = "NVH";
+export const HOSPITAL_NUMBER_PREFIX = "NVH-";
 export const HOSPITAL_NUMBER_WIDTH = 5;
 export const HOSPITAL_NUMBER_PATTERN = /^(?:NVH(?:E)?[\s-]*)(\d+)$/i;
 
@@ -27,9 +27,9 @@ export function hospitalNumberSuffix(value?: string | null): number | null {
 
 /**
  * Converts any accepted hospital-number input into the canonical format.
- *  - NVHE-000001 → NVH00001
- *  - NVH-000001  → NVH00001
- *  - NVH00001    → NVH00001
+ *  - NVHE-000001 → NVH-00001
+ *  - NVH00001    → NVH-00001
+ *  - NVH-00001   → NVH-00001
  *
  * Returns null when the value cannot be interpreted as a hospital number.
  */

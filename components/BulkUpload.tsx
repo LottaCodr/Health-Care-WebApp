@@ -28,7 +28,12 @@ import { cn } from "@/lib/utils";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
-const CHUNK_SIZE = 25;
+// Rows per server-action call. 500 keeps each request body modest (~200KB,
+// far under the 30MB server-action limit) while turning a 5,000-row import
+// into just 10 calls — and CONCURRENT_UPLOADS sends several in parallel so
+// total wall-clock time is roughly one wave of chunks, not a long serial chain.
+const CHUNK_SIZE = 500;
+const CONCURRENT_UPLOADS = 4;
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 const UPLOAD_TYPE_CONFIG: Record<UploadType, {
@@ -120,7 +125,7 @@ const VALID_DRUG_CATEGORIES = [
 ];
 
 const TEMPLATE_EXAMPLE: Record<UploadType, string> = {
-  patients: "Jane Doe,1990-06-15,female,+2348012345678,12 Aso Drive Abuja,A+,AA,John Doe,+2348098765432,NVH00001",
+  patients: "Jane Doe,1990-06-15,female,+2348012345678,12 Aso Drive Abuja,A+,AA,John Doe,+2348098765432,NVH-00001",
   drug_inventory: "Amoxicillin 500mg,Amoxicillin,TABLET,Pack,5,0,ACTIVE",
   lab_test_catalog: "Full Blood Count (FBC),T1,Haematology,,,0",
 };
@@ -220,7 +225,7 @@ function validateRows(
           errors.push({
             row: i + 2,
             field: "hospital_number",
-            message: "Must be NVH + digits starting at 1 (e.g. NVH00001)",
+            message: "Must be NVH- followed by digits starting at 1 (e.g. NVH-00001)",
           });
         }
       }
@@ -476,7 +481,7 @@ function StepSelect({
             <> · category: {VALID_DRUG_CATEGORIES.join(", ")}</>
           )}
           {uploadType === "patients" && (
-            <> · hospital_number: leave blank to auto-assign (NVH00001…), or paste the paper record's number</>
+            <> · hospital_number: leave blank to auto-assign (NVH-00001…), or paste the paper record's number</>
           )}
         </p>
       </div>
@@ -936,6 +941,11 @@ export default function BulkUploadDialog({
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [missingColumns, setMissingColumns] = useState<string[]>([]);
   const [existingCount, setExistingCount] = useState(0);
+  // Duplicate-scan keys from the preview step, reused by the upload step so a
+  // 5k-row file isn't scanned twice. The ref holds the in-flight scan promise
+  // so a user who clicks Upload before the scan finishes still awaits it.
+  const [existingKeys, setExistingKeys] = useState<string[]>([]);
+  const existingScanRef = useRef<Promise<string[]> | null>(null);
   const [progress, setProgress] = useState({
     current: 0,
     total: 0,
@@ -983,14 +993,22 @@ export default function BulkUploadDialog({
     setMissingColumns(missing);
     setValidationErrors(errors);
     setExistingCount(0);
+    setExistingKeys([]);
+    existingScanRef.current = null;
     setStep("preview");
 
-    // Async duplicate check
+    // Async duplicate check — result is kept for the upload step (no rescan).
     if (missing.length === 0 && rows.length > 0) {
       const key = dedupeKey(localUploadType);
       const values = rows.map((r) => queryKeyValue(localUploadType, r[key])).filter(Boolean);
       if (values.length > 0) {
-        const existing = await checkExistingRecords(localUploadType, values);
+        const scan = checkExistingRecords(localUploadType, values).catch((e) => {
+          console.error("[bulk-upload] duplicate scan:", e);
+          return [] as string[]; // Under-reporting duplicates must not block the upload.
+        });
+        existingScanRef.current = scan;
+        const existing = await scan;
+        setExistingKeys(existing);
         setExistingCount(existing.length);
       }
     }
@@ -1000,13 +1018,16 @@ export default function BulkUploadDialog({
 
   async function handleUpload() {
     setStep("uploading");
-    setProgress({ current: 0, total: allRows.length, success: 0, failed: 0 });
 
     const key = dedupeKey(localUploadType);
 
-    const values = allRows.map((r) => queryKeyValue(localUploadType, r[key])).filter(Boolean);
-    const existing = values.length > 0 ? await checkExistingRecords(localUploadType, values) : [];
-    const existSet = new Set(existing);
+    // Reuse the duplicate scan from the preview step (awaiting it if it's still
+    // in flight) — re-scanning thousands of values here would double the lookup
+    // time for no real benefit (per-row error isolation still catches anything
+    // that appeared in the meantime).
+    const existSet = new Set(
+      existingScanRef.current ? await existingScanRef.current : existingKeys,
+    );
     // Also drop rows that duplicate each other inside the same file (the batch
     // insert path has no per-name uniqueness, so internal duplicates used to
     // be written straight through).
@@ -1021,27 +1042,59 @@ export default function BulkUploadDialog({
     const skippedN = allRows.length - uploadRows.length;
 
     setSkipped(skippedN);
-    setProgress((p) => ({ ...p, total: uploadRows.length }));
+    setProgress({ current: 0, total: uploadRows.length, success: 0, failed: 0 });
+
+    // Upload several chunks in parallel. Hospital-number allocation and the
+    // advance counter are sequence-based/idempotent server-side, so chunks
+    // never collide; a whole file is roughly one wave of concurrent requests
+    // instead of a long serial chain of round trips.
+    const chunks: { offset: number; rows: Record<string, string>[] }[] = [];
+    for (let i = 0; i < uploadRows.length; i += CHUNK_SIZE) {
+      chunks.push({ offset: i, rows: uploadRows.slice(i, i + CHUNK_SIZE) });
+    }
 
     let totalSuccess = 0;
     let totalFailed = 0;
     const allErrors: FailedRow[] = [];
+    let next = 0;
 
-    for (let i = 0; i < uploadRows.length; i += CHUNK_SIZE) {
-      const chunk = uploadRows.slice(i, i + CHUNK_SIZE);
-      const res = await bulkUploadChunk(localUploadType, chunk, i);
+    async function worker() {
+      while (next < chunks.length) {
+        const c = chunks[next++]; // claimed synchronously — workers never overlap
+        let res: Awaited<ReturnType<typeof bulkUploadChunk>>;
+        try {
+          res = await bulkUploadChunk(localUploadType, c.rows, c.offset);
+        } catch (e: any) {
+          // A chunk-level failure (network hiccup, expired session) must not
+          // abort the rest of the file — report its rows and keep going.
+          res = {
+            success: 0,
+            failed: c.rows.length,
+            errors: c.rows.map((_, i) => ({
+              row: c.offset + i + 2,
+              reason: e?.message ?? "Chunk upload failed",
+            })),
+          };
+        }
+        totalSuccess += res.success;
+        totalFailed += res.failed;
+        allErrors.push(...res.errors);
 
-      totalSuccess += res.success;
-      totalFailed += res.failed;
-      allErrors.push(...res.errors);
-
-      setProgress({
-        current: i + chunk.length,
-        total: uploadRows.length,
-        success: totalSuccess,
-        failed: totalFailed,
-      });
+        setProgress((p) => ({
+          ...p,
+          current: p.current + c.rows.length,
+          success: totalSuccess,
+          failed: totalFailed,
+        }));
+      }
     }
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(CONCURRENT_UPLOADS, chunks.length) },
+        () => worker(),
+      ),
+    );
 
     setFailedRows(allErrors);
     setResult({ total: uploadRows.length, success: totalSuccess, failed: totalFailed });
@@ -1058,6 +1111,8 @@ export default function BulkUploadDialog({
     setValidationErrors([]);
     setMissingColumns([]);
     setExistingCount(0);
+    setExistingKeys([]);
+    existingScanRef.current = null;
     setProgress({ current: 0, total: 0, success: 0, failed: 0 });
     setFailedRows([]);
     setResult(null);
