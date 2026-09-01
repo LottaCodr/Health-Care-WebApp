@@ -67,14 +67,12 @@ const STEPS = [
   { label: "Insurance", description: "Coverage information", icon: Shield },
 ];
 
-// Step 0–2 fields are static. Step 3 (Insurance) is computed dynamically —
-// see getInsuranceFields() below — because only ONE of HMO / Company /
-// Private applies at a time, and we must never block submission on fields
-// that don't apply to the selected payment type.
+// Only name, date of birth, gender, and phone are strictly required.
+// All other fields are optional and default to null if left blank.
 const STEP_FIELDS = [
-  ["name", "email", "phone", "birthDate", "religion", "gender", "address", "occupation"],
-  ["emergencyContactName", "emergencyContactNumber", "emergencyContactRelationship", "emergencyContactEmail", "emergencyContactAddress"],
-  ["allergies", "significantMedicationHistory", "longTermMedication", "covidVaccinationOptions", "bloodGroup", "genoType"],
+  ["name", "birthDate", "gender", "phone"],
+  ["emergencyContactEmail"],
+  [],
 ];
 
 type PaymentType = "hmo" | "company" | "private" | null;
@@ -368,47 +366,49 @@ export default function RegistrationSuite() {
     const v = form.getValues();
     setSubmitting(true);
 
+    const clean = (val?: string | null) => (typeof val === "string" && val.trim().length > 0 ? val.trim() : null);
+
     try {
-      // camelCase form values → snake_case DB columns
+      // camelCase form values → snake_case DB columns (empty fields become null)
       await withTimeout(
       createPatient({
-        // Personal
-        name: v.name,
-        email: v.email,
-        phone: v.phone,
+        // Personal (Name, DOB, Gender, Phone are required; others optional/nullable)
+        name: v.name.trim(),
+        email: clean(v.email),
+        phone: v.phone.trim(),
         birth_date: v.birthDate,
         gender: v.gender,
-        address: v.address,
-        occupation: v.occupation,
-        religion: v.religion,
+        address: clean(v.address),
+        occupation: clean(v.occupation),
+        religion: clean(v.religion),
         status: "sent-to-nurse",
-        // Emergency contact
-        emergency_contact_name: v.emergencyContactName,
-        emergency_contact_number: v.emergencyContactNumber,
-        emergency_contact_relationship: v.emergencyContactRelationship,
-        emergency_contact_email: v.emergencyContactEmail,
-        emergency_contact_address: v.emergencyContactAddress,
-        // Medical
-        allergies: v.allergies,
-        significant_medication_history: v.significantMedicationHistory,
-        long_term_medication: v.longTermMedication,
-        covid_vaccination_options: v.covidVaccinationOptions,
-        blood_group: v.bloodGroup,
-        geno_type: v.genoType,
+        // Emergency contact (optional)
+        emergency_contact_name: clean(v.emergencyContactName),
+        emergency_contact_number: clean(v.emergencyContactNumber),
+        emergency_contact_relationship: clean(v.emergencyContactRelationship),
+        emergency_contact_email: clean(v.emergencyContactEmail),
+        emergency_contact_address: clean(v.emergencyContactAddress),
+        // Medical (optional)
+        allergies: clean(v.allergies),
+        significant_medication_history: clean(v.significantMedicationHistory),
+        long_term_medication: clean(v.longTermMedication),
+        covid_vaccination_options: clean(v.covidVaccinationOptions),
+        blood_group: clean(v.bloodGroup),
+        geno_type: clean(v.genoType),
         // Insurance
-        policy_number: v.policyNumber,
-        hmo: v.hmo,
-        hmo_name: v.hmo ? v.hmoName : null,
-        company: v.company,
-        company_name: v.company ? v.companyName : null,
-        private_client: v.privateClient,
+        policy_number: clean(v.policyNumber),
+        hmo: Boolean(v.hmo),
+        hmo_name: v.hmo ? clean(v.hmoName) : null,
+        company: Boolean(v.company),
+        company_name: v.company ? clean(v.companyName) : null,
+        private_client: !v.hmo && !v.company ? true : Boolean(v.privateClient),
         // Meta
         user_id: user?.id ?? null,
         // Paediatric (only if child)
         ...(isChild ? {
-          child_class: childClass || null,
-          parent_info: parentInfo || null,
-          referral_info: referralInfo || null,
+          child_class: clean(childClass),
+          parent_info: clean(parentInfo),
+          referral_info: clean(referralInfo),
         } : {}),
       } as any),
         30_000,
@@ -513,15 +513,15 @@ export default function RegistrationSuite() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="name" label="Full Name" placeholder="John Doe" required />
 
-                            {/* Religion — dropdown, not free text */}
-                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="religion" label="Religion" required
+                            {/* Religion — optional dropdown */}
+                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="religion" label="Religion (optional)"
                               renderSkeleton={field => (
                                 <FormControl>
                                   <ReligionField field={field} />
                                 </FormControl>
                               )} />
 
-                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="email" label="Email Address" placeholder="patient@example.com" required />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="email" label="Email Address (optional)" placeholder="patient@example.com" />
                             <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="phone" label="Phone Number" placeholder="+234 800 000 0000" required />
 
                             {/* DOB with live age badge */}
@@ -551,8 +551,8 @@ export default function RegistrationSuite() {
                                 </FormControl>
                               )} />
 
-                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="occupation" label="Occupation" placeholder="Software Engineer" required />
-                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="address" label="Residential Address" placeholder="123 Main Street, City" required />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="occupation" label="Occupation (optional)" placeholder="Software Engineer" />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="address" label="Residential Address (optional)" placeholder="123 Main Street, City" />
                           </div>
 
                           {/* Paediatric section — auto-shows when age < 13 */}
@@ -590,16 +590,16 @@ export default function RegistrationSuite() {
                       {/* ── Step 2: Emergency Contact ── */}
                       {currentStep === 1 && (
                         <section className="space-y-5">
-                          <SectionTitle title="Emergency Contact" description="Person to contact in case of emergency" />
+                          <SectionTitle title="Emergency Contact" description="Next of kin details (optional)" />
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactName" label="Contact Name" placeholder="Jane Doe" required />
-                            <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="emergencyContactNumber" label="Contact Phone" placeholder="+234 800 000 0000" required />
-                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="emergencyContactRelationship" label="Relationship" required
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactName" label="Contact Name (optional)" placeholder="Jane Doe" />
+                            <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="emergencyContactNumber" label="Contact Phone (optional)" placeholder="+234 800 000 0000" />
+                            <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="emergencyContactRelationship" label="Relationship (optional)"
                               renderSkeleton={field => (
                                 <FormControl>
                                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Select relationship" />
+                                      <SelectValue placeholder="Select relationship (optional)" />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {RelationshipOptions.map(rel => (
@@ -609,9 +609,9 @@ export default function RegistrationSuite() {
                                   </Select>
                                 </FormControl>
                               )} />
-                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactEmail" label="Contact Email" placeholder="contact@example.com" required />
+                            <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactEmail" label="Contact Email (optional)" placeholder="contact@example.com" />
                             <div className="sm:col-span-2">
-                              <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactAddress" label="Contact Address" placeholder="123 Main Street, City" required />
+                              <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactAddress" label="Contact Address (optional)" placeholder="123 Main Street, City" />
                             </div>
                           </div>
                         </section>

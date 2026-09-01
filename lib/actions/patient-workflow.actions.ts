@@ -26,21 +26,23 @@ export async function bulkUploadRows(
         return { total: rows.length, success: 0, failed: rows.length };
     }
 
+    const clean = (v?: string) => (v && v.trim().length > 0 ? v.trim() : null);
+
     let success = 0;
     let failed = 0;
 
     for (const row of rows) {
         try {
             await createPatient({
-                name: row.name,
-                birth_date: row.date_of_birth,
-                gender: row.gender,
-                phone: row.phone,
-                address: row.address,
-                blood_group: row.blood_group,
-                genotype: row.genotype,
-                next_of_kin_name: row.next_of_kin_name,
-                next_of_kin_phone: row.next_of_kin_phone,
+                name: row.name?.trim() || "Unknown",
+                birth_date: clean(row.date_of_birth) || new Date().toISOString().split("T")[0],
+                gender: (row.gender?.trim() || "Male") as any,
+                phone: row.phone?.trim() || "",
+                address: clean(row.address),
+                blood_group: clean(row.blood_group),
+                geno_type: clean(row.genotype || row.geno_type),
+                emergency_contact_name: clean(row.next_of_kin_name || row.emergency_contact_name),
+                emergency_contact_number: clean(row.next_of_kin_phone || row.emergency_contact_number),
                 status: PatientStatus.Registered,
             } as any);
             success++;
