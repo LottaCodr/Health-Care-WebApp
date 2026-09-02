@@ -162,7 +162,10 @@ export async function listPatientsByStatus(
             .from("patients")
             .select("*")
             .eq("status", status)
-            .order("created_at", { ascending: false })
+            // FIFO: earliest arrivals first. `id` as a stable tie-breaker keeps
+            // range() pagination deterministic when timestamps collide.
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
             .range(from, from + batchSize - 1);
 
         if (error) { console.error("[patient] listPatientsByStatus:", error); break; }
@@ -182,7 +185,8 @@ export async function searchPatients(query: string): Promise<Patient[]> {
         .from("patients")
         .select("*")
         .or(`name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,hospital_number.ilike.%${query}%`)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
         .limit(100);
 
     if (error) { console.error("[patient] searchPatients:", error); return []; }
@@ -200,7 +204,9 @@ export async function getAllPatients(
         const { data, error } = await supabase
             .from("patients")
             .select("*")
-            .order("created_at", { ascending: false })
+            // FIFO: earliest arrivals first (see listPatientsByStatus).
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
             .range(page * limit, (page + 1) * limit - 1);
 
         if (error) { console.error("[patient] getAllPatients:", error); return []; }
@@ -215,7 +221,9 @@ export async function getAllPatients(
         const { data, error } = await supabase
             .from("patients")
             .select("*")
-            .order("created_at", { ascending: false })
+            // FIFO: earliest arrivals first (see listPatientsByStatus).
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
             .range(from, from + batchSize - 1);
 
         if (error) { console.error("[patient] getAllPatients:", error); break; }
