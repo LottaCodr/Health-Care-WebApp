@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw, ClipboardList } from "lucide-react";
+import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw, ClipboardList, Loader2, Stethoscope } from "lucide-react";
+import { toast } from "sonner";
 import ReturnPatient from "./return-patient";
 // import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
 import {
@@ -16,11 +17,12 @@ import {
 import {
     useAllPatients,
     usePatientsByStatus,
+    useUpdatePatientStatus,
     patientKeys,
 } from "@/hooks/emr/use-emr";
 import { getPatientById } from "@/lib/services/patient.service";
 import { calculateAge, formatDate } from "@/lib/utils";
-import type { Patient } from "@/types/models";
+import { PatientStatus, type Patient } from "@/types/models";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ROLE → VISIBLE STATUSES
@@ -136,6 +138,35 @@ function PatientGrid({
     const staffId = user?.$id ?? user?.id ?? "";
     const canReturn = role === "Frontdesk" || role === "FrontDesk" || role === "Admin";
 
+    // ── Start Encounter ───────────────────────────────────────────────────────
+    // Freshly registered patients get routed to the nurse for triage + vitals
+    // (status: "registered" → "sent-to-nurse") without a full consultation.
+    const startEncounterMutation = useUpdatePatientStatus();
+
+    const handleStartEncounter = async (e: React.MouseEvent, patient: Patient) => {
+        e.stopPropagation(); // don't trigger the card's "view patient" navigation
+        const id = patient.id;
+        if (!id || startEncounterMutation.isPending) return;
+
+        // Optimistic: move the patient between the queue caches instantly. The
+        // mutation's onSettled invalidation refetches the lists and reconciles
+        // the caches whether the write succeeds or fails.
+        qc.setQueryData<Patient[]>(patientKeys.lists(), (old) =>
+            old?.map((p) => (p.id === id ? { ...p, status: PatientStatus.SentToNurse } : p))
+        );
+        qc.setQueryData<Patient[]>(patientKeys.byStatus(PatientStatus.Registered), (old) =>
+            old?.filter((p) => p.id !== id)
+        );
+
+        try {
+            await startEncounterMutation.mutateAsync({ id, status: PatientStatus.SentToNurse });
+            toast.success(`${patient.name ?? "Patient"} has been sent to the nurse.`);
+        } catch (err) {
+            console.error("[start-encounter]", err);
+            toast.error("Could not start the encounter. Please try again.");
+        }
+    };
+
     const navigate = (id: string) => {
         const route = ROLE_ROUTES[role]?.(id);
         if (route) router.push(route);
@@ -247,6 +278,21 @@ function PatientGrid({
                                 {/* Status */}
                                 <div className="mt-auto pt-1 flex items-center justify-between gap-2">
                                     <StatusBadge status={patient.status ?? "no-status"} />
+                                    {canReturn && patient.status === "registered" && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleStartEncounter(e, patient)}
+                                            disabled={startEncounterMutation.isPending}
+                                            aria-label={`Start encounter for ${patient.name ?? "patient"}`}
+                                            title="Route this patient to the nurse for triage & vitals"
+                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            {startEncounterMutation.isPending && startEncounterMutation.variables?.id === pid
+                                                ? <Loader2 size={11} className="animate-spin" />
+                                                : <Stethoscope size={11} />}
+                                            Start Encounter
+                                        </button>
+                                    )}
                                     {canReturn && patient.status === "discharged" && (
                                         <button
                                             type="button"
