@@ -11,16 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Activity, Thermometer, HeartPulse } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { UserRole } from "@/types/models";
 import { AITriageScore } from "../ai/AIComponents";
 import { calculateAge } from "@/utils/export";
 import { useVitalsStore } from "@/store/vitals-store";
 
 const FIELD_CONFIG = [
-    { key: "bloodPressure", label: "Blood Pressure (mmHg)", placeholder: "120/80", leftIcon: <Activity size={16} className="text-blue-600" />, required: true, type: "text" },
-    { key: "temperature", label: "Temperature (°C)", placeholder: "36.5", leftIcon: <Thermometer size={16} className="text-orange-600" />, required: true, type: "number" },
-    { key: "pulse", label: "Pulse Rate (bpm)", placeholder: "72", leftIcon: <HeartPulse size={16} className="text-red-600" />, required: true, type: "number" },
+    { key: "bloodPressure", label: "Blood Pressure (mmHg)", placeholder: "120/80", leftIcon: <Activity size={16} className="text-blue-600" />, required: false, type: "text" },
+    { key: "temperature", label: "Temperature (°C)", placeholder: "36.5", leftIcon: <Thermometer size={16} className="text-orange-600" />, required: false, type: "number" },
+    { key: "pulse", label: "Pulse Rate (bpm)", placeholder: "72", leftIcon: <HeartPulse size={16} className="text-red-600" />, required: false, type: "number" },
     { key: "respiration", label: "Respiration Rate (breaths/min)", placeholder: "16", required: false, type: "number" },
     { key: "spo2", label: "Oxygen Saturation (SpO₂ %)", placeholder: "98", required: false, type: "number" },
     { key: "weight", label: "Weight (kg)", placeholder: "65", required: false, type: "number" },
@@ -41,10 +40,8 @@ function calcBMI(weightKg: string, heightCm: string): string {
 export default function VitalsCheckinAdvancedComponent(props: {
     patientId: string;
     taskId?: string;
-    onComplete?: () => void;
 }) {
-    const { patientId, taskId, onComplete } = props;
-    const router = useRouter();
+    const { patientId, taskId } = props;
 
     const { user } = useAuth();
     const { authorized } = useRoleProtection([UserRole.Nurse, UserRole.Admin]);
@@ -58,7 +55,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
     const [success, setSuccess] = useState<string | null>(null);
 
     const createActionMutation = useCreateNursingAction();
-    const { mutate: updateActionMutation, isPending } = useUpdateNursingAction();
+    const updateActionMutation = useUpdateNursingAction();
     const updatePatientStatusMutation = useUpdatePatientStatus();
     const age = patient?.birth_date ? calculateAge(patient.birth_date) : undefined;
 
@@ -90,75 +87,83 @@ export default function VitalsCheckinAdvancedComponent(props: {
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
+        if (submitting) return; // double-submit guard
         setSubmitting(true);
 
-        // Only true vitals are mandatory. Nursing care notes are documentation,
-        // not a blocker — a nurse doing a quick vitals-only check should never
-        // be stuck unable to save because they haven't written a care plan.
-        const requiredFields = ["bloodPressure", "temperature", "pulse"];
-        for (const field of requiredFields) {
-            if (!(form[field as keyof typeof form] ?? "").toString().trim()) {
-                toast.error(`Please provide a value for ${FIELD_CONFIG.find((f) => f.key === field)?.label ?? field}.`);
-                setSubmitting(false);
-                return;
-            }
+        // No individual vital is required — for newborns several
+        // measurements (e.g. blood pressure) are often not taken at all.
+        // The only guard: don't save a record that has nothing in it.
+        const vitalsKeys = ["bloodPressure", "temperature", "pulse", "respiration", "spo2", "weight", "height"];
+        const hasAnyVital = vitalsKeys.some((k) => (form[k as keyof typeof form] ?? "").toString().trim());
+        const hasAnyNote =
+            (form.treatment ?? "").toString().trim().length > 0 ||
+            (form.notes ?? "").toString().trim().length > 0;
+        if (!hasAnyVital && !hasAnyNote) {
+            toast.error("Enter at least one vital (or a care note) before saving.");
+            setSubmitting(false);
+            return;
         }
 
         try {
+            // Only the values the nurse actually entered — empty fields
+            // (allowed for newborns and quick checks) stay out of the record.
             const description = [
-                `BP: ${form.bloodPressure}`,
-                `Temp: ${form.temperature}°C`,
-                `Pulse: ${form.pulse} bpm`,
-                form.respiration ? `Resp: ${form.respiration}/min` : null,
-                form.spo2 ? `SpO₂: ${form.spo2}%` : null,
-                form.weight ? `Wt: ${form.weight}kg` : null,
-                form.height ? `Ht: ${form.height}cm` : null,
-                form.bmi ? `BMI: ${form.bmi}` : null,
-                form.treatment ? `Treatment: ${form.treatment}` : null,
-                form.notes ? `Notes: ${form.notes}` : null,
+                form.bloodPressure.trim() ? `BP: ${form.bloodPressure}` : null,
+                form.temperature.trim() ? `Temp: ${form.temperature}°C` : null,
+                form.pulse.trim() ? `Pulse: ${form.pulse} bpm` : null,
+                form.respiration.trim() ? `Resp: ${form.respiration}/min` : null,
+                form.spo2.trim() ? `SpO₂: ${form.spo2}%` : null,
+                form.weight.trim() ? `Wt: ${form.weight}kg` : null,
+                form.height.trim() ? `Ht: ${form.height}cm` : null,
+                form.bmi.trim() ? `BMI: ${form.bmi}` : null,
+                form.treatment.trim() ? `Treatment: ${form.treatment}` : null,
+                form.notes.trim() ? `Notes: ${form.notes}` : null,
             ]
                 .filter(Boolean)
                 .join(". ");
 
-            if (taskId) {
-                updateActionMutation({
-                    id: taskId,
-                    updates: {
-                        status: "Completed",
-                        description,
-                        completedBy: user?.$id,
-                        completionTime: new Date().toISOString(),
-                    }
-                });
-            } else {
-                createActionMutation.mutate({
-                    patientId,
-                    actionType: "Vitals",
-                    description,
-                    status: "Completed",
-                    assignedNurse: user?.$id ?? "",
-                    completedBy: user?.$id ?? "",
-                    completionTime: new Date().toISOString(),
-                });
-            }
-
-            updatePatientStatusMutation.mutate({
-                id: patientId,
-                status: "awaiting-consultation" as any,
-            });
+            // Persist BOTH writes and wait for them. The success state is
+            // only shown once the vitals record (and the queue hand-off) are
+            // actually saved — a failed save keeps the nurse on the form
+            // with their entries intact instead of silently losing the attempt.
+            await Promise.all([
+                taskId
+                    ? updateActionMutation.mutateAsync({
+                          id: taskId,
+                          updates: {
+                              status: "Completed",
+                              description,
+                              completedBy: user?.$id,
+                              completionTime: new Date().toISOString(),
+                          },
+                      })
+                    : createActionMutation.mutateAsync({
+                          patientId,
+                          actionType: "Vitals",
+                          description,
+                          status: "Completed",
+                          assignedNurse: user?.$id ?? "",
+                          completedBy: user?.$id ?? "",
+                          completionTime: new Date().toISOString(),
+                      }),
+                updatePatientStatusMutation.mutateAsync({
+                    id: patientId,
+                    status: "awaiting-consultation" as any,
+                }),
+            ]);
 
             setSuccess("Vitals documentation finalized successfully.");
             toast.success("Vitals recorded successfully");
             resetForm();
 
-            if (onComplete) {
-                setTimeout(onComplete, 2000);
-            } else {
-                setTimeout(() => router.push("/nurse/dashboard"), 1000);
-            }
+            // Deliberately NO redirect: the nurse stays on this patient page
+            // so they can carry straight on to the Fluid Balance / Drug
+            // Chart tabs (or the next section) without losing their place.
         } catch (err: any) {
-            console.error(err);
-            toast.error("Failed to save vitals");
+            console.error("[vitals] submit failed:", err);
+            toast.error(
+                err?.message || "Failed to save vitals. Your entries are kept — please try again."
+            );
         } finally {
             setSubmitting(false);
         }
@@ -166,7 +171,17 @@ export default function VitalsCheckinAdvancedComponent(props: {
 
     return (
         <div className="space-y-8">
-            {success && <SuccessAlert message={success} />}
+            {success && (
+                <div className="space-y-2">
+                    <SuccessAlert message={success} />
+                    <p className="text-center text-xs text-gray-400 font-medium">
+                        You can carry on right here — open the{" "}
+                        <span className="font-semibold text-teal-600">Fluid Balance</span> or{" "}
+                        <span className="font-semibold text-teal-600">Drug Chart</span> tab above to
+                        keep charting for this patient.
+                    </p>
+                </div>
+            )}
 
             {/* Re-enabled: a nurse must see exactly who they're charting vitals
                 for before entering numbers — this was previously commented out. */}
@@ -189,7 +204,12 @@ export default function VitalsCheckinAdvancedComponent(props: {
                             >
                                 {field.leftIcon}
                                 {field.label}
-                                {field.required && <span className="text-red-500">*</span>}
+                                {/* Nothing on this form is mandatory (newborns
+                                    often have no measurable BP etc.) — the cue
+                                    is an "optional" hint, never a red asterisk. */}
+                                {!field.disabled && (
+                                    <span className="text-gray-300 font-normal normal-case text-[10px]">optional</span>
+                                )}
                             </label>
                             <Input
                                 id={field.key}
@@ -199,7 +219,6 @@ export default function VitalsCheckinAdvancedComponent(props: {
                                 value={form[field.key as keyof typeof form]}
                                 onChange={handleChange}
                                 disabled={!!field.disabled || submitting}
-                                required={field.required}
                                 inputMode={field.type === "number" ? "decimal" : undefined}
                                 className={field.key === "bmi" ? "bg-blue-50/50 font-semibold text-blue-700" : undefined}
                             />
