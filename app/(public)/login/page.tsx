@@ -4,7 +4,7 @@ import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { getDashboardRoute } from "@/lib/role-dashboard";
-import { Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, ArrowRight, Stethoscope } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, ShieldCheck, ArrowRight, Stethoscope } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -44,6 +44,9 @@ function LoginForm(props: {
     const [mfaPending, setMfaPending] = useState(false);
     const [mfaCode, setMfaCode] = useState("");
     const [pendingNext, setPendingNext] = useState("");
+
+    // Set by /reset-password after a successful self-service password change.
+    const resetSuccess = searchParams.get("reset") === "success";
 
     // create confetti when user logs in
     const fireConfetti = () => {
@@ -254,6 +257,20 @@ function LoginForm(props: {
                         <h1 className="text-2xl font-black text-gray-900 tracking-tight">Welcome back</h1>
                         <p className="text-sm text-gray-400 mt-1 font-medium">Sign in to your workspace</p>
                     </div>
+
+                    {/* Password reset success */}
+                    {resetSuccess && !error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-5 flex items-start gap-2.5 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl"
+                        >
+                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                            <p className="text-xs text-emerald-700 font-medium">
+                                Password updated successfully. Sign in with your new password.
+                            </p>
+                        </motion.div>
+                    )}
 
                     {/* Error */}
                     {error && (
