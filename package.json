@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "analyze": "cross-env ANALYZE=true next build --webpack"
+    "analyze": "cross-env ANALYZE=true next build --webpack",
+    "seed:nurses": "node scripts/seed-nurses.mjs"
   },
   "dependencies": {
     "@faker-js/faker": "^9.8.0",

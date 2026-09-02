@@ -28,7 +28,7 @@ Built with **Next.js 16** (App Router), **React 19**, **Supabase**, and **Zustan
 | **Discharge notes** | `discharge-store.ts` — form + UI for final diagnosis, follow-up, discharge type | `discharge.service.ts` — CRUD against `discharge_notes` |
 | **Nurse charts** | `nurse-chart-store.ts` — drug chart + fluid balance forms | `nurse-charts.service.ts` — `nurse_drug_chart`, `drug_administration_records`, `fluid_balance` |
 | **Appointments** | `appoointment-store.ts` | `appointment.service.ts` |
-| **Admin** | — | Staff dashboard, `AdminStaffPage`, `staff.service.ts` |
+| **Admin** | — | Staff dashboard, `AdminStaffPage`, `staff.service.ts` (adding staff logins: `docs/SEED_NURSES.md`) |
 | **Lab** | `lab-store.ts` | `lab.service.ts` — requests and test catalog |
 | **Hematology analyzer** | `lib/clinical/hematology-reference-ranges.ts` — age/sex-partitioned CBC reference sets (Newborn / Children M/F / Adult M/F), H/L flag engine, NLR/PLR derivation, analyzer printout result format | `HematologyAnalyzerForm.tsx` (entry), `HematologyAnalyzerReport.tsx` (printout viewer + print), FHIR CBC-panel export in `interop.service.ts` — see `docs/HEMATOLOGY_ANALYZER_REFERENCE_RANGES.md` |
 | **Pharmacy** | `pharmacy-store.ts` | `pharmacy.service.ts` |
@@ -121,6 +121,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run start` | Start production server |
 | `npm run lint` | ESLint |
 | `npm run analyze` | Bundle analysis build |
+| `npm run seed:nurses` | Create nurse logins: a Supabase Auth user + `staffs` row each (see [`docs/SEED_NURSES.md`](docs/SEED_NURSES.md)) |
 
 ---
 
