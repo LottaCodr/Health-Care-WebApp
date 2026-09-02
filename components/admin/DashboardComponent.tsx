@@ -98,7 +98,7 @@ export default function AdminDashboard() {
     // Alerts
     const alerts = [
         pendingPay > 0 && { type: "warning", msg: `${pendingPay} patient${pendingPay > 1 ? "s" : ""} awaiting payment confirmation` },
-        pendingLab > 5 && { type: "warning", msg: `${pendingLab} lab tests queued — lab tech may need support` },
+        pendingLab > 5 && { type: "warning", msg: `${pendingLab} lab tests queued — lab scientist may need support` },
         activePx > 10 && { type: "info", msg: `${activePx} active prescriptions pending dispensing` },
     ].filter(Boolean) as { type: string; msg: string }[];
 

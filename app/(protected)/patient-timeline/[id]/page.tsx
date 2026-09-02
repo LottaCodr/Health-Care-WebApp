@@ -502,7 +502,7 @@ export default function PatientTimelinePage() {
                     timestamp: r.created_at,
                     status: r.status ?? "pending",
                     priority: r.priority ?? "routine",
-                    actor: r.completed_by ? `Lab Tech #${r.completed_by.slice(-6)}` : "Laboratory Department",
+                    actor: r.completed_by ? `Lab Scientist #${r.completed_by.slice(-6)}` : "Laboratory Department",
                     meta: r.completed_at ? `Completed: ${fmtFull(r.completed_at)}` : `Priority: ${r.priority ?? "routine"}`,
                     details: {
                         items,

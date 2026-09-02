@@ -25,7 +25,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
     [UserRole.FrontDesk]: "Front Desk",
     [UserRole.Doctor]: "Doctor",
     [UserRole.Nurse]: "Nurse",
-    [UserRole.LabTechnician]: "Lab Technician",
+    [UserRole.LabTechnician]: "Lab Scientist",
     [UserRole.Pharmacist]: "Pharmacist",
     [UserRole.Radiologist]: "Radiologist",
     [UserRole.Admin]: "Administrator",

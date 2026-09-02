@@ -115,7 +115,7 @@ export default function HematologyAnalyzerReport({ request, className }: Hematol
   </table>
   <div class="footer">${ANALYZER_RESULT_FOOTER}</div>
   ${notes}
-  <div class="sig"><span>Lab Technician</span><span>Reviewed By</span></div>
+  <div class="sig"><span>Lab Scientist</span><span>Reviewed By</span></div>
   <script>window.onload = function(){ window.print(); };</script>
 </body></html>`;
 
