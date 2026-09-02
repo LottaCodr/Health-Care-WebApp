@@ -5,7 +5,10 @@ import { normalizeUserRole } from "@/lib/roles";
 import { sanitizeNextPath } from "@/lib/security";
 
 // ─── Public routes (no auth needed) ────────────────────────────────────────
-const PUBLIC_PATHS = ["/unauthorized", "/login", "/portal"];
+// `/forgot-password` & `/reset-password` are part of the auth flow and must be
+// reachable without a session — the reset link arrives from email while the
+// staff member is signed out.
+const PUBLIC_PATHS = ["/unauthorized", "/login", "/portal", "/forgot-password", "/reset-password"];
 
 // ─── Role → route prefix map (used to guard wrong-role access) ─────────────
 const ROLE_PREFIXES: Record<string, string> = {

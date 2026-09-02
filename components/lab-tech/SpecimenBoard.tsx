@@ -79,7 +79,7 @@ export default function SpecimenBoard() {
     };
 
     if (!authorized) {
-        return <p className="rounded-2xl border border-red-100 bg-red-50 p-4 text-xs text-red-700">Lab technician access required.</p>;
+        return <p className="rounded-2xl border border-red-100 bg-red-50 p-4 text-xs text-red-700">Lab scientist access required.</p>;
     }
 
     return (

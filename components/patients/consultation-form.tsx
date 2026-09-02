@@ -77,7 +77,7 @@ const REFERRAL_OPTIONS = [
     },
     {
         value: "lab-tech",
-        label: "Lab Technician",
+        label: "Lab Scientist",
         desc: "Request laboratory investigations",
         icon: FlaskConical,
         status:"sent-to-lab" as PatientStatus,
@@ -813,7 +813,7 @@ export default function ConsultationForm({
                         <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-green-50/60 border border-green-100 rounded-xl">
                             <FlaskConical size={13} className="text-green-500 shrink-0 mt-0.5" />
                             <p className="text-xs text-green-700 leading-relaxed">
-                                To request lab tests or imaging, select <span className="font-semibold">Lab Technician</span> or{" "}
+                                To request lab tests or imaging, select <span className="font-semibold">Lab Scientist</span> or{" "}
                                 <span className="font-semibold">Radiology</span> in Patient Routing below — you can select multiple tests at once.
                             </p>
                         </div>
@@ -890,7 +890,7 @@ export default function ConsultationForm({
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <FieldLabel>Notes for Lab Tech</FieldLabel>
+                                <FieldLabel>Notes for Lab Scientist</FieldLabel>
                                 <Textarea rows={2} value={labNotes} onChange={e => setField("labNotes", e.target.value)}
                                     placeholder="e.g. Patient is fasting. Collect before medication..."
                                     className="text-sm bg-white border-gray-200 rounded-xl resize-none placeholder:text-gray-300" />

@@ -23,7 +23,7 @@ const ROLE_CONFIG: Record<string, { accent: string; gradient: string; label: str
     Doctor: { accent: "text-red-400", gradient: "from-red-500     to-red-700", label: "Doctor" },
     Nurse: { accent: "text-teal-400", gradient: "from-teal-500    to-teal-700", label: "Nurse" },
     Pharmacist: { accent: "text-violet-400", gradient: "from-violet-500  to-violet-700", label: "Pharmacist" },
-    LabTechnician: { accent: "text-indigo-400", gradient: "from-indigo-500  to-indigo-700", label: "Lab Technician" },
+    LabTechnician: { accent: "text-indigo-400", gradient: "from-indigo-500  to-indigo-700", label: "Lab Scientist" },
     FrontDesk: { accent: "text-blue-400", gradient: "from-blue-500    to-blue-700", label: "Front Desk" },
     Admin: { accent: "text-amber-400", gradient: "from-amber-500   to-amber-700", label: "Administrator" },
     Radiologist: { accent: "text-fuchsia-400", gradient: "from-fuchsia-500 to-fuchsia-700", label: "Radiologist" },
