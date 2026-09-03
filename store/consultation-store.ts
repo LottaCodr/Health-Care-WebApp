@@ -54,7 +54,11 @@ interface ConsultationState {
     prescriptions:   string;    // free-text treatment plan
     recommendations: string;
     // ── Routing ──────────────────────────────────────────────────────────────
-    referredTo:     string;
+    // Multiple destinations can be selected at once — e.g. send the patient to
+    // the lab AND prescribe drugs in the same consultation. Each selected
+    // department receives its requests; the patient's single status field
+    // reflects the first stop (see REFERRAL_PRIORITY in consultation-form).
+    referrals: string[];
     statusOverride: string;
     // Lab request
     labTestType: string[];
@@ -96,7 +100,7 @@ const initial: ConsultationState = {
     summary: "",
     assessment: "",
     investigations: "", prescriptions: "", recommendations: "",
-    referredTo: "", statusOverride: "",
+    referrals: [], statusOverride: "",
     labTestType: [], labPriority: "routine", labNotes: "",
     radTestType: [], radPriority: "routine", radNotes: "",
     admissionType:       "",

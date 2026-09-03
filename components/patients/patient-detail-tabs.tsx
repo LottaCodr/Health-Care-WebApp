@@ -226,10 +226,11 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
 
   const availableStaff = useMemo(() =>
     staff.filter((s: Staff) =>
-      s.role && consultationStore.referredTo &&
-      s.role.toLowerCase() === consultationStore.referredTo.toLowerCase()
+      s.role && consultationStore.referrals.some(ref =>
+        s.role.toLowerCase() === ref.toLowerCase()
+      )
     ),
-    [staff, consultationStore.referredTo]
+    [staff, consultationStore.referrals]
   );
 
   // A patient imported from paper may have no date of birth (nothing in a

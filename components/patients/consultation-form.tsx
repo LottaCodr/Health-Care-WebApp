@@ -24,7 +24,7 @@ import {
     Stethoscope, ClipboardList, Pill, ArrowRight, Loader2, CheckCircle2, Check,
     ChevronRight, FlaskConical, UserCog, Baby, User, Heart, Brain,
     Activity, FileText, Zap, Radio, ChevronDown, AlertTriangle,
-    Building2, Plus, Trash2, Search,
+    Building2, Plus, Trash2, Search, X,
 } from "lucide-react";
 
 const AIClinicalAssistant = dynamic(
@@ -121,6 +121,15 @@ const REFERRAL_OPTIONS = [
     },
 ] as const;
 
+// When several destinations are selected at once, the patient's single status
+// field reflects the first stop on the journey (admission trumps everything —
+// the patient goes to the ward; samples before scans; scans before drugs;
+// nursing care last). Every department still receives its own requests: the
+// lab / pharmacy / radiology dashboards list pending work from their request
+// tables regardless of the patient's status, so this only decides which
+// queue tab the patient appears under.
+const REFERRAL_PRIORITY = ["front-desk", "lab-tech", "radiology", "pharmacist", "nurse"] as const;
+
 const PATIENT_STATUSES = [
     { value: "sent-to-nurse", label: "Sent to Nurse" },
     { value: "sent-to-lab", label: "Sent to Lab" },
@@ -173,40 +182,94 @@ function Section({ id, icon: Icon, title, badge, color = "text-red-600", bg = "b
     );
 }
 
-function MultiSelect({ options, selected, onChange, placeholder }: {
-    options: string[]; selected: string[]; onChange: (s: string[]) => void; placeholder?: string;
+function MultiSelect({ options, selected, onChange, placeholder, searchPlaceholder }: {
+    options: string[]; selected: string[]; onChange: (s: string[]) => void;
+    placeholder?: string; searchPlaceholder?: string;
 }) {
     const [open, setOpen] = useState(false);
+    // The test catalog is long — without a search box doctors had to scroll
+    // the whole list (and resorted to the Lab Results tab's searchable picker
+    // to find tests). Filter it as they type instead.
+    const [query, setQuery] = useState("");
     const toggle = (v: string) => onChange(selected.includes(v) ? selected.filter(i => i !== v) : [...selected, v]);
+
+    const filtered = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return options;
+        return options.filter(opt => opt.toLowerCase().includes(q));
+    }, [options, query]);
+
+    const close = () => { setOpen(false); setQuery(""); };
+
     return (
         <div className="relative w-full">
-            <button type="button" onClick={() => setOpen(v => !v)}
+            <button type="button" onClick={() => open ? close() : setOpen(true)}
                 className="w-full h-10 px-3 flex justify-between items-center rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 transition-all">
                 <span className={selected.length === 0 ? "text-gray-400" : "text-gray-900 truncate"}>
                     {selected.length === 0 ? placeholder : selected.join(", ")}
                 </span>
-                <ChevronDown size={16} className="text-gray-400 ml-2 shrink-0" />
+                <span className="flex items-center gap-1.5 ml-2 shrink-0">
+                    {selected.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold">
+                            {selected.length}
+                        </span>
+                    )}
+                    <ChevronDown size={16} className="text-gray-400" />
+                </span>
             </button>
             {open && (
-                <div className="absolute z-30 mt-1 left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-                    <ul className="p-2 space-y-1">
-                        {options.map(opt => (
-                            <li key={opt} onClick={() => toggle(opt)}
-                                className={cn("flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-50", selected.includes(opt) ? "bg-gray-100 font-semibold" : "")}>
-                                <div className={cn(
-                                    "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
-                                    selected.includes(opt)
-                                        ? "bg-indigo-600 border-indigo-600"
-                                        : "border-gray-300 bg-white"
-                                )}>
-                                    {selected.includes(opt) && (
-                                        <Check size={10} className="text-white" strokeWidth={3} />
-                                    )}
-                                </div>
-                                <span className="text-sm">{opt}</span>
-                            </li>
-                        ))}
-                    </ul>
+                <div className="absolute z-30 mt-1 left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                    {/* Search box — pinned to the top of the dropdown */}
+                    <div className="p-2 border-b border-gray-100 bg-white">
+                        <div className="relative">
+                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <input
+                                autoFocus
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                                onKeyDown={e => {
+                                    // The picker lives inside the consultation <form> — Enter
+                                    // must filter/confirm, never submit the whole form.
+                                    if (e.key === "Enter") e.preventDefault();
+                                    if (e.key === "Escape") close();
+                                }}
+                                placeholder={searchPlaceholder ?? "Search…"}
+                                className="w-full h-8 pl-8 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300"
+                            />
+                            {query && (
+                                <button type="button" onClick={() => setQuery("")}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    aria-label="Clear search">
+                                    <X size={12} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                        <ul className="p-2 space-y-1">
+                            {filtered.map(opt => (
+                                <li key={opt} onClick={() => toggle(opt)}
+                                    className={cn("flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-50", selected.includes(opt) ? "bg-gray-100 font-semibold" : "")}>
+                                    <div className={cn(
+                                        "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                        selected.includes(opt)
+                                            ? "bg-indigo-600 border-indigo-600"
+                                            : "border-gray-300 bg-white"
+                                    )}>
+                                        {selected.includes(opt) && (
+                                            <Check size={10} className="text-white" strokeWidth={3} />
+                                        )}
+                                    </div>
+                                    <span className="text-sm">{opt}</span>
+                                </li>
+                            ))}
+                            {filtered.length === 0 && (
+                                <li className="px-2 py-3 text-center text-xs text-gray-400">
+                                    No matching {options.length === 0 ? "options available" : "results"}
+                                </li>
+                            )}
+                        </ul>
+                    </div>
                 </div>
             )}
         </div>
@@ -349,6 +412,12 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
                                     setOpenId(item.id);
                                 }}
                                 onFocus={() => setOpenId(item.id)}
+                                onKeyDown={e => {
+                                    // Enter while searching must not submit the
+                                    // consultation form — it's just typing aid.
+                                    if (e.key === "Enter") e.preventDefault();
+                                    if (e.key === "Escape") setOpenId(null);
+                                }}
                                 placeholder="Search drug name…"
                                 className="w-full h-8 pl-8 pr-3 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-pink-300 focus:border-pink-300"
                             />
@@ -470,7 +539,7 @@ export default function ConsultationForm({
         imp, pregnancyStatus, lmp, ega, eod, gravidity, parity,
         generalExam, respiratory, cardiovascular, gastrointestinal,
         summary, assessment, investigations, prescriptions, recommendations,
-        referredTo, statusOverride,
+        referrals, statusOverride,
         labTestType, labPriority, labNotes,
         radTestType, radPriority, radNotes,
         setField, resetForm,
@@ -514,9 +583,21 @@ export default function ConsultationForm({
         // untouched (empty unless entered manually by the doctor).
     }
 
-    const referralOption = REFERRAL_OPTIONS.find(r => r.value === referredTo);
-    const nextStatusLabel = referralOption?.label ?? "Nurse";
-    const nextStatus = referralOption?.status ?? ("sent-to-nurse" as PatientStatus);
+    // ── Routing resolution ──────────────────────────────────────────────────
+    // Multi-destination: the doctor can tick several referral cards at once
+    // (e.g. lab + pharmacy) and each department receives its requests from a
+    // single consultation.
+    const hasReferral = (v: string) => referrals.includes(v);
+    const selectedReferrals = REFERRAL_OPTIONS
+        .filter(r => referrals.includes(r.value))
+        .sort((a, b) => REFERRAL_PRIORITY.indexOf(a.value) - REFERRAL_PRIORITY.indexOf(b.value));
+    const primaryReferral = selectedReferrals[0];
+    const routeChain = selectedReferrals.length > 0
+        ? selectedReferrals.map(r => r.label).join(" → ")
+        : "Nurse";
+    const nextStatus = (primaryReferral?.status ?? "sent-to-nurse") as PatientStatus;
+    const resolvedStatusLabel =
+        PATIENT_STATUSES.find(s => s.value === (statusOverride || nextStatus))?.label ?? nextStatus;
 
     const buildSymptoms = () => [
         `Presenting Complaint:\n${presentingComplaint}`,
@@ -552,9 +633,9 @@ export default function ConsultationForm({
         assessment ? `Assessment:\n${assessment}` : "",
         investigations ? `Investigations:\n${investigations}` : "",
         recommendations ? `Recommendations:\n${recommendations}` : "",
-        referredTo === "front-desk" && store.admissionIndication
+        hasReferral("front-desk") && store.admissionIndication
             ? `Admission Indication:\n${store.admissionIndication}` : "",
-        referredTo === "front-desk" && store.admissionNotes
+        hasReferral("front-desk") && store.admissionNotes
             ? `Admission Notes:\n${store.admissionNotes}` : "",
     ].filter(Boolean).join("\n\n");
 
@@ -564,15 +645,15 @@ export default function ConsultationForm({
         const gaps: string[] = [];
         if (!presentingComplaint.trim()) gaps.push("No presenting complaint recorded");
         if (!assessment.trim()) gaps.push("No assessment / diagnosis recorded");
-        if (referredTo === "lab-tech" && (!labTestType || labTestType.length === 0))
+        if (hasReferral("lab-tech") && (!labTestType || labTestType.length === 0))
             gaps.push("No lab test selected — the patient will be routed to the lab without any test requests");
-        if (referredTo === "radiology" && (!radTestType || radTestType.length === 0))
+        if (hasReferral("radiology") && (!radTestType || radTestType.length === 0))
             gaps.push("No radiology investigation selected — the patient will be routed to radiology without any imaging requests");
-        if (referredTo === "front-desk" && !store.admissionType)
+        if (hasReferral("front-desk") && !store.admissionType)
             gaps.push("No admission type selected — the patient will be marked Admitted without an admission record");
-        if (referredTo === "front-desk" && !store.admissionIndication.trim())
+        if (hasReferral("front-desk") && !store.admissionIndication.trim())
             gaps.push("No clinical indication for admission recorded");
-        if (referredTo === "pharmacist") {
+        if (hasReferral("pharmacist")) {
             // Prescription rows missing a drug name or dosage are silently
             // dropped on submit — make that visible before it happens.
             const incomplete = store.prescriptionItems.filter(item =>
@@ -605,7 +686,7 @@ export default function ConsultationForm({
         // be written, we stop here entirely. Nothing is saved, nothing is
         // half-done, and the doctor's retry click is a clean single attempt
         // with no duplicate consultation notes left behind.
-        if (referredTo === "front-desk" && store.admissionType) {
+        if (hasReferral("front-desk") && store.admissionType) {
             setAdmissionSaving(true);
             try {
                 await createAdmission({
@@ -636,7 +717,7 @@ export default function ConsultationForm({
                 diagnosis: buildDiagnosis(),
                 prescriptions: prescriptions || undefined,
                 recommendations: buildRecommendations(),
-                referredTo: referredTo || undefined,
+                referredTo: referrals.length > 0 ? referrals.join(", ") : undefined,
                 status: "underConsultation",
             },
             {
@@ -648,7 +729,7 @@ export default function ConsultationForm({
                     // undercounted actual workload (3 tests = "1 pending"),
                     // and there was no way to mark individual tests complete
                     // independently of the others.
-                    if (referredTo === "lab-tech") {
+                    if (hasReferral("lab-tech")) {
                         Promise.all(
                             labTestType.map(test =>
                                 createLabRequestAsync({
@@ -663,7 +744,7 @@ export default function ConsultationForm({
                         ).catch((err: any) => console.error("Lab request error:", err));
                     }
                     // Radiology request — same fix, same reasoning.
-                    if (referredTo === "radiology") {
+                    if (hasReferral("radiology")) {
                         Promise.all(
                             radTestType.map(test =>
                                 createRadRequestAsync({
@@ -677,7 +758,7 @@ export default function ConsultationForm({
                         ).catch((err: any) => console.error("Radiology request error:", err));
                     }
                     // Structured prescriptions
-                    if (referredTo === "pharmacist" && store.prescriptionItems.length > 0) {
+                    if (hasReferral("pharmacist") && store.prescriptionItems.length > 0) {
                         Promise.all(
                             store.prescriptionItems.map(item => {
                                 if (!item.drugName.trim() || !item.dosage.trim()) return Promise.resolve();
@@ -704,7 +785,7 @@ export default function ConsultationForm({
                         { onError: () => toast.error("Consultation saved but status could not be updated.") }
                     );
 
-                    toast.success(`Consultation saved. Patient routed to ${nextStatusLabel}.`);
+                    toast.success(`Consultation saved. Patient routed to ${routeChain}.`);
                     resetForm();
                     onSuccess?.();
                 },
@@ -950,16 +1031,20 @@ export default function ConsultationForm({
                 />
 
                 {/* ── Routing ── */}
-                <Section id="routing" icon={ArrowRight} title="Patient Routing" badge="Referral & status update" defaultOpen color="text-indigo-600" bg="bg-indigo-50">
+                <Section id="routing" icon={ArrowRight} title="Patient Routing" badge="Referral & status update — select all that apply" defaultOpen color="text-indigo-600" bg="bg-indigo-50">
 
-                    {/* Referral cards — 3 per row on mobile, all 5 in one row on larger */}
+                    {/* Referral cards — 3 per row on mobile, all 5 in one row on larger.
+                        Multi-select: every ticked department receives its requests
+                        from this one consultation (e.g. lab tests AND prescriptions). */}
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                         {REFERRAL_OPTIONS.map((opt) => {
                             const Icon = opt.icon;
-                            const isSelected = referredTo === opt.value;
+                            const isSelected = referrals.includes(opt.value);
                             return (
                                 <button key={opt.value} type="button"
-                                    onClick={() => setField("referredTo", isSelected ? "" : opt.value)}
+                                    onClick={() => setField("referrals",
+                                        isSelected ? referrals.filter(v => v !== opt.value) : [...referrals, opt.value]
+                                    )}
                                     className={`flex flex-col items-start gap-2 p-3 rounded-xl border-2 text-left transition-all duration-150 ${
                                         isSelected ? `${opt.border} ${opt.bg}` : "border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white"
                                     }`}>
@@ -974,9 +1059,13 @@ export default function ConsultationForm({
                             );
                         })}
                     </div>
+                    <p className="text-[10px] text-gray-400">
+                        Select one or more destinations — each department receives its own requests, and the patient&apos;s queue
+                        status follows the first stop on the journey (admission → lab → radiology → pharmacy → nursing).
+                    </p>
 
                     {/* Lab request panel */}
-                    {referredTo === "lab-tech" && (
+                    {hasReferral("lab-tech") && (
                         <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
                             <div className="flex items-center gap-2">
                                 <FlaskConical size={13} className="text-indigo-600" />
@@ -985,7 +1074,7 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel>Test Type</FieldLabel>
-                                    <MultiSelect options={LAB_TESTS} selected={labTestType} onChange={v => setField("labTestType", v)} placeholder="Select test(s)..." />
+                                    <MultiSelect options={LAB_TESTS} selected={labTestType} onChange={v => setField("labTestType", v)} placeholder="Select test(s)..." searchPlaceholder="Search tests (e.g. FBC, Malaria, Widal)…" />
                                 </div>
                                 <div className="space-y-1.5">
                                     <FieldLabel>Priority</FieldLabel>
@@ -1009,7 +1098,7 @@ export default function ConsultationForm({
                     )}
 
                     {/* Radiology request panel */}
-                    {referredTo === "radiology" && (
+                    {hasReferral("radiology") && (
                         <div className="rounded-2xl border-2 border-cyan-200 bg-cyan-50/40 p-4 space-y-3">
                             <div className="flex items-center gap-2">
                                 <Radio size={13} className="text-cyan-600" />
@@ -1018,7 +1107,7 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel>Investigation Type</FieldLabel>
-                                    <MultiSelect options={RADIOLOGY_TESTS} selected={radTestType} onChange={v => setField("radTestType", v)} placeholder="Select investigation(s)..." />
+                                    <MultiSelect options={RADIOLOGY_TESTS} selected={radTestType} onChange={v => setField("radTestType", v)} placeholder="Select investigation(s)..." searchPlaceholder="Search investigations (e.g. X-ray, Ultrasound)…" />
                                 </div>
                                 <div className="space-y-1.5">
                                     <FieldLabel>Priority</FieldLabel>
@@ -1042,10 +1131,10 @@ export default function ConsultationForm({
                     )}
 
                     {/* Pharmacist — prescription panel */}
-                    {referredTo === "pharmacist" && <DoctorPrescriptionPanel store={store} />}
+                    {hasReferral("pharmacist") && <DoctorPrescriptionPanel store={store} />}
 
                     {/* Front desk — admission panel */}
-                    {referredTo === "front-desk" && <AdmissionPanel store={store} />}
+                    {hasReferral("front-desk") && <AdmissionPanel store={store} />}
 
                     {/* Status override + preview */}
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
@@ -1065,9 +1154,16 @@ export default function ConsultationForm({
                         <div className="flex items-end">
                             <div className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
                                 <CheckCircle2 size={13} className="text-blue-500 shrink-0" />
-                                <p className="text-xs text-blue-700 font-medium">
-                                    Patient → <span className="font-bold">{nextStatusLabel}</span>
-                                </p>
+                                <div className="min-w-0">
+                                    <p className="text-xs text-blue-700 font-medium">
+                                        Patient → <span className="font-bold">{routeChain}</span>
+                                    </p>
+                                    {selectedReferrals.length > 1 && (
+                                        <p className="text-[10px] text-blue-500 mt-0.5">
+                                            Requests go to every department · queue status: {resolvedStatusLabel}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
