@@ -31,6 +31,9 @@ interface ConsultationState {
     familySocialHistory:     string;
     // Obstetric
     imp:      string;
+    // Pregnancy status gates the LMP → EGA/EDD auto-calculation:
+    // "" (not answered) | "yes" | "no" | "unknown"
+    pregnancyStatus: string;
     lmp:      string;
     ega:      string;
     eod:      string;
@@ -87,7 +90,7 @@ const initial: ConsultationState = {
     antenatalHistory: "", nutritionalHistory: "",
     developmentalMilestones: "", immunisationHistory: "",
     pastMedicalHistory: "", drugHistory: "", familySocialHistory: "",
-    imp: "", lmp: "", ega: "", eod: "", gravidity: "", parity: "",
+    imp: "", pregnancyStatus: "", lmp: "", ega: "", eod: "", gravidity: "", parity: "",
     generalExam: "",
     respiratory: "", cardiovascular: "", gastrointestinal: "",
     summary: "",

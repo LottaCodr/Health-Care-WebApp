@@ -14,12 +14,16 @@ import {
     useActiveLabTests, useCreatePrescription, useDrugInventory,
 } from "@/hooks/emr/use-emr";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { createAdmission } from "@/lib/services/admission.service";
 import {
     Stethoscope, ClipboardList, Pill, ArrowRight, Loader2, CheckCircle2, Check,
     ChevronRight, FlaskConical, UserCog, Baby, User, Heart, Brain,
-    Activity, FileText, Zap, Radio, ChevronDown,
+    Activity, FileText, Zap, Radio, ChevronDown, AlertTriangle,
     Building2, Plus, Trash2, Search,
 } from "lucide-react";
 
@@ -65,6 +69,14 @@ function calcEGA(lmpDate: string): string {
 
 const isPaed = (age?: number) => age !== undefined && age <= 12;
 const isFemale = (gender?: string) => ["female", "f"].includes((gender ?? "").toLowerCase());
+
+// Human-readable labels for the pregnancy status, used both in the UI and when
+// serialising the obstetric history into the consultation's symptoms text.
+const PREGNANCY_LABELS: Record<string, string> = {
+    yes: "Pregnant",
+    no: "Not pregnant",
+    unknown: "Unknown",
+};
 
 const REFERRAL_OPTIONS = [
     {
@@ -125,10 +137,13 @@ const FREQUENCIES = ["OD", "BD", "TDS", "QDS", "PRN", "STAT", "nocte", "mane"];
 
 const inputCls = "w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 focus:bg-white transition-all";
 
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
+// No field on this form is hard-required anymore — the doctor can skip
+// anything that isn't applicable. Critical gaps are surfaced as a
+// non-blocking confirmation prompt at submit time instead (see handleSubmit).
+function FieldLabel({ children }: { children: React.ReactNode }) {
     return (
         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
-            {children}{required && <span className="text-red-500 ml-0.5">*</span>}
+            {children}
         </p>
     );
 }
@@ -211,7 +226,7 @@ function AdmissionPanel({ store }: { store: ConsultationStore }) {
             {/* Admission type + urgency */}
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                    <FieldLabel required>Admission Type</FieldLabel>
+                    <FieldLabel>Admission Type</FieldLabel>
                     <Select value={store.admissionType} onValueChange={v => store.setField("admissionType", v as any)}>
                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
                             <SelectValue placeholder="Select type…" />
@@ -225,7 +240,7 @@ function AdmissionPanel({ store }: { store: ConsultationStore }) {
                     </Select>
                 </div>
                 <div className="space-y-1.5">
-                    <FieldLabel required>Urgency</FieldLabel>
+                    <FieldLabel>Urgency</FieldLabel>
                     <Select value={store.admissionUrgency} onValueChange={v => store.setField("admissionUrgency", v as any)}>
                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-white shadow-xl rounded-xl">
@@ -246,7 +261,7 @@ function AdmissionPanel({ store }: { store: ConsultationStore }) {
 
             {/* Clinical indication */}
             <div className="space-y-1.5">
-                <FieldLabel required>Clinical Indication for Admission</FieldLabel>
+                <FieldLabel>Clinical Indication for Admission</FieldLabel>
                 <Textarea rows={3} value={store.admissionIndication}
                     onChange={e => store.setField("admissionIndication", e.target.value)}
                     placeholder="Reason the patient requires admission — diagnosis, expected procedure, clinical status…"
@@ -365,7 +380,7 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
                     {/* Dosage + Frequency + Duration */}
                     <div className="grid grid-cols-3 gap-2">
                         <div>
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Dosage *</p>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Dosage</p>
                             <input value={item.dosage}
                                 onChange={e => store.updatePrescriptionItem(item.id, "dosage", e.target.value)}
                                 placeholder="e.g. 500mg"
@@ -422,6 +437,11 @@ export default function ConsultationForm({
     const { data: labCatalog } = useActiveLabTests();
 
     const [admissionSaving, setAdmissionSaving] = useState(false);
+    // Nothing on this form is hard-required anymore. Instead of blocking
+    // submission, critical gaps (no assessment, no lab tests selected, …)
+    // are collected and shown in a single non-blocking confirmation prompt.
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingGaps, setPendingGaps] = useState<string[]>([]);
     const loading = cLoading || lLoading || rLoading || admissionSaving;
     const isChild = isPaed(patientAge);
     const isFem = isFemale(patientGender);
@@ -447,7 +467,7 @@ export default function ConsultationForm({
         presentingComplaint, symptomsAnalysis, aetiology, historyComplications, historyTreatment,
         antenatalHistory, nutritionalHistory, developmentalMilestones, immunisationHistory,
         pastMedicalHistory, drugHistory, familySocialHistory,
-        imp, lmp, ega, eod, gravidity, parity,
+        imp, pregnancyStatus, lmp, ega, eod, gravidity, parity,
         generalExam, respiratory, cardiovascular, gastrointestinal,
         summary, assessment, investigations, prescriptions, recommendations,
         referredTo, statusOverride,
@@ -456,9 +476,43 @@ export default function ConsultationForm({
         setField, resetForm,
     } = store;
 
+    const isPregnant = pregnancyStatus === "yes";
+    const notPregnant = pregnancyStatus === "no";
+
     useEffect(() => {
         if (patientMedicalHistory && !pastMedicalHistory) setField("pastMedicalHistory", patientMedicalHistory);
     }, [patientMedicalHistory]);
+
+    // ── Obstetric handlers ──────────────────────────────────────────────────
+    // EDD/EGA only make sense for a pregnant patient, so the LMP → EDD/EGA
+    // auto-calculation (Naegele's rule) is gated on the "Pregnant?" selector.
+    // For a non-pregnant patient the LMP is recorded as a plain date and the
+    // pregnancy-only fields are cleared / disabled.
+
+    function handlePregnancyStatusChange(v: string) {
+        setField("pregnancyStatus", v);
+        if (v === "yes") {
+            // LMP may already be filled in — derive EGA/EDD from it now.
+            if (lmp) {
+                setField("ega", calcEGA(lmp));
+                setField("eod", calcEDD(lmp));
+            }
+        } else {
+            // Moving away from "pregnant" — EGA/EDD no longer apply.
+            setField("ega", "");
+            setField("eod", "");
+        }
+    }
+
+    function handleLmpChange(newLmp: string) {
+        setField("lmp", newLmp);
+        if (pregnancyStatus === "yes") {
+            setField("ega", calcEGA(newLmp));
+            setField("eod", calcEDD(newLmp));
+        }
+        // Not confirmed pregnant: LMP is just a plain date — leave EGA/EDD
+        // untouched (empty unless entered manually by the doctor).
+    }
 
     const referralOption = REFERRAL_OPTIONS.find(r => r.value === referredTo);
     const nextStatusLabel = referralOption?.label ?? "Nurse";
@@ -477,6 +531,7 @@ export default function ConsultationForm({
         pastMedicalHistory ? `Past Medical & Surgical History:\n${pastMedicalHistory}` : "",
         drugHistory ? `Drug History:\n${drugHistory}` : "",
         familySocialHistory ? `Family & Social History:\n${familySocialHistory}` : "",
+        isFem && pregnancyStatus ? `Pregnancy Status: ${PREGNANCY_LABELS[pregnancyStatus] ?? "Unknown"}` : "",
         isFem && imp ? `IMP: ${imp}` : "",
         isFem && lmp ? `LMP: ${lmp}` : "",
         isFem && ega ? `EGA: ${ega} weeks` : "",
@@ -503,15 +558,47 @@ export default function ConsultationForm({
             ? `Admission Notes:\n${store.admissionNotes}` : "",
     ].filter(Boolean).join("\n\n");
 
+    // Collects critical gaps for the confirmation prompt. Nothing here blocks
+    // submission on its own — the doctor can always choose "Submit anyway".
+    function collectSubmissionGaps(): string[] {
+        const gaps: string[] = [];
+        if (!presentingComplaint.trim()) gaps.push("No presenting complaint recorded");
+        if (!assessment.trim()) gaps.push("No assessment / diagnosis recorded");
+        if (referredTo === "lab-tech" && (!labTestType || labTestType.length === 0))
+            gaps.push("No lab test selected — the patient will be routed to the lab without any test requests");
+        if (referredTo === "radiology" && (!radTestType || radTestType.length === 0))
+            gaps.push("No radiology investigation selected — the patient will be routed to radiology without any imaging requests");
+        if (referredTo === "front-desk" && !store.admissionType)
+            gaps.push("No admission type selected — the patient will be marked Admitted without an admission record");
+        if (referredTo === "front-desk" && !store.admissionIndication.trim())
+            gaps.push("No clinical indication for admission recorded");
+        if (referredTo === "pharmacist") {
+            // Prescription rows missing a drug name or dosage are silently
+            // dropped on submit — make that visible before it happens.
+            const incomplete = store.prescriptionItems.filter(item =>
+                (item.drugName.trim() || item.dosage.trim() || item.duration.trim() || item.notes.trim()) &&
+                (!item.drugName.trim() || !item.dosage.trim())
+            ).length;
+            if (incomplete > 0)
+                gaps.push(`${incomplete} prescription item${incomplete > 1 ? "s are" : " is"} missing a drug name or dosage and will not be sent`);
+        }
+        if (isFem && lmp && !pregnancyStatus)
+            gaps.push("Pregnancy status not indicated — EDD/EGA are not calculated from LMP");
+        return gaps;
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!presentingComplaint.trim()) { toast.error("Presenting complaint is required."); return; }
-        if (!assessment.trim()) { toast.error("Assessment / diagnosis is required."); return; }
-        if (referredTo === "lab-tech" && (!labTestType || labTestType.length === 0)) { toast.error("Select at least one lab test."); return; }
-        if (referredTo === "radiology" && (!radTestType || radTestType.length === 0)) { toast.error("Select a radiology investigation."); return; }
-        if (referredTo === "front-desk" && !store.admissionType) { toast.error("Select an admission type."); return; }
-        if (referredTo === "front-desk" && !store.admissionIndication.trim()) { toast.error("Clinical indication for admission is required."); return; }
+        const gaps = collectSubmissionGaps();
+        if (gaps.length > 0) {
+            setPendingGaps(gaps);
+            setConfirmOpen(true);
+            return;
+        }
+        await doSubmit();
+    };
 
+    const doSubmit = async () => {
         const doctorId = user?.id ?? user?.$id ?? "";
 
         // Front Desk — BLOCKING, and done FIRST: if the admission record can't
@@ -646,7 +733,7 @@ export default function ConsultationForm({
                 {/* ── A. History ── */}
                 <Section id="history" icon={ClipboardList} title="A. History" badge="Presenting complaints & background" defaultOpen>
                     <div className="space-y-1.5">
-                        <FieldLabel required>A1 · Presenting Complaint</FieldLabel>
+                        <FieldLabel>A1 · Presenting Complaint</FieldLabel>
                         <Textarea rows={3} value={presentingComplaint} onChange={e => setField("presentingComplaint", e.target.value)}
                             placeholder="Chief complaint — what brings the patient in today?"
                             className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-red-400" />
@@ -709,6 +796,21 @@ export default function ConsultationForm({
                                 <p className="text-[10px] font-black uppercase tracking-widest text-pink-600">Obstetric History</p>
                             </div>
                             <div className="pl-3 border-l-2 border-pink-100 grid grid-cols-2 gap-3">
+                                {/* Pregnant? — gates the LMP → EGA/EDD auto-calculation */}
+                                <div className="space-y-1.5">
+                                    <FieldLabel>Pregnant?</FieldLabel>
+                                    <Select value={pregnancyStatus} onValueChange={handlePregnancyStatusChange}>
+                                        <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl">
+                                            <SelectValue placeholder="Select…" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white shadow-xl rounded-xl">
+                                            <SelectItem value="yes">Yes — pregnant</SelectItem>
+                                            <SelectItem value="no">No — not pregnant</SelectItem>
+                                            <SelectItem value="unknown">Unknown</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 {/* IMP — manual text */}
                                 <div className="space-y-1.5">
                                     <FieldLabel>IMP (Impression)</FieldLabel>
@@ -716,32 +818,39 @@ export default function ConsultationForm({
                                         placeholder="e.g. G3P2 at 32 weeks" className={inputCls} />
                                 </div>
 
-                                {/* LMP — drives EGA + EDD auto-calc */}
+                                {/* LMP — recorded as a plain date; only drives EGA/EDD when pregnant */}
                                 <div className="space-y-1.5">
-                                    <FieldLabel>LMP (Last Menstrual Period)</FieldLabel>
-                                    <input type="date" value={lmp}
-                                        onChange={e => {
-                                            const newLmp = e.target.value;
-                                            setField("lmp", newLmp);
-                                            setField("ega", calcEGA(newLmp));
-                                            setField("eod", calcEDD(newLmp));
-                                        }}
+                                    <FieldLabel>
+                                        LMP (Last Menstrual Period)
+                                        {isPregnant && <span className="text-pink-400 font-normal normal-case"> · drives EGA/EDD</span>}
+                                    </FieldLabel>
+                                    <input type="date" value={lmp} onChange={e => handleLmpChange(e.target.value)}
                                         className={inputCls} />
                                 </div>
 
-                                {/* EGA — auto-calculated on LMP entry, but editable for ultrasound override */}
+                                {/* EGA — auto-calculated from LMP when pregnant, editable for ultrasound override */}
                                 <div className="space-y-1.5">
-                                    <FieldLabel>EGA (Gestational Age) <span className="text-pink-400 font-normal normal-case">· auto-calculated</span></FieldLabel>
-                                    <input type="text" value={ega} onChange={e => setField("ega", e.target.value)}
-                                        placeholder="Enter LMP to auto-calculate, or override here"
-                                        className={`${inputCls} bg-pink-50/50`} />
+                                    <FieldLabel>
+                                        EGA (Gestational Age)
+                                        <span className="text-pink-400 font-normal normal-case">
+                                            {isPregnant ? " · auto-calculated" : notPregnant ? " · not applicable" : ""}
+                                        </span>
+                                    </FieldLabel>
+                                    <input type="text" value={ega} onChange={e => setField("ega", e.target.value)} disabled={notPregnant}
+                                        placeholder={notPregnant ? "N/A — not pregnant" : "Enter LMP to auto-calculate, or override here"}
+                                        className={`${inputCls} ${notPregnant ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-pink-50/50"}`} />
                                 </div>
 
-                                {/* EDD — auto-calculated on LMP entry, but editable for ultrasound override */}
+                                {/* EDD — auto-calculated from LMP when pregnant, editable for ultrasound override */}
                                 <div className="space-y-1.5">
-                                    <FieldLabel>EDD (Expected Date of Delivery) <span className="text-pink-400 font-normal normal-case">· auto-calculated</span></FieldLabel>
-                                    <input type="date" value={eod} onChange={e => setField("eod", e.target.value)}
-                                        className={`${inputCls} bg-pink-50/50`} />
+                                    <FieldLabel>
+                                        EDD (Expected Date of Delivery)
+                                        <span className="text-pink-400 font-normal normal-case">
+                                            {isPregnant ? " · auto-calculated" : notPregnant ? " · not applicable" : ""}
+                                        </span>
+                                    </FieldLabel>
+                                    <input type="date" value={eod} onChange={e => setField("eod", e.target.value)} disabled={notPregnant}
+                                        className={`${inputCls} ${notPregnant ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-pink-50/50"}`} />
                                 </div>
 
                                 {/* Gravidity — manual */}
@@ -759,7 +868,8 @@ export default function ConsultationForm({
                                 </div>
                             </div>
                             <p className="text-[10px] text-pink-400 pl-3">
-                                EGA and EDD are calculated automatically from LMP using Naegele's rule (LMP + 280 days). Override manually if ultrasound dating differs.
+                                EGA and EDD are auto-calculated from LMP using Naegele&apos;s rule (LMP + 280 days) — but only when the patient is marked <span className="font-bold">Pregnant</span>.
+                                For non-pregnant patients the LMP is simply recorded as a date. Override manually if ultrasound dating differs.
                             </p>
                         </div>
                     )}
@@ -797,7 +907,7 @@ export default function ConsultationForm({
                 </Section>
 
                 {/* ── E. Assessment ── */}
-                <Section id="assessment-sec" icon={Brain} title="E. Assessment / Diagnosis" badge="Section E — Required" color="text-amber-600" bg="bg-amber-50" defaultOpen>
+                <Section id="assessment-sec" icon={Brain} title="E. Assessment / Diagnosis" badge="Section E" color="text-amber-600" bg="bg-amber-50" defaultOpen>
                     <Textarea rows={3} value={assessment} onChange={e => setField("assessment", e.target.value)}
                         placeholder="Diagnosis or differential diagnoses with clinical reasoning..."
                         className="text-sm border-gray-200 bg-gray-50 rounded-xl resize-none placeholder:text-gray-300 focus:border-amber-400" />
@@ -874,7 +984,7 @@ export default function ConsultationForm({
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <FieldLabel required>Test Type</FieldLabel>
+                                    <FieldLabel>Test Type</FieldLabel>
                                     <MultiSelect options={LAB_TESTS} selected={labTestType} onChange={v => setField("labTestType", v)} placeholder="Select test(s)..." />
                                 </div>
                                 <div className="space-y-1.5">
@@ -907,7 +1017,7 @@ export default function ConsultationForm({
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <FieldLabel required>Investigation Type</FieldLabel>
+                                    <FieldLabel>Investigation Type</FieldLabel>
                                     <MultiSelect options={RADIOLOGY_TESTS} selected={radTestType} onChange={v => setField("radTestType", v)} placeholder="Select investigation(s)..." />
                                 </div>
                                 <div className="space-y-1.5">
@@ -972,6 +1082,47 @@ export default function ConsultationForm({
                     }
                 </button>
             </form>
+
+            {/* Skip-anything confirmation — replaces the old hard "required"
+                validation. Lets the doctor double-check critical gaps before
+                submitting, without ever blocking them. */}
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogContent className="rounded-2xl max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-base font-bold text-gray-900">
+                            Submit consultation anyway?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="text-xs text-gray-600 space-y-2.5">
+                                <p>
+                                    {pendingGaps.length === 1
+                                        ? "This item is"
+                                        : "These items are"}
+                                    {" "}still missing or incomplete:
+                                </p>
+                                <ul className="space-y-1.5">
+                                    {pendingGaps.map(gap => (
+                                        <li key={gap}
+                                            className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-amber-800">
+                                            <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />
+                                            <span className="leading-relaxed">{gap}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                        <AlertDialogCancel className="rounded-xl">Go back &amp; complete</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => { setConfirmOpen(false); doSubmit(); }}
+                            disabled={loading}
+                            className="bg-red-700 hover:bg-red-800 rounded-xl">
+                            {loading ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : "Submit anyway"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
