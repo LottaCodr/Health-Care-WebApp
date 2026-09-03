@@ -132,10 +132,49 @@ export async function getLabRequestById(id: string): Promise<LabRequest | null> 
     // Attach patient for richer UI
     const { data: patient } = await supabase
         .from("patients")
-        .select("id, name, phone, gender, birth_date, blood_group, geno_type, address, email")
+        .select("id, name, phone, gender, birth_date, blood_group, geno_type, address, email, hospital_number")
         .eq("id", (data as any).visit_id)
         .maybeSingle();
     return { ...(data as any), patients: patient ?? null } as unknown as LabRequest;
+}
+
+/**
+ * Attach patient + staff display info to lab request rows so dashboards can
+ * show hospital numbers and staff names instead of raw database IDs.
+ */
+async function enrichLabRequests(rows: any[]): Promise<any[]> {
+    if (!rows.length) return rows;
+    const supabase = await createClient();
+
+    const patientIds = [...new Set(rows.map((r) => r.visit_id ?? r.patient_id).filter(Boolean))];
+    const staffIds = [...new Set(
+        rows.flatMap((r) => [r.requested_by, r.completed_by]).filter(Boolean)
+    )];
+
+    const [patientRes, staffRes] = await Promise.all([
+        patientIds.length
+            ? supabase
+                .from("patients")
+                .select("id, name, phone, gender, birth_date, blood_group, geno_type, hospital_number")
+                .in("id", patientIds)
+            : Promise.resolve({ data: [] }),
+        staffIds.length
+            ? supabase
+                .from("staffs")
+                .select("id, name, role")
+                .in("id", staffIds)
+            : Promise.resolve({ data: [] }),
+    ]);
+
+    const patientMap = Object.fromEntries((patientRes.data ?? []).map((p: any) => [p.id, p]));
+    const staffMap = Object.fromEntries((staffRes.data ?? []).map((s: any) => [s.id, s]));
+
+    return rows.map((r) => ({
+        ...r,
+        patients: patientMap[r.visit_id ?? r.patient_id] ?? null,
+        requested_by_name: staffMap[r.requested_by]?.name ?? null,
+        completed_by_name: staffMap[r.completed_by]?.name ?? null,
+    }));
 }
 
 export async function listLabRequestsByPatient(
@@ -151,7 +190,7 @@ export async function listLabRequestsByPatient(
         .order("created_at", { ascending: false });
 
     if (error) { console.error("[lab] listByPatient:", error); return []; }
-    return data as unknown as LabRequest[];
+    return enrichLabRequests(data ?? []) as unknown as Promise<LabRequest[]>;
 }
 
 export async function listPendingLabRequests(): Promise<LabRequest[]> {
@@ -166,14 +205,7 @@ export async function listPendingLabRequests(): Promise<LabRequest[]> {
 
     if (error) { console.error("[lab] listPending:", error); return []; }
     if (!data || data.length === 0) return [];
-    // Enrich with patient details for dashboard
-    const ids = [...new Set(data.map((r: any) => r.visit_id).filter(Boolean))];
-    const { data: patients } = await supabase
-        .from("patients")
-        .select("id, name, phone, gender, birth_date, blood_group, geno_type")
-        .in("id", ids);
-    const patientMap = Object.fromEntries((patients ?? []).map((pt: any) => [pt.id, pt]));
-    return data.map((r: any) => ({ ...r, patients: patientMap[r.visit_id] ?? null })) as unknown as LabRequest[];
+    return enrichLabRequests(data) as unknown as Promise<LabRequest[]>;
 }
 
 export async function listCompletedLabRequests(): Promise<LabRequest[]> {
@@ -188,13 +220,7 @@ export async function listCompletedLabRequests(): Promise<LabRequest[]> {
 
     if (error) { console.error("[lab] listCompleted:", error); return []; }
     if (!data || data.length === 0) return [];
-    const ids = [...new Set(data.map((r: any) => r.visit_id).filter(Boolean))];
-    const { data: patients } = await supabase
-        .from("patients")
-        .select("id, name, phone, gender, birth_date, blood_group, geno_type")
-        .in("id", ids);
-    const patientMap = Object.fromEntries((patients ?? []).map((pt: any) => [pt.id, pt]));
-    return data.map((r: any) => ({ ...r, patients: patientMap[r.visit_id] ?? null })) as unknown as LabRequest[];
+    return enrichLabRequests(data) as unknown as Promise<LabRequest[]>;
 }
 
 export async function updateLabRequest(

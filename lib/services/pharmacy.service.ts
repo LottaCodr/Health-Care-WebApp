@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { Prescription, DrugInventoryItem } from "@/types/models";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 import { createPayment } from "./payment.service";
+import { createNotification } from "./notification.service";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
@@ -45,6 +46,15 @@ export async function createPrescription(
         .single();
 
     if (error) { console.error("[pharmacy] createPrescription:", error); throw error; }
+
+    // Notify pharmacy so the queue is picked up immediately.
+    await createNotification({
+        role: "Pharmacist",
+        title: "New Prescription",
+        message: `Prescription for ${input.drugName} (${input.dosage}${input.duration ? ` — ${input.duration}` : ""}) is ready for dispensing.`,
+        type: "info",
+        link: "/pharmacist/dispense",
+    });
 
     // ── Billing: when a prescription is dispensed at creation time, create a
     // pending payment so the front-desk billing queue picks it up immediately.
@@ -104,7 +114,7 @@ export async function listPendingPrescriptions(): Promise<Prescription[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("prescriptions")
-        .select("*, patients(name, phone, gender)")
+        .select("*, patients(name, phone, gender, hospital_number)")
         .eq("status", "Active")
         .eq("dispensed", false)
         .order("created_at", { ascending: false });
@@ -120,7 +130,7 @@ export async function listCompletedPrescriptionsToday(): Promise<Prescription[]>
 
     const { data, error } = await supabase
         .from("prescriptions")
-        .select("*, patients(name, phone, gender)")
+        .select("*, patients(name, phone, gender, hospital_number)")
         .eq("dispensed", true)
         .gte("dispensed_at", startOfToday.toISOString())
         .order("dispensed_at", { ascending: false });

@@ -13,6 +13,7 @@ import {
 import { useLabStore } from "@/store/lab-store";
 import { calculateAge } from "@/utils/export";
 import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { fmtDate, fmtFull } from "@/lib/utils";
 import HematologyAnalyzerReport from "./HematologyAnalyzerReport";
 
@@ -63,7 +64,7 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                         <p className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1.5">
                             Completed {fmtDate(req.completed_at)} · {fmtFull(req.completed_at)}
                             <span className="hidden sm:inline">•</span>
-                            <span className="hidden sm:inline font-mono">ID: {req.visit_id?.slice(-8).toUpperCase() ?? req.id.slice(-6).toUpperCase()}</span>
+                            <span className="hidden sm:inline font-mono">HN: {displayHospitalNumber(getPatientHospitalNumber(patient))}</span>
                         </p>
                     </div>
                 </div>
@@ -83,7 +84,7 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                             <p className="text-sm font-bold text-gray-900">{patientName}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white border border-indigo-100 text-indigo-700">
-                                    <Hash size={10} /> {req.visit_id?.slice(-8).toUpperCase() ?? "—"}
+                                    <Hash size={10} /> {displayHospitalNumber(getPatientHospitalNumber(patient))}
                                 </span>
                                 {patientAge !== null && <span className="text-xs text-gray-600">{patientAge} yrs</span>}
                                 {patientGender && <span className="text-xs text-gray-600">• {patientGender}</span>}
@@ -96,10 +97,10 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                 <div className="flex items-center gap-2 flex-wrap">
                     <PriorityBadge priority={req.priority} />
                     <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <Hash size={11} className="text-gray-400" /> Patient: <span className="font-mono font-bold">{req.visit_id?.slice(-8) ?? req.id.slice(-6)}</span>
+                        <Hash size={11} className="text-gray-400" /> Hospital No.: <span className="font-mono font-bold">{displayHospitalNumber(getPatientHospitalNumber(patient))}</span>
                     </span>
-                    {req.completed_by && (
-                        <span className="text-xs text-gray-500">By: <span className="font-mono">{req.completed_by?.slice(0, 8)}</span></span>
+                    {req.completed_by_name && (
+                        <span className="text-xs text-gray-500">By: {req.completed_by_name}</span>
                     )}
                 </div>
                 {req.notes && (
@@ -320,8 +321,8 @@ export default function LabReportsPage() {
                             </div>
                         ) : filtered.map((req: any) => {
                             const patient = req.patients ?? {};
-                            const patientName = patient?.name ?? `Patient #${req.visit_id?.slice(-6) ?? req.id.slice(-6)}`;
-                            const patientIdShort = req.visit_id?.slice(-6).toUpperCase() ?? req.id.slice(-6).toUpperCase();
+                            const patientName = patient?.name ?? "Patient";
+                            const patientHospitalNumber = getPatientHospitalNumber(patient);
                             return (
                                 <button key={req.id} onClick={() => setField("reportSelected", selected?.id === req.id ? null : req)}
                                     className={`w-full text-left p-4 rounded-2xl border transition-all
@@ -342,7 +343,7 @@ export default function LabReportsPage() {
                                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700">
                                                     <User size={11} className="text-gray-400" /> {patientName}
                                                 </span>
-                                                <span className="text-xs text-gray-400 font-mono bg-white border border-gray-200 px-1.5 py-0.5 rounded">#{patientIdShort}</span>
+                                                <span className="text-xs text-gray-400 font-mono bg-white border border-gray-200 px-1.5 py-0.5 rounded">{displayHospitalNumber(patientHospitalNumber)}</span>
                                             </div>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-xs text-gray-400">{fmtDate(req.completed_at)}</span>

@@ -368,7 +368,7 @@ export default function SecurityAudit() {
                                         <div className="mt-4 pt-4 border-t border-gray-200">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                                 <div>
-                                                    <p><strong>User ID:</strong> {event.userId || 'N/A'}</p>
+                                                    <p><strong>User:</strong> {event.email?.split("@")[0] || 'N/A'}</p>
                                                     <p><strong>Email:</strong> {event.email || 'N/A'}</p>
                                                     <p><strong>IP Address:</strong> {event.ip || 'N/A'}</p>
                                                 </div>

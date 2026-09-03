@@ -370,13 +370,13 @@ export interface AuditLog {
 
 export interface Notification {
     id: string;
-    recipient_id: string;
-    role?: string;
+    recipient_id?: string | null;
+    role?: string | null;
     title: string;
     message: string;
     type: "info" | "alert" | "success" | "warning";
     read: boolean;
-    link?: string;
+    link?: string | null;
     created_at: string;
 }
 

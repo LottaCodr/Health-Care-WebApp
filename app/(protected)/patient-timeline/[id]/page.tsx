@@ -24,6 +24,7 @@ import {
     X, Baby, Briefcase, ChevronRight,
 } from "lucide-react";
 import { fmtFull, calcAge, hasActualAllergy } from "@/lib/utils";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PatientRecordDownload, { DownloadOptions } from "@/components/patients/patient-record-download";
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
@@ -420,8 +421,9 @@ export default function PatientTimelinePage() {
     const [copiedId, setCopiedId] = useState(false);
 
     const handleCopyPatientId = () => {
-        if (!patient?.id) return;
-        navigator.clipboard.writeText(patient.id);
+        const hospitalNumber = getPatientHospitalNumber(patient);
+        if (!hospitalNumber) return;
+        navigator.clipboard.writeText(hospitalNumber);
         setCopiedId(true);
         setTimeout(() => setCopiedId(false), 2000);
     };
@@ -472,7 +474,7 @@ export default function PatientTimelinePage() {
                 description: desc || "Clinical consultation and examination recorded.",
                 timestamp: c.created_at ?? c.consultation_date ?? c.startTime,
                 status: c.status ?? "Completed",
-                actor: c.staffs?.name ? `Dr. ${c.staffs.name}` : (c.doctor_id ? `Doctor ID #${c.doctor_id.slice(-6)}` : "Attending Physician"),
+                actor: c.staffs?.name ? `Dr. ${c.staffs.name}` : "Attending Physician",
                 meta: c.referred_to ? `Referred → ${c.referred_to.replace(/-/g, " ")}` : undefined,
                 details: {
                     items,
@@ -503,7 +505,7 @@ export default function PatientTimelinePage() {
                     timestamp: r.created_at,
                     status: r.status ?? "pending",
                     priority: r.priority ?? "routine",
-                    actor: r.completed_by ? `Lab Scientist #${r.completed_by.slice(-6)}` : "Laboratory Department",
+                    actor: r.completed_by_name ?? "Laboratory Department",
                     meta: r.completed_at ? `Completed: ${fmtFull(r.completed_at)}` : `Priority: ${r.priority ?? "routine"}`,
                     details: {
                         items,
@@ -591,7 +593,11 @@ export default function PatientTimelinePage() {
                 description: n.description || "Nursing assessment and care recorded.",
                 timestamp: n.created_at,
                 status: n.status ?? "Completed",
-                actor: n.assigned_nurse ?? n.completed_by ? `Nurse ${n.assigned_nurse || n.completed_by}` : "Nursing Unit",
+                actor: n.completed_by_name
+                    ? `Nurse ${n.completed_by_name}`
+                    : n.assigned_nurse_name
+                        ? `Nurse ${n.assigned_nurse_name}`
+                        : "Nursing Unit",
                 meta: isVitals ? "Vitals Charted" : (n.action_type ?? "Nursing"),
                 details: {
                     items,
@@ -619,7 +625,7 @@ export default function PatientTimelinePage() {
                 description: `Amount: ${amountFormatted} · Category: ${p.category || "Service"} · Invoice: ${p.invoice_no || "Generated"}`,
                 timestamp: p.created_at ?? p.processed_date,
                 status: isPaid ? "Paid" : (p.status ?? "Pending"),
-                actor: p.processed_by ? `Cashier #${p.processed_by.slice(-6)}` : "Front Desk Cashier",
+                actor: p.processed_by_name ?? "Front Desk Cashier",
                 meta: amountFormatted,
                 details: {
                     items,
@@ -770,7 +776,7 @@ export default function PatientTimelinePage() {
                     <AlertCircle size={28} />
                 </div>
                 <h2 className="text-lg font-bold text-gray-800">Patient Record Not Found</h2>
-                <p className="text-xs text-gray-500 mt-1 max-w-sm">The patient ID requested does not exist or has been removed from the system.</p>
+                <p className="text-xs text-gray-500 mt-1 max-w-sm">The requested patient record does not exist or has been removed from the system.</p>
                 <button
                     type="button"
                     onClick={() => router.back()}
@@ -851,15 +857,15 @@ export default function PatientTimelinePage() {
                                     )}
                                 </div>
 
-                                {/* Patient ID with copy button */}
+                                {/* Hospital number with copy button */}
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-gray-100 text-gray-700 font-mono text-[11px] font-bold">
-                                        ID: {patient.id?.slice(0, 12)}…
+                                        HN: {displayHospitalNumber(patient.hospital_number)}
                                         <button
                                             type="button"
                                             onClick={handleCopyPatientId}
                                             className="text-gray-400 hover:text-blue-600 transition-colors ml-0.5"
-                                            title="Copy full patient ID"
+                                            title="Copy hospital number"
                                         >
                                             {copiedId ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
                                         </button>

@@ -207,7 +207,7 @@ export default function ReportsPage() {
                         <div key={b.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs">
                             <span className="font-bold text-gray-800">{fmtFull(b.timestamp)}</span>
                             <span className="truncate text-gray-600">{(b.changes as any)?.patient_name ?? "Patient"}: {(b.changes as any)?.reason}</span>
-                            <Badge variant="outline">{b.user_id.slice(0, 8)}</Badge>
+                            <Badge variant="outline">{b.staff_name ?? (b.changes as any)?.staff_email ?? "Unknown staff"}</Badge>
                         </div>
                     ))}
                 </div>

@@ -12,6 +12,7 @@ import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
 import { useCreateSpecimen, useSpecimens, useUpdateSpecimen } from "@/hooks/emr/use-clinical-modules";
 import { usePendingLabRequests } from "@/hooks/emr/use-lab";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { code39Svg, generateSpecimenBarcode } from "@/lib/clinical/barcode";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -100,7 +101,7 @@ export default function SpecimenBoard() {
                         <option value="">— Select patient (pending lab requests) —</option>
                         {(pendingRequests as any[]).map((r) => (
                             <option key={r.id} value={r.visit_id ?? r.patient_id}>
-                                {r.patients?.name ?? r.visit_id} — {String(r.test_type).replace(/^\[RADIOLOGY\]\s*/i, "")}
+                                {r.patients?.name ?? displayHospitalNumber(getPatientHospitalNumber(r.patients))} — {String(r.test_type).replace(/^\[RADIOLOGY\]\s*/i, "")}
                             </option>
                         ))}
                     </select>
@@ -145,7 +146,7 @@ export default function SpecimenBoard() {
                                 <span className="ml-2 font-mono text-[10px] text-gray-400">{s.barcode}</span>
                             </p>
                             <p className="truncate text-xs text-gray-500">
-                                Patient: {(s as any).patients?.name ?? s.patient_id}
+                                Patient: {(s as any).patients?.name ?? displayHospitalNumber(getPatientHospitalNumber((s as any).patients))}
                                 {s.collection_at ? ` · collected ${fmtFull(s.collection_at)}` : ""}
                             </p>
                             {s.rejection_reason && <p className="text-xs font-semibold text-red-600">Rejected: {s.rejection_reason}</p>}

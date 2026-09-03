@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createNotification } from "./notification.service";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
@@ -11,7 +12,7 @@ import { logAction } from "./audit.service";
 const SELECT_WITH_PATIENT = `
     *,
     patients!nursing_actions_patient_id_fkey(
-        id, name, phone, gender, birth_date, blood_group, allergies
+        id, name, phone, gender, birth_date, blood_group, allergies, hospital_number
     )
 `.trim();
 
@@ -50,7 +51,39 @@ export async function createNursingAction(input: CreateNursingActionInput){
         .single();
 
     if (error) { console.error("[nursing] create:", error); throw error; }
+
+    // Notify the assigned nurse, or the nursing team when unassigned.
+    await createNotification({
+        recipient_id: input.assignedNurse ?? undefined,
+        role: input.assignedNurse ? undefined : "Nurse",
+        title: "New Nursing Task",
+        message: `Nursing task (${input.actionType ?? "care"}) assigned${input.description ? ` — ${input.description}` : ""}.`,
+        type: "info",
+        link: "/nurse/queue",
+    });
+
     return data;
+}
+
+/** Attach staff display names so UIs never have to expose staff IDs. */
+async function enrichNursingStaff(rows: any[]): Promise<any[]> {
+    if (!rows.length) return rows;
+    const supabase = await createClient();
+    const staffIds = [...new Set(
+        rows.map((r) => r.completed_by ?? r.assigned_nurse).filter(Boolean)
+    )];
+    if (staffIds.length) {
+        const { data: staff } = await supabase
+            .from("staffs")
+            .select("id, name, role")
+            .in("id", staffIds);
+        const staffMap = Object.fromEntries((staff ?? []).map((s: any) => [s.id, s]));
+        rows.forEach((r) => {
+            r.completed_by_name = staffMap[r.completed_by]?.name ?? null;
+            r.assigned_nurse_name = staffMap[r.assigned_nurse]?.name ?? null;
+        });
+    }
+    return rows;
 }
 
 export async function getNursingActionById(id: string){
@@ -63,7 +96,8 @@ export async function getNursingActionById(id: string){
         .single();
 
     if (error) { console.error("[nursing] getById:", error); return null; }
-    return data;
+    const [row] = await enrichNursingStaff(data ? [data] : []);
+    return row ?? null;
 }
 
 export async function listNursingActionsByPatient(patientId: string){
@@ -76,7 +110,7 @@ export async function listNursingActionsByPatient(patientId: string){
         .order("created_at", { ascending: false });
 
     if (error) { console.error("[nursing] listByPatient:", error); return []; }
-    return data;
+    return enrichNursingStaff(data ?? []);
 }
 
 export async function listPendingNursingActions(){
@@ -89,7 +123,7 @@ export async function listPendingNursingActions(){
         .order("created_at", { ascending: true });   // oldest first → FIFO
 
     if (error) { console.error("[nursing] listPending:", error); return []; }
-    return data;
+    return enrichNursingStaff(data ?? []);
 }
 
 export async function listCompletedNursingActions(){
@@ -104,7 +138,7 @@ export async function listCompletedNursingActions(){
         .order("completion_time", { ascending: false });
 
     if (error) { console.error("[nursing] listCompleted:", error); return []; }
-    return data;
+    return enrichNursingStaff(data ?? []);
 }
 
 export async function updateNursingAction(id: string, input: UpdateNursingActionInput){

@@ -289,7 +289,7 @@ export default function NurseDashboard() {
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <p className="text-xs font-bold text-gray-700 truncate">
-                                            {t.patients?.name ?? `Patient #${t.patient_id?.slice(-6) ?? "—"}`}
+                                            {t.patients?.name ?? "Unknown patient"}
                                         </p>
                                         {t.patient_id && (
                                             <AttendantPill

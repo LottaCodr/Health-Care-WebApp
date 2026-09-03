@@ -232,7 +232,7 @@ function PatientCard({ patient, allergies }: { patient: any; allergies: string }
         .join(" · ") || "None known";
 
     const fields = [
-        { label: "Patient ID",   value: patient.id },
+        { label: "Hospital No.", value: patient.hospital_number ?? "—" },
         { label: "Gender",       value: patient.gender },
         { label: "Date of Birth",value: patient.birth_date ? fmtDate(patient.birth_date) : "—" },
         { label: "Blood Group",  value: patient.blood_group  || "—" },
@@ -956,7 +956,7 @@ function buildPrintHTML(
         .join(" · ") || "None known";
 
     const patientFields: [string, string][] = [
-        ["Patient ID",   patient.id],
+        ["Hospital No.", patient.hospital_number ?? "—"],
         ["Gender",       patient.gender],
         ["Date of Birth",patient.birth_date ? fmtDate(patient.birth_date) : "—"],
         ["Blood Group",  patient.blood_group  || "—"],

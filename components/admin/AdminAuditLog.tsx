@@ -24,6 +24,10 @@ interface AuditEntry {
     entity_id: string;
     changes: Record<string, any> | null;
     timestamp: string;
+    /** Enriched by listAuditLogs so the UI shows names, never staff IDs. */
+    staff_name?: string | null;
+    staff_email?: string | null;
+    staff_role?: string | null;
 }
 
 const ACTION_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
@@ -189,12 +193,14 @@ export default function AdminAuditLog() {
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <p className="text-sm font-bold text-gray-800 capitalize">{log.entity_type}</p>
-                                        <p className="text-xs text-gray-400 font-mono">#{log.entity_id?.slice(0, 8)}</p>
+                                        <p className="text-xs text-gray-400 font-mono">
+                                            {log.entity_type?.toLowerCase() === "patient" ? "Patient record" : `#${log.entity_id?.slice(0, 8)}`}
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-3 mt-0.5">
                                         <div className="flex items-center gap-1">
                                             <User size={10} className="text-gray-400" />
-                                            <p className="text-[10px] text-gray-400 font-mono">{log.user_id?.slice(0, 8)}</p>
+                                            <p className="text-[10px] text-gray-400">{log.staff_name ?? (log.staff_email ?? "System")}</p>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Clock size={10} className="text-gray-400" />

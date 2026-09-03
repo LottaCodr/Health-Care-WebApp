@@ -4,6 +4,7 @@ import React from "react";
 import { Patient } from "@/types/models";
 import { StatusBadge } from "./StatusBadge";
 import { hasActualAllergy } from "@/lib/utils";
+import { displayHospitalNumber } from "@/lib/hospital-number";
 import { Mail, Phone, User, Droplets, MapPin, AlertTriangle } from "lucide-react";
 
 export function PatientInfoCard({ patient }: { patient: Patient }) {
@@ -16,7 +17,7 @@ export function PatientInfoCard({ patient }: { patient: Patient }) {
                     </div>
                     <div>
                         <h3 className="text-2xl font-black text-gray-900 tracking-tight">{patient.name}</h3>
-                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">ID: {patient.id.substring(0, 12)}...</p>
+                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">HN: {displayHospitalNumber(patient.hospital_number)}</p>
                     </div>
                 </div>
                 <StatusBadge status={patient.status} />

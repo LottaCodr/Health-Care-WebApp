@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { useAllPatients } from "@/hooks/emr/use-patients";
 import { useRoleProtection } from "@/lib/role-utils";
 import { hasActualAllergy, fmtDate } from "@/lib/utils";
+import { displayHospitalNumber } from "@/lib/hospital-number";
 import Link from "next/link";
 import { UserRole } from "@/types/models";
 import {
@@ -138,7 +139,7 @@ function PatientRow({ patient }: { patient: any }) {
                     </div>
                     <div className="min-w-0">
                         <p className="text-sm font-bold text-gray-900 truncate">{patient.name}</p>
-                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">{patient.id?.slice(0, 8).toUpperCase()}</p>
+                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">{displayHospitalNumber(patient.hospital_number)}</p>
                     </div>
                 </div>
             </td>

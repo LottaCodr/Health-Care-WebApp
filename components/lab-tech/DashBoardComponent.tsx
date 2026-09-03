@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { fmtDate, fmtFull, fmtTime } from "@/lib/utils";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { useLabStore } from "@/store/lab-store";
 import TestTemplateForm from "./TestTemplateForm";
 import { calculateAge } from "@/utils/export";
@@ -209,13 +210,13 @@ export default function LabTechDashboard() {
                         }).map((req: any) => {
                             const isExpanded    = activeId === req.id;
                             const patient = req.patients ?? {};
-                            const patientName   = patient?.name ?? req.patient_name ?? `Patient #${req.visit_id?.slice(-6) ?? req.id.slice(-6)}`;
+                            const patientName   = patient?.name ?? req.patient_name ?? "Patient";
                             const patientPhone = patient?.phone;
                             const patientGender = patient?.gender;
                             const patientAge = patient?.birth_date ? calculateAge(patient.birth_date) : null;
-                            const patientIdShort = req.visit_id ? `#${req.visit_id.slice(-8).toUpperCase()}` : `#${req.id.slice(-6).toUpperCase()}`;
+                            const patientHospitalNumber = getPatientHospitalNumber(patient);
                             const patientBg = patient?.blood_group;
-                            const requestedByName = req.staffs?.name ?? null;
+                            const requestedByName = req.requested_by_name ?? req.staffs?.name ?? null;
                             const elapsed       = timeAgo(req.created_at);
 
                             return (
@@ -232,7 +233,7 @@ export default function LabTechDashboard() {
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <h3 className="text-sm font-bold text-gray-900 truncate">{patientName}</h3>
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-[10px] font-mono font-bold text-gray-600">
-                                                        <Hash size={10} /> {patientIdShort}
+                                                        <Hash size={10} /> {displayHospitalNumber(patientHospitalNumber)}
                                                     </span>
                                                     <PriorityBadge priority={req.priority} />
                                                 </div>
@@ -304,7 +305,7 @@ export default function LabTechDashboard() {
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Activity size={14} className="text-indigo-600" />
                                                 <p className="text-xs font-black uppercase tracking-widest text-indigo-700">Enter Structured Result — {req.test_type}</p>
-                                                <span className="ml-auto text-xs text-gray-400 font-mono">{patientIdShort} • {patientName}</span>
+                                                <span className="ml-auto text-xs text-gray-400 font-mono">{displayHospitalNumber(patientHospitalNumber)} • {patientName}</span>
                                             </div>
                                             <TestTemplateForm
                                                 testType={req.test_type ?? ""}
@@ -343,8 +344,8 @@ export default function LabTechDashboard() {
                     <div className="px-4 sm:px-6 py-4 space-y-3 max-h-[520px] overflow-y-auto">
                         {completed.slice(0, 20).map((req: any) => {
                             const patient = req.patients ?? {};
-                            const patientName = patient?.name ?? req.patient_name ?? `Test #${req.id?.slice(-6)}`;
-                            const patientIdShort = req.visit_id ? `#${req.visit_id.slice(-8).toUpperCase()}` : `#${req.id.slice(-6)}`;
+                            const patientName = patient?.name ?? req.patient_name ?? "Patient";
+                            const patientHospitalNumber = getPatientHospitalNumber(patient);
                             return (
                                 <div key={req.id} className="flex items-start gap-3 p-3.5 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:border-green-100 hover:shadow-sm transition-all">
                                     <div className="w-8 h-8 rounded-xl bg-green-500 flex items-center justify-center shrink-0 mt-0.5">
@@ -353,7 +354,7 @@ export default function LabTechDashboard() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <p className="text-xs font-bold text-gray-800">{req.test_type}</p>
-                                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-500">{patientIdShort}</span>
+                                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-500">{displayHospitalNumber(patientHospitalNumber)}</span>
                                             <PriorityBadge priority={req.priority} />
                                         </div>
                                         <p className="text-xs font-semibold text-gray-700 mt-1 truncate">{patientName}</p>

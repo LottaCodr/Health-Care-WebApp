@@ -110,7 +110,7 @@ export async function listConsultationsByDoctor(
     // Join the patient record so dashboards can show real names instead of ids.
     const withPatient = await supabase
         .from("consultations")
-        .select("*, patients(name, gender, birth_date, phone)")
+        .select("*, patients(name, gender, birth_date, phone, hospital_number)")
         .eq("doctor_id", doctorId)
         .order("created_at", { ascending: false });
 

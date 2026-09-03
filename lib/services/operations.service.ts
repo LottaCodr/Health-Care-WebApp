@@ -21,7 +21,7 @@ export async function listSpecimens(opts: {
 }): Promise<LabSpecimen[]> {
     await requireStaff();
     const supabase = await createClient();
-    let q = supabase.from("lab_specimens").select("*, patients(name)").order("created_at", { ascending: false });
+    let q = supabase.from("lab_specimens").select("*, patients(name, hospital_number)").order("created_at", { ascending: false });
     if (opts.patientId) q = q.eq("patient_id", opts.patientId);
     if (opts.status) q = q.eq("status", opts.status);
     const { data, error } = await q;
@@ -99,7 +99,7 @@ export async function getWardBoard(): Promise<WardOccupancy[]> {
         supabase.from("wards").select("*").eq("is_active", true).order("name"),
         supabase
             .from("patient_admissions")
-            .select("id, patient_id, ward_name, bed_number, patients(name)")
+            .select("id, patient_id, ward_name, bed_number, patients(name, hospital_number)")
             .eq("status", "active"),
     ]);
     const wards = (wardsRes.data ?? []) as unknown as Ward[];
@@ -291,7 +291,7 @@ export async function withdrawConsent(id: string, notes?: string): Promise<Conse
 export async function listDeathCertificates(patientId?: string): Promise<DeathCertificate[]> {
     await requireStaff();
     const supabase = await createClient();
-    let q = supabase.from("death_certificates").select("*, patients(name)").order("date_of_death", { ascending: false });
+    let q = supabase.from("death_certificates").select("*, patients(name, hospital_number)").order("date_of_death", { ascending: false });
     if (patientId) q = q.eq("patient_id", patientId);
     const { data, error } = await q;
     if (error) { console.error("[certificate] death list:", error); return []; }

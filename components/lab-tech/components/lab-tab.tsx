@@ -20,6 +20,7 @@ import {
 import { Patient } from "@/types/models";
 import { AILabInterpretation } from "@/components/ai/AIComponents";
 import TestTemplateForm from "../TestTemplateForm";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { calculateAge } from "@/utils/export";
 import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
 import { fmtDate, fmtFull } from "@/lib/utils";
@@ -143,7 +144,7 @@ function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
                                 <span className="text-xs text-gray-500 flex items-center gap-1">
                                     <Calendar size={11} className="text-gray-400" /> {completedDate} {completedTime && `• ${completedTime}`}
                                 </span>
-                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 text-gray-600">#{req.visit_id?.slice(-6) ?? req.id?.slice(-6)}</span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 text-gray-600">{displayHospitalNumber(getPatientHospitalNumber(patient))}</span>
                             </div>
                         </div>
                     </div>
@@ -644,7 +645,7 @@ export default function LabTab({ patient, userRole }: Props) {
                     <p className="text-sm font-bold text-gray-900 truncate">{patient.name}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                         <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white border border-indigo-100 text-indigo-700">
-                            <Hash size={10} /> {patient.id?.slice(-8).toUpperCase() ?? "—"}
+                            <Hash size={10} /> {displayHospitalNumber(getPatientHospitalNumber(patient))}
                         </span>
                         {patient.gender && <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patient.gender}</span>}
                         {patient.birth_date && <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{calculateAge(patient.birth_date)} yrs</span>}

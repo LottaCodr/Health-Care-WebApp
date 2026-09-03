@@ -8,6 +8,7 @@ import {
     useUpdatePatientStatus,
 } from "@/hooks/emr/use-emr";
 import { stripRadiologyPrefix } from "@/lib/utils";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import {
     Radio, CheckCircle2, Loader2, X, BadgeInfo,
 } from "lucide-react";
@@ -131,7 +132,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                         <div>
                             <p className="text-sm font-bold text-gray-900">File Radiology Report</p>
                             <p className="text-xs text-gray-400 mt-0.5">
-                                {stripRadiologyPrefix(req.test_type)} · Patient #{req.visit_id?.slice(-6) ?? "—"}
+                                {stripRadiologyPrefix(req.test_type)} · Hospital No. {displayHospitalNumber(getPatientHospitalNumber(req.patients))}
                             </p>
                         </div>
                     </div>

@@ -9,6 +9,7 @@ import { LoadingSkeleton, SuccessAlert } from "@/components/emr";
 import { Beaker, Clock, User, Calendar, FileText, AlertTriangle, Phone, Hash, Droplets, FlaskConical } from "lucide-react";
 import TestTemplateForm from "./TestTemplateForm";
 import { findTemplate } from "./test-templates";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { calculateAge } from "@/utils/export";
 import { fmtDate } from "@/lib/utils";
 
@@ -94,7 +95,7 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h3 className="text-base font-bold text-gray-900">{patientName}</h3>
                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-indigo-100 text-[10px] font-mono font-bold text-indigo-700">
-                                            <Hash size={10} /> #{(request.visit_id ?? request.patient_id ?? "").slice(-8).toUpperCase()}
+                                            <Hash size={10} /> {displayHospitalNumber(getPatientHospitalNumber(patient))}
                                         </span>
                                         {patient?.gender && (
                                             <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patient.gender}</span>
@@ -162,8 +163,8 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                         {/* Meta strip - properly arranged */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
                             <div className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Patient ID</p>
-                                <p className="text-xs font-mono font-bold text-gray-800 mt-1">#{(request.visit_id ?? request.patient_id ?? "—").slice(-8).toUpperCase()}</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Hospital No.</p>
+                                <p className="text-xs font-mono font-bold text-gray-800 mt-1">{displayHospitalNumber(getPatientHospitalNumber(patient))}</p>
                             </div>
                             <div className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Requested</p>

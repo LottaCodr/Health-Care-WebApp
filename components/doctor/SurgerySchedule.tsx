@@ -7,6 +7,7 @@ import { Scissors } from "lucide-react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
 import { useSurgerySchedule, useUpdateSurgery } from "@/hooks/emr/use-clinical-modules";
+import { displayHospitalNumber } from "@/lib/hospital-number";
 import { fmtFull } from "@/lib/utils";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -62,7 +63,7 @@ export default function SurgerySchedule() {
                                     <Scissors size={15} className="text-rose-500" /> {s.procedure_name}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                    {s.patients?.name ?? s.patient_id}
+                                    {s.patients?.name ?? displayHospitalNumber(s.patients?.hospital_number)}
                                     {s.scheduled_at ? ` · ${fmtFull(s.scheduled_at)}` : ""}
                                     {s.theatre ? ` · ${s.theatre}` : ""}
                                 </p>

@@ -4,6 +4,7 @@ import React, { useRef, useState } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import PatientRecordDownload, { DownloadOptions } from "@/components/patients/patient-record-download";
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
+import { displayHospitalNumber } from "@/lib/hospital-number";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -194,7 +195,7 @@ export default function PatientRecordPage({ patient }: Props) {
                         </div>
                         <div className="text-right text-xs text-gray-500">
                             <p>Generated: {new Date().toLocaleString("en-GB")}</p>
-                            <p>Record ID: {patient.id?.slice(0, 8)?.toUpperCase()}</p>
+                            <p>Hospital No.: {displayHospitalNumber(patient.hospital_number)}</p>
                         </div>
                     </div>
                 </div>
@@ -207,7 +208,7 @@ export default function PatientRecordPage({ patient }: Props) {
                         </div>
                         <div>
                             <h3 className="text-lg font-black text-gray-900">{patient.name}</h3>
-                            <p className="text-xs text-gray-400 font-mono mt-0.5">Patient ID: {patient.id}</p>
+                            <p className="text-xs text-gray-400 font-mono mt-0.5">Hospital No.: {displayHospitalNumber(patient.hospital_number)}</p>
                             {patient.status && (
                                 <span className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />

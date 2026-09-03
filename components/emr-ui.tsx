@@ -7,6 +7,7 @@ import React from "react";
 import Link from "next/link";
 import { Patient, PatientStatus, Consultation, Payment } from "@/types/models";
 import { hasActualAllergy, fmtDate, fmtFull } from "@/lib/utils";
+import { displayHospitalNumber } from "@/lib/hospital-number";
 import {
   User, Phone, Mail, MapPin, Droplets, AlertCircle,
   Stethoscope, ChevronRight, CheckCircle2, Clock,
@@ -67,8 +68,8 @@ function InfoItem({ icon: Icon, label, value, red }: {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function PatientInfoCard({ patient }: { patient: Patient | any }) {
-  const id = patient.id ?? patient.$id ?? "—";
   const name = patient.name ?? "Unknown Patient";
+  const hospitalNumber = patient.hospital_number ?? patient.hospitalNumber ?? null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -81,7 +82,7 @@ export function PatientInfoCard({ patient }: { patient: Patient | any }) {
           </div>
           <div>
             <p className="text-sm font-bold text-gray-900 leading-tight">{name}</p>
-            <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {id.slice(-8)}</p>
+            <p className="text-[10px] text-gray-400 font-mono mt-0.5">HN: {displayHospitalNumber(hospitalNumber)}</p>
           </div>
         </div>
         <StatusBadge status={patient.status} />
