@@ -341,7 +341,7 @@ export default function SecurityAudit() {
                                                     </Badge>
                                                 </div>
                                                 <p className="text-sm text-gray-600">
-                                                    {new Date(event.timestamp).toLocaleString()}
+                                                    {fmtFull(event.timestamp)}
                                                 </p>
                                             </div>
                                         </div>

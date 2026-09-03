@@ -25,19 +25,9 @@ import {
     Clock, Loader2,
 } from "lucide-react";
 import { Patient } from "@/types/models";
-import { hasActualAllergy } from "@/lib/utils";
+import { hasActualAllergy, fmt, fmtFull } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmt(iso?: string) {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function fmtDt(iso?: string) {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
 
 // ─── Print styles injected into <head> ───────────────────────────────────────
 
@@ -246,7 +236,7 @@ export default function PatientRecordPage({ patient }: Props) {
                 {vitalsAction && (
                     <Section title="Latest Vitals" icon={HeartPulse} color="text-teal-600">
                         <div className="flex items-center gap-3 mb-3">
-                            <p className="text-xs text-gray-400">Recorded {fmtDt(vitalsAction.completion_time ?? vitalsAction.created_at)}</p>
+                            <p className="text-xs text-gray-400">Recorded {fmtFull(vitalsAction.completion_time ?? vitalsAction.created_at)}</p>
                         </div>
                         <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl border border-gray-100 px-4 py-3 font-mono">
                             {vitalsAction.description}
@@ -263,7 +253,7 @@ export default function PatientRecordPage({ patient }: Props) {
                             {consultations.map((c: any) => (
                                 <div key={c.id} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                                     <div className="flex items-center justify-between mb-2">
-                                        <p className="text-xs font-black uppercase tracking-widest text-gray-400">{fmtDt(c.created_at ?? c.consultation_date)}</p>
+                                        <p className="text-xs font-black uppercase tracking-widest text-gray-400">{fmtFull(c.created_at ?? c.consultation_date)}</p>
                                         {c.status && (
                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full
                                                 ${c.status === "Completed" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>

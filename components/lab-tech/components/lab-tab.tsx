@@ -22,6 +22,7 @@ import { AILabInterpretation } from "@/components/ai/AIComponents";
 import TestTemplateForm from "../TestTemplateForm";
 import { calculateAge } from "@/utils/export";
 import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
+import { fmtDate, fmtFull } from "@/lib/utils";
 
 // ─── Priority badge ───────────────────────────────────────────────────────────
 
@@ -120,8 +121,8 @@ function StructuredResultDisplay({ result }: { result?: string }) {
 
 function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
     const age = patient?.birth_date ? calculateAge(patient.birth_date) : undefined;
-    const completedDate = req.completed_at ? new Date(req.completed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
-    const completedTime = req.completed_at ? new Date(req.completed_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
+    const completedDate = req.completed_at ? fmtDate(req.completed_at) : "—";
+    const completedTime = req.completed_at ? fmtFull(req.completed_at) : "";
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
             <div className="px-5 py-4 border-b border-gray-50 bg-gradient-to-r from-green-50/50 to-white">
@@ -207,7 +208,7 @@ function PendingCard({ req }: { req: any }) {
                             <PriorityBadge priority={req.priority} />
                         </div>
                         <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
-                            <Calendar size={11} /> Requested {req.created_at ? new Date(req.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                            <Calendar size={11} /> Requested {req.created_at ? fmtDate(req.created_at) : "—"}
                             {req.notes && <span className="text-blue-600 italic hidden sm:inline">• &quot;{req.notes}&quot;</span>}
                         </p>
                     </div>
@@ -278,7 +279,7 @@ function LabTechPendingRow({ req, patientId, patient, onSubmitted }: { req: any;
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-0.5">
                         <p className="text-xs text-gray-400 flex items-center gap-1">
-                            <Calendar size={11} /> {req.created_at ? new Date(req.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                            <Calendar size={11} /> {req.created_at ? fmtDate(req.created_at) : "—"}
                         </p>
                         {req.notes && <p className="text-xs text-blue-600 italic line-clamp-1">&quot;{req.notes}&quot;</p>}
                     </div>

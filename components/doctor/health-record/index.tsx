@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { useAllPatients } from "@/hooks/emr/use-patients";
 import { useRoleProtection } from "@/lib/role-utils";
-import { hasActualAllergy } from "@/lib/utils";
+import { hasActualAllergy, fmtDate } from "@/lib/utils";
 import Link from "next/link";
 import { UserRole } from "@/types/models";
 import {
@@ -35,9 +35,6 @@ function isChild(dob?: string): boolean {
     return y < 13;
 }
 
-function fmt(iso?: string): string {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 const STATUS_CFG: Record<string, { bg: string; text: string; dot: string }> = {
@@ -76,7 +73,7 @@ function exportToPDF(patients: any[]) {
             <td>${p.blood_group ?? "—"} / ${p.geno_type ?? "—"}</td>
             <td>${p.allergies ?? "None"}</td>
             <td>${(p.status ?? "").replace(/-/g, " ")}</td>
-            <td>${fmt(p.created_at)}</td>
+            <td>${fmtDate(p.created_at)}</td>
         </tr>`).join("");
     printWin.document.write(`
         <html><head><title>Patient Health Records — Nile Valley Hospital</title>
@@ -110,14 +107,14 @@ function exportToCSV(patients: any[]) {
         p.name ?? "",
         calcAge(p.birth_date),
         p.gender ?? "",
-        fmt(p.birth_date),
+        fmtDate(p.birth_date),
         p.phone ?? "",
         p.email ?? "",
         p.blood_group ?? "",
         p.geno_type ?? "",
         (p.allergies ?? "").replace(/,/g, ";"),
         (p.status ?? "").replace(/-/g, " "),
-        fmt(p.created_at),
+        fmtDate(p.created_at),
     ].map(v => `"${v}"`).join(","));
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -149,7 +146,7 @@ function PatientRow({ patient }: { patient: any }) {
             </td>
             <td className="px-4 py-3.5">
                 <p className="text-sm font-semibold text-gray-700">{calcAge(patient.birth_date)}</p>
-                <p className="text-[10px] text-gray-400">{fmt(patient.birth_date)}</p>
+                <p className="text-[10px] text-gray-400">{fmtDate(patient.birth_date)}</p>
             </td>
             <td className="px-4 py-3.5 text-sm font-medium text-gray-600 capitalize">{patient.gender ?? "—"}</td>
             <td className="px-4 py-3.5">
@@ -173,7 +170,7 @@ function PatientRow({ patient }: { patient: any }) {
             <td className="px-4 py-3.5">
                 <StatusBadge status={patient.status} />
             </td>
-            <td className="px-4 py-3.5 text-xs font-medium text-gray-500">{fmt(patient.created_at)}</td>
+            <td className="px-4 py-3.5 text-xs font-medium text-gray-500">{fmtDate(patient.created_at)}</td>
             <td className="px-4 py-3.5">
                 <Link href={`/doctor/health-records/${patient.id}`}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-gray-200 hover:border-red-200 hover:bg-red-50 hover:text-red-700 text-xs font-bold text-gray-600 transition-all opacity-0 group-hover:opacity-100 shadow-sm">

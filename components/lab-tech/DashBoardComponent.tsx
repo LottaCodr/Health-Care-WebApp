@@ -12,6 +12,7 @@ import {
     ChevronDown, ChevronUp, Activity, Microscope,
 } from "lucide-react";
 import { toast } from "sonner";
+import { fmtDate, fmtFull } from "@/lib/utils";
 import { useLabStore } from "@/store/lab-store";
 import TestTemplateForm from "./TestTemplateForm";
 import { calculateAge } from "@/utils/export";
@@ -28,13 +29,8 @@ function timeAgo(iso?: string) {
     return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
 }
 
-function fmtTime(iso?: string) {
-    if (!iso) return "";
-    return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-}
-function fmtDate(iso?: string) {
     if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    return fmtDate(iso);
 }
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {

@@ -22,7 +22,7 @@ function timeAgo(iso: string) {
     if (mins < 1)   return "Just now";
     if (mins < 60)  return `${mins}m ago`;
     if (hours < 24) return `${hours}h ago`;
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    return fmtDate(iso);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

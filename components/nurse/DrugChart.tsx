@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useNurseChartsStore } from "@/store/nurse-chart-store";
+import { fmtFull } from "@/lib/utils";
 import type { DrugRoute, DrugFrequency, AdminStatus } from "@/store/nurse-chart-store";
 import {
     useDrugChartByPatient,
@@ -364,7 +365,7 @@ function DrugRow({ drug, patientId, staffId }: DrugRowProps) {
             {expanded && drug.drug_administration_records?.map((rec: any) => (
                 <tr key={rec.id} className="bg-teal-50/40 border-b border-teal-100/60 text-xs">
                     <td colSpan={2} className="px-6 py-2 text-slate-500">
-                        {rec.administered_at ? new Date(rec.administered_at).toLocaleString() : "—"}
+                        {rec.administered_at ? fmtFull(rec.administered_at) : "—"}
                     </td>
                     <td colSpan={2} className="px-4 py-2">
                         <span className={`font-medium capitalize px-2 py-0.5 rounded-full ${ADMIN_STATUS_COLORS[rec.status as AdminStatus]}`}>

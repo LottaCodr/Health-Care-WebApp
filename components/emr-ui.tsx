@@ -6,7 +6,7 @@
 import React from "react";
 import Link from "next/link";
 import { Patient, PatientStatus, Consultation, Payment } from "@/types/models";
-import { hasActualAllergy } from "@/lib/utils";
+import { hasActualAllergy, fmtDate, fmtFull } from "@/lib/utils";
 import {
   User, Phone, Mail, MapPin, Droplets, AlertCircle,
   Stethoscope, ChevronRight, CheckCircle2, Clock,
@@ -137,7 +137,7 @@ export function ConsultationCard({ consultation }: { consultation: Consultation 
             </p>
             {displayDate && (
               <p className="text-[10px] text-gray-400 mt-0.5">
-                {new Date(displayDate).toLocaleString("en-GB", {
+                {fmtFull(displayDate)
                   day: "numeric", month: "short",
                   hour: "2-digit", minute: "2-digit",
                 })}
@@ -220,7 +220,7 @@ export function PaymentCard({ payment }: { payment: Payment | any }) {
             </p>
             {date && (
               <p className="text-[10px] text-gray-400 mt-0.5">
-                {new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                {fmtDate(date)}
               </p>
             )}
           </div>

@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { useLabStore } from "@/store/lab-store";
 import TestTemplateForm from "./TestTemplateForm";
+import { fmtDate } from "@/lib/utils";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
                         <p className="text-sm font-bold text-gray-800">{req.test_type ?? "Lab Test"}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                             Requested {req.created_at
-                                ? new Date(req.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                                ? fmtDate(req.created_at)
                                 : "—"}
                         </p>
                     </div>
@@ -152,7 +153,7 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
                             />
                             <InfoItem label="Patient ID" value={<span className="font-mono text-xs">{req.visit_id?.slice(-8) ?? "—"}</span>} />
                             <InfoItem label="Request Date" value={req.created_at
-                                ? new Date(req.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                                ? fmtDate(req.created_at)
                                 : "—"} />
                         </div>
                     </div>

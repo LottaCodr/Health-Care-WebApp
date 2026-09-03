@@ -7,6 +7,7 @@ import { usePatientsByStatus, useUpdatePatientStatus } from "@/hooks/emr/use-pat
 import { LoadingSkeleton, EmptyState, SuccessAlert } from "@/components/emr";
 import { Loader2, HeartPulse } from "lucide-react";
 import { toast } from "sonner";
+import { fmtFull } from "@/lib/utils";
 
 export default function QueueSuite() {
     const { authorized } = useRoleProtection([UserRole.FrontDesk, UserRole.Admin]);
@@ -63,7 +64,7 @@ export default function QueueSuite() {
                         <div key={p.id} className="flex justify-between items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold text-gray-900 truncate">{p.name}</p>
-                                <p className="text-sm text-gray-500">Arrived: {new Date(p.created_at ?? "").toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</p>
+                                <p className="text-sm text-gray-500">Arrived: {fmtFull(p.created_at ?? "")}</p>
                             </div>
                             <button
                                 onClick={() => handleMoveToQueue(p.id, p.name)}
@@ -80,7 +81,7 @@ export default function QueueSuite() {
                         <div key={p.id} className="flex justify-between items-center gap-3 p-4 bg-teal-50/50 rounded-2xl border border-teal-100">
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold text-gray-900 truncate">{p.name}</p>
-                                <p className="text-xs text-gray-500">Arrived: {new Date(p.created_at ?? "").toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</p>
+                                <p className="text-xs text-gray-500">Arrived: {fmtFull(p.created_at ?? "")}</p>
                             </div>
                             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white text-teal-700 border border-teal-100 shadow-sm shrink-0">
                                 <HeartPulse size={12} /> With nurse — vitals

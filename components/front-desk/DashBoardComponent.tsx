@@ -18,6 +18,7 @@ import {
 import { useAppointmentsByDate } from "@/hooks/emr/use-appointments";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
+import { fmtFull } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -123,7 +124,7 @@ function ArrivalRow({ patient }: { patient: any }) {
                 <p className="text-[11px] text-gray-400">
                     {patient.gender ?? ""}
                     {age ? ` · ${age}` : ""}
-                    {patient.created_at ? ` · ${new Date(patient.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                    {patient.created_at ? ` · ${fmtFull(patient.created_at)}` : ""}
                 </p>
             </div>
             <StatusChip status={patient.status} />

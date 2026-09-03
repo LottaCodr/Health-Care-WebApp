@@ -7,6 +7,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
 import { listAuditLogs } from "@/lib/services/audit.service";
+import { fmtFull } from "@/lib/utils";
 import {
     ScrollText, Search, X, RefreshCcw,
     ChevronDown, Loader2, AlertTriangle,
@@ -43,12 +44,7 @@ function ActionBadge({ action }: { action: string }) {
     );
 }
 
-function fmt(iso: string) {
-    return new Date(iso).toLocaleString("en-GB", {
-        day: "numeric", month: "short", year: "numeric",
-        hour: "2-digit", minute: "2-digit",
-    });
-}
+/// Date formatting is now handled by fmtFull from @/lib/utils
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -202,7 +198,7 @@ export default function AdminAuditLog() {
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Clock size={10} className="text-gray-400" />
-                                            <p className="text-[10px] text-gray-400">{fmt(log.timestamp)}</p>
+                                            <p className="text-[10px] text-gray-400">{fmtFull(log.timestamp)}</p>
                                         </div>
                                     </div>
                                 </div>
