@@ -18,7 +18,7 @@ import {
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { toHospitalISODate, resolvePatientName } from "@/lib/utils/appointment.utils";
 import { toast } from "sonner";
-import { fmtDate, fmtFull } from "@/lib/utils";
+import { fmtDate, fmtFull, fmtTime } from "@/lib/utils";
 import { AttendantPill } from "@/components/emr/care-team";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -166,8 +166,10 @@ function PatientAvatar({ name, gender, size = 36 }: { name?: string | null; gend
 function QueueRow({ patient, index }: { patient: any; index: number }) {
     const age      = calcAge(patient.birth_date ?? patient.date_of_birth);
     const isChild  = age ? parseInt(age) <= 12 : false;
-    const wait     = timeWaiting(patient.updated_at);
-    const waitMin  = waitMinutes(patient.updated_at);
+    const entryTime = patient.updated_at || patient.created_at;
+    const entryTimeStr = entryTime ? fmtTime(entryTime) : "";
+    const wait     = timeWaiting(patient.updated_at || patient.created_at);
+    const waitMin  = waitMinutes(patient.updated_at || patient.created_at);
     const waitChip =
         waitMin == null ? "bg-gray-50 text-gray-400 border-gray-100"
         : waitMin >= 60 ? "bg-red-50 text-red-600 border-red-100"
@@ -176,7 +178,7 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
 
     return (
         <div className="flex flex-wrap items-center gap-3 p-3.5 sm:p-4 rounded-2xl border border-gray-200 bg-gray-50/40 hover:bg-white hover:border-red-300 transition-all duration-200">
-            <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs shrink-0">
+            <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs shrink-0" title={`FIFO Queue Position #${index + 1}`}>
                 {index + 1}
             </div>
             <PatientAvatar name={patient.name} gender={patient.gender} />
@@ -192,6 +194,11 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
                 <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5 flex-wrap">
                     {patient.gender && <span>{patient.gender}</span>}
                     {age && <span>· {age}</span>}
+                    {entryTimeStr && (
+                        <span className="text-gray-500 font-medium">
+                            · Sent {entryTimeStr}
+                        </span>
+                    )}
                     {patient.id && (
                         <AttendantPill
                             patientId={patient.id}
@@ -473,6 +480,27 @@ export default function DoctorDashboard() {
         [todayAppts.data, staffId]
     );
 
+    // ─── FIFO Ordering (Earliest Time & Date First) ───────────────────────────
+    const fifoQueuePatients = useMemo(() => {
+        const list = (awaitingPatients.data ?? []) as any[];
+        return [...list].sort((a, b) => {
+            const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+            const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+            if (timeA !== timeB) return timeA - timeB; // Earliest first (FIFO)
+            return (a.id || "").localeCompare(b.id || "");
+        });
+    }, [awaitingPatients.data]);
+
+    const fifoAdmittedPatients = useMemo(() => {
+        const list = (admittedPatients.data ?? []) as any[];
+        return [...list].sort((a, b) => {
+            const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+            const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+            if (timeA !== timeB) return timeA - timeB; // Earliest first (FIFO)
+            return (a.id || "").localeCompare(b.id || "");
+        });
+    }, [admittedPatients.data]);
+
     if (protectionLoading) return (
         <div className="flex items-center justify-center min-h-[40vh]">
             <div className="w-10 h-10 rounded-2xl bg-red-50 flex items-center justify-center">
@@ -538,9 +566,14 @@ export default function DoctorDashboard() {
                                 <ClipboardList size={16} className="text-red-600" />
                             </div>
                             <div>
-                                <h2 className="text-base font-bold text-gray-800 leading-tight">Patient management</h2>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-base font-bold text-gray-800 leading-tight">Patient management</h2>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                        FIFO Queue
+                                    </span>
+                                </div>
                                 <p className="text-[11px] text-gray-400 mt-0.5">
-                                    {lastSynced ? `Synced ${lastSynced.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · refreshes every minute` : "Loading live data…"}
+                                    {lastSynced ? `Synced ${lastSynced.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · FIFO ordered by arrival time` : "Loading live data…"}
                                 </p>
                             </div>
                         </div>
@@ -561,7 +594,7 @@ export default function DoctorDashboard() {
                                     {!awaitingPatients.isLoading && queueCount === 0 && (
                                         <EmptyState title="Queue is clear" description="No patients are waiting for a consultation right now." icon="✓" />
                                     )}
-                                    {awaitingPatients.data?.map((p, i) => (
+                                    {fifoQueuePatients.map((p, i) => (
                                         <QueueRow key={p.id} patient={p} index={i} />
                                     ))}
                                 </>
@@ -605,7 +638,7 @@ export default function DoctorDashboard() {
                                     {!admittedPatients.isLoading && admittedCount === 0 && (
                                         <EmptyState title="No admitted patients" description="Patients admitted under the hospital will appear here." icon="🛏" />
                                     )}
-                                    {admittedPatients.data?.map(p => (
+                                    {fifoAdmittedPatients.map(p => (
                                         <AdmittedRow key={p.id} patient={p} />
                                     ))}
                                 </>
