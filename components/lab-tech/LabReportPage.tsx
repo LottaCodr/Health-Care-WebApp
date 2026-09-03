@@ -13,17 +13,12 @@ import {
 import { useLabStore } from "@/store/lab-store";
 import { calculateAge } from "@/utils/export";
 import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
+import { fmtDate, fmtFull } from "@/lib/utils";
 import HematologyAnalyzerReport from "./HematologyAnalyzerReport";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(iso?: string) {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
-function fmtTime(iso?: string) {
-    if (!iso) return "";
-    return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {
@@ -69,7 +64,7 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                     <div>
                         <p className="text-sm font-bold text-gray-900">{req.test_type ?? "Lab Test"}</p>
                         <p className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1.5">
-                            Completed {fmt(req.completed_at)} · {fmtTime(req.completed_at)}
+                            Completed {fmtDate(req.completed_at)} · {fmtFull(req.completed_at)}
                             <span className="hidden sm:inline">•</span>
                             <span className="hidden sm:inline font-mono">ID: {req.visit_id?.slice(-8).toUpperCase() ?? req.id.slice(-6).toUpperCase()}</span>
                         </p>
@@ -353,9 +348,9 @@ export default function LabReportsPage() {
                                                 <span className="text-xs text-gray-400 font-mono bg-white border border-gray-200 px-1.5 py-0.5 rounded">#{patientIdShort}</span>
                                             </div>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-xs text-gray-400">{fmt(req.completed_at)}</span>
+                                                <span className="text-xs text-gray-400">{fmtDate(req.completed_at)}</span>
                                                 <span className="text-xs text-gray-300">•</span>
-                                                <span className="text-xs text-gray-400">{fmtTime(req.completed_at)}</span>
+                                                <span className="text-xs text-gray-400">{fmtFull(req.completed_at)}</span>
                                             </div>
                                         </div>
                                         <FileText size={14} className={`shrink-0 mt-1 ${selected?.id === req.id ? "text-indigo-500" : "text-gray-300"}`} />

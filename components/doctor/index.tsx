@@ -18,6 +18,7 @@ import {
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { toHospitalISODate, resolvePatientName } from "@/lib/utils/appointment.utils";
 import { toast } from "sonner";
+import { fmtDate, fmtFull } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,14 +41,8 @@ function timeWaiting(updatedAt?: string | null) {
     return `${Math.floor(mins / 60)}h ${mins % 60}m waiting`;
 }
 
-function fmtTime(iso?: string | null) {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-function fmtDate(iso?: string | null) {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 function isToday(iso?: string | null) {
@@ -250,7 +245,7 @@ function ActiveConsultationRow({ consultation, onComplete, completing }: {
                     {consultation.patient_gender && <span>{consultation.patient_gender}</span>}
                     {age && <span>· {age}</span>}
                     <span className="inline-flex items-center gap-1">
-                        <Clock size={9} /> started {fmtTime(consultation.created_at)}
+                        <Clock size={9} /> started {fmtFull(consultation.created_at)}
                     </span>
                 </p>
             </div>

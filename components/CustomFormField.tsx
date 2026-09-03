@@ -18,7 +18,7 @@ import { AlertCircle } from 'lucide-react';
 import { IconType } from 'react-icons';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { fmtDate } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 
 // ─── Icon map ─────────────────────────────────────────────────────────────────
@@ -243,7 +243,7 @@ const renderField = (
                 hasError ? INPUT_ERROR : '',
               ].join(' ')}>
                 <CalendarIcon size={15} className="text-gray-400 shrink-0" />
-                {field.value ? format(field.value instanceof Date ? field.value : new Date(field.value), 'dd MMM yyyy') : <span>{placeholder ?? 'Pick a date'}</span>}
+                {field.value ? fmtDate(field.value) : <span>{placeholder ?? 'Pick a date'}</span>}
               </button>
             </FormControl>
           </PopoverTrigger>

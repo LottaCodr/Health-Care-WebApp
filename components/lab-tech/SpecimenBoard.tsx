@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { fmtFull } from "@/lib/utils";
 import { TestTube2, Plus, Printer } from "lucide-react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
@@ -71,7 +72,7 @@ export default function SpecimenBoard() {
                 <div class="t">NILE VALLEY HOSPITAL — LAB SPECIMEN</div>
                 <img src="${code39Svg(s.barcode)}" />
                 <div class="t">${s.specimen_type} · ${s.container ?? ""}</div>
-                <div>${s.barcode} · ${new Date().toLocaleString("en-GB")}</div>
+                <div>${s.barcode} · ${fmtFull(new Date())}</div>
             </div>
             <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
             </body></html>`);
@@ -145,7 +146,7 @@ export default function SpecimenBoard() {
                             </p>
                             <p className="truncate text-xs text-gray-500">
                                 Patient: {(s as any).patients?.name ?? s.patient_id}
-                                {s.collection_at ? ` · collected ${new Date(s.collection_at).toLocaleString("en-GB")}` : ""}
+                                {s.collection_at ? ` · collected ${fmtFull(s.collection_at)}` : ""}
                             </p>
                             {s.rejection_reason && <p className="text-xs font-semibold text-red-600">Rejected: {s.rejection_reason}</p>}
                         </div>

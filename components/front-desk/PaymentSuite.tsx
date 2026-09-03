@@ -60,7 +60,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
                                         <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {payment.patient_id?.slice(-8) ?? payment.id.slice(-6)}</p>
                                     </div>
                                     <span className="lg:hidden inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full bg-gray-50 text-gray-600 border border-gray-100">
-                                        <Clock size={10} /> {payment.created_at ? new Date(payment.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
+                                        <Clock size={10} /> {payment.created_at ? fmtDate(payment.created_at) : "—"}
                                     </span>
                                 </div>
 
@@ -76,7 +76,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
                                             <Clock size={9} className="text-gray-300" />
                                             <p className="text-[10px] text-gray-400">
                                                 {payment.created_at
-                                                    ? new Date(payment.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                                                    ? fmtFull(payment.created_at)
                                                     : "Just now"}
                                             </p>
                                             {payment.category && (

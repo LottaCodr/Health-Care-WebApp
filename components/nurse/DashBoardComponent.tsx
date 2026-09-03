@@ -7,6 +7,7 @@ import {
     ChevronRight, Phone, Baby, BedDouble,
     Eye, ClipboardList,
 } from "lucide-react";
+import { fmtFull } from "@/lib/utils";
 import Link from "next/link";
 import { usePatientsByStatus, useCompletedNursingActions } from "@/hooks/emr/use-emr";
 import NursePatientSearch from "./component/nurse-patient-search";
@@ -22,7 +23,7 @@ function calcAge(dob?: string) {
 
 function fmtTime(iso?: string) {
     if (!iso) return "";
-    return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    return fmtFull(iso);
 }
 
 function timeInQueue(updatedAt?: string): string {
@@ -278,6 +279,7 @@ export default function NurseDashboard() {
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-gray-700 truncate">
                                         {t.patients?.name ?? `Patient #${t.patient_id?.slice(-6) ?? "—"}`}
+                                        {t.completed_by ? ` · Dr. ${t.completed_by}` : ""}
                                     </p>
                                     <p className="text-[10px] text-gray-400">{t.action_type ?? "Nursing care"}</p>
                                 </div>

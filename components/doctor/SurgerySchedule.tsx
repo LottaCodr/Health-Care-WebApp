@@ -62,7 +62,7 @@ export default function SurgerySchedule() {
                                 </p>
                                 <p className="text-xs text-gray-500">
                                     {s.patients?.name ?? s.patient_id}
-                                    {s.scheduled_at ? ` · ${new Date(s.scheduled_at).toLocaleString("en-GB")}` : ""}
+                                    {s.scheduled_at ? ` · ${fmtFull(s.scheduled_at)}` : ""}
                                     {s.theatre ? ` · ${s.theatre}` : ""}
                                 </p>
                             </div>

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Payment } from "@/types/models";
+import { fmtDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Wallet, CreditCard, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -57,7 +58,7 @@ export function PaymentCard({ payment }: { payment: Payment }) {
 
             <div className="mt-6 pt-4 border-t border-gray-50 flex justify-between items-center bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-[2rem]">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Processed On</span>
-                <span className="text-xs font-bold text-gray-600">{payment.processedDate ? new Date(payment.processedDate).toLocaleDateString() : "—"}</span>
+                <span className="text-xs font-bold text-gray-600">{payment.processedDate ? fmtDate(payment.processedDate) : "—"}</span>
             </div>
         </div>
     );

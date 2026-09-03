@@ -10,6 +10,7 @@ import { Beaker, Clock, User, Calendar, FileText, AlertTriangle, Phone, Hash, Dr
 import TestTemplateForm from "./TestTemplateForm";
 import { findTemplate } from "./test-templates";
 import { calculateAge } from "@/utils/export";
+import { fmtDate } from "@/lib/utils";
 
 interface LabSuiteProps {
     requestId: string;
@@ -166,7 +167,7 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                             </div>
                             <div className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Requested</p>
-                                <p className="text-xs font-semibold text-gray-800 mt-1">{request.created_at ? new Date(request.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}</p>
+                                <p className="text-xs font-semibold text-gray-800 mt-1">{request.created_at ? fmtDate(request.created_at) : "—"}</p>
                             </div>
                             <div className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Priority</p>
