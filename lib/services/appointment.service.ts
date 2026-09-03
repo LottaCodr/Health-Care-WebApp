@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createNotification } from "./notification.service";
 import { normalizeUserRole } from "@/lib/roles";
 import { UserRole } from "@/types/models";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
@@ -111,6 +112,17 @@ export async function createAppointment(input: CreateAppointmentInput) {
         .single();
 
     if (error) throw error;
+
+    // Notify the assigned doctor (or the whole Doctor role when unassigned).
+    await createNotification({
+        recipient_id: input.doctorId ?? undefined,
+        role: input.doctorId ? undefined : "Doctor",
+        title: "New Appointment Scheduled",
+        message: `${input.patientNameOverride ?? "A patient"} has an appointment on ${input.appointmentDate}${input.appointmentTime ? ` at ${input.appointmentTime}` : ""}${input.reason ? ` — ${input.reason}` : ""}.`,
+        type: "info",
+        link: "/doctor/appointments",
+    });
+
     return data;
 }
 

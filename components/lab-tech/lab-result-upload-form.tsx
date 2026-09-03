@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { useLabStore } from "@/store/lab-store";
 import TestTemplateForm from "./TestTemplateForm";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { fmtDate } from "@/lib/utils";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
                                     </span>
                                 }
                             />
-                            <InfoItem label="Patient ID" value={<span className="font-mono text-xs">{req.visit_id?.slice(-8) ?? "—"}</span>} />
+                            <InfoItem label="Hospital No." value={<span className="font-mono text-xs">{displayHospitalNumber(getPatientHospitalNumber(patient))}</span>} />
                             <InfoItem label="Request Date" value={req.created_at
                                 ? fmtDate(req.created_at)
                                 : "—"} />
@@ -317,7 +318,7 @@ export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFor
                         <p className="text-sm text-gray-400 mt-0.5">Record and submit test findings</p>
                         {patientName && (
                             <p className="text-xs font-semibold text-indigo-700 mt-0.5 flex items-center gap-1.5">
-                                <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100">#{patientId.slice(-8).toUpperCase()}</span>
+                                <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100">{displayHospitalNumber(getPatientHospitalNumber(patient))}</span>
                                 {patientName} { (patient as any)?.phone ? `• ${(patient as any).phone}` : ""}
                             </p>
                         )}
@@ -337,7 +338,7 @@ export function LabResultUploadForm({ patientId, onSuccess }: LabResultUploadFor
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-gray-900">{patientName}</p>
                         <p className="text-xs text-gray-600 flex flex-wrap gap-2">
-                            <span className="font-mono">ID: #{patientId.slice(-8).toUpperCase()}</span>
+                            <span className="font-mono">HN: {displayHospitalNumber(getPatientHospitalNumber(patient))}</span>
                             { (patient as any)?.gender && <><span>•</span> {(patient as any).gender}</>}
                             { (patient as any)?.phone && <><span>•</span> {(patient as any).phone}</>}
                         </p>

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useNotifications } from "@/hooks/use-notifications";
 import { Notification } from "@/types/models";
-import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle2, Zap, X } from "lucide-react";
+import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle2, Zap, X, RefreshCcw } from "lucide-react";
 import { fmtDate } from "@/lib/utils";
 
 // ─── Type config ──────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ function timeAgo(iso: string) {
 
 export default function NotificationBell() {
     const router = useRouter();
-    const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+    const { notifications, loading, unreadCount, markRead, markAllRead, refetch } = useNotifications();
     const [open, setOpen] = useState(false);
     const ref             = useRef<HTMLDivElement>(null);
 
@@ -90,6 +90,14 @@ export default function NotificationBell() {
                             )}
                         </div>
                         <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => refetch()}
+                                aria-label="Refresh notifications"
+                                title="Refresh notifications"
+                                className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                                <RefreshCcw size={11} />
+                            </button>
                             {unreadCount > 0 && (
                                 <button
                                     onClick={markAllRead}
@@ -110,7 +118,14 @@ export default function NotificationBell() {
 
                     {/* List */}
                     <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
-                        {notifications.length === 0 ? (
+                        {loading && notifications.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-10 gap-2">
+                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
+                                    <RefreshCcw size={16} className="text-gray-300 animate-spin" />
+                                </div>
+                                <p className="text-xs text-gray-400 font-medium">Loading notifications…</p>
+                            </div>
+                        ) : notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-10 gap-2">
                                 <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
                                     <Bell size={16} className="text-gray-300" />

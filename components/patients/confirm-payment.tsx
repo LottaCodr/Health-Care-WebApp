@@ -40,7 +40,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
             {payments.map((payment: any) => {
                 const confirming = isConfirming === payment.id;
                 const amount = Number(payment.amount ?? 0);
-                const patientName = payment.patients?.name ?? `Patient #${payment.patient_id?.slice(-6) ?? "—"}`;
+                const patientName = payment.patients?.name ?? "Unknown patient";
                 const patientPhone = payment.patients?.phone;
                 const selectedMethod = methodMap[payment.id] ?? payment.method ?? "cash";
                 const methodCfg = METHOD_CONFIG[selectedMethod as keyof typeof METHOD_CONFIG] ?? METHOD_CONFIG.cash;

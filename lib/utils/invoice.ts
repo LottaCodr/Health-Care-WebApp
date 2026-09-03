@@ -24,6 +24,7 @@ export interface InvoicePatientInfo {
     hmo?:           boolean | null;
     hmo_name?:      string | null;
     policy_number?: string | null;
+    hospital_number?: string | null;
 }
 
 export interface ExportInvoiceArgs {
@@ -212,7 +213,13 @@ export function buildInvoiceHtml({ patientId, patient, payments, logoUrl }: Expo
     const generatedAt = new Date();
     const dateStr  = generatedAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     const timeStr  = generatedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    const refStr   = `NVH/${patientId.slice(0, 6).toUpperCase()}/${generatedAt.getFullYear()}${String(generatedAt.getMonth() + 1).padStart(2, "0")}${String(generatedAt.getDate()).padStart(2, "0")}`;
+    // Invoice references are built from the patient's hospital number so raw
+    // database IDs are never exposed to staff or printed on documents.
+    const hospitalRef = patient?.hospital_number?.trim() || null;
+    const refBase = hospitalRef
+        ? hospitalRef.toUpperCase().replace(/[^A-Z0-9]/g, "")
+        : "PENDING";
+    const refStr   = `NVH/${refBase}/${generatedAt.getFullYear()}${String(generatedAt.getMonth() + 1).padStart(2, "0")}${String(generatedAt.getDate()).padStart(2, "0")}`;
 
     const accountChip = payments.length === 0
         ? `<span class="acct-chip acct-none">NO BILLING ITEMS</span>`
@@ -471,7 +478,7 @@ export function buildInvoiceHtml({ patientId, patient, payments, logoUrl }: Expo
                 <div class="pc-overline">Billed To</div>
                 <div class="pc-name">${escapeHtml(patientName)}</div>
             </div>
-            <div class="pc-overline">Patient ID &middot; ${escapeHtml(patientId)}</div>
+            <div class="pc-overline">Hospital No. &middot; ${escapeHtml(hospitalRef ?? "—")}</div>
         </div>
         <div class="pd-grid">
             ${patientDetailCell("Gender", patient?.gender)}

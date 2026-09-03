@@ -1399,7 +1399,27 @@ export async function listPaymentsByPatient(patientId: string): Promise<Payment[
         return [];
     }
 
-    return (data ?? []).map(normalizePayment);
+    const rows = (data ?? []).map(normalizePayment);
+
+    // Attach staff display names so the timeline can show who processed
+    // payments without exposing staff IDs.
+    const staffIds = [...new Set(
+        rows.map((p: any) => p.processed_by ?? p.processedBy).filter(Boolean)
+    )];
+    if (staffIds.length) {
+        const { data: staff } = await supabase
+            .from("staffs")
+            .select("id, name, role")
+            .in("id", staffIds);
+        const staffMap = Object.fromEntries((staff ?? []).map((s: any) => [s.id, s]));
+        rows.forEach((p: any) => {
+            const member = staffMap[(p.processed_by ?? p.processedBy) ?? ""];
+            p.processed_by_name = member?.name ?? null;
+            p.processor_role = member?.role ?? null;
+        });
+    }
+
+    return rows;
 }
 
 export async function listPendingPayments(): Promise<Payment[]> {
@@ -1421,7 +1441,7 @@ export async function listPendingPayments(): Promise<Payment[]> {
     const ids = [...new Set(outstanding.map((payment: any) => payment.patient_id).filter(Boolean))];
     const { data: patients } = await supabase
         .from("patients")
-        .select("id, name, phone, hmo, hmo_name, policy_number, company, company_name, private_client")
+        .select("id, name, phone, hospital_number, hmo, hmo_name, policy_number, company, company_name, private_client")
         .in("id", ids);
 
     const patientMap = Object.fromEntries((patients ?? []).map((patient: any) => [patient.id, patient]));

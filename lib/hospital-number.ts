@@ -37,3 +37,25 @@ export function normalizeHospitalNumber(value?: string | null): string | null {
     const suffix = hospitalNumberSuffix(value);
     return suffix === null ? null : formatHospitalNumber(suffix);
 }
+
+/**
+ * Resolve the display hospital number from a patient-like object
+ * (supports both snake_case and camelCase column names).
+ */
+export function getPatientHospitalNumber(
+    patient?: { hospital_number?: string | null; hospitalNumber?: string | null } | null
+): string | null {
+    return normalizeHospitalNumber(patient?.hospital_number ?? patient?.hospitalNumber ?? null);
+}
+
+/**
+ * Display-safe hospital number — canonical `NVH-00001` or a placeholder.
+ * Use this everywhere a patient reference is shown in the UI. Raw database
+ * patient IDs must never be displayed.
+ */
+export function displayHospitalNumber(
+    value?: string | null,
+    placeholder: string = "—"
+): string {
+    return normalizeHospitalNumber(value) ?? placeholder;
+}

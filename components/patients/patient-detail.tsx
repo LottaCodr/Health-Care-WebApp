@@ -15,6 +15,7 @@ import EditDemographicsDialog from "./edit-demographics-dialog";
 import { CareTeamAvatarStack } from "@/components/emr/care-team";
 // processReturnVisit is called internally by ReturnPatient — no import needed here.
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import {
     Dialog,
     DialogContent,
@@ -89,7 +90,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
             setShowCopied(true);
             setTimeout(() => setShowCopied(false), 1800);
         } catch {
-            toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy patient ID." });
+            toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy hospital number." });
         }
     }, []);
 
@@ -241,7 +242,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
             <PatientProfile
                 patient={currentPatient}
                 status={patientStore.status}
-                onCopyId={() => handleCopyId(currentPatient.id || (currentPatient as any).$id || "")}
+                onCopyId={() => handleCopyId(getPatientHospitalNumber(currentPatient) ?? "")}
                 showCopied={showCopied}
                 activeGroup={activeGroup}
                 setActiveGroup={setActiveGroup}
@@ -296,15 +297,10 @@ function PatientProfile({
             {
                 label: "Hospital Number",
                 icon: <ClipboardList size={14} />,
-                value: <span className="font-mono text-sm font-bold text-gray-800">{p.hospital_number || "—"}</span>,
-            },
-            {
-                label: "Patient ID",
-                icon: <ClipboardList size={14} />,
                 value: (
                     <span className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-gray-500 truncate max-w-[140px]">
-                            {p.userId || p.id || "—"}
+                        <span className="font-mono text-sm font-bold text-gray-800">
+                            {displayHospitalNumber(p.hospital_number)}
                         </span>
                         <button
                             type="button"
@@ -382,13 +378,13 @@ function PatientProfile({
                         <h2 className="text-xl sm:text-2xl font-bold text-white break-words">
                             {patient.name || <span className="italic text-white/70">Unnamed patient</span>}
                         </h2>
-                        {/* Patient ID - prominently visible at top */}
+                        {/* Hospital number - the only patient reference shown */}
                         <div className="flex flex-wrap items-center gap-2 mt-2.5">
                             <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm">
                                 <ClipboardList size={12} className="text-white/80" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">ID</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">HOSPITAL NO.</span>
                                 <span className="font-mono text-xs font-bold text-white tracking-wide max-w-[160px] truncate">
-                                    {p.id || (p as any).$id || (patient as any).userId || "—"}
+                                    {displayHospitalNumber(p.hospital_number)}
                                 </span>
                                 <button
                                     type="button"
@@ -398,13 +394,6 @@ function PatientProfile({
                                     {showCopied ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
                                 </button>
                             </span>
-                            {p.hospital_number && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm">
-                                    <ClipboardList size={12} className="text-white/80" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/60">HN</span>
-                                    <span className="font-mono text-xs font-bold text-white tracking-wide">{p.hospital_number}</span>
-                                </span>
-                            )}
                             {patient.gender && (
                                 <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
                                     {patient.gender}

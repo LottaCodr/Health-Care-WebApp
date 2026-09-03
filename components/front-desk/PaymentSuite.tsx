@@ -11,6 +11,7 @@ import { usePendingPayments } from "@/hooks/emr/use-payment";
 import { useAuth } from "@/context/auth-provider";
 import { SettleBillModal, QueueSettleAllModal, PayerBadge } from "@/components/patients/billing-modals";
 import { formatKobo, resolvePayerFromPatient, PAYMENT_TYPE_CONFIG } from "@/lib/utils/billing";
+import { displayHospitalNumber } from "@/lib/hospital-number";
 import { fmtDate, fmtFull } from "@/lib/utils";
 
 // ─── PaymentList ──────────────────────────────────────────────────────────────
@@ -24,8 +25,9 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
     return (
         <div className="divide-y divide-gray-50">
             {payments.map((payment: any) => {
-                const patientName = payment.patients?.name ?? `Patient #${payment.patient_id?.slice(-6) ?? "—"}`;
+                const patientName = payment.patients?.name ?? "Unknown patient";
                 const patientPhone = payment.patients?.phone;
+                const patientHospitalNumber = payment.patients?.hospital_number;
                 const payer = resolvePayerFromPatient(payment.patients ?? null);
                 const totalKobo = payment.amount_kobo ?? Math.round(Number(payment.amount ?? 0) * 100);
                 const paidKobo = payment.amount_paid_kobo ?? 0;
@@ -47,7 +49,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
                             {/* Info */}
                             <div className="flex-1 min-w-0 space-y-3">
 
-                                {/* Patient name + phone + ID */}
+                                    {/* Patient name + phone + hospital number */}
                                 <div className="flex items-start justify-between gap-3">
                                     <div>
                                         <p className="text-sm font-bold text-gray-900 flex items-center gap-2 flex-wrap">
@@ -58,7 +60,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
                                         {patientPhone && (
                                             <p className="text-xs text-gray-400 mt-0.5">{patientPhone}</p>
                                         )}
-                                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {payment.patient_id?.slice(-8) ?? payment.id.slice(-6)}</p>
+                                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">HN: {displayHospitalNumber(patientHospitalNumber)}</p>
                                     </div>
                                     <span className="lg:hidden inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full bg-gray-50 text-gray-600 border border-gray-100">
                                         <Clock size={10} /> {payment.created_at ? fmtDate(payment.created_at) : "—"}
@@ -264,7 +266,10 @@ export default function PaymentConfirmation() {
                         payer_reference: settleTarget.payer_reference,
                         payer_code: settleTarget.payer_code,
                         payment_date: settleTarget.paid_at ?? settleTarget.processed_date ?? null,
-                        invoice_no: settleTarget.invoice_no ?? String(settleTarget.id ?? "").slice(0, 8).toUpperCase(),
+                        invoice_no: settleTarget.invoice_no
+                            ?? (settleTarget.patients?.hospital_number
+                                ? `INV-${settleTarget.patients.hospital_number.replace(/[^A-Za-z0-9]/g, "").toUpperCase()}`
+                                : String(settleTarget.id ?? "").slice(0, 8).toUpperCase()),
                         collected_by: settleTarget.processed_by ?? null,
                         notes: settleTarget.notes ?? null,
                         created_at: settleTarget.created_at ?? new Date().toISOString(),

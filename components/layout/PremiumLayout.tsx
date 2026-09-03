@@ -8,6 +8,7 @@ import { useAuth } from "@/context/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import { Stethoscope } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import { NotificationProvider } from "@/context/notification-provider";
 import { useRoleRealtime } from "@/hooks/use-realtime";
 import NetworkStatusBanner from "./NetworkStatusBanner";
 import { OfflineSync } from "./OfflineSync";
@@ -70,10 +71,11 @@ export function PremiumLayout({ children }: { children: React.ReactNode }) {
     if (!user) return null;
 
     return (
-        <SidebarProvider>
-            <AppSidebar />
-            {/* Replays actions queued while offline when the network returns */}
-            <OfflineSync />
+        <NotificationProvider>
+            <SidebarProvider>
+                <AppSidebar />
+                {/* Replays actions queued while offline when the network returns */}
+                <OfflineSync />
 
             <SidebarInset className="min-w-0 bg-slate-50/80 flex flex-col h-svh md:h-[calc(100svh-1rem)] overflow-hidden md:rounded-2xl">
 
@@ -126,5 +128,6 @@ export function PremiumLayout({ children }: { children: React.ReactNode }) {
                 </main>
             </SidebarInset>
         </SidebarProvider>
+        </NotificationProvider>
     );
 }

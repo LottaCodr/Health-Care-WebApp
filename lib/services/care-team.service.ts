@@ -154,10 +154,10 @@ export async function getPatientCareTeam(patientId: string): Promise<PatientCare
         if (id && staffMap.has(id)) {
             return staffMap.get(id)!;
         }
-        // Graceful fallback for demo or unlinked IDs
+        // Graceful fallback for demo or unlinked IDs — never expose staff IDs.
         return {
             id: id || "unknown",
-            name: id ? `Staff #${id.slice(-4)}` : "Care Attendant",
+            name: id ? "Unassigned staff" : "Care Attendant",
             role: fallbackRole,
             department: fallbackRole,
         };
@@ -452,7 +452,7 @@ export async function getBatchPatientsCareTeam(
         if (patientConsults.length > 0 && patientConsults[0].doctor_id) {
             const staff = staffMap.get(patientConsults[0].doctor_id) ?? {
                 id: patientConsults[0].doctor_id,
-                name: `Dr. #${patientConsults[0].doctor_id.slice(-4)}`,
+                name: "Attending Physician",
                 role: "Doctor",
                 department: "Internal Medicine",
             };
@@ -476,7 +476,7 @@ export async function getBatchPatientsCareTeam(
             if (nurseId) {
                 const staff = staffMap.get(nurseId) ?? {
                     id: nurseId,
-                    name: `Nurse #${nurseId.slice(-4)}`,
+                    name: "Assigned Nurse",
                     role: "Nurse",
                     department: "Nursing Services",
                 };

@@ -118,7 +118,7 @@ export default function PharmacistDashboard() {
                         </div>
                     ) : (
                         active.map((order: any, idx: number) => {
-                            const patientName     = order.patients?.name ?? `Patient #${order.patient_id?.slice(-6) ?? "—"}`;
+                            const patientName     = order.patients?.name ?? "Unknown patient";
                             const prescribedByName= order.staffs?.name ?? order.doctor_name ?? null;
                             const isUnreviewed    = !order.pharmacist_id;
                             const price           = Number(order.price) || 0;
@@ -196,7 +196,7 @@ export default function PharmacistDashboard() {
                                 <CheckCircle2 size={13} className="text-green-500 shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-gray-800 truncate">
-                                        {rx.patients?.name ?? `Patient #${rx.patient_id?.slice(-6) ?? "—"}`}
+                                        {rx.patients?.name ?? "Unknown patient"}
                                     </p>
                                     <p className="text-[10px] text-gray-400 mt-0.5">
                                         {rx.drug_name ?? "Prescription"}{rx.dosage ? ` · ${rx.dosage}` : ""}

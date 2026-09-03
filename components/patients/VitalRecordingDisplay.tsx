@@ -140,10 +140,10 @@ export default function VitalsRecordDisplay({ patientId, onClose }: { patientId:
                             <Clock size={10} /> <span>{recordedAt}</span>
                         </div>
                     )}
-                    {latestAction.completed_by && (
+                    {((latestAction as any).completed_by_name || (latestAction as any).assigned_nurse_name) && (
                         <div className="flex items-center gap-1 text-[10px] text-gray-400">
                             <User size={10} />
-                            <span className="font-mono">{latestAction.completed_by.slice(0, 8)}…</span>
+                            <span>{(latestAction as any).completed_by_name ?? (latestAction as any).assigned_nurse_name}</span>
                         </div>
                     )}
                 </div>

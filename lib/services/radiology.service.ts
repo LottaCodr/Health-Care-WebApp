@@ -21,7 +21,7 @@ const SELECT = `
     *,
     patients!lab_requests_visit_id_fkey(
         id, name, phone, gender, birth_date,
-        allergies, significant_medication_history
+        allergies, significant_medication_history, hospital_number
     )
 `.trim();
 

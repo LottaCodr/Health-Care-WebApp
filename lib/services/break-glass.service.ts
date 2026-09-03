@@ -87,5 +87,22 @@ export async function listBreakGlassEvents(limit = 100): Promise<any[]> {
         .order("timestamp", { ascending: false })
         .limit(Math.min(limit, 500));
     if (error) return [];
-    return data ?? [];
+
+    const rows = data ?? [];
+
+    // Attach staff display names so admin reviews never expose staff IDs.
+    const staffIds = [...new Set(rows.map((l: any) => l.user_id).filter(Boolean))];
+    if (staffIds.length) {
+        const { data: staff } = await supabase
+            .from("staffs")
+            .select("id, name, role")
+            .in("id", staffIds);
+        const staffMap = Object.fromEntries((staff ?? []).map((s: any) => [s.id, s]));
+        rows.forEach((l: any) => {
+            const member = staffMap[l.user_id];
+            l.staff_name = member?.name ?? null;
+            l.staff_role = member?.role ?? null;
+        });
+    }
+    return rows;
 }

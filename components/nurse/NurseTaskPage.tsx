@@ -55,7 +55,7 @@ function TaskCard({
     const isPending = task.status === "Pending";
     const isInProgress = task.status === "InProgress";
     const isCompleted = task.status === "Completed";
-    const patientName = task.patients?.name ?? `Patient #${task.patient_id?.slice(-6) ?? "—"}`;
+    const patientName = task.patients?.name ?? "Unknown patient";
 
     return (
         <div
@@ -144,16 +144,16 @@ function TaskCard({
             {expanded && (
                 <div className="px-5 pb-4 pt-1 border-t border-gray-100 space-y-2">
                     <div className="grid grid-cols-2 gap-3">
-                        {task.assigned_nurse && (
+                        {task.assigned_nurse_name && (
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Assigned Nurse</p>
-                                <p className="text-xs font-semibold text-gray-700 font-mono">{task.assigned_nurse}</p>
+                                <p className="text-xs font-semibold text-gray-700">{task.assigned_nurse_name}</p>
                             </div>
                         )}
-                        {task.completed_by && (
+                        {task.completed_by_name && (
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Completed By</p>
-                                <p className="text-xs font-semibold text-gray-700 font-mono">{task.completed_by}</p>
+                                <p className="text-xs font-semibold text-gray-700">{task.completed_by_name}</p>
                             </div>
                         )}
                         {task.completion_time && (

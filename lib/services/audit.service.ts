@@ -57,5 +57,24 @@ export async function listAuditLogs(limit = 500): Promise<any[]> {
         console.error("[audit] listAuditLogs:", error);
         return [];
     }
-    return data ?? [];
+
+    const rows = data ?? [];
+
+    // Attach staff display names so the audit trail shows who acted without
+    // exposing raw staff IDs in the UI.
+    const staffIds = [...new Set(rows.map((l: any) => l.user_id).filter(Boolean))];
+    if (staffIds.length) {
+        const { data: staff } = await supabase
+            .from("staffs")
+            .select("id, name, role, email")
+            .in("id", staffIds);
+        const staffMap = Object.fromEntries((staff ?? []).map((s: any) => [s.id, s]));
+        rows.forEach((l: any) => {
+            const member = staffMap[l.user_id];
+            l.staff_name = member?.name ?? null;
+            l.staff_email = member?.email ?? null;
+            l.staff_role = member?.role ?? null;
+        });
+    }
+    return rows;
 }
