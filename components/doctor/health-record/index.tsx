@@ -35,8 +35,6 @@ function isChild(dob?: string): boolean {
     return y < 13;
 }
 
-}
-
 const STATUS_CFG: Record<string, { bg: string; text: string; dot: string }> = {
     registered: { bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400" },
     "awaiting-consultation": { bg: "bg-yellow-50", text: "text-yellow-700", dot: "bg-yellow-400" },

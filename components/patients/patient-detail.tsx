@@ -12,6 +12,7 @@ import ReturnPatient from "./return-patient";
 import AllergyAlertBanner from "./allergy-alert-banner";
 import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
 import EditDemographicsDialog from "./edit-demographics-dialog";
+import { CareTeamAvatarStack } from "@/components/emr/care-team";
 // processReturnVisit is called internally by ReturnPatient — no import needed here.
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import {
@@ -413,6 +414,15 @@ function PatientProfile({
                                 <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
                                     DOB: {new Date(patient.birth_date).toLocaleDateString()}
                                 </span>
+                            )}
+                            {patient.id && (
+                                <CareTeamAvatarStack
+                                    patientId={patient.id}
+                                    patientName={patient.name}
+                                    hospitalNumber={p.hospital_number}
+                                    variant="hero"
+                                    size="sm"
+                                />
                             )}
                         </div>
                     </div>

@@ -72,7 +72,7 @@ export default function SpecimenBoard() {
                 <div class="t">NILE VALLEY HOSPITAL — LAB SPECIMEN</div>
                 <img src="${code39Svg(s.barcode)}" />
                 <div class="t">${s.specimen_type} · ${s.container ?? ""}</div>
-                <div>${s.barcode} · ${fmtFull(new Date())}</div>
+                <div>${s.barcode} · ${fmtFull(new Date().toISOString())}</div>
             </div>
             <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
             </body></html>`);

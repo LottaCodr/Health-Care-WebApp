@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePatientsByStatus, useCompletedNursingActions } from "@/hooks/emr/use-emr";
 import NursePatientSearch from "./component/nurse-patient-search";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { AttendantPill } from "@/components/emr/care-team";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,15 @@ function PatientCard({ patient, index, href, accentColor }: {
                         <span className="flex items-center gap-0.5">
                             <Phone size={9} /> {patient.phone}
                         </span>
+                    )}
+                    {patient.id && (
+                        <AttendantPill
+                            patientId={patient.id}
+                            viewerRole="Nurse"
+                            size="xs"
+                            variant="subtle"
+                            showTimestamp={false}
+                        />
                     )}
                     {patient.updated_at && (
                         <span className="text-gray-300">· {timeInQueue(patient.updated_at)}</span>
@@ -277,10 +287,20 @@ export default function NurseDashboard() {
                             <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
                                 <CheckCircle2 size={13} className="text-green-500 shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-gray-700 truncate">
-                                        {t.patients?.name ?? `Patient #${t.patient_id?.slice(-6) ?? "—"}`}
-                                        {t.completed_by ? ` · Dr. ${t.completed_by}` : ""}
-                                    </p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-xs font-bold text-gray-700 truncate">
+                                            {t.patients?.name ?? `Patient #${t.patient_id?.slice(-6) ?? "—"}`}
+                                        </p>
+                                        {t.patient_id && (
+                                            <AttendantPill
+                                                patientId={t.patient_id}
+                                                viewerRole="Nurse"
+                                                size="xs"
+                                                variant="subtle"
+                                                showTimestamp={false}
+                                            />
+                                        )}
+                                    </div>
                                     <p className="text-[10px] text-gray-400">{t.action_type ?? "Nursing care"}</p>
                                 </div>
                                 <p className="text-[10px] text-gray-400 shrink-0">{fmtTime(t.completion_time)}</p>

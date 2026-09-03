@@ -12,7 +12,7 @@ import {
     ChevronDown, ChevronUp, Activity, Microscope,
 } from "lucide-react";
 import { toast } from "sonner";
-import { fmtDate, fmtFull } from "@/lib/utils";
+import { fmtDate, fmtFull, fmtTime } from "@/lib/utils";
 import { useLabStore } from "@/store/lab-store";
 import TestTemplateForm from "./TestTemplateForm";
 import { calculateAge } from "@/utils/export";
@@ -29,6 +29,7 @@ function timeAgo(iso?: string) {
     return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
 }
 
+function formatDate(iso?: string) {
     if (!iso) return "—";
     return fmtDate(iso);
 }

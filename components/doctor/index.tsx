@@ -8,7 +8,7 @@ import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
 import { usePatientsByStatus, useConsultationsByDoctor, useUpdateConsultation } from "@/hooks/emr/use-emr";
 import { useAppointmentsByDate } from "@/hooks/emr/use-appointments";
-import { LoadingSkeleton, EmptyState, ErrorAlert } from "@/components/emr-ui";
+import { LoadingSkeleton, EmptyState, ErrorAlert } from "@/components/emr";
 import {
     Clock, ClipboardList, CheckCircle2, Loader2,
     ChevronRight, Stethoscope, Activity, FileText,
@@ -19,6 +19,7 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { toHospitalISODate, resolvePatientName } from "@/lib/utils/appointment.utils";
 import { toast } from "sonner";
 import { fmtDate, fmtFull } from "@/lib/utils";
+import { AttendantPill } from "@/components/emr/care-team";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,10 +40,6 @@ function timeWaiting(updatedAt?: string | null) {
     if (mins < 1)  return "just now";
     if (mins < 60) return `${mins}m waiting`;
     return `${Math.floor(mins / 60)}h ${mins % 60}m waiting`;
-}
-
-}
-
 }
 
 function isToday(iso?: string | null) {
@@ -195,6 +192,15 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
                 <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5 flex-wrap">
                     {patient.gender && <span>{patient.gender}</span>}
                     {age && <span>· {age}</span>}
+                    {patient.id && (
+                        <AttendantPill
+                            patientId={patient.id}
+                            viewerRole="Doctor"
+                            size="xs"
+                            variant="subtle"
+                            showTimestamp={false}
+                        />
+                    )}
                     {wait && (
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-bold ${waitChip}`}>
                             <Clock size={9} /> {wait}

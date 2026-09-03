@@ -19,7 +19,7 @@ export function ConsultationCard({ consultation }: { consultation: Consultation 
                             Case Ref: #{consultation.id.substring(0, 8).toUpperCase()}
                         </h4>
                         <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                            <Calendar size={10} /> {fmtDate(consultation.startTime)} at {fmtFull(consultation.startTime)}
+                            <Calendar size={10} /> {fmtDate(String(consultation.startTime || consultation.created_at || ""))} at {fmtFull(String(consultation.startTime || consultation.created_at || ""))}
                         </div>
                     </div>
                 </div>

@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import PatientRecordDownload, { DownloadOptions } from "@/components/patients/patient-record-download";
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import { toast } from "sonner";
+import { CareTeamAvatarStack } from "@/components/emr/care-team";
 
 // ─── Event Types & Interfaces ─────────────────────────────────────────────────
 
@@ -891,6 +892,15 @@ export default function PatientTimelinePage() {
                                     </span>
                                 )}
                             </div>
+                            {patient.id && (
+                                <CareTeamAvatarStack
+                                    patientId={patient.id}
+                                    patientName={patient.name}
+                                    hospitalNumber={patient.hospital_number}
+                                    size="sm"
+                                    variant="subtle"
+                                />
+                            )}
                             {hasActualAllergy(patient.allergies) && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200">
                                     <ShieldAlert size={12} className="text-rose-500 shrink-0" />

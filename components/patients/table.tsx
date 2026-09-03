@@ -23,6 +23,7 @@ import {
 import { getPatientById } from "@/lib/services/patient.service";
 import { calculateAge, formatDate } from "@/lib/utils";
 import { PatientStatus, type Patient } from "@/types/models";
+import { AttendantPill } from "@/components/emr/care-team";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ROLE → VISIBLE STATUSES
@@ -275,35 +276,49 @@ function PatientGrid({
                                     </InfoRow>
                                 </div>
 
-                                {/* Status */}
-                                <div className="mt-auto pt-1 flex items-center justify-between gap-2">
-                                    <StatusBadge status={patient.status ?? "no-status"} />
-                                    {canReturn && patient.status === "registered" && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleStartEncounter(e, patient)}
-                                            disabled={startEncounterMutation.isPending}
-                                            aria-label={`Start encounter for ${patient.name ?? "patient"}`}
-                                            title="Route this patient to the nurse for triage & vitals"
-                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            {startEncounterMutation.isPending && startEncounterMutation.variables?.id === pid
-                                                ? <Loader2 size={11} className="animate-spin" />
-                                                : <Stethoscope size={11} />}
-                                            Start Encounter
-                                        </button>
-                                    )}
-                                    {canReturn && patient.status === "discharged" && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setReturnPatient(patient);
-                                            }}
-                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-100"
-                                        >
-                                            <RotateCcw size={11} /> Re-encounter
-                                        </button>
+                                {/* Status & Attendant */}
+                                <div className="mt-auto pt-2 space-y-2">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <StatusBadge status={patient.status ?? "no-status"} />
+                                        <AttendantPill
+                                            patientId={pid}
+                                            patientName={patient.name}
+                                            hospitalNumber={patient.hospital_number}
+                                            viewerRole={role}
+                                            enableDrawer
+                                            size="xs"
+                                        />
+                                    </div>
+                                    {canReturn && (patient.status === "registered" || patient.status === "discharged") && (
+                                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-50">
+                                            {patient.status === "registered" && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleStartEncounter(e, patient)}
+                                                    disabled={startEncounterMutation.isPending}
+                                                    aria-label={`Start encounter for ${patient.name ?? "patient"}`}
+                                                    title="Route this patient to the nurse for triage & vitals"
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    {startEncounterMutation.isPending && startEncounterMutation.variables?.id === pid
+                                                        ? <Loader2 size={11} className="animate-spin" />
+                                                        : <Stethoscope size={11} />}
+                                                    Start Encounter
+                                                </button>
+                                            )}
+                                            {patient.status === "discharged" && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setReturnPatient(patient);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-100"
+                                                >
+                                                    <RotateCcw size={11} /> Re-encounter
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
