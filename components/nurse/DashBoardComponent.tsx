@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePatientsByStatus, useCompletedNursingActions } from "@/hooks/emr/use-emr";
 import NursePatientSearch from "./component/nurse-patient-search";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { AttendantPill } from "@/components/emr/care-team";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ function PatientCard({ patient, index, href, accentColor }: {
 
     return (
         <Link href={href}
-            className={`group flex items-center gap-3 p-3.5 rounded-2xl border bg-gray-50/50 hover:bg-white hover:shadow-sm transition-all border-gray-100 ${HOVER_BORDERS[accentColor] ?? "hover:border-gray-200"}`}>
+            className={`group flex items-center gap-3 p-3.5 rounded-2xl border bg-gray-50/50 hover:bg-white transition-all border-gray-200 ${HOVER_BORDERS[accentColor] ?? "hover:border-gray-300"}`}>
 
             {index !== undefined && (
                 <div className={`w-6 h-6 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0 transition-colors ${accentColor}`}>
@@ -83,6 +84,15 @@ function PatientCard({ patient, index, href, accentColor }: {
                             <Phone size={9} /> {patient.phone}
                         </span>
                     )}
+                    {patient.id && (
+                        <AttendantPill
+                            patientId={patient.id}
+                            viewerRole="Nurse"
+                            size="xs"
+                            variant="subtle"
+                            showTimestamp={false}
+                        />
+                    )}
                     {patient.updated_at && (
                         <span className="text-gray-300">· {timeInQueue(patient.updated_at)}</span>
                     )}
@@ -102,7 +112,7 @@ function StatusGroup({ icon: Icon, iconBg, iconColor, label, count, badgeBg, bad
     children: React.ReactNode; loading?: boolean;
 }) {
     return (
-        <div className={`bg-white rounded-3xl border shadow-sm overflow-hidden ${borderColor}`}>
+        <div className={`bg-white rounded-3xl border overflow-hidden ${borderColor}`}>
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-4 sm:px-5 border-b border-gray-50">
                 <div className="flex items-center gap-2.5">
                     <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
@@ -180,14 +190,14 @@ export default function NurseDashboard() {
             {/* ── Stats row ── */}
             <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-3">
                 {[
-                    { label: "Needs Attention",    value: queue.length,     color: "text-teal-600",   bg: "bg-teal-50",   border: "border-teal-100",   icon: HeartPulse  },
-                    { label: "Under Observation",  value: observed.length,  color: "text-sky-600",    bg: "bg-sky-50",    border: "border-sky-100",    icon: Eye         },
-                    { label: "Admitted / Ward",    value: inpatient.length, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", icon: BedDouble   },
-                    { label: "Completed Today",    value: completed.length, color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100",  icon: CheckCircle2},
+                    { label: "Needs Attention",    value: queue.length,     color: "text-teal-600",   bg: "bg-teal-50",   border: "border-teal-200",   icon: HeartPulse  },
+                    { label: "Under Observation",  value: observed.length,  color: "text-sky-600",    bg: "bg-sky-50",    border: "border-sky-200",    icon: Eye         },
+                    { label: "Admitted / Ward",    value: inpatient.length, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200", icon: BedDouble   },
+                    { label: "Completed Today",    value: completed.length, color: "text-green-600",  bg: "bg-green-50",  border: "border-green-200",  icon: CheckCircle2},
                 ].map(s => {
                     const Icon = s.icon;
                     return (
-                        <div key={s.label} className={`bg-white rounded-2xl border ${s.border} shadow-sm px-4 py-4 flex items-center gap-3 hover:shadow-md transition-shadow`}>
+                        <div key={s.label} className={`bg-white rounded-2xl border ${s.border} px-4 py-4 flex items-center gap-3 hover:border-gray-300 transition-colors`}>
                             <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
                                 <Icon size={16} className={s.color} />
                             </div>
@@ -262,7 +272,7 @@ export default function NurseDashboard() {
 
             {/* ── Completed today ── */}
             {completed.length > 0 && (
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden">
                     <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-50">
                         <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
                             <CheckCircle2 size={15} className="text-green-600" />
@@ -277,10 +287,20 @@ export default function NurseDashboard() {
                             <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
                                 <CheckCircle2 size={13} className="text-green-500 shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-gray-700 truncate">
-                                        {t.patients?.name ?? `Patient #${t.patient_id?.slice(-6) ?? "—"}`}
-                                        {t.completed_by ? ` · Dr. ${t.completed_by}` : ""}
-                                    </p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-xs font-bold text-gray-700 truncate">
+                                            {t.patients?.name ?? `Patient #${t.patient_id?.slice(-6) ?? "—"}`}
+                                        </p>
+                                        {t.patient_id && (
+                                            <AttendantPill
+                                                patientId={t.patient_id}
+                                                viewerRole="Nurse"
+                                                size="xs"
+                                                variant="subtle"
+                                                showTimestamp={false}
+                                            />
+                                        )}
+                                    </div>
                                     <p className="text-[10px] text-gray-400">{t.action_type ?? "Nursing care"}</p>
                                 </div>
                                 <p className="text-[10px] text-gray-400 shrink-0">{fmtTime(t.completion_time)}</p>

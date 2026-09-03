@@ -23,6 +23,7 @@ import {
 import { getPatientById } from "@/lib/services/patient.service";
 import { calculateAge, formatDate } from "@/lib/utils";
 import { PatientStatus, type Patient } from "@/types/models";
+import { AttendantPill } from "@/components/emr/care-team";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ROLE → VISIBLE STATUSES
@@ -103,7 +104,7 @@ function Skeleton() {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
             {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-2xl border border-gray-100 bg-gray-50 p-5 animate-pulse space-y-4">
+                <div key={i} className="rounded-2xl border border-gray-200 bg-gray-50/50 p-5 animate-pulse space-y-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gray-200" />
                         <div className="space-y-2 flex-1">
@@ -220,7 +221,7 @@ function PatientGrid({
                             onKeyDown={e => (e.key === "Enter" || e.key === " ") && navigate(pid)}
                             whileHover={{ y: -2 }}
                             whileTap={{ scale: 0.98 }}
-                            className="group relative flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all duration-150 overflow-hidden"
+                            className="group relative flex flex-col bg-white rounded-2xl border border-gray-200 hover:border-blue-400 hover:bg-slate-50/20 cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all duration-150 overflow-hidden"
                         >
                             {/* Gender colour strip */}
                             <div className={clsx("h-1 w-full", isFemale ? "bg-pink-400" : "bg-blue-500")} />
@@ -275,35 +276,49 @@ function PatientGrid({
                                     </InfoRow>
                                 </div>
 
-                                {/* Status */}
-                                <div className="mt-auto pt-1 flex items-center justify-between gap-2">
-                                    <StatusBadge status={patient.status ?? "no-status"} />
-                                    {canReturn && patient.status === "registered" && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleStartEncounter(e, patient)}
-                                            disabled={startEncounterMutation.isPending}
-                                            aria-label={`Start encounter for ${patient.name ?? "patient"}`}
-                                            title="Route this patient to the nurse for triage & vitals"
-                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            {startEncounterMutation.isPending && startEncounterMutation.variables?.id === pid
-                                                ? <Loader2 size={11} className="animate-spin" />
-                                                : <Stethoscope size={11} />}
-                                            Start Encounter
-                                        </button>
-                                    )}
-                                    {canReturn && patient.status === "discharged" && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setReturnPatient(patient);
-                                            }}
-                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-100"
-                                        >
-                                            <RotateCcw size={11} /> Re-encounter
-                                        </button>
+                                {/* Status & Attendant */}
+                                <div className="mt-auto pt-2 space-y-2">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <StatusBadge status={patient.status ?? "no-status"} />
+                                        <AttendantPill
+                                            patientId={pid}
+                                            patientName={patient.name}
+                                            hospitalNumber={patient.hospital_number}
+                                            viewerRole={role}
+                                            enableDrawer
+                                            size="xs"
+                                        />
+                                    </div>
+                                    {canReturn && (patient.status === "registered" || patient.status === "discharged") && (
+                                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-50">
+                                            {patient.status === "registered" && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleStartEncounter(e, patient)}
+                                                    disabled={startEncounterMutation.isPending}
+                                                    aria-label={`Start encounter for ${patient.name ?? "patient"}`}
+                                                    title="Route this patient to the nurse for triage & vitals"
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    {startEncounterMutation.isPending && startEncounterMutation.variables?.id === pid
+                                                        ? <Loader2 size={11} className="animate-spin" />
+                                                        : <Stethoscope size={11} />}
+                                                    Start Encounter
+                                                </button>
+                                            )}
+                                            {patient.status === "discharged" && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setReturnPatient(patient);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-100"
+                                                >
+                                                    <RotateCcw size={11} /> Re-encounter
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>

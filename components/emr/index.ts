@@ -6,3 +6,4 @@ export * from "./LoadingSkeleton";
 export * from "./EmptyState";
 export * from "./ErrorAlert";
 export * from "./SuccessAlert";
+export * from "./care-team";

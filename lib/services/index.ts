@@ -10,3 +10,4 @@ export * from "./appointment.service";
 export * from "./discharge.service";
 export * from "./nurse-charts.service";
 export * from "./patient-routing.service";
+export * from "./care-team.service";

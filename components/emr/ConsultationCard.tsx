@@ -8,7 +8,7 @@ import { Calendar, Stethoscope, ClipboardList } from "lucide-react";
 
 export function ConsultationCard({ consultation }: { consultation: Consultation }) {
     return (
-        <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+        <div className="bg-white rounded-[2rem] p-6 border border-gray-200 hover:border-blue-400 transition-colors group">
             <div className="flex justify-between items-start mb-6">
                 <div className="flex gap-3 items-center">
                     <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
@@ -19,7 +19,7 @@ export function ConsultationCard({ consultation }: { consultation: Consultation 
                             Case Ref: #{consultation.id.substring(0, 8).toUpperCase()}
                         </h4>
                         <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                            <Calendar size={10} /> {fmtDate(consultation.startTime)} at {fmtFull(consultation.startTime)}
+                            <Calendar size={10} /> {fmtDate(String(consultation.startTime || consultation.created_at || ""))} at {fmtFull(String(consultation.startTime || consultation.created_at || ""))}
                         </div>
                     </div>
                 </div>

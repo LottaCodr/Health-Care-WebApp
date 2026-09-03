@@ -137,10 +137,7 @@ export function ConsultationCard({ consultation }: { consultation: Consultation 
             </p>
             {displayDate && (
               <p className="text-[10px] text-gray-400 mt-0.5">
-                {fmtFull(displayDate)
-                  day: "numeric", month: "short",
-                  hour: "2-digit", minute: "2-digit",
-                })}
+                {fmtFull(displayDate)}
               </p>
             )}
           </div>

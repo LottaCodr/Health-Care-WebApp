@@ -1,20 +1,6 @@
 "use client";
 
-import dynamic from "next/dynamic";
-
-const RegistrationSuite = dynamic(
-    () => import("@/components/front-desk/components/register-patient/RegistrationSuite"),
-    {
-        ssr: false,
-        loading: () => (
-            <div className="animate-pulse space-y-4 rounded-2xl border border-gray-100 bg-white p-6">
-                <div className="h-8 w-48 bg-gray-100 rounded-xl" />
-                <div className="h-40 bg-gray-50 rounded-2xl" />
-                <div className="h-32 bg-gray-50 rounded-2xl" />
-            </div>
-        ),
-    }
-);
+import RegistrationSuite from "@/components/front-desk/components/register-patient/RegistrationSuite";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";

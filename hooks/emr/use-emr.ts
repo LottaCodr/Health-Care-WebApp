@@ -98,5 +98,11 @@ export {
     useDeleteStaff,
 } from "./use-staff";
 
+// Care Team & Attendance
+export {
+    usePatientCareTeam,
+    useBatchCareTeam,
+} from "./use-care-team";
+
 // Query keys — export for prefetching in server components / page.tsx
 export * from "../query-keys";

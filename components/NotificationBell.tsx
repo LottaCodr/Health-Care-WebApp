@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useNotifications } from "@/hooks/use-notifications";
 import { Notification } from "@/types/models";
 import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle2, Zap, X } from "lucide-react";
+import { fmtDate } from "@/lib/utils";
 
 // ─── Type config ──────────────────────────────────────────────────────────────
 

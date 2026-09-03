@@ -8,7 +8,7 @@ import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
 import { usePatientsByStatus, useConsultationsByDoctor, useUpdateConsultation } from "@/hooks/emr/use-emr";
 import { useAppointmentsByDate } from "@/hooks/emr/use-appointments";
-import { LoadingSkeleton, EmptyState, ErrorAlert } from "@/components/emr-ui";
+import { LoadingSkeleton, EmptyState, ErrorAlert } from "@/components/emr";
 import {
     Clock, ClipboardList, CheckCircle2, Loader2,
     ChevronRight, Stethoscope, Activity, FileText,
@@ -18,7 +18,8 @@ import {
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { toHospitalISODate, resolvePatientName } from "@/lib/utils/appointment.utils";
 import { toast } from "sonner";
-import { fmtDate, fmtFull } from "@/lib/utils";
+import { fmtDate, fmtFull, fmtTime } from "@/lib/utils";
+import { AttendantPill } from "@/components/emr/care-team";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,10 +40,6 @@ function timeWaiting(updatedAt?: string | null) {
     if (mins < 1)  return "just now";
     if (mins < 60) return `${mins}m waiting`;
     return `${Math.floor(mins / 60)}h ${mins % 60}m waiting`;
-}
-
-}
-
 }
 
 function isToday(iso?: string | null) {
@@ -92,7 +89,7 @@ function StatCard({ label, value, caption, icon: Icon, chip, ring, href }: {
     chip: string; ring: string; href?: string;
 }) {
     const body = (
-        <div className={`group relative overflow-hidden bg-white rounded-3xl border border-gray-100 px-5 py-5 shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 ring-1 ring-transparent ${ring}`}>
+        <div className={`group relative overflow-hidden bg-white rounded-3xl border border-gray-200 px-5 py-5 transition-all duration-200 hover:border-gray-300 ring-1 ring-transparent ${ring}`}>
             <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                     <p className="text-3xl font-black text-gray-900 leading-none tabular-nums">
@@ -123,7 +120,7 @@ function TabBar({ tabs, active, onChange }: {
     onChange: (id: string) => void;
 }) {
     return (
-        <div className="scrollbar-hide flex gap-1 overflow-x-auto rounded-2xl bg-gray-50/80 border border-gray-100 p-1">
+        <div className="scrollbar-hide flex gap-1 overflow-x-auto rounded-2xl bg-gray-50/80 border border-gray-200 p-1">
             {tabs.map(tab => {
                 const Icon = tab.icon;
                 const isActive = active === tab.id;
@@ -131,7 +128,7 @@ function TabBar({ tabs, active, onChange }: {
                     <button key={tab.id} onClick={() => onChange(tab.id)}
                         className={`flex shrink-0 items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all duration-150 ${
                             isActive
-                                ? "bg-white text-red-700 shadow-sm border border-gray-100"
+                                ? "bg-white text-red-700 border border-gray-200"
                                 : "text-gray-400 hover:text-gray-600 border border-transparent"
                         }`}>
                         <Icon size={13} />
@@ -169,8 +166,10 @@ function PatientAvatar({ name, gender, size = 36 }: { name?: string | null; gend
 function QueueRow({ patient, index }: { patient: any; index: number }) {
     const age      = calcAge(patient.birth_date ?? patient.date_of_birth);
     const isChild  = age ? parseInt(age) <= 12 : false;
-    const wait     = timeWaiting(patient.updated_at);
-    const waitMin  = waitMinutes(patient.updated_at);
+    const entryTime = patient.updated_at || patient.created_at;
+    const entryTimeStr = entryTime ? fmtTime(entryTime) : "";
+    const wait     = timeWaiting(patient.updated_at || patient.created_at);
+    const waitMin  = waitMinutes(patient.updated_at || patient.created_at);
     const waitChip =
         waitMin == null ? "bg-gray-50 text-gray-400 border-gray-100"
         : waitMin >= 60 ? "bg-red-50 text-red-600 border-red-100"
@@ -178,8 +177,8 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
         : "bg-green-50 text-green-600 border-green-100";
 
     return (
-        <div className="flex flex-wrap items-center gap-3 p-3.5 sm:p-4 rounded-2xl border border-gray-100 bg-gray-50/40 hover:bg-white hover:border-red-100 hover:shadow-md transition-all duration-200">
-            <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs shrink-0">
+        <div className="flex flex-wrap items-center gap-3 p-3.5 sm:p-4 rounded-2xl border border-gray-200 bg-gray-50/40 hover:bg-white hover:border-red-300 transition-all duration-200">
+            <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs shrink-0" title={`FIFO Queue Position #${index + 1}`}>
                 {index + 1}
             </div>
             <PatientAvatar name={patient.name} gender={patient.gender} />
@@ -195,6 +194,20 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
                 <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5 flex-wrap">
                     {patient.gender && <span>{patient.gender}</span>}
                     {age && <span>· {age}</span>}
+                    {entryTimeStr && (
+                        <span className="text-gray-500 font-medium">
+                            · Sent {entryTimeStr}
+                        </span>
+                    )}
+                    {patient.id && (
+                        <AttendantPill
+                            patientId={patient.id}
+                            viewerRole="Doctor"
+                            size="xs"
+                            variant="subtle"
+                            showTimestamp={false}
+                        />
+                    )}
                     {wait && (
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-bold ${waitChip}`}>
                             <Clock size={9} /> {wait}
@@ -208,7 +221,7 @@ function QueueRow({ patient, index }: { patient: any; index: number }) {
                     <FileText size={13} />
                 </Link>
                 <Link href={`/doctor/patients/${patient.id}`}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-red-200 hover:shadow-md">
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-xl transition-all">
                     <Stethoscope size={12} /> Consult
                 </Link>
             </div>
@@ -227,7 +240,7 @@ function ActiveConsultationRow({ consultation, onComplete, completing }: {
     const age  = calcAge(consultation.patient_birth_date);
 
     return (
-        <div className="flex flex-wrap items-start gap-3 p-3.5 sm:p-4 rounded-2xl border border-red-100/60 bg-gradient-to-br from-red-50/40 to-white hover:shadow-md transition-all duration-200">
+        <div className="flex flex-wrap items-start gap-3 p-3.5 sm:p-4 rounded-2xl border border-red-200/80 bg-gradient-to-br from-red-50/40 to-white hover:border-red-300 transition-all duration-200">
             <PatientAvatar name={name} gender={consultation.patient_gender} />
             <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -260,7 +273,7 @@ function ActiveConsultationRow({ consultation, onComplete, completing }: {
                 </button>
                 {consultation.patient_id && (
                     <Link href={`/doctor/patients/${consultation.patient_id}`}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-red-200">
+                        className="flex items-center gap-1.5 px-3 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-xl transition-all">
                         <Stethoscope size={12} /> Continue
                     </Link>
                 )}
@@ -277,7 +290,7 @@ function ReferredRow({ consultation }: { consultation: any }) {
 
     return (
         <Link href={consultation.patient_id ? `/doctor/patients/${consultation.patient_id}` : "#"}
-            className="group flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50/40 hover:bg-white hover:border-indigo-100 hover:shadow-sm transition-all duration-200">
+            className="group flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 bg-gray-50/40 hover:bg-white hover:border-indigo-300 transition-all duration-200">
             <PatientAvatar name={name} gender={consultation.patient_gender} />
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-gray-800 truncate">{name}</p>
@@ -300,7 +313,7 @@ function AdmittedRow({ patient }: { patient: any }) {
     const age = calcAge(patient.birth_date ?? patient.date_of_birth);
     return (
         <Link href={`/doctor/patients/${patient.id}`}
-            className="group flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50/40 hover:bg-white hover:border-indigo-100 hover:shadow-sm transition-all duration-200">
+            className="group flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 bg-gray-50/40 hover:bg-white hover:border-indigo-300 transition-all duration-200">
             <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-black text-indigo-600 text-sm shrink-0">
                 {(patient.name ?? "?")[0].toUpperCase()}
             </div>
@@ -336,7 +349,7 @@ function SchedulePanel({ appointments, loading }: { appointments: any[]; loading
     });
 
     return (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
                 <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
@@ -467,6 +480,27 @@ export default function DoctorDashboard() {
         [todayAppts.data, staffId]
     );
 
+    // ─── FIFO Ordering (Earliest Time & Date First) ───────────────────────────
+    const fifoQueuePatients = useMemo(() => {
+        const list = (awaitingPatients.data ?? []) as any[];
+        return [...list].sort((a, b) => {
+            const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+            const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+            if (timeA !== timeB) return timeA - timeB; // Earliest first (FIFO)
+            return (a.id || "").localeCompare(b.id || "");
+        });
+    }, [awaitingPatients.data]);
+
+    const fifoAdmittedPatients = useMemo(() => {
+        const list = (admittedPatients.data ?? []) as any[];
+        return [...list].sort((a, b) => {
+            const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+            const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+            if (timeA !== timeB) return timeA - timeB; // Earliest first (FIFO)
+            return (a.id || "").localeCompare(b.id || "");
+        });
+    }, [admittedPatients.data]);
+
     if (protectionLoading) return (
         <div className="flex items-center justify-center min-h-[40vh]">
             <div className="w-10 h-10 rounded-2xl bg-red-50 flex items-center justify-center">
@@ -509,7 +543,7 @@ export default function DoctorDashboard() {
                             <RefreshCcw size={13} className={anyLoading ? "animate-spin" : ""} />
                             <span className="hidden sm:inline">{anyLoading ? "Syncing…" : "Refresh"}</span>
                         </button>
-                        <Link href="/doctor/appointments" className="inline-flex h-9 items-center gap-2 rounded-xl bg-red-700 px-3 text-xs font-bold text-white transition-colors hover:bg-red-800 shadow-sm shadow-red-200">
+                        <Link href="/doctor/appointments" className="inline-flex h-9 items-center gap-2 rounded-xl bg-red-700 px-3 text-xs font-bold text-white transition-colors hover:bg-red-800">
                             <Calendar size={13} /> My schedule
                         </Link>
                     </div>
@@ -525,16 +559,21 @@ export default function DoctorDashboard() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
 
                 {/* Patient management */}
-                <div className="xl:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="xl:col-span-2 bg-white rounded-3xl border border-gray-200 overflow-hidden">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 pt-5 sm:px-6 sm:pt-6">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center">
                                 <ClipboardList size={16} className="text-red-600" />
                             </div>
                             <div>
-                                <h2 className="text-base font-bold text-gray-800 leading-tight">Patient management</h2>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-base font-bold text-gray-800 leading-tight">Patient management</h2>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                        FIFO Queue
+                                    </span>
+                                </div>
                                 <p className="text-[11px] text-gray-400 mt-0.5">
-                                    {lastSynced ? `Synced ${lastSynced.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · refreshes every minute` : "Loading live data…"}
+                                    {lastSynced ? `Synced ${lastSynced.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · FIFO ordered by arrival time` : "Loading live data…"}
                                 </p>
                             </div>
                         </div>
@@ -555,7 +594,7 @@ export default function DoctorDashboard() {
                                     {!awaitingPatients.isLoading && queueCount === 0 && (
                                         <EmptyState title="Queue is clear" description="No patients are waiting for a consultation right now." icon="✓" />
                                     )}
-                                    {awaitingPatients.data?.map((p, i) => (
+                                    {fifoQueuePatients.map((p, i) => (
                                         <QueueRow key={p.id} patient={p} index={i} />
                                     ))}
                                 </>
@@ -599,7 +638,7 @@ export default function DoctorDashboard() {
                                     {!admittedPatients.isLoading && admittedCount === 0 && (
                                         <EmptyState title="No admitted patients" description="Patients admitted under the hospital will appear here." icon="🛏" />
                                     )}
-                                    {admittedPatients.data?.map(p => (
+                                    {fifoAdmittedPatients.map(p => (
                                         <AdmittedRow key={p.id} patient={p} />
                                     ))}
                                 </>
@@ -613,7 +652,7 @@ export default function DoctorDashboard() {
                     <SchedulePanel appointments={myTodayAppointments} loading={todayAppts.isLoading} />
 
                     {/* Quick actions */}
-                    <div className="bg-gradient-to-br from-red-700 to-rose-800 rounded-3xl p-5 text-white shadow-lg shadow-red-200 relative overflow-hidden">
+                    <div className="bg-gradient-to-br from-red-700 to-rose-800 rounded-3xl p-5 text-white border border-red-600/30 relative overflow-hidden">
                         <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10 blur-xl" aria-hidden="true" />
                         <div className="relative">
                             <div className="flex items-center gap-2 mb-1.5">

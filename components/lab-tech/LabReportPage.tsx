@@ -18,9 +18,6 @@ import HematologyAnalyzerReport from "./HematologyAnalyzerReport";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-}
-}
-
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {
     routine: { label: "Routine", color: "text-gray-600", bg: "bg-gray-100", dot: "bg-gray-400", border: "border-gray-200" },
     urgent: { label: "Urgent", color: "text-amber-700", bg: "bg-amber-50", dot: "bg-amber-500", border: "border-amber-200" },

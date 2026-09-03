@@ -130,3 +130,12 @@ export const admissionKeys = {
     active:    ()              => ["admissions", "active"]                 as const,
     byPatient: (id: string)   => ["admissions", "patient", id]            as const,
 };
+
+// ─── Care Team & Attendants ───────────────────────────────────────────────────
+
+export const careTeamKeys = {
+    all: () => ["care-team"] as const,
+    byPatient: (id: string) => ["care-team", "patient", id] as const,
+    batch: (ids: string[]) => ["care-team", "batch", ids.slice().sort().join(",")] as const,
+};
+

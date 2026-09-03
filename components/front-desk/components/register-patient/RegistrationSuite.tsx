@@ -443,7 +443,7 @@ export default function RegistrationSuite() {
   return (
     <div className="min-h-screen bg-gray-50/60 py-8 px-4">
       <div className="max-w-5xl mx-auto">
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden">
           <div className="flex">
 
             {/* Sidebar */}
@@ -730,14 +730,14 @@ export default function RegistrationSuite() {
 
                         {currentStep < STEPS.length - 1 ? (
                           <button type="button" onClick={handleNext} disabled={validatingStep}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm shadow-blue-200 transition-all disabled:opacity-60">
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all disabled:opacity-60">
                             {validatingStep && <Loader2 size={14} className="animate-spin" />}
                             Next <ChevronRight size={16} />
                           </button>
                         ) : (
                           <button type="button" onClick={handleFinalSubmit}
                             disabled={submitting || validatingStep}
-                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm shadow-blue-200 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                             {submitting
                               ? <><Loader2 size={14} className="animate-spin" /> Registering...</>
                               : <><CheckCircle2 size={15} /> Register Patient</>

@@ -16,6 +16,7 @@ import {
     usePharmacyReport, useRevenueReport, useSendAppointmentReminders, useSendTestMessage,
 } from "@/hooks/emr/use-clinical-modules";
 import { toCsv } from "@/lib/utils/csv";
+import { fmtFull } from "@/lib/utils";
 
 function download(filename: string, content: string) {
     const blob = new Blob([content], { type: "text/csv" });

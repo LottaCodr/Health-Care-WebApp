@@ -11,6 +11,7 @@ import { usePendingPayments } from "@/hooks/emr/use-payment";
 import { useAuth } from "@/context/auth-provider";
 import { SettleBillModal, QueueSettleAllModal, PayerBadge } from "@/components/patients/billing-modals";
 import { formatKobo, resolvePayerFromPatient, PAYMENT_TYPE_CONFIG } from "@/lib/utils/billing";
+import { fmtDate, fmtFull } from "@/lib/utils";
 
 // ─── PaymentList ──────────────────────────────────────────────────────────────
 

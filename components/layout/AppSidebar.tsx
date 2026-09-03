@@ -48,6 +48,18 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
     if (!nav) return null;
 
+    const allNavItems = [...nav.main, ...nav.secondary];
+
+    const isItemActive = (itemUrl: string): boolean => {
+        if (pathname === itemUrl) return true;
+        // Check if there is another nav item that is a longer, more specific match
+        const hasMoreSpecificMatch = allNavItems.some(
+            (other) => other.url !== itemUrl && other.url.length > itemUrl.length && (pathname === other.url || pathname.startsWith(`${other.url}/`))
+        );
+        if (hasMoreSpecificMatch) return false;
+        return pathname.startsWith(`${itemUrl}/`);
+    };
+
     return (
         <Sidebar
             variant="inset"
@@ -133,7 +145,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         <NavItem
                             key={item.url}
                             item={item}
-                            isActive={pathname === item.url || pathname.startsWith(`${item.url}/`)}
+                            isActive={isItemActive(item.url)}
                             onNavigate={handleNavigate}
                         />
                     ))}
@@ -144,7 +156,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         <NavItem
                             key={item.url}
                             item={item}
-                            isActive={pathname === item.url || pathname.startsWith(`${item.url}/`)}
+                            isActive={isItemActive(item.url)}
                             onNavigate={handleNavigate}
                         />
                     ))}

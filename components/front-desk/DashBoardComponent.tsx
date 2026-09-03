@@ -80,7 +80,7 @@ function PatientRow({ patient, action, secondaryAction }: {
         ? patient.name[0].toUpperCase()
         : "?";
     return (
-        <div className="flex items-center gap-3 p-3 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-100 hover:shadow-sm transition-all group">
+        <div className="flex items-center gap-3 p-3 rounded-2xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-blue-300 transition-colors group">
             <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center font-black text-blue-600 text-sm shrink-0">
                 {initials}
             </div>
@@ -115,7 +115,7 @@ function ArrivalRow({ patient }: { patient: any }) {
         ? patient.name[0].toUpperCase()
         : "?";
     return (
-        <div className="flex items-center gap-3 p-3 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-100 hover:shadow-sm transition-all">
+        <div className="flex items-center gap-3 p-3 rounded-2xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-blue-300 transition-colors">
             <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center font-black text-blue-600 text-sm shrink-0">
                 {initials}
             </div>
@@ -149,7 +149,7 @@ function Section({ icon: Icon, iconBg, iconColor, title, subtitle, badge, badgeC
     extraHeaderContent?: React.ReactNode;
 }) {
     return (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden">
             <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5 border-b border-gray-50">
                 <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
@@ -278,7 +278,7 @@ export default function FrontDeskDashboard() {
                     {stats.map(s => {
                         const Icon = s.icon;
                         return (
-                            <div key={s.label} className={`bg-white rounded-2xl border ${s.border} shadow-sm px-4 py-4 flex items-center gap-3 hover:shadow-md transition-shadow`}>
+                            <div key={s.label} className={`bg-white rounded-2xl border ${s.border} px-4 py-4 flex items-center gap-3 hover:border-gray-300 transition-colors`}>
                                 <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
                                     <Icon size={17} className={s.color} />
                                 </div>

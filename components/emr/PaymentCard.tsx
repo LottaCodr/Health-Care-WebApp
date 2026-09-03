@@ -23,7 +23,7 @@ export function PaymentCard({ payment }: { payment: Payment }) {
     const config = getStatusConfig(payment.status);
 
     return (
-        <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col justify-between h-full">
+        <div className="bg-white rounded-[2rem] p-6 border border-gray-200 flex flex-col justify-between h-full">
             <div className="flex justify-between items-start mb-6">
                 <div className="flex gap-3 items-center">
                     <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
@@ -36,7 +36,7 @@ export function PaymentCard({ payment }: { payment: Payment }) {
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Transaction Total</p>
                     </div>
                 </div>
-                <Badge className={`${config.color} rounded-full px-3 py-1 flex gap-1 items-center font-bold text-[10px] uppercase tracking-wider shadow-sm`}>
+                <Badge className={`${config.color} rounded-full px-3 py-1 flex gap-1 items-center font-bold text-[10px] uppercase tracking-wider`}>
                     {config.icon}
                     {payment.status}
                 </Badge>

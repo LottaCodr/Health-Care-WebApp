@@ -7,6 +7,7 @@ import { Scissors } from "lucide-react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
 import { useSurgerySchedule, useUpdateSurgery } from "@/hooks/emr/use-clinical-modules";
+import { fmtFull } from "@/lib/utils";
 
 const STATUS_STYLES: Record<string, string> = {
     scheduled: "bg-blue-50 text-blue-700 border-blue-200",

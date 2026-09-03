@@ -18,6 +18,7 @@ import {
     RefreshCw
 } from "lucide-react";
 import { authService } from "@/lib/auth-service";
+import { fmtFull } from "@/lib/utils";
 
 interface SecurityEvent {
     timestamp: string;

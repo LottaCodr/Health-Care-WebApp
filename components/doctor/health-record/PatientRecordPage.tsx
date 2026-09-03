@@ -25,7 +25,7 @@ import {
     Clock, Loader2,
 } from "lucide-react";
 import { Patient } from "@/types/models";
-import { hasActualAllergy, fmt, fmtFull } from "@/lib/utils";
+import { hasActualAllergy, fmtDate, fmtFull } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -217,7 +217,7 @@ export default function PatientRecordPage({ patient }: Props) {
                         </div>
                     </div>
                     <InfoGrid items={[
-                        { label: "Date of Birth", value: fmt(patient.birth_date) },
+                        { label: "Date of Birth", value: fmtDate(patient.birth_date) },
                         { label: "Gender", value: patient.gender },
                         { label: "Blood Group", value: patient.blood_group },
                         { label: "Genotype", value: patient.geno_type },
@@ -300,7 +300,7 @@ export default function PatientRecordPage({ patient }: Props) {
                                             <td className="py-2.5 pr-4 text-gray-800 font-bold">
                                                 {p.price ? `₦${Number(p.price).toLocaleString("en-NG")}` : "—"}
                                             </td>
-                                            <td className="py-2.5 text-gray-500">{fmt(p.created_at)}</td>
+                                            <td className="py-2.5 text-gray-500">{fmtDate(p.created_at)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -319,7 +319,7 @@ export default function PatientRecordPage({ patient }: Props) {
                                 <div key={r.id} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                                     <div className="flex items-center justify-between mb-2">
                                         <p className="text-sm font-bold text-gray-800">{r.test_type}</p>
-                                        <p className="text-[10px] text-gray-400">{fmt(r.completed_at)}</p>
+                                        <p className="text-[10px] text-gray-400">{fmtDate(r.completed_at)}</p>
                                     </div>
                                     {r.result && (
                                         <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
