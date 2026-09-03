@@ -97,7 +97,7 @@ export function CareTeamDrawer({
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
                 side="right"
-                className="w-full sm:max-w-lg p-0 flex flex-col bg-white overflow-hidden border-l border-gray-100 shadow-2xl"
+                className="w-full sm:max-w-lg p-0 flex flex-col bg-white overflow-hidden border-l border-gray-200"
             >
                 {/* ── Sheet Header ────────────────────────────────────────────── */}
                 <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white shrink-0">
@@ -184,7 +184,7 @@ export function CareTeamDrawer({
                             return (
                                 <div
                                     key={`${member.staffId}-${idx}`}
-                                    className="bg-white rounded-2xl border border-gray-100 shadow-xs hover:border-blue-100 hover:shadow-md transition-all p-4 space-y-3"
+                                    className="bg-white rounded-2xl border border-gray-200 hover:border-blue-300 transition-all p-4 space-y-3"
                                 >
                                     {/* Card Top: Avatar, Role, Time */}
                                     <div className="flex items-start justify-between gap-3">

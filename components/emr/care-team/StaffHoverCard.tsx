@@ -77,13 +77,13 @@ export function StaffHoverCard({
                 align={align}
                 side={side}
                 sideOffset={6}
-                className="w-80 p-0 rounded-2xl border border-gray-100 bg-white shadow-xl overflow-hidden z-50 text-slate-800 animate-in fade-in-0 zoom-in-95 duration-150"
+                className="w-80 p-0 rounded-2xl border border-gray-200 bg-white overflow-hidden z-50 text-slate-800 animate-in fade-in-0 zoom-in-95 duration-150"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header Strip with Role Accent */}
                 <div className={`px-4 py-3 border-b flex items-center justify-between ${token.bg} ${token.border}`}>
                     <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-7 h-7 rounded-lg bg-white shadow-xs border flex items-center justify-center shrink-0 ${token.border}`}>
+                        <div className={`w-7 h-7 rounded-lg bg-white border flex items-center justify-center shrink-0 ${token.border}`}>
                             <IconComponent size={14} className={token.accentColor} />
                         </div>
                         <div className="min-w-0">
@@ -103,7 +103,7 @@ export function StaffHoverCard({
                 {/* Profile Body */}
                 <div className="p-4 space-y-3.5">
                     <div className="flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-xs shrink-0 ${
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm text-white shrink-0 ${
                             token.iconName === "stethoscope" ? "bg-indigo-600" :
                             token.iconName === "heart-pulse" ? "bg-teal-600" :
                             token.iconName === "flask-conical" ? "bg-purple-600" :

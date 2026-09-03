@@ -362,7 +362,7 @@ function PatientProfile({
     const activeFields = groups[activeGroup] ?? [];
     const router = useRouter();
     return (
-        <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <section className="bg-white rounded-3xl border border-gray-200 overflow-hidden">
 
             {/* ── Hero header ─────────────────────────────────────────────────── */}
             <div className="relative px-4 pt-6 pb-5 sm:px-6 sm:pt-8 sm:pb-6 bg-gradient-to-br from-blue-700 to-blue-900 overflow-hidden">
@@ -513,8 +513,8 @@ function PatientProfile({
 function InfoItem({ label, value, icon }: { label: string; value: ReactNode; icon: ReactNode }) {
     const isEmpty = value === null || value === undefined || value === "";
     return (
-        <div className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-3.5 hover:border-blue-100 hover:bg-blue-50/30 transition-colors group">
-            <div className="mt-0.5 w-7 h-7 rounded-lg bg-white border border-gray-100 flex items-center justify-center shrink-0 text-gray-400 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors shadow-sm">
+        <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50/50 px-4 py-3.5 hover:border-blue-300 hover:bg-blue-50/20 transition-colors group">
+            <div className="mt-0.5 w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 text-gray-400 group-hover:text-blue-600 group-hover:border-blue-300 transition-colors">
                 {icon}
             </div>
             <div className="min-w-0 flex-1">

@@ -279,7 +279,7 @@ function EventCard({
         <div className="relative flex gap-4 group">
             {/* Timeline Left Node + Connecting Line */}
             <div className="flex flex-col items-center shrink-0">
-                <div className={`w-10 h-10 rounded-2xl ${cfg.bg} border-2 ${cfg.border} flex items-center justify-center z-10 shadow-sm ${cfg.glow} transition-transform group-hover:scale-105 duration-200`}>
+                <div className={`w-10 h-10 rounded-2xl ${cfg.bg} border-2 ${cfg.border} flex items-center justify-center z-10 transition-transform group-hover:scale-105 duration-200`}>
                     <Icon size={18} className={cfg.color} />
                 </div>
                 {!isLast && (
@@ -289,7 +289,7 @@ function EventCard({
 
             {/* Timeline Right Card */}
             <div className="flex-1 pb-6 min-w-0">
-                <div className="bg-white rounded-2xl border border-gray-100/80 shadow-xs hover:shadow-md hover:border-gray-200 transition-all duration-200 overflow-hidden">
+                <div className="bg-white rounded-2xl border border-gray-200 hover:border-gray-300 transition-all duration-200 overflow-hidden">
                     
                     {/* Top color bar */}
                     <div className={`h-1 w-full ${cfg.line}`} />
@@ -831,12 +831,12 @@ export default function PatientTimelinePage() {
                 </div>
 
                 {/* ── Patient Profile Summary Card ── */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6 overflow-hidden relative">
+                <div className="bg-white rounded-3xl border border-gray-200 p-5 sm:p-6 overflow-hidden relative">
                     <div className="flex flex-col md:flex-row md:items-center gap-5 justify-between">
                         
                         {/* Avatar + Primary Bio */}
                         <div className="flex items-start gap-4 min-w-0">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-xl shadow-md shadow-blue-200 shrink-0">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-xl border border-blue-400/30 shrink-0">
                                 {patient.name?.[0]?.toUpperCase() ?? <User size={24} />}
                             </div>
                             <div className="min-w-0 flex-1">

@@ -8,10 +8,10 @@ import { Mail, Phone, User, Droplets, MapPin, AlertTriangle } from "lucide-react
 
 export function PatientInfoCard({ patient }: { patient: Patient }) {
     return (
-        <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-white rounded-[2rem] p-8 border border-gray-200 hover:border-blue-400 transition-colors">
             <div className="flex justify-between items-start mb-8">
                 <div className="flex gap-4 items-center">
-                    <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center font-black text-blue-600 text-2xl shadow-inner border border-blue-100">
+                    <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center font-black text-blue-600 text-2xl border border-blue-100">
                         {patient.name[0]}
                     </div>
                     <div>

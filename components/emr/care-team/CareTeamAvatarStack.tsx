@@ -102,10 +102,10 @@ export function CareTeamAvatarStack({
                             <button
                                 key={`${member.staffId}-${idx}`}
                                 type="button"
-                                className={`relative rounded-full font-black flex items-center justify-center shrink-0 ring-2 transition-all duration-150 hover:scale-110 hover:z-20 cursor-pointer shadow-2xs ${sizeClasses} ${
+                                className={`relative rounded-full font-black flex items-center justify-center shrink-0 ring-2 transition-all duration-150 hover:scale-110 hover:z-20 cursor-pointer ${sizeClasses} ${
                                     isHero
                                         ? "bg-slate-800 text-white ring-white/30 hover:ring-white"
-                                        : `${token.bg} ${token.text} ${token.ring} ring-white hover:shadow-xs`
+                                        : `${token.bg} ${token.text} ${token.ring} ring-white`
                                 }`}
                                 title={`${formatStaffName(member.name, member.role, "full")} (${token.label})`}
                             >

@@ -137,7 +137,7 @@ export function AttendantPill({
                     ? "bg-white/15 hover:bg-white/25 border-white/20 text-white backdrop-blur-sm px-2.5 py-1 text-xs"
                     : variant === "subtle"
                     ? "bg-slate-50 hover:bg-slate-100/90 border-slate-200/60 text-slate-700 px-2 py-0.5 text-[11px]"
-                    : "bg-white hover:bg-slate-50 border-slate-200/80 shadow-2xs hover:shadow-xs text-slate-700 px-2 py-0.5 text-[11px]"
+                    : "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 px-2 py-0.5 text-[11px]"
             } ${isXs ? "text-[10px] px-1.5 py-0.2" : isMd ? "text-xs px-3 py-1" : ""} ${className}`}
             title={`Attended by ${formatStaffName(activeAttendant.name, activeAttendant.role, "full")}`}
         >
