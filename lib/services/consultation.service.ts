@@ -8,8 +8,13 @@ import { logAction } from "./audit.service";
 export interface CreateConsultationInput {
     patientId: string;
     doctorId: string;
-    symptoms: string;
-    diagnosis: string;
+    // Clinical content is intentionally optional end-to-end: nothing on the
+    // consultation form is hard-required anymore (the doctor gets a
+    // confirmation prompt for critical gaps instead). The matching migration
+    // 20260903_consultation_tables_no_required_fields.sql drops the NOT NULL
+    // constraints these columns used to have.
+    symptoms?: string;
+    diagnosis?: string;
     prescriptions?: string;
     recommendations?: string;
     referredTo?: string;
@@ -29,8 +34,8 @@ export async function createConsultation(
         .insert([{
             patient_id: input.patientId,
             doctor_id: input.doctorId,
-            symptoms: input.symptoms,
-            diagnosis: input.diagnosis,
+            symptoms: input.symptoms ?? null,
+            diagnosis: input.diagnosis ?? null,
             prescriptions: input.prescriptions ?? null,
             recommendations: input.recommendations ?? null,
             referred_to: input.referredTo ?? null,

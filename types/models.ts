@@ -104,9 +104,10 @@ export interface Consultation {
     patient_phone?: string | null;      // Joined patient phone
     doctor_id: string;           // Doctor's ID
 
-    // Clinical content
-    symptoms: string;
-    diagnosis: string;
+    // Clinical content — nullable end-to-end: nothing on the consultation
+    // form is hard-required (the doctor confirms critical gaps instead).
+    symptoms?: string | null;
+    diagnosis?: string | null;
     prescriptions?: string | null;
     recommendations?: string | null;
     icd10_codes?: string[];

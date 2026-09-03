@@ -96,7 +96,7 @@ export async function updatePatient(
     id: string,
     updates: Partial<Patient>
 ): Promise<Patient> {
-    await requireStaff([UserRole.FrontDesk, UserRole.Doctor, UserRole.Nurse]);
+    const actor = await requireStaff([UserRole.FrontDesk, UserRole.Doctor, UserRole.Nurse]);
     const supabase = await createClient();
     const payload = cleanPatientPayload(updates);
 
@@ -111,6 +111,16 @@ export async function updatePatient(
         console.error("[patient] updatePatient:", error);
         throw new Error(formatFriendlyDbError(error, "Failed to update patient record."));
     }
+
+    // Audit trail — who changed which fields (admins correcting front-desk
+    // typos, front desk editing contacts, …). Values are deliberately NOT
+    // logged (PHI minimisation); the field list plus the actor is enough to
+    // investigate a bad edit.
+    await logAction("PATIENT_RECORD_UPDATED", "patients", id, {
+        updated_fields: Object.keys(payload),
+        changed_by: actor.userId,
+    });
+
     return data as unknown as Patient;
 }
 

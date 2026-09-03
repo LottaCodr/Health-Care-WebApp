@@ -62,6 +62,13 @@ function getDoctorName(c: any): string {
     return (c as any).staffs?.name ?? (c as any).doctor_name ?? "";
 }
 
+/** True when the consultation's history contains obstetric data — either an
+ *  LMP or an explicit pregnancy status (recorded even when LMP is absent). */
+function hasObstetricHistory(symptoms?: string): boolean {
+    const s = symptoms ?? "";
+    return s.includes("LMP:") || s.includes("Pregnancy Status:");
+}
+
 function getComplaint(c: any): string {
     return extractSection(c.symptoms ?? "", "Presenting Complaint") ||
         (c.symptoms ?? "").split("\n\n")[0]?.replace("Presenting Complaint:", "").trim() ||
@@ -169,7 +176,7 @@ function DoctorConsultationCard({
     const rel = relativeDay(date);
     const isPaed = consultation.consultation_type === "paediatric" ||
                     (consultation.symptoms ?? "").includes("Antenatal/Delivery History");
-    const isFem = (consultation.symptoms ?? "").includes("LMP:");
+    const isFem = hasObstetricHistory(consultation.symptoms);
 
     const symptoms = consultation.symptoms ?? "";
     const diagnosis = consultation.diagnosis ?? "";
@@ -428,7 +435,7 @@ function ResultsTableView({
                             const isLatest = idx === 0 && !q;
                             const isPaed = c.consultation_type === "paediatric" ||
                                 (c.symptoms ?? "").includes("Antenatal/Delivery History");
-                            const isFem = (c.symptoms ?? "").includes("LMP:");
+                            const isFem = hasObstetricHistory(c.symptoms);
                             const doctor = getDoctorName(c);
 
                             const complaint = getComplaint(c);

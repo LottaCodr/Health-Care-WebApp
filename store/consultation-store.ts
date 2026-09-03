@@ -31,6 +31,9 @@ interface ConsultationState {
     familySocialHistory:     string;
     // Obstetric
     imp:      string;
+    // Pregnancy status gates the LMP → EGA/EDD auto-calculation:
+    // "" (not answered) | "yes" | "no" | "unknown"
+    pregnancyStatus: string;
     lmp:      string;
     ega:      string;
     eod:      string;
@@ -51,7 +54,11 @@ interface ConsultationState {
     prescriptions:   string;    // free-text treatment plan
     recommendations: string;
     // ── Routing ──────────────────────────────────────────────────────────────
-    referredTo:     string;
+    // Multiple destinations can be selected at once — e.g. send the patient to
+    // the lab AND prescribe drugs in the same consultation. Each selected
+    // department receives its requests; the patient's single status field
+    // reflects the first stop (see REFERRAL_PRIORITY in consultation-form).
+    referrals: string[];
     statusOverride: string;
     // Lab request
     labTestType: string[];
@@ -87,13 +94,13 @@ const initial: ConsultationState = {
     antenatalHistory: "", nutritionalHistory: "",
     developmentalMilestones: "", immunisationHistory: "",
     pastMedicalHistory: "", drugHistory: "", familySocialHistory: "",
-    imp: "", lmp: "", ega: "", eod: "", gravidity: "", parity: "",
+    imp: "", pregnancyStatus: "", lmp: "", ega: "", eod: "", gravidity: "", parity: "",
     generalExam: "",
     respiratory: "", cardiovascular: "", gastrointestinal: "",
     summary: "",
     assessment: "",
     investigations: "", prescriptions: "", recommendations: "",
-    referredTo: "", statusOverride: "",
+    referrals: [], statusOverride: "",
     labTestType: [], labPriority: "routine", labNotes: "",
     radTestType: [], radPriority: "routine", radNotes: "",
     admissionType:       "",

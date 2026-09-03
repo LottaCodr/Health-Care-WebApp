@@ -11,6 +11,7 @@ import { useAuth } from "@/context/auth-provider";
 import ReturnPatient from "./return-patient";
 import AllergyAlertBanner from "./allergy-alert-banner";
 import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
+import EditDemographicsDialog from "./edit-demographics-dialog";
 // processReturnVisit is called internally by ReturnPatient — no import needed here.
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import {
@@ -23,7 +24,7 @@ import {
     User, Mail, Phone, MapPin, Briefcase, ShieldAlert, CheckCircle,
     ClipboardList, Activity, Heart, Building2, CreditCard, Copy,
     Check, ChevronRight, ArrowLeft, AlertTriangle, Dna, Droplets,
-    Baby, BookUser, Pill, History, Syringe, Download,
+    Baby, BookUser, Pill, History, Syringe, Download, Pencil,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -51,6 +52,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
     const [activeGroup,  setActiveGroup]  = useState("basic");
     const [returnOpen,   setReturnOpen]   = useState(false);
     const [downloadOpen, setDownloadOpen] = useState(false);
+    const [editDemoOpen, setEditDemoOpen] = useState(false);
 
     const role         = (user?.role ?? "").toLowerCase();
     const isFrontDesk  = role.includes("front");
@@ -224,6 +226,16 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 />
             )}
 
+            {/* Admin-only demographics correction — front-desk typos (name,
+                sex, DOB, contact details) shouldn't require a DBA to fix. */}
+            {isAdmin && patient.id && (
+                <EditDemographicsDialog
+                    patient={patient}
+                    open={editDemoOpen}
+                    onOpenChange={setEditDemoOpen}
+                />
+            )}
+
             {/* Profile card */}
             <PatientProfile
                 patient={currentPatient}
@@ -234,6 +246,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 setActiveGroup={setActiveGroup}
                 canDownload={canDownload}
                 onDownload={() => setDownloadOpen(true)}
+                onEditDemographics={isAdmin ? () => setEditDemoOpen(true) : undefined}
             />
 
             <PatientDetailTabs patient={patient} />
@@ -254,7 +267,7 @@ const GROUPS = [
 
 function PatientProfile({
     patient, status, onCopyId, showCopied, activeGroup, setActiveGroup,
-    canDownload, onDownload,
+    canDownload, onDownload, onEditDemographics,
 }: {
     patient:          Patient;
     status:           PatientStatus;
@@ -264,6 +277,8 @@ function PatientProfile({
     setActiveGroup:   (id: string) => void;
     canDownload:      boolean;
     onDownload:       () => void;
+    /** Admin-only — opens the demographics correction dialog. */
+    onEditDemographics?: () => void;
 }) {
     const p = patient as any;
 
@@ -419,6 +434,18 @@ function PatientProfile({
                                 <History size={12} />
                                 View Timeline
                             </button>
+
+                            {onEditDemographics && (
+                                <button
+                                    type="button"
+                                    onClick={onEditDemographics}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all backdrop-blur-sm shadow-xs"
+                                    title="Correct registration details — name, sex, date of birth, contact info (admin only)"
+                                >
+                                    <Pencil size={12} />
+                                    Edit Demographics
+                                </button>
+                            )}
 
                             {canDownload && (
                                 <button
