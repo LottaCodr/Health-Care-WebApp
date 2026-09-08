@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
+import { assertRecordAmendable, assertRecordDeletable } from "./record-lock";
 
 // ─── Drug Chart ───────────────────────────────────────────────────────────────
 
@@ -53,7 +54,7 @@ export async function listDrugChartByPatient(patientId: string) {
 }
 
 export async function updateDrugChartEntry(id: string, updates: Partial<CreateDrugChartInput & { isActive: boolean }>) {
-    await requireStaff([UserRole.Nurse]);
+    const actor = await requireStaff([UserRole.Nurse]);
     const sb = await createClient();
     const mapped: Record<string, any> = {};
     if (updates.drugName    !== undefined) mapped.drug_name     = updates.drugName;
@@ -63,16 +64,41 @@ export async function updateDrugChartEntry(id: string, updates: Partial<CreateDr
     if (updates.endDate     !== undefined) mapped.end_date      = updates.endDate;
     if (updates.isActive    !== undefined) mapped.is_active     = updates.isActive;
     if (updates.notes       !== undefined) mapped.notes         = updates.notes;
-    const { data, error } = await sb.from("nurse_drug_chart").update(mapped).eq("id", id).select().single();
-    if (error) throw error;
+
+    // Drug/dose/route/frequency/notes are chart content → 24h window, author
+    // only. Stopping a line (is_active) is an order, not an edit, so it stays
+    // possible at any time.
+    const ctx = await assertRecordAmendable("drug_chart", id, mapped, { roles: false, actor });
+
+    const { data, error } = await sb
+        .from("nurse_drug_chart")
+        .update({ ...mapped, ...(ctx?.patch ?? {}) })
+        .eq("id", id)
+        .select()
+        .single();
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired This drug chart entry is past its 24-hour amendment window. Attach a correction note instead.");
+        }
+        console.error("[nurse-charts] updateDrugChartEntry:", error);
+        throw error;
+    }
     return data;
 }
 
 export async function deleteDrugChartEntry(id: string) {
-    await requireStaff([UserRole.Nurse]);
+    // A chart line can be withdrawn while it is still fresh; later it is
+    // history. Stopping it (isActive: false) is always available.
+    await assertRecordDeletable("drug_chart", id, { allowAdmin: true });
     const sb = await createClient();
     const { error } = await sb.from("nurse_drug_chart").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired Old chart entries cannot be deleted — stop the line or attach a correction note.");
+        }
+        console.error("[nurse-charts] deleteDrugChartEntry:", error);
+        throw error;
+    }
 }
 
 // ─── Drug Administration Records ─────────────────────────────────────────────
@@ -171,9 +197,59 @@ export async function listFluidBalanceByPatientDate(patientId: string, date: str
     return data ?? [];
 }
 
+/**
+ * Correct a fluid-balance line inside the 24-hour window (author only).
+ * Balances are re-calculated on read, so only the recorded volumes/note are
+ * touched here.
+ */
+export async function updateFluidEntry(
+    id: string,
+    updates: Partial<CreateFluidEntryInput>
+): Promise<any> {
+    const actor = await requireStaff([UserRole.Nurse]);
+    const sb = await createClient();
+    const mapped: Record<string, any> = {};
+    if (updates.oralMl        !== undefined) mapped.oral_ml         = updates.oralMl;
+    if (updates.ivMl          !== undefined) mapped.iv_ml           = updates.ivMl;
+    if (updates.ngMl          !== undefined) mapped.ng_ml           = updates.ngMl;
+    if (updates.otherInputMl  !== undefined) mapped.other_input_ml  = updates.otherInputMl;
+    if (updates.otherInputType!== undefined) mapped.other_input_type= updates.otherInputType;
+    if (updates.inputFluidType!== undefined) mapped.input_fluid_type= updates.inputFluidType;
+    if (updates.urineMl       !== undefined) mapped.urine_ml        = updates.urineMl;
+    if (updates.aspirateMl    !== undefined) mapped.aspirate_ml     = updates.aspirateMl;
+    if (updates.vomitMl       !== undefined) mapped.vomit_ml        = updates.vomitMl;
+    if (updates.bowelMl       !== undefined) mapped.bowel_ml        = updates.bowelMl;
+    if (updates.drainMl       !== undefined) mapped.drain_ml        = updates.drainMl;
+    if (updates.otherOutputMl !== undefined) mapped.other_output_ml = updates.otherOutputMl;
+    if (updates.notes         !== undefined) mapped.notes           = updates.notes;
+
+    const ctx = await assertRecordAmendable("fluid_balance", id, mapped, { roles: false, actor });
+
+    const { data, error } = await sb
+        .from("fluid_balance")
+        .update({ ...mapped, ...(ctx?.patch ?? {}) })
+        .eq("id", id)
+        .select()
+        .single();
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired This fluid balance entry is past its 24-hour amendment window. Attach a correction note instead.");
+        }
+        console.error("[nurse-charts] updateFluidEntry:", error);
+        throw error;
+    }
+    return data;
+}
+
 export async function deleteFluidEntry(id: string) {
-    await requireStaff([UserRole.Nurse]);
+    await assertRecordDeletable("fluid_balance", id, { allowAdmin: true });
     const sb = await createClient();
     const { error } = await sb.from("fluid_balance").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired Old fluid balance entries cannot be deleted — attach a correction note instead.");
+        }
+        console.error("[nurse-charts] deleteFluidEntry:", error);
+        throw error;
+    }
 }

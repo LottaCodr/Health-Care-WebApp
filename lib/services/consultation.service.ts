@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { Consultation, UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
+import { assertRecordAmendable, assertRecordDeletable } from "./record-lock";
 
 export interface CreateConsultationInput {
     patientId: string;
@@ -141,21 +142,36 @@ export async function updateConsultation(
     id: string,
     updates: Partial<Consultation>
 ): Promise<Consultation> {
-    await requireStaff([UserRole.Doctor]);
+    const actor = await requireStaff([UserRole.Doctor]);
+    // ── 24-hour amendment window ─────────────────────────────────────────────
+    // Clinical content (symptoms/diagnosis/prescriptions/recommendations/ICD-10)
+    // may only be changed by its author, inside the window; workflow columns
+    // (status, routing) are not content and stay freely editable. The guard
+    // reads the row, decides, throws `LOCKED:…` and logs the accepted edit.
+    const ctx = await assertRecordAmendable("consultation", id, updates as Record<string, any>, { roles: false, actor });
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("consultations")
-        .update(updates)
+        .update({ ...(updates as Record<string, any>), ...(ctx?.patch ?? {}) })
         .eq("id", id)
         .select()
         .single();
 
-    if (error) { console.error("[consultation] update:", error); throw error; }
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired This consultation is past its 24-hour amendment window. Attach a correction note instead.");
+        }
+        console.error("[consultation] update:", error);
+        throw error;
+    }
     return data as unknown as Consultation;
 }
 
 export async function deleteConsultation(id: string): Promise<void> {
-    await requireStaff([UserRole.Doctor]);
+    // Deleting is the most destructive edit there is: allowed for the author
+    // inside the window (a wrong-patient entry must be removable), blocked
+    // afterwards — history is annotated, not erased. Admin may still delete.
+    await assertRecordDeletable("consultation", id, { allowAdmin: true });
     const supabase = await createClient();
     const { error } = await supabase
         .from("consultations")

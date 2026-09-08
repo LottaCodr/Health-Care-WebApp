@@ -11,3 +11,8 @@ export * from "./discharge.service";
 export * from "./nurse-charts.service";
 export * from "./patient-routing.service";
 export * from "./care-team.service";
+// 24-hour amendment window + append-only correction notes (amendRecord,
+// addRecordAddendum, listRecordAddenda). The enforcement helper itself
+// (record-lock.ts) is intentionally NOT re-exported: it imports the server
+// Supabase client and must never reach a client bundle.
+export * from "./amendment.service";

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { Patient } from "@/types/models";
 import { useRadiologyStore } from "@/store/radiology-store";
+import { RecordAmendmentControls } from "@/components/records";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -264,6 +265,21 @@ function CompletedRow({ request }: { request: any }) {
                             </p>
                         </div>
                     )}
+
+                    {/* 24-hour amendment window for the reporting radiologist.
+                        Re-submitting the form below would overwrite a signed
+                        report; this is the sanctioned path, and it degrades
+                        into a correction note once the window closes. */}
+                    <div className="pt-3 border-t border-gray-50">
+                        <RecordAmendmentControls
+                            type="radiology_report"
+                            id={request.id}
+                            row={request}
+                            patientId={request.visit_id ?? null}
+                            invalidateKeys={[["radiology"]]}
+                            contextLine={stripRadiologyPrefix(request.test_type)}
+                        />
+                    </div>
                 </div>
             )}
         </div>

@@ -10,6 +10,7 @@ import { Beaker, Clock, User, Calendar, FileText, AlertTriangle, Phone, Hash, Dr
 import TestTemplateForm from "./TestTemplateForm";
 import { findTemplate } from "./test-templates";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
+import { RecordAmendmentControls } from "@/components/records";
 import { calculateAge } from "@/utils/export";
 import { fmtDate } from "@/lib/utils";
 
@@ -176,6 +177,32 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* ── Filed result: editable by the scientist who filed it for 24h ──
+                    The template form below can be resubmitted, which would
+                    silently overwrite a signed result; this panel is the only
+                    sanctioned way to change it, and after 24h it becomes an
+                    append-only correction note instead. */}
+            {request?.result && (
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            Filed result — {request.completed_at ? fmtDate(request.completed_at) : fmtDate(request.created_at)}
+                        </p>
+                        <RecordAmendmentControls
+                            type="lab_result"
+                            id={requestId}
+                            row={request as Record<string, any>}
+                            patientId={request.visit_id ?? request.patient_id ?? null}
+                            invalidateKeys={[["lab"]]}
+                            contextLine={request.test_type ?? "Lab result"}
+                        />
+                    </div>
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-gray-700 bg-gray-50 rounded-xl border border-gray-100 px-4 py-3">
+                        {request.result}
+                    </pre>
                 </div>
             )}
 

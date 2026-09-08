@@ -6,6 +6,7 @@ import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
+import { assertRecordAmendable } from "./record-lock";
 
 
 // PostgREST join — requires nursing_actions_patient_id_fkey to exist (see migration)
@@ -142,7 +143,7 @@ export async function listCompletedNursingActions(){
 }
 
 export async function updateNursingAction(id: string, input: UpdateNursingActionInput){
-    await requireStaff([UserRole.Nurse]);
+    const actor = await requireStaff([UserRole.Nurse]);
     const supabase = await createClient();
     const mapped: Record<string, any> = {};
     if (input.status !== undefined) mapped.status = input.status;
@@ -150,13 +151,25 @@ export async function updateNursingAction(id: string, input: UpdateNursingAction
     if (input.completedBy !== undefined) mapped.completed_by = input.completedBy;
     if (input.completionTime !== undefined) mapped.completion_time = input.completionTime;
 
+    // The care note (description) is clinical content: editable by the nurse
+    // who wrote it for 24 hours. Moving a task through the status machine stays
+    // allowed at any time, which is why the guard checks the columns, not the
+    // verb.
+    const ctx = await assertRecordAmendable("nursing_action", id, mapped, { roles: false, actor });
+
     const { data, error } = await supabase
         .from("nursing_actions")
-        .update(mapped)
+        .update({ ...mapped, ...(ctx?.patch ?? {}) })
         .eq("id", id)
         .select()
         .single();
 
-    if (error) { console.error("[nursing] update:", error); throw error; }
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired This nursing note is past its 24-hour amendment window. Attach a correction note instead.");
+        }
+        console.error("[nursing] update:", error);
+        throw error;
+    }
     return data;
 }

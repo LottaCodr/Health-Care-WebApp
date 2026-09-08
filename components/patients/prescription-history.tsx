@@ -4,6 +4,7 @@ import { usePrescriptionsByPatient } from "@/hooks/emr/use-emr";
 import { useAuth } from "@/context/auth-provider";
 import { useUpdatePrescription, useCreateDispensingRecord } from "@/hooks/emr/use-pharmacy";
 import { toast } from "sonner";
+import { AmendmentChip, RecordAmendmentControls } from "@/components/records";
 import { useState } from "react";
 import {
   Pill, Eye, DownloadCloud, ClipboardList,
@@ -189,6 +190,18 @@ export default function PrescriptionHistory({ patientId }: Props) {
                   <span className="text-sm font-semibold text-gray-800">
                     {rx.medication ?? rx.drug_name ?? rx.drugName ?? "—"}
                   </span>
+                  {/* Dose/duration/notes are amendment-window controlled for 24h;
+                      dispensing and price are not — a script dispensed on day 3
+                      must still be payable. */}
+                  <div className="mt-1">
+                    <AmendmentChip
+                      type="prescription"
+                      row={rx}
+                      actorId={user?.id ?? user?.$id}
+                      authorName={rx.staffs?.name ?? rx.doctor_name ?? null}
+                      compact
+                    />
+                  </div>
                 </td>
                 <td className="px-5 py-3.5 text-xs text-gray-600 font-medium whitespace-nowrap">
                   {rx.dosage ?? "—"}
@@ -245,6 +258,17 @@ export default function PrescriptionHistory({ patientId }: Props) {
                     >
                       <DownloadCloud size={13} />
                     </button>
+                    <RecordAmendmentControls
+                      type="prescription"
+                      id={rx.id ?? rx.$id}
+                      row={rx}
+                      patientId={patientId}
+                      actorId={user?.id ?? user?.$id}
+                      invalidateKeys={[["pharmacy"], ["prescriptions"]]}
+                      hideChip
+                      contextLine={`${rx.drug_name ?? "Prescription"}${rx.dosage ? ` · ${rx.dosage}` : ""}`}
+                      compact
+                    />
                   </div>
                 </td>
               </tr>

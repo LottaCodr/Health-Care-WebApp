@@ -36,6 +36,12 @@ const ACTION_CONFIG: Record<string, { color: string; bg: string; border: string 
     DELETE: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
     LOGIN: { color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200" },
     DISPENSE: { color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
+    // ── Record amendment window (see lib/records/amendment-policy.ts) ──
+    // An amendment is a normal, expected event inside 24h; a blocked attempt is
+    // the one worth looking at, and an addendum is the record staying honest.
+    RECORD_AMENDED: { color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
+    RECORD_AMENDMENT_BLOCKED: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
+    RECORD_ADDENDUM_ADDED: { color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200" },
     DEFAULT: { color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-200" },
 };
 

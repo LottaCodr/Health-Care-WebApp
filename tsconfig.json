@@ -13,6 +13,10 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    // scripts/check-amendment-policy.ts imports the policy modules with their
+    // .ts extension so plain `node` can run it (Node ESM resolves extensions,
+    // TS needs the flag to accept them). noEmit is already on.
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,

@@ -13,6 +13,7 @@ Built with **Next.js 16** (App Router), **React 19**, **Supabase**, and **Zustan
 - **Role-based access** — Doctors, Nurses, Lab Technicians, Pharmacists, Radiologists, Front Desk, and Admins each get dedicated routes and dashboards (`proxy.ts` enforces auth and role prefixes).
 - **Patient lifecycle** — Registration → consultation → nursing/lab/pharmacy → awaiting payment → discharged, with realtime queue updates.
 - **Consultation suite** — Symptoms, diagnosis, prescriptions, and lab requests.
+- **24-hour amendment window** — clinicians edit *their own* records for 24 hours after filing (typos through to prescriptions), then the entry freezes and corrections become append-only notes. Enforced in the UI, in every `lib/services` write path, and in Postgres — see `docs/RECORD_AMENDMENT_WINDOW.md`.
 - **Billing** — Front-desk payment flow; status moves to `discharged` after payment.
   - **Payment types** — Full payment, part payment, and deposit (advance payment held as patient credit and applied to bills automatically).
   - **Discounts** — Percentage and/or flat-amount discounts at settlement, on a single bill or across all accumulated bills.
@@ -33,6 +34,7 @@ Built with **Next.js 16** (App Router), **React 19**, **Supabase**, and **Zustan
 | **Hematology analyzer** | `lib/clinical/hematology-reference-ranges.ts` — age/sex-partitioned CBC reference sets (Newborn / Children M/F / Adult M/F), H/L flag engine, NLR/PLR derivation, analyzer printout result format | `HematologyAnalyzerForm.tsx` (entry), `HematologyAnalyzerReport.tsx` (printout viewer + print), FHIR CBC-panel export in `interop.service.ts` — see `docs/HEMATOLOGY_ANALYZER_REFERENCE_RANGES.md` |
 | **Pharmacy** | `pharmacy-store.ts` | `pharmacy.service.ts` |
 | **Bulk patient upload** | `bulk-upload-store.ts` | — |
+| **Record amendments (24h window)** | `components/records/*` — lock chip, amendment dialog, correction-note panel (mounted per department) | `lib/records/amendment-policy.ts` (the rule), `lib/records/registry.ts` (which columns are content, per table), `lib/services/record-lock.ts` (guard), `amendment.service.ts` (`amendRecord`, `addRecordAddendum`, `listRecordAddenda`) |
 
 Other services: `patient`, `consultation`, `nursing`, `payment`, `radiology`, `audit`, `ai-service`, `patient-routing` (doctor quick routing without a consultation).
 
@@ -41,6 +43,22 @@ Other services: `patient`, `consultation`, `nursing`, `payment`, `radiology`, `a
 - **Clinical:** structured allergies + offline drug-safety engine, immunizations, vitals/lab trends (recharts), WHO growth charts, surgery/OT module with theatre schedule, referrals with printable letters, lab specimen tracking with barcode labels, ward & bed board, drug batches & expiry alerts, medication reconciliation, MAR witness/e-signature, break-glass emergency access, death/birth certificates with mortality register.
 - **Compliance & ops:** consent management (versioned), MFA/TOTP (Supabase Auth), audit review + CSV export, data retention & backup policy (`DATA_RETENTION_POLICY.md`), FHIR R4 / HL7 v2 / CSV exports, ICD-10/LOINC/SNOMED coding fields, SMS/email messaging (Termii/SendGrid/console), patient portal (`/portal`), offline mutation queue, admin reports & analytics, multi-facility support.
 - **Migration:** apply `supabase/migrations/20260814_emr_modules_schema.sql` (schema + RLS) with `supabase db push` — see `SECURITY_REPORT.md` for the full status table and what still needs external configuration (MFA enablement, messaging keys, service-role key for portal account creation).
+
+### Billing schema
+
+### Applying the amendment window
+
+Run `supabase/migrations/20260908_record_amendment_window.sql` (`supabase db push`) to get:
+
+- `trg_amendment_window` on `consultations`, `lab_requests`, `nursing_actions`, `prescriptions`, `drug_dispensing`, `discharge_notes`, `nurse_drug_chart`, `fluid_balance` — refuses content writes outside 24h even when PostgREST is hit directly with the anon key;
+- `amended_at` / `amendment_count` on those tables (trigger-maintained, never client-writable);
+- `record_addenda`, the append-only correction notes (no update/delete policy at all);
+- `prescriptions.created_by`, so the person who *wrote* a drug line is distinguishable from the pharmacist who dispenses it.
+
+Until it is applied the app layer still refuses out-of-window edits, the amendment
+counters simply stay absent, and correction notes report
+`NOT_CONFIGURED` instead of failing silently. Verify the rule with
+`npm run check:amendments` (66 assertions on the boundary; no test runner needed).
 
 ### Billing schema
 

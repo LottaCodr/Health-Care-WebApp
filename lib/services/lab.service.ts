@@ -6,6 +6,7 @@ import { LabRequest, UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
 import { dedupeLabTests, normalizeLabTestName } from "@/lib/utils/lab-catalog";
+import { assertRecordAmendable } from "./record-lock";
 
 import { createNotification } from "./notification.service";
 import { createPayment } from "./payment.service";
@@ -235,7 +236,24 @@ export async function updateLabRequest(
         price?: number;
     }
 ): Promise<LabRequest> {
-    await requireStaff([UserRole.LabTechnician, UserRole.Doctor]);
+    const actor = await requireStaff([UserRole.LabTechnician, UserRole.Doctor]);
+
+    // ── 24-hour amendment window ─────────────────────────────────────────────
+    // The RESULT (and the scientist's comment) is clinical content: only the
+    // scientist who filed it may change it, and only for 24 hours. Status,
+    // priority and price are workflow/billing fields and stay editable — that
+    // is why the guard inspects which columns actually change.
+    const ctx = await assertRecordAmendable("lab_result", id, updates as Record<string, any>, {
+        roles: false,
+        actor,
+        // Radiology shares this table; classify by its test_type prefix so the
+        // audit entry and the correction note name the right kind of record.
+        resolveType: (row) =>
+            String(row?.test_type ?? "").trim().toUpperCase().startsWith("[RADIOLOGY]")
+                ? "radiology_report"
+                : "lab_result",
+    });
+
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("lab_requests")
@@ -248,12 +266,19 @@ export async function updateLabRequest(
             notes: updates.notes,
             price: updates.price,   // Persist the price set by the lab tech so the
                                     // billing logic below can read it back.
+            ...(ctx?.patch ?? {}),
         })
         .eq("id", id)
         .select()
         .single();
 
-    if (error) { console.error("[lab] updateRequest:", error); throw error; }
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired This result is past its 24-hour amendment window. Attach a correction note instead.");
+        }
+        console.error("[lab] updateRequest:", error);
+        throw error;
+    }
 
     // ── Billing: create or update a pending payment when a price is set ────────
     // This covers both: (a) the lab tech entering a price at result-submission

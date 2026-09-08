@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo, Fragment } from "react";
+import { useRef, useState, useMemo, Fragment, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import {
     Search, Table2, UserRound, X,
 } from "lucide-react";
 import { deleteConsultation, listConsultationsByPatient } from "@/lib/services";
+import { RecordAmendmentControls } from "@/components/records";
 
 type AccessLevel = "full" | "nursing" | "lab" | "radiology" | "pharmacy" | "admin" | "minimal";
 type ViewMode = "results" | "cards" | "timeline";
@@ -166,10 +167,12 @@ function LatestBadge() {
 // ─── Doctor full card ──────────────────────────────────────────────────────────
 
 function DoctorConsultationCard({
-    consultation, index, isLatest, isDeleting, onDelete, canDel, fullWidth,
+    consultation, index, isLatest, isDeleting, onDelete, canDel, fullWidth, amendSlot,
 }: {
     consultation: any; index: number; isLatest: boolean;
     isDeleting: boolean; onDelete: () => void; canDel: boolean; fullWidth?: boolean;
+    /** 24-hour amendment window control (chip + Amend + corrections). */
+    amendSlot?: (consultation: any) => ReactNode;
 }) {
     const [expanded, setExpanded] = useState(false);
     const date = getDate(consultation);
@@ -295,6 +298,12 @@ function DoctorConsultationCard({
                     </div>
                 )}
 
+                {amendSlot && (
+                    <div className="pt-1 border-t border-gray-50">
+                        {amendSlot(consultation)}
+                    </div>
+                )}
+
                 {canDel && (
                     <div className="flex items-center gap-2 pt-1">
                         <button onClick={onDelete} disabled={isDeleting}
@@ -360,10 +369,11 @@ function RestrictedConsultationCard({
 // ─── Results table view (default) ─────────────────────────────────────────────
 
 function ResultsTableView({
-    data, accessLevel, deletingId, onDelete, canDel,
+    data, accessLevel, deletingId, onDelete, canDel, amendSlot,
 }: {
     data: any[]; accessLevel: AccessLevel; deletingId: string | null;
     onDelete: (id: string) => void; canDel: boolean;
+    amendSlot?: (consultation: any) => ReactNode;
 }) {
     const [q, setQ] = useState("");
     const [openId, setOpenId] = useState<string | null>(null);
@@ -564,6 +574,7 @@ function ResultsTableView({
                                                             → {c.referred_to}
                                                         </span>
                                                     )}
+                                                    {amendSlot && amendSlot(c)}
                                                     {canDel && (
                                                         <button
                                                             onClick={() => onDelete(id)}
@@ -637,6 +648,26 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
         if (window.confirm("Delete this consultation? This cannot be undone.")) deleteMutation(id);
     };
 
+    // ── 24-hour amendment window ────────────────────────────────────────────
+    // Only the author sees an editable consultation, so the control is offered
+    // to the full-access view (Doctor/Admin) and the server decides per row:
+    // own record + inside 24h → amend; anything else → a correction note.
+    const amendSlot = accessLevel === "full"
+        ? (c: any) => (
+            <RecordAmendmentControls
+                key={getId(c)}
+                type="consultation"
+                id={getId(c)}
+                row={c}
+                patientId={patientId}
+                authorName={getDoctorName(c) || null}
+                invalidateKeys={[["consultations", patientId]]}
+                contextLine={`Case #${String(getId(c)).slice(0, 8).toUpperCase()}${getDoctorName(c) ? ` · Dr. ${getDoctorName(c)}` : ""}`}
+                compact
+            />
+        )
+        : undefined;
+
     if (isPending) return (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
             <Loader2 size={18} className="text-red-500 animate-spin" />
@@ -684,6 +715,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                         <p className="text-xs text-gray-400 mt-0.5">
                             {data.length} {data.length === 1 ? "record" : "records"}
                             {accessLevel !== "full" && " · limited view"}
+                            {accessLevel === "full" && " · open to your edits for 24h, corrections after that"}
                         </p>
                     </div>
                 </div>
@@ -737,6 +769,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                     deletingId={deletingId}
                     onDelete={handleDelete}
                     canDel={false}
+                    amendSlot={amendSlot}
                 />
             )}
 
@@ -748,6 +781,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                             <DoctorConsultationCard
                                 key={getId(c)} consultation={c} index={idx} isLatest={idx === 0}
                                 isDeleting={deletingId === getId(c)} onDelete={() => handleDelete(getId(c))} canDel={false}
+                                amendSlot={amendSlot}
                             />
                         ) : (
                             <RestrictedConsultationCard
@@ -772,6 +806,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                                     <DoctorConsultationCard
                                         consultation={c} index={idx} isLatest={idx === 0} fullWidth
                                         isDeleting={deletingId === getId(c)} onDelete={() => handleDelete(getId(c))} canDel={false}
+                                        amendSlot={amendSlot}
                                     />
                                 ) : (
                                     <RestrictedConsultationCard

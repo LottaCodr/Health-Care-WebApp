@@ -45,6 +45,11 @@ const RadiologyTab = dynamic(() => import("../radiology/RadiologyTab").then(m =>
 const DrugChart = dynamic(() => import("../nurse/DrugChart"), { loading: () => <TabChunkSkeleton /> });
 const FluidBalanceChart = dynamic(() => import("../nurse/FluidBalanceChart"), { loading: () => <TabChunkSkeleton /> });
 const DischargeNoteForm = dynamic(() => import("../doctor/DischargeNoteForm"), { loading: () => <TabChunkSkeleton /> });
+// Filed summary + its 24h amendment window (kept out of the write-once form above).
+const DischargeNoteAmendmentCard = dynamic(
+  () => import("../doctor/DischargeNoteAmendmentCard").then(m => m.DischargeNoteAmendmentCard),
+  { loading: () => <TabChunkSkeleton /> }
+);
 const PaymentHistory = dynamic(() => import("./payment-history"), { loading: () => <TabChunkSkeleton /> });
 const AppointmentComponent = dynamic(() => import("../front-desk/AppointmentComponent"), { loading: () => <TabChunkSkeleton /> });
 const PatientDocumentsTab = dynamic(() => import("./patient-documents-tab"), { loading: () => <TabChunkSkeleton /> });
@@ -763,6 +768,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               <div className="space-y-4">
                 <SectionHeader icon={ClipboardCheck} color="text-emerald-600" bg="bg-emerald-50"
                   title="Discharge Summary" subtitle="Complete before sending patient to billing" />
+                <DischargeNoteAmendmentCard patientId={patient.id} />
                 <DischargeNoteForm staffId={staffId} embedded
                   onSuccess={() => setSuccessMessage("Discharge note saved successfully.")} />
               </div>

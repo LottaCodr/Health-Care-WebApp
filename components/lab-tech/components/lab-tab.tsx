@@ -21,6 +21,7 @@ import { Patient } from "@/types/models";
 import { AILabInterpretation } from "@/components/ai/AIComponents";
 import TestTemplateForm from "../TestTemplateForm";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
+import { RecordAmendmentControls } from "@/components/records";
 import { calculateAge } from "@/utils/export";
 import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
 import { fmtDate, fmtFull } from "@/lib/utils";
@@ -175,6 +176,22 @@ function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
                         <p className="text-xs text-blue-700 leading-relaxed">
                             <span className="font-bold">Doctor&apos;s note:</span> {req.notes}
                         </p>
+                    </div>
+                )}
+
+                {/* The result is the scientist's to correct — for 24 hours.
+                    The doctor's note above is never editable from here. */}
+                {req.result && (
+                    <div className="pt-3 border-t border-gray-50">
+                        <RecordAmendmentControls
+                            type={String(req.test_type ?? "").toUpperCase().includes("[RADIOLOGY]") ? "radiology_report" : "lab_result"}
+                            id={req.id}
+                            row={req}
+                            patientId={patient?.id ?? null}
+                            invalidateKeys={[["lab"], ["radiology"]]}
+                            contextLine={`${req.test_type ?? "Lab test"} · ${patient?.name ?? ""}`}
+                            compact
+                        />
                     </div>
                 )}
 
