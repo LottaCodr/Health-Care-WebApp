@@ -8,6 +8,7 @@ import { createNotification } from "./notification.service";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
+import { assertRecordAmendable } from "./record-lock";
 
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────
@@ -26,12 +27,15 @@ export interface CreatePrescriptionInput {
 export async function createPrescription(
     input: CreatePrescriptionInput
 ): Promise<Prescription> {
-    await requireStaff([UserRole.Doctor]);
+    const actor = await requireStaff([UserRole.Doctor]);
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from("prescriptions")
-        .insert([{
+    const baseRow = {
             patient_id: input.patientId,
+            // Who WROTE the line — the amendment window is author-scoped, and
+            // pharmacist_id here means "who should dispense it", not "whose
+            // text this is". Missing column on an older schema is tolerated by
+            // the retry below.
+            created_by: actor.userId,
             pharmacist_id: input.pharmacistId ?? null,
             drug_name: input.drugName,
             dosage: input.dosage,
@@ -41,11 +45,30 @@ export async function createPrescription(
             status: "Active",
             dispensed: input.dispensed ?? false,
             dispensed_at: input.dispensed ? new Date().toISOString() : null,
-        }])
+    };
+    const payloadWithoutCreatedBy = { ...baseRow } as Record<string, any>;
+    delete (payloadWithoutCreatedBy as any).created_by;
+    const { data, error } = await supabase
+        .from("prescriptions")
+        .insert([baseRow as any])
         .select()
         .single();
 
-    if (error) { console.error("[pharmacy] createPrescription:", error); throw error; }
+    if (error) {
+        // created_by only exists once 20260908_record_amendment_window.sql has
+        // been applied — never let an optional audit column reject a script.
+        if (/created_by/i.test(error.message)) {
+            const retry = await supabase
+                .from("prescriptions")
+                .insert([{ ...payloadWithoutCreatedBy }])
+                .select()
+                .single();
+            if (retry.error) { console.error("[pharmacy] createPrescription (retry):", retry.error); throw retry.error; }
+            return retry.data as unknown as Prescription;
+        }
+        console.error("[pharmacy] createPrescription:", error);
+        throw error;
+    }
 
     // Notify pharmacy so the queue is picked up immediately.
     await createNotification({
@@ -145,16 +168,32 @@ export async function updatePrescription(
 ): Promise<Prescription> {
     // Dispensing (marking dispensed) is done by the pharmacist; doctors edit
     // their own prescriptions. Both roles are allowed.
-    await requireStaff([UserRole.Doctor, UserRole.Pharmacist]);
+    const actor = await requireStaff([UserRole.Doctor, UserRole.Pharmacist]);
+
+    // Drug, dose, duration and instructions are the clinical content of the
+    // row and follow the 24-hour amendment window. `dispensed`, `status` and
+    // `price` are workflow/billing columns and stay editable — a prescription
+    // still has to be dispensable a week later.
+    const ctx = await assertRecordAmendable("prescription", id, updates as Record<string, any>, {
+        roles: false,
+        actor,
+    });
+
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("prescriptions")
-        .update(updates)
+        .update({ ...(updates as Record<string, any>), ...(ctx?.patch ?? {}) })
         .eq("id", id)
         .select()
         .single();
 
-    if (error) { console.error("[pharmacy] updatePrescription:", error); throw error; }
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired This prescription is past its 24-hour amendment window. Attach a correction note instead.");
+        }
+        console.error("[pharmacy] updatePrescription:", error);
+        throw error;
+    }
 
     // ── Billing: create a pending payment when drugs are dispensed ─────────────
     // This ensures the front-desk billing queue (PaymentSuite pending payments)

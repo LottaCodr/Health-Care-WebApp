@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { AmendmentChip } from "@/components/records";
 import { useNurseChartsStore } from "@/store/nurse-chart-store";
 import { fmtFull } from "@/lib/utils";
 import type { DrugRoute, DrugFrequency, AdminStatus } from "@/store/nurse-chart-store";
@@ -308,6 +309,11 @@ function DrugRow({ drug, patientId, staffId }: DrugRowProps) {
                 <td className="px-4 py-3">
                     <div className="font-medium text-slate-800 text-sm">{drug.drug_name}</div>
                     {drug.generic_name && <div className="text-xs text-slate-400 italic">{drug.generic_name}</div>}
+                    {/* Editing a chart line follows the 24h rule (see
+                        updateDrugChartEntry) — say so before the nurse clicks. */}
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <AmendmentChip type="drug_chart" row={drug} actorId={staffId} compact />
+                    </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-slate-600">{drug.dose}</td>
                 <td className="px-4 py-3 text-sm text-slate-600 uppercase">{drug.route}</td>

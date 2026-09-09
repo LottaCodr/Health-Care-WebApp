@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { RecordAmendmentControls } from "@/components/records";
 import { useNurseChartsStore } from "@/store/nurse-chart-store";
 import {
     useFluidBalanceByPatientDate,
@@ -316,9 +317,20 @@ export default function FluidBalanceChart({ patientId, staffId, readOnly = false
                                         <td className="px-3 py-2.5 text-slate-500">{row.signed_by}</td>
                                         {!readOnly && (
                                             <td className="px-3 py-2.5">
+                                                {/* A mis-keyed volume is corrected in place for 24 hours;
+                                                    after that the row is frozen and the correction is a note. */}
+                                                <RecordAmendmentControls
+                                                    type="fluid_balance"
+                                                    id={row.id}
+                                                    row={row}
+                                                    actorId={staffId}
+                                                    patientId={patientId}
+                                                    invalidateKeys={[["fluid_balance"], ["drug_chart"]]}
+                                                    compact
+                                                />
                                                 <button
                                                     onClick={() => deleteEntry.mutate({ id: row.id, patientId, date: dateFilter })}
-                                                    className="text-red-400 hover:text-red-600 text-xs"
+                                                    className="text-red-400 hover:text-red-600 text-xs block mt-1"
                                                 >
                                                     Delete
                                                 </button>

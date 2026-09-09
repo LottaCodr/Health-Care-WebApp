@@ -12,6 +12,7 @@ import { createClient } from "@/utils/supabase/server";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
+import { assertRecordAmendable } from "./record-lock";
 
 const PREFIX = "[RADIOLOGY]";
 
@@ -136,15 +137,31 @@ export async function submitRadiologyReport(
     id: string,
     report: SubmitRadiologyReportInput
 ) {
-    await requireStaff([UserRole.Radiologist]);
+    const actor = await requireStaff([UserRole.Radiologist]);
+
+    // Filing a report for the first time is never blocked; OVERWRITING one is
+    // an amendment and must happen within 24 hours, by the reporting
+    // radiologist only. After that the report is frozen and corrections go in
+    // as an append-only note (see lib/records/amendment-policy.ts).
+    const ctx = await assertRecordAmendable("radiology_report", id, report as Record<string, any>, {
+        roles: false,
+        actor,
+    });
+
     const sb = await createClient();
     const { data, error } = await sb
         .from("lab_requests")
-        .update(report)
+        .update({ ...report, ...(ctx?.patch ?? {}) })
         .eq("id", id)
         .select(SELECT)
         .single();
-    if (error) throw error;
+    if (error) {
+        if (/amendment window/i.test(error.message)) {
+            throw new Error("LOCKED:window_expired This report is past its 24-hour amendment window. Attach a correction note instead.");
+        }
+        console.error("[radiology] submitReport:", error);
+        throw error;
+    }
 
     const result = data as unknown as RadiologyRequest;
 

@@ -106,3 +106,13 @@ export {
 
 // Query keys — export for prefetching in server components / page.tsx
 export * from "../query-keys";
+
+// Record amendment window (24h) — amending your own record + correction notes
+export {
+    useAmendRecord,
+    useAddRecordAddendum,
+    useRecordAddenda,
+    amendmentKeys,
+    amendmentErrorMessage,
+    isLockedError,
+} from "./use-amendments";

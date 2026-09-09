@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, PatientStatus } from "@/types/models";
 import { usePatientsByStatus, useConsultationsByDoctor, useUpdateConsultation } from "@/hooks/emr/use-emr";
+import { RecordAmendmentControls } from "@/components/records";
 import { useAppointmentsByDate } from "@/hooks/emr/use-appointments";
 import { LoadingSkeleton, EmptyState, ErrorAlert } from "@/components/emr";
 import {
@@ -261,6 +262,20 @@ function ActiveConsultationRow({ consultation, onComplete, completing }: {
                         <Clock size={9} /> started {fmtFull(consultation.created_at)}
                     </span>
                 </p>
+                {/* Fixing a typo or a dose should not need the patient chart to
+                    be reopened — the same 24-hour window applies here, enforced
+                    by the server on save. */}
+                <div className="pt-1">
+                    <RecordAmendmentControls
+                        type="consultation"
+                        id={consultation.id}
+                        row={consultation}
+                        patientId={consultation.patient_id ?? null}
+                        invalidateKeys={[["consultations"]]}
+                        contextLine={name}
+                        compact
+                    />
+                </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                 <button

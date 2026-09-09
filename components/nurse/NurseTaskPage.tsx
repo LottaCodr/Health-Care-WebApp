@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/auth-provider";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
+import { RecordAmendmentControls } from "@/components/records";
 import {
     usePendingNursingActions,
     useCompletedNursingActions,
@@ -187,6 +188,21 @@ function TaskCard({
                             <p className="text-xs text-gray-600 leading-relaxed">{task.description}</p>
                         </div>
                     )}
+
+                    {/* Your note, editable for 24h. Completing/starting a task
+                        is a status change and is never blocked by the window. */}
+                    <div className="pt-2 border-t border-gray-100">
+                        <RecordAmendmentControls
+                            type="nursing_action"
+                            id={task.id}
+                            row={task}
+                            patientId={task.patient_id ?? null}
+                            authorName={task.completed_by_name ?? task.assigned_nurse_name ?? null}
+                            invalidateKeys={[["nursing"]]}
+                            contextLine={task.action_type ?? "Nursing note"}
+                            compact
+                        />
+                    </div>
                 </div>
             )}
         </div>
