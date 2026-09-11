@@ -27,7 +27,6 @@ import {
 } from "@/constants";
 import { FormFieldType } from "@/components/forms/PatientForm";
 import { createPatient } from "@/lib/services/patient.service";
-import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
 import { useFrontDeskStore } from "@/store/frontdesk-store";
 import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
@@ -305,7 +304,6 @@ function PaymentTypeSelector({ form }: { form: any }) {
 
 export default function RegistrationSuite() {
   const router = useRouter();
-  const { user } = useAuth();
 
   const form = useForm<z.infer<typeof PatientFormValidation>>({
     resolver: zodResolver(PatientFormValidation),
@@ -369,7 +367,12 @@ export default function RegistrationSuite() {
     const clean = (val?: string | null) => (typeof val === "string" && val.trim().length > 0 ? val.trim() : null);
 
     try {
-      // camelCase form values → snake_case DB columns (empty fields become null)
+      // camelCase form values → snake_case DB columns (empty fields become null).
+      // ⚠️ Every key here MUST be a real column of the `patients` table:
+      // PostgREST rejects the WHOLE insert when a payload key has no matching
+      // column (PGRST204), even when the value is null — which is exactly what
+      // produced the cryptic production error
+      // "An error occurred in the Server Components render …" at the front desk.
       await withTimeout(
       createPatient({
         // Personal (Name, DOB, Gender, Phone are required; others optional/nullable)
@@ -402,13 +405,17 @@ export default function RegistrationSuite() {
         company: Boolean(v.company),
         company_name: v.company ? clean(v.companyName) : null,
         private_client: !v.hmo && !v.company ? true : Boolean(v.privateClient),
-        // Meta
-        user_id: user?.id ?? null,
-        // Paediatric (only if child)
+        // Meta — deliberately NO `user_id`: `patients` has no such column
+        // (the registrar is already captured in the audit trail inside
+        // createPatient via logAction), so sending it made PostgREST reject
+        // EVERY registration with PGRST204.
+        // Paediatric (only for children, and only the keys that actually hold
+        // a value — null-valued keys are rejected by PostgREST just like
+        // unknown ones, so they must stay absent when blank).
         ...(isChild ? {
-          child_class: clean(childClass),
-          parent_info: clean(parentInfo),
-          referral_info: clean(referralInfo),
+          ...(clean(childClass)   ? { child_class:   clean(childClass) }   : {}),
+          ...(clean(parentInfo)   ? { parent_info:   clean(parentInfo) }   : {}),
+          ...(clean(referralInfo) ? { referral_info: clean(referralInfo) } : {}),
         } : {}),
       } as any),
         30_000,
