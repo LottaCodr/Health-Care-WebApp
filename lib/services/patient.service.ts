@@ -54,21 +54,57 @@ export async function createPatient(
         console.error("[patient] hospital number generation skipped:", e);
     }
 
-    const payload = cleanPatientPayload({
+    let payload = cleanPatientPayload({
         ...data,
         ...(hospital_number ? { hospital_number } : {}),
         status: data.status || "registered",
     });
 
-    const { data: result, error } = await supabase
-        .from("patients")
-        .insert([payload])
-        .select()
-        .single();
+    // Insert, tolerating a database that hasn't received a column migration
+    // yet. PostgREST rejects the WHOLE insert when any payload key has no
+    // matching column (PGRST204 — even a null-valued key), and in production
+    // Next.js redacts the thrown message, so the front desk only ever saw
+    // "An error occurred in the Server Components render …" and registration
+    // was dead until someone read the server logs. Registering the patient
+    // matters more than the extra columns: drop the unknown keys, log loudly
+    // so the drift is visible, and retry.
+    let result: Patient | null = null;
+    for (let attempt = 0; ; attempt++) {
+        const { data, error } = await supabase
+            .from("patients")
+            .insert([payload])
+            .select()
+            .single();
 
-    if (error) {
-        console.error("[patient] createPatient:", error);
-        throw new Error(formatFriendlyDbError(error, "Failed to register patient. Please check the entered details."));
+        if (!error) {
+            result = data as unknown as Patient;
+            break;
+        }
+
+        const unknownColumn =
+            error.code === "PGRST204"
+                ? /Could not find the '([^']+)' column of 'patients'/i.exec(
+                      String(error.message ?? "")
+                  )?.[1] ?? null
+                : null;
+
+        const droppable =
+            unknownColumn !== null &&
+            Object.prototype.hasOwnProperty.call(payload, unknownColumn) &&
+            attempt < 5;
+
+        if (!droppable) {
+            console.error("[patient] createPatient:", error);
+            throw new Error(formatFriendlyDbError(error, "Failed to register patient. Please check the entered details."));
+        }
+
+        console.error(
+            `[patient] createPatient: patients.${unknownColumn} does not exist yet ` +
+                `(migration not applied?) — dropping it and retrying. ` +
+                `Apply the pending supabase migrations so this field is stored.`
+        );
+        const { [unknownColumn as string]: _dropped, ...rest } = payload;
+        payload = rest;
     }
 
     await logAction("PATIENT_REGISTERED", "patients", result.id, {

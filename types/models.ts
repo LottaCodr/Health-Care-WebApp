@@ -54,6 +54,10 @@ export interface Patient {
     long_term_medication?: string;
     significant_medication_history?: string;
     covid_vaccination_options?: string;
+    /** Paediatric details (collected at registration when the patient is under 13). */
+    child_class?: string;
+    parent_info?: string;
+    referral_info?: string;
     hmo?: boolean;
     hmo_name?: string;
     policy_number?: string;
