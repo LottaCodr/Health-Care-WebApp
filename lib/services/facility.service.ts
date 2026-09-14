@@ -32,7 +32,13 @@ export async function createFacility(input: Omit<Facility, "id" | "created_at">)
         .select()
         .single();
     if (error) throw error;
-    await logAction("FACILITY_CREATED", "facilities", data.id, { name: input.name, code: input.code });
+    await logAction("FACILITY_CREATED", "facilities", data.id, {
+        name: input.name,
+        code: input.code,
+        facility_type: input.facility_type ?? "hospital",
+        parent_facility_id: input.parent_facility_id ?? null,
+        specialty_code: input.specialty_code ?? null,
+    });
     return data as unknown as Facility;
 }
 

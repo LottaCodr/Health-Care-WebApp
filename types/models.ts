@@ -571,10 +571,16 @@ export interface BirthCertificate {
     created_at?: string;
 }
 
+export type FacilityType = "hospital" | "specialist_clinic" | "laboratory" | "satellite_site";
+
 export interface Facility {
     id: string;
     name: string;
     code: string;
+    facility_type?: FacilityType;
+    parent_facility_id?: string | null;
+    specialty_code?: string | null;
+    description?: string | null;
     address?: string;
     city?: string;
     state?: string;
