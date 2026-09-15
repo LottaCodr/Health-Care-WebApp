@@ -27,6 +27,7 @@ import {
     BarChart3,
     Building2,
     FolderOpen,
+    Dna,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
                         { title: "Admissions", url: "/front-desk/admissions", icon: Clock },
             { title: "Appointments", url: "/front-desk/appointment-booking", icon: Calendar },
             { title: "Payments", url: "/front-desk/payment", icon: CreditCard },
+            { title: "IVF Clinic", url: "/front-desk/ivf", icon: Dna },
         ],
         secondary: [
             { title: "Settings", url: "/front-desk/settings", icon: Settings },
@@ -68,6 +70,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Records", url: "/doctor/health-records", icon: ClipboardList },
             { title: "Appointments", url: "/doctor/appointments", icon: Calendar },
             { title: "Surgery / OT", url: "/doctor/surgery", icon: Scissors },
+            { title: "IVF Clinic", url: "/doctor/ivf", icon: Dna },
         ],
         secondary: [
             { title: "Settings", url: "/doctor/settings", icon: Settings },
@@ -80,6 +83,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Triaging", url: "/nurse/queue", icon: HeartPulse },
             { title: "Tasks", url: "/nurse/task", icon: ListChecks },
             { title: "Ward Board", url: "/nurse/ward-board", icon: BedDouble },
+            { title: "IVF Clinic", url: "/nurse/ivf", icon: Dna },
         ],
         secondary: [
             { title: "Settings", url: "/nurse/settings", icon: Settings },
@@ -94,6 +98,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Reports", url: "/lab-tech/reports", icon: Microscope },
             { title: "Test Catalog", url: "/lab-tech/catalog", icon: Microscope },
             { title: "Specimens", url: "/lab-tech/specimens", icon: TestTube2 },
+            { title: "IVF Clinic", url: "/lab-tech/ivf", icon: Dna },
         ],
         secondary: [
             { title: "Settings", url: "/lab-tech/settings", icon: Settings },
@@ -132,6 +137,7 @@ export const NAV_CONFIG: Record<string, NavConfig> = {
             { title: "Audit Log", url: "/admin/audit", icon: ScrollText },
             { title: "Reports", url: "/admin/reports", icon: BarChart3 },
             { title: "Facilities", url: "/admin/facilities", icon: Building2 },
+            { title: "IVF Clinic", url: "/admin/ivf", icon: Dna },
             // { title: "Radiology",  url: "/admin/radiology",   icon: Radio           },
         ],
         secondary: [
