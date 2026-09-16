@@ -55,7 +55,7 @@ function cleanPatientPayload(data: Record<string, any>): Record<string, any> {
  * register. Returning the message is the only way it survives the wire.
  */
 export type PatientCreateResult =
-    | { ok: true; patient: Patient }
+    | { ok: true; patient: Patient; warnings?: string[] }
     | { ok: false; message: string; code?: string | null };
 
 export async function createPatient(
@@ -112,6 +112,12 @@ async function insertPatient(
     // matters more than the extra columns: drop the unknown keys, log loudly
     // so the drift is visible, and retry.
     let result: Patient | null = null;
+    // Columns the insert had to drop because the database hasn't received the
+    // migration that adds them. The patient still registers — but the desk
+    // must be TOLD what was not saved. Silent loss here is how an HMO patient
+    // ends up registered with no insurer on file (billing chases a payer that
+    // was never written down).
+    const droppedColumns: string[] = [];
     for (let attempt = 0; ; attempt++) {
         const { data, error } = await supabase
             .from("patients")
@@ -138,6 +144,17 @@ async function insertPatient(
 
         if (!droppable) {
             console.error("[patient] createPatient:", error);
+            // Diagnostic context for the RLS-era failure class. Keys only —
+            // patient values (PHI) never go to the logs.
+            if (error.code === "42501" || /row-level security|permission denied/i.test(String(error.message ?? ""))) {
+                console.error(
+                    `[patient] createPatient: the DATABASE refused the insert (RLS/policy). ` +
+                        `App-side guard passed (actor role=${actor.role}, actor id=${actor.userId}). ` +
+                        `payload keys: ${Object.keys(payload).join(", ")}. ` +
+                        `The database's staff-role policies have drifted from the app's RBAC — ` +
+                        `apply supabase/migrations and run scripts/diagnose-registration-rls.sql.`
+                );
+            }
             // Returned, not thrown: a thrown message is redacted by Next.js
             // before it reaches the browser, so throwing here is exactly what
             // left the front desk staring at "An error occurred in the Server
@@ -157,6 +174,7 @@ async function insertPatient(
                 `(migration not applied?) — dropping it and retrying. ` +
                 `Apply the pending supabase migrations so this field is stored.`
         );
+        droppedColumns.push(unknownColumn as string);
         const { [unknownColumn as string]: _dropped, ...rest } = payload;
         payload = rest;
     }
@@ -180,7 +198,18 @@ async function insertPatient(
         registered_by: actor.userId,
     });
 
-    return { ok: true, patient: result as unknown as Patient };
+    // The patient IS registered — but if insurance columns had to be dropped
+    // (schema drift), the desk must know the HMO/company detail did not save.
+    const warnings = droppedColumns.length
+        ? droppedColumns.map(
+              (column) =>
+                  `The database does not have the "${column}" field yet, so that detail was NOT saved for this patient ` +
+                  `(registration succeeded anyway). Ask an administrator to apply the pending database migrations, ` +
+                  `then add the missing detail to the patient's record.`
+          )
+        : undefined;
+
+    return { ok: true, patient: result as unknown as Patient, warnings };
 }
 
 export async function getPatientById(id: string): Promise<Patient | null> {

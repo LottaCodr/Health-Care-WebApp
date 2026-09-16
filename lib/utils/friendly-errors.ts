@@ -102,15 +102,63 @@ export function formatFriendlyDbError(err: unknown, fallback = "An unexpected er
         return "Referenced record was not found. Please verify the related item exists.";
     }
 
-    // ── 7. Permissions & Authentication (42501, UNAUTHORIZED, FORBIDDEN) ─────
+    // ── 7. Permissions & Authentication ───────────────────────────────────────
+    // Three very different causes used to collapse into one "please log in"
+    // line, which sent the desk chasing a login problem they did not have
+    // (they had just filled a four-step wizard while signed in). Split them:
+    //
+    //   7a. The app's own auth guard (lib/services/auth-guard.ts) throws
+    //       Errors whose messages start with "UNAUTHORIZED:" / "FORBIDDEN:".
+    //       UNAUTHORIZED = no valid session server-side (expired token, signed
+    //       out in another tab) → "sign in again" is the correct advice.
+    //       FORBIDDEN = signed in, but the account's role may not do this.
+    //
+    //   7b. PostgREST/GoTrue session-level rejections (expired/invalid JWT).
+    //
+    //   7c. The DATABASE refused the write (SQLSTATE 42501, "row-level
+    //       security", "permission denied"). The account is signed in and the
+    //       app already authorized it (requireStaff passed — the guard runs
+    //       before every write); the database's own RLS policy disagreed.
+    //       That is server-side policy drift (this repo's staff-role RLS
+    //       matcher has drifted in production before — see
+    //       supabase/migrations/20260829_fix_staff_role_matching_casing.sql),
+    //       and no amount of re-logging-in fixes it. Tell the desk the truth
+    //       and hand an admin the diagnostic; append the raw Postgres message
+    //       so a screenshot of the desk's screen is diagnosable remotely.
+    const guardPrefix = /^(unauthorized|forbidden):\s*/i.exec(String(errObj?.message ?? ""));
+    if (guardPrefix) {
+        if (guardPrefix[1].toLowerCase() === "unauthorized") {
+            return "Your session has expired or you are not signed in as hospital staff. Please sign in again and try once more — what you were typing is still on the page.";
+        }
+        return "This action is not permitted for your account's role. If you believe you should be able to do this, ask an administrator to check your role in the staff list.";
+    }
+
+    if (
+        code === "PGRST301" ||
+        combined.includes("jwt") ||
+        combined.includes("invalid api key") ||
+        combined.includes("invalid claim") ||
+        combined.includes("unauthorized") ||
+        combined.includes("forbidden")
+    ) {
+        return "Your session has expired. Please sign in again and try once more — what you were typing is still on the page.";
+    }
+
     if (
         code === "42501" ||
-        combined.includes("unauthorized") ||
-        combined.includes("forbidden") ||
         combined.includes("row-level security") ||
-        combined.includes("permission denied")
+        combined.includes("permission denied") ||
+        combined.includes("violation of row-level")
     ) {
-        return "You do not have permission to perform this action. Please log in with an authorized account.";
+        return (
+            "The hospital database refused to save this record for a security-policy reason (row-level security). " +
+            "Nothing is wrong with the details you entered, and you ARE signed in correctly — " +
+            "this is a database configuration mismatch on the server. " +
+            "Please ask an administrator to apply the pending database migrations " +
+            "(supabase/migrations — especially 20260829_fix_staff_role_matching_casing.sql and 20260916_reassert_patients_rls_and_role_matchers.sql) " +
+            "and run scripts/diagnose-registration-rls.sql in the Supabase SQL editor to pinpoint it. " +
+            (message ? `Technical detail: ${String(errObj?.message).trim()}` : "No technical detail was returned by the database.")
+        );
     }
 
     // ── 8. Database statement timeouts ───────────────────────────────────────

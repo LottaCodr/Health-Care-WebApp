@@ -301,6 +301,9 @@ export default function RegistrationSuite() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validatingStep, setValidatingStep] = useState(false);
+  // Set when a registration succeeded but some columns had to be dropped
+  // (database missing a migration) — rendered on the success screen.
+  const [driftWarnings, setDriftWarnings] = useState<string[]>([]);
 
   const validateStep = async () => {
     setValidatingStep(true);
@@ -377,6 +380,14 @@ export default function RegistrationSuite() {
       }
 
       toast.success("Patient registered successfully!");
+      // Schema-drift warnings: the patient is registered but some details
+      // (typically the HMO/company insurance fields on a database that hasn't
+      // received a migration) were NOT saved. Must be visible on the success
+      // screen — a toast disappears before the desk is back from the counter.
+      if (result.warnings?.length) {
+        setDriftWarnings(result.warnings);
+        toast.warning(result.warnings.join(" "));
+      }
       setSubmitted(true);
     } catch (err: any) {
       // friendlyErrorMessage maps timeouts/network failures to a clear
@@ -391,7 +402,7 @@ export default function RegistrationSuite() {
   useEffect(() => {
     if (!submitted) return;
     const t = setTimeout(() => {
-      form.reset(); setSubmitted(false); resetForm();
+      form.reset(); setSubmitted(false); setDriftWarnings([]); resetForm();
       router.push("/front-desk/patient");
     }, 5000);
     return () => clearTimeout(t);
@@ -444,13 +455,23 @@ export default function RegistrationSuite() {
                         <p className="text-sm text-gray-400 mt-2 max-w-sm mx-auto">
                           Patient has been registered and added to the system.
                         </p>
+                        {driftWarnings.length > 0 && (
+                          <div className="mt-4 max-w-md mx-auto text-left px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+                            <p className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-1">
+                              Saved with warnings
+                            </p>
+                            {driftWarnings.map((w, i) => (
+                              <p key={i} className="text-xs text-amber-800 mt-1">{w}</p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
                         <Loader2 size={13} className="text-blue-500 animate-spin" />
                         <p className="text-xs text-blue-600 font-medium">Redirecting in 5 seconds...</p>
                       </div>
                       <button type="button"
-                        onClick={() => { setSubmitted(false); resetForm(); form.reset(); }}
+                        onClick={() => { setSubmitted(false); setDriftWarnings([]); resetForm(); form.reset(); }}
                         className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors">
                         Register Another Patient
                       </button>
