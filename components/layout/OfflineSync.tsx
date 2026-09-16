@@ -30,7 +30,9 @@ export function OfflineSync() {
             for (const item of queue) {
                 try {
                     if (item.kind === "register-patient") {
-                        await createPatient(item.payload as Parameters<typeof createPatient>[0]);
+                        const result = await createPatient(item.payload as Parameters<typeof createPatient>[0]);
+                        // Failures come back as a value, not an exception.
+                        if (!result.ok) throw new Error(result.message);
                         done++;
                     }
                     removeFromQueue(item.id);

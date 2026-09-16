@@ -33,7 +33,10 @@ export async function bulkUploadRows(
 
     for (const row of rows) {
         try {
-            await createPatient({
+            // createPatient reports failures as a value (a thrown Server
+            // Action message is redacted by Next.js), so count the returned
+            // result rather than relying on an exception.
+            const result = await createPatient({
                 name: row.name?.trim() || "Unknown",
                 birth_date: clean(row.date_of_birth) || new Date().toISOString().split("T")[0],
                 gender: (row.gender?.trim() || "Male") as any,
@@ -45,7 +48,8 @@ export async function bulkUploadRows(
                 emergency_contact_number: clean(row.next_of_kin_phone || row.emergency_contact_number),
                 status: PatientStatus.Registered,
             } as any);
-            success++;
+            if (result.ok) success++;
+            else failed++;
         } catch {
             failed++;
         }
