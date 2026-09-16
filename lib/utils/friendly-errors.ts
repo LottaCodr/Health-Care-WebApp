@@ -126,6 +126,30 @@ export function formatFriendlyDbError(err: unknown, fallback = "An unexpected er
         return "The database was too busy to save this record and gave up (the request timed out). Nothing was saved for this row — please try again.";
     }
 
+    // ── 8b. PostgREST-level failures (no SQLSTATE from Postgres) ─────────────
+    // The insert never reached a row, so nothing about the form is "wrong" in
+    // a way the desk can fix by retyping. Say what actually happened.
+    if (code === "PGRST204" || combined.includes("in the schema cache")) {
+        const missing = /could not find the '?([\w]+)'? column of '?([\w]+)'?/i.exec(combined);
+        if (missing) {
+            return (
+                `This database does not have the "${missing[1]}" field yet, so the record could not be ` +
+                `saved. Please ask an administrator to apply the pending database migrations.`
+            );
+        }
+        return (
+            "The hospital database is missing a field this record needs. " +
+            "Please ask an administrator to apply the pending database migrations."
+        );
+    }
+
+    if (code === "PGRST116" || combined.includes("multiple (or no) rows returned")) {
+        return (
+            "The hospital system could not confirm the saved record (nothing was returned by the database). " +
+            "Please check the patient list before trying again, and sign in again if it keeps happening."
+        );
+    }
+
     // ── 9. Network, Timeout, Server Action issues ────────────────────────────
     // NOTE: keep these patterns tight. Substring-matching bare "504"/"503" or
     // the word "network" anywhere in a message (including the row values

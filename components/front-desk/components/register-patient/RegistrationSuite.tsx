@@ -30,24 +30,19 @@ import { createPatient } from "@/lib/services/patient.service";
 import { toast } from "sonner";
 import { useFrontDeskStore } from "@/store/frontdesk-store";
 import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
+import {
+  calcAge,
+  buildPatientPayload,
+  getPaymentType,
+  getStepFields,
+  INSURANCE_STEP,
+  type PaymentType,
+} from "@/lib/utils/registration-form";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function calcAge(dob?: string): { years: number; display: string; isChild: boolean } | null {
-  if (!dob) return null;
-  const d = new Date(dob);
-  if (isNaN(d.getTime())) return null;
-  const now = new Date();
-  let years = now.getFullYear() - d.getFullYear();
-  let months = now.getMonth() - d.getMonth();
-  if (months < 0) { years--; months += 12; }
-  if (now.getDate() < d.getDate()) months--;
-  const isChild = years < 13;
-  const display = years === 0
-    ? `${months} month${months !== 1 ? "s" : ""} old`
-    : years < 2 ? `${years}yr ${months}mo` : `${years} years old`;
-  return { years, display, isChild };
-}
+// calcAge / getPaymentType / getStepFields / buildPatientPayload live in
+// @/lib/utils/registration-form so the repro harness can exercise the real
+// logic (node scripts/repro-registration-hmo.cjs).
 
 function safeScrollToTop() {
   if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -65,37 +60,6 @@ const STEPS = [
   { label: "Medical History", description: "Health background", icon: Heart },
   { label: "Insurance", description: "Coverage information", icon: Shield },
 ];
-
-// Only name, date of birth, gender, and phone are strictly required.
-// All other fields are optional and default to null if left blank.
-const STEP_FIELDS = [
-  ["name", "birthDate", "gender", "phone"],
-  ["emergencyContactEmail"],
-  [],
-];
-
-type PaymentType = "hmo" | "company" | "private" | null;
-
-function getPaymentType(values: { hmo?: boolean; company?: boolean; privateClient?: boolean }): PaymentType {
-  if (values.privateClient) return "private";
-  if (values.hmo)           return "hmo";
-  if (values.company)       return "company";
-  return null;
-}
-
-// Only validate the field that's actually relevant to the selected payment type.
-// Self-pay needs nothing extra; HMO needs hmoName; Company needs companyName.
-function getInsuranceFields(values: any): string[] {
-  const type = getPaymentType(values);
-  if (type === "hmo")     return ["hmoName"];
-  if (type === "company") return ["companyName"];
-  return [];   // private or unselected — nothing extra required
-}
-
-function getStepFields(step: number, values: any): string[] {
-  if (step === 3) return getInsuranceFields(values);
-  return STEP_FIELDS[step] ?? [];
-}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -316,6 +280,22 @@ export default function RegistrationSuite() {
   const ageInfo = calcAge(watchedDOB as string);
   const isChild = ageInfo?.isChild ?? false;
 
+  // Payment type MUST be watched, not read with form.getValues(): getValues()
+  // is a snapshot and subscribes to nothing, so this component only re-rendered
+  // when something else happened to change. Picking "HMO Coverage" updated the
+  // selector card (it has its own useWatch) but left `paymentType` stale here —
+  // the HMO Name / Policy Number inputs never mounted, the desk had nowhere to
+  // type, and the schema's hmoName/policyNumber rules had no field to attach
+  // to. Same bug, same fix for company cover.
+  const watchedHmo = useWatch({ control: form.control, name: "hmo" as any });
+  const watchedCompany = useWatch({ control: form.control, name: "company" as any });
+  const watchedPrivate = useWatch({ control: form.control, name: "privateClient" as any });
+  const paymentType = getPaymentType({
+    hmo: typeof watchedHmo === "boolean" ? watchedHmo : false,
+    company: typeof watchedCompany === "boolean" ? watchedCompany : false,
+    privateClient: typeof watchedPrivate === "boolean" ? watchedPrivate : false,
+  });
+
   const { currentStep, childClass, parentInfo, referralInfo, setField, nextStep, prevStep, resetForm } = useFrontDeskStore();
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -330,7 +310,7 @@ export default function RegistrationSuite() {
     // Insurance step also requires a payment type to be selected at all —
     // Zod alone can't express "exactly one of these three booleans is true"
     // without seeing the schema, so we enforce it here at the UI layer.
-    if (currentStep === 3) {
+    if (currentStep === INSURANCE_STEP) {
       const type = getPaymentType(form.getValues());
       if (!type) { setValidatingStep(false); toast.error("Please select a payment type."); return false; }
     }
@@ -364,63 +344,37 @@ export default function RegistrationSuite() {
     const v = form.getValues();
     setSubmitting(true);
 
-    const clean = (val?: string | null) => (typeof val === "string" && val.trim().length > 0 ? val.trim() : null);
-
     try {
-      // camelCase form values → snake_case DB columns (empty fields become null).
-      // ⚠️ Every key here MUST be a real column of the `patients` table:
-      // PostgREST rejects the WHOLE insert when a payload key has no matching
-      // column (PGRST204), even when the value is null — which is exactly what
-      // produced the cryptic production error
-      // "An error occurred in the Server Components render …" at the front desk.
-      await withTimeout(
-      createPatient({
-        // Personal (Name, DOB, Gender, Phone are required; others optional/nullable)
-        name: v.name.trim(),
-        email: clean(v.email),
-        phone: v.phone.trim(),
-        birth_date: v.birthDate,
-        gender: v.gender,
-        address: clean(v.address),
-        occupation: clean(v.occupation),
-        religion: clean(v.religion),
-        status: "sent-to-nurse",
-        // Emergency contact (optional)
-        emergency_contact_name: clean(v.emergencyContactName),
-        emergency_contact_number: clean(v.emergencyContactNumber),
-        emergency_contact_relationship: clean(v.emergencyContactRelationship),
-        emergency_contact_email: clean(v.emergencyContactEmail),
-        emergency_contact_address: clean(v.emergencyContactAddress),
-        // Medical (optional)
-        allergies: clean(v.allergies),
-        significant_medication_history: clean(v.significantMedicationHistory),
-        long_term_medication: clean(v.longTermMedication),
-        covid_vaccination_options: clean(v.covidVaccinationOptions),
-        blood_group: clean(v.bloodGroup),
-        geno_type: clean(v.genoType),
-        // Insurance
-        policy_number: clean(v.policyNumber),
-        hmo: Boolean(v.hmo),
-        hmo_name: v.hmo ? clean(v.hmoName) : null,
-        company: Boolean(v.company),
-        company_name: v.company ? clean(v.companyName) : null,
-        private_client: !v.hmo && !v.company ? true : Boolean(v.privateClient),
-        // Meta — deliberately NO `user_id`: `patients` has no such column
-        // (the registrar is already captured in the audit trail inside
-        // createPatient via logAction), so sending it made PostgREST reject
-        // EVERY registration with PGRST204.
-        // Paediatric (only for children, and only the keys that actually hold
-        // a value — null-valued keys are rejected by PostgREST just like
-        // unknown ones, so they must stay absent when blank).
-        ...(isChild ? {
-          ...(clean(childClass)   ? { child_class:   clean(childClass) }   : {}),
-          ...(clean(parentInfo)   ? { parent_info:   clean(parentInfo) }   : {}),
-          ...(clean(referralInfo) ? { referral_info: clean(referralInfo) } : {}),
-        } : {}),
-      } as any),
+      // camelCase form values → snake_case `patients` columns. The mapping
+      // lives in @/lib/utils/registration-form so the repro harness checks the
+      // real payload (node scripts/repro-registration-hmo.cjs): every key must
+      // be a real column, because PostgREST rejects the WHOLE insert when one
+      // is not (PGRST204) — even when its value is null.
+      const result = await withTimeout(
+        createPatient(
+          buildPatientPayload({
+            values: v,
+            isChild,
+            childClass,
+            parentInfo,
+            referralInfo,
+          }) as any
+        ),
         30_000,
         "Registration is taking too long. Please check your connection and try again."
       );
+
+      // createPatient reports expected failures as a value, not an exception:
+      // a Server Action that throws arrives at the browser as Next.js's
+      // redacted "An error occurred in the Server Components render …" text,
+      // which is what the front desk saw instead of the real reason.
+      if (!result || result.ok !== true) {
+        const msg = result?.message ?? "Registration failed. Please check the entered details and try again.";
+        setSubmitError(msg);
+        toast.error(msg);
+        safeScrollToTop();
+        return;
+      }
 
       toast.success("Patient registered successfully!");
       setSubmitted(true);
@@ -445,7 +399,9 @@ export default function RegistrationSuite() {
 
   const inputCls = "w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all";
 
-  const paymentType = getPaymentType(form.getValues());
+  // `paymentType` is derived from the watched insurance flags above — do not
+  // read it with form.getValues() here, that snapshot is what hid the HMO
+  // fields in the first place.
 
   return (
     <div className="min-h-screen bg-gray-50/60 py-8 px-4">
@@ -684,7 +640,7 @@ export default function RegistrationSuite() {
                       )}
 
                       {/* ── Step 4: Insurance ── */}
-                      {currentStep === 3 && (
+                      {currentStep === INSURANCE_STEP && (
                         <section className="space-y-5">
                           <SectionTitle title="Insurance Information" description="Medical coverage and payment details" />
 

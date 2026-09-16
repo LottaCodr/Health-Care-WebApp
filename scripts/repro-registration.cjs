@@ -308,13 +308,16 @@ const run = (label, fn) =>
 
 async function main() {
     console.log("service under test:", process.env.OLD_SERVICE ? process.env.OLD_SERVICE + "  (PRE-FIX)" : "lib/services/patient.service.ts  (current)");
+    console.log("NOTE: createPatient now RETURNS { ok, patient } / { ok, message } instead of throwing —");
+    console.log("      a Server Action that throws reaches the browser as Next.js's redacted digest text.");
 
-    console.log("\n==== SCENARIO 1 — OLD adult payload (what production received): raw insert");
+    console.log("\n==== SCENARIO 1 — OLD adult payload (what production received in 2026-09)");
     {
         const { patientService } = freshContext();
-        // Exactly the call the pre-fix service made for every registration:
         const r = await run("createPatient(old adult payload)", () => patientService.createPatient(oldFormPayload()));
-        console.log(r.ok ? "UNEXPECTED SUCCESS" : "THREW: " + r.err);
+        if (!r.ok) console.log("THREW (pre-fix service): " + r.err);
+        else if (!r.v.ok) console.log("RETURNED failure:", r.v.code, "-", r.v.message);
+        else console.log(`self-healed — user_id dropped, ${r.v.patient.name} registered as ${r.v.patient.hospital_number}`);
     }
 
     console.log("\n==== SCENARIO 2 — OLD child payload (paediatric keys, null-valued included)");
@@ -323,15 +326,19 @@ async function main() {
         const r = await run("createPatient(old child payload, blank paediatrics)", () =>
             patientService.createPatient(oldFormPayload({ isChild: true }))
         );
-        console.log(r.ok ? "UNEXPECTED SUCCESS" : "THREW: " + r.err);
+        if (!r.ok) console.log("THREW (pre-fix service): " + r.err);
+        else if (!r.v.ok) console.log("RETURNED failure:", r.v.code, "-", r.v.message);
+        else console.log(`self-healed — ${r.v.patient.name} registered as ${r.v.patient.hospital_number}`);
     }
 
     console.log("\n==== SCENARIO 3 — FIXED adult payload → registration must succeed");
     {
         const { patientService } = freshContext();
         const r = await run("createPatient(new adult payload)", () => patientService.createPatient(newFormPayload()));
-        if (!r.ok) { console.log("THREW: " + r.err); } else {
-            const p = r.v;
+        if (!r.ok) { console.log("THREW: " + r.err); }
+        else if (!r.v.ok) { console.log(`RETURNED failure: ${r.v.code} - ${r.v.message}`); }
+        else {
+            const p = r.v.patient;
             console.log(`OK — ${p.name} registered as ${p.hospital_number} (status ${p.status})`);
             const audit = db.audit_logs.find((a) => a.action === "PATIENT_REGISTERED" && a.entity_id === p.id);
             console.log(audit ? `OK — audit row written, registered_by=${audit.changes.registered_by}` : "MISSING audit row!");
@@ -345,9 +352,12 @@ async function main() {
         const r = await run("createPatient(new child payload)", () =>
             patientService.createPatient(newFormPayload({ isChild: true, paediatrics: { childClass: "Primary 3", parentInfo: "Mr & Mrs Adeyemi", referralInfo: "School clinic" } }))
         );
-        if (!r.ok) { console.log("THREW: " + r.err); } else {
-            console.log(`OK — ${r.v.name} registered as ${r.v.hospital_number}`);
-            console.log(`     child_class=${JSON.stringify(r.v.child_class)} parent_info=${JSON.stringify(r.v.parent_info)} referral_info=${JSON.stringify(r.v.referral_info)}`);
+        if (!r.ok) { console.log("THREW: " + r.err); }
+        else if (!r.v.ok) { console.log(`RETURNED failure: ${r.v.code} - ${r.v.message}`); }
+        else {
+            const p = r.v.patient;
+            console.log(`OK — ${p.name} registered as ${p.hospital_number}`);
+            console.log(`     child_class=${JSON.stringify(p.child_class)} parent_info=${JSON.stringify(p.parent_info)} referral_info=${JSON.stringify(p.referral_info)}`);
         }
     }
 
@@ -359,9 +369,28 @@ async function main() {
         const r = await run("createPatient(new child payload, unmigrated DB)", () =>
             patientService.createPatient(newFormPayload({ isChild: true, paediatrics: { childClass: "JSS 1" } }))
         );
-        if (!r.ok) { console.log("THREW: " + r.err); } else {
-            console.log(`OK — ${r.v.name} still registered as ${r.v.hospital_number} (child_class dropped, logged above)`);
-        }
+        if (!r.ok) { console.log("THREW: " + r.err); }
+        else if (!r.v.ok) { console.log(`RETURNED failure: ${r.v.code} - ${r.v.message}`); }
+        else console.log(`OK — ${r.v.patient.name} still registered as ${r.v.patient.hospital_number} (child_class dropped, logged above)`);
+    }
+
+    console.log("\n==== SCENARIO 6 — HMO payload against a DB missing hmo_name (the 2026-09 complaint class)");
+    console.log("     the desk must be told WHY, in words — not handed a redacted digest");
+    {
+        const { patientService } = freshContext();
+        const payload = { ...newFormPayload(), hmo: true, hmo_name: "Hygeia HMO", policy_number: "HYG-88231", private_client: false };
+        // Emulate a database whose `patients` table has drifted.
+        const withoutHmoName = new Set(PATIENT_COLUMNS);
+        withoutHmoName.delete("hmo_name");
+        withoutHmoName.delete("company_name");
+        withoutHmoName.delete("policy_number");
+        PATIENT_COLUMNS.clear();
+        withoutHmoName.forEach((c) => PATIENT_COLUMNS.add(c));
+
+        const r = await run("createPatient(hmo payload, drifted DB)", () => patientService.createPatient(payload));
+        if (!r.ok) console.log("THREW: " + r.err);
+        else if (!r.v.ok) console.log(`RETURNED failure: ${r.v.code} - "${r.v.message}"`);
+        else console.log(`registered as ${r.v.patient.hospital_number} (drifted columns dropped, logged above)`);
     }
 }
 

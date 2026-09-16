@@ -74,7 +74,13 @@ export function useCreatePatient() {
                     "OFFLINE_QUEUED: You are offline. This registration was saved on this device and will sync to the hospital system automatically when the connection returns."
                 );
             }
-            return PatientService.createPatient(data);
+            // The server action returns its failures instead of throwing them
+            // (a thrown Server Action message is redacted by Next.js), so the
+            // friendly reason is turned into a client-side error HERE, where
+            // the message still reaches the UI.
+            const result = await PatientService.createPatient(data);
+            if (!result.ok) throw new Error(result.message);
+            return result.patient;
         },
 
         onSuccess: (patient) => {

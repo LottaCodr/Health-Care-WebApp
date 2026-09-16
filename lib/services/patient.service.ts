@@ -35,9 +35,52 @@ function cleanPatientPayload(data: Record<string, any>): Record<string, any> {
     return cleaned;
 }
 
+/**
+ * Result of a registration attempt.
+ *
+ * ⚠️ Expected failures are RETURNED, never thrown. `createPatient` is a Server
+ * Action ("use server" file), and Next.js replaces the message of any error a
+ * Server Action throws with a digest-only placeholder before it reaches the
+ * browser — literally:
+ *
+ *   "An error occurred in the Server Components render. The specific message
+ *    is omitted in production builds to avoid leaking sensitive details…"
+ *
+ * (React Flight's `resolveErrorProd()`, shipped in
+ * `next/dist/compiled/react-server-dom-webpack`). That is why the front desk
+ * reported the same useless text twice: the first time the real cause was a
+ * phantom `user_id` column, and after that was fixed the *friendly* messages
+ * produced by `formatFriendlyDbError` were thrown too — so they were redacted
+ * just the same and the desk still could not see why a patient would not
+ * register. Returning the message is the only way it survives the wire.
+ */
+export type PatientCreateResult =
+    | { ok: true; patient: Patient }
+    | { ok: false; message: string; code?: string | null };
+
 export async function createPatient(
     data: Omit<Patient, "id" | "created_at" | "updated_at">
-): Promise<Patient> {
+): Promise<PatientCreateResult> {
+  try {
+    return await insertPatient(data);
+  } catch (error: any) {
+    // Anything not already converted below (auth guard, an unreachable
+    // database, a bug) still has to reach the desk as words, not a digest.
+    console.error("[patient] createPatient failed:", error);
+    return {
+        ok: false,
+        code: error?.code ?? null,
+        message: formatFriendlyDbError(
+            error,
+            error?.message || "Registration failed. Please check the entered details and try again."
+        ),
+    };
+  }
+}
+
+async function insertPatient(
+    data: Omit<Patient, "id" | "created_at" | "updated_at">
+): Promise<PatientCreateResult> {
     const actor = await requireStaff([UserRole.FrontDesk]);
     const supabase = await createClient();
 
@@ -95,7 +138,18 @@ export async function createPatient(
 
         if (!droppable) {
             console.error("[patient] createPatient:", error);
-            throw new Error(formatFriendlyDbError(error, "Failed to register patient. Please check the entered details."));
+            // Returned, not thrown: a thrown message is redacted by Next.js
+            // before it reaches the browser, so throwing here is exactly what
+            // left the front desk staring at "An error occurred in the Server
+            // Components render …" with no idea which field to fix.
+            return {
+                ok: false,
+                code: error.code ?? null,
+                message: formatFriendlyDbError(
+                    error,
+                    "Failed to register patient. Please check the entered details."
+                ),
+            };
         }
 
         console.error(
@@ -107,12 +161,26 @@ export async function createPatient(
         payload = rest;
     }
 
+    if (!result) {
+        // `.single()` resolved with no row (row-level security can hide a row
+        // that was actually written). Tell the desk to check the list rather
+        // than re-registering the same patient twice.
+        console.error("[patient] createPatient: insert returned no row");
+        return {
+            ok: false,
+            code: null,
+            message:
+                "The patient may have been saved but the system could not read the record back. " +
+                "Please check the patient list before registering again.",
+        };
+    }
+
     await logAction("PATIENT_REGISTERED", "patients", result.id, {
         name: result.name,
         registered_by: actor.userId,
     });
 
-    return result as unknown as Patient;
+    return { ok: true, patient: result as unknown as Patient };
 }
 
 export async function getPatientById(id: string): Promise<Patient | null> {
