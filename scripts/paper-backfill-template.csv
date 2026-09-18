@@ -1,0 +1,3 @@
+hospital_number,name,date_of_birth,gender,phone,address,blood_group,genotype,next_of_kin_name,next_of_kin_phone,email
+NVH-02329,SAMPLE PATIENT ONE,1985-04-12,Female,08031234567,12 Sample Street Abuja,O+,AA,SAMPLE KIN,08039876543,
+NVH-02330,SAMPLE PATIENT TWO,,Male,,,,,,

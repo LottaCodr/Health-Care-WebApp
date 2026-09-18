@@ -4,7 +4,6 @@ import { createClient } from "@/utils/supabase/server";
 import { Patient, PatientStatus, UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
-import { normalizeHospitalNumber } from "@/lib/hospital-number";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
 
 /**
@@ -84,22 +83,16 @@ async function insertPatient(
     const actor = await requireStaff([UserRole.FrontDesk]);
     const supabase = await createClient();
 
-    // Hospital number: every patient — EMR-registered or bulk-imported — uses
-    // the same shared NVH-XXXXX series.
-    // Degrades gracefully if the hospital_number migration hasn't been applied.
-    let hospital_number: string | null = null;
-    try {
-        const { data: hn, error: hnError } = await supabase
-            .rpc("next_hospital_number", { p_prefix: "NVH" });
-        if (!hnError && typeof hn === "string") hospital_number = normalizeHospitalNumber(hn) ?? hn;
-        else if (hnError) console.error("[patient] next_hospital_number:", hnError);
-    } catch (e) {
-        console.error("[patient] hospital number generation skipped:", e);
-    }
-
+    // Hospital number: assigned BY THE DATABASE at insert time
+    // (trg_patients_assign_hospital_number fills a blank hospital_number from
+    // the shared NVH-XXXXX series). Nothing is drawn before the insert, so a
+    // failed registration consumes NO number and the series can never skip —
+    // the old code pre-drew a number per attempt and burned it on every
+    // failure (RLS refusal, PGRST204 retry, dropped connection). Do NOT add a
+    // pre-insert allocation back here; the returned row carries the assigned
+    // number in result.hospital_number.
     let payload = cleanPatientPayload({
         ...data,
-        ...(hospital_number ? { hospital_number } : {}),
         status: data.status || "registered",
     });
 
@@ -195,6 +188,7 @@ async function insertPatient(
 
     await logAction("PATIENT_REGISTERED", "patients", result.id, {
         name: result.name,
+        hospital_number: result.hospital_number ?? null,
         registered_by: actor.userId,
     });
 
