@@ -4,11 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { UserRole } from "@/types/models";
 import { requireStaff } from "@/lib/services/auth-guard";
 import { normalizeLabTestName } from "@/lib/utils/lab-catalog";
-import {
-    formatHospitalNumber,
-    hospitalNumberSuffix,
-    normalizeHospitalNumber,
-} from "@/lib/hospital-number";
+import { normalizeHospitalNumber } from "@/lib/hospital-number";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
 import { isBlankCsvRow, normalizeGender, parseBirthDate } from "@/lib/utils/patient-import";
 
@@ -261,62 +257,6 @@ function mapRow(type: UploadType, row: Record<string, string>): MappedRow {
         default:
             throw new Error(`Unknown upload type: ${type}`);
     }
-}
-
-// ─── Hospital number allocation ───────────────────────────────────────────────
-
-/**
- * Allocates `count` fresh hospital numbers from the shared NVH-XXXXX series.
- * Prefers the batch allocator (one RPC for the whole chunk); falls back to
- * per-row allocation when the batch function hasn't been migrated yet.
- */
-async function allocateHospitalNumbers(sb: any, count: number): Promise<string[]> {
-    try {
-        const { data, error } = await sb.rpc("next_hospital_numbers", { p_count: count });
-        if (!error && Array.isArray(data) && data.length >= count) {
-            const rawStrings = data.slice(0, count).map((v: any) => {
-                if (typeof v === "string") return v;
-                if (v && typeof v === "object") {
-                    const vals = Object.values(v);
-                    if (vals.length && typeof vals[0] === "string") return vals[0] as string;
-                    return String(vals[0] ?? "");
-                }
-                return String(v ?? "");
-            });
-            const parsed = rawStrings.map((s) => normalizeHospitalNumber(s));
-            if (parsed.every((n): n is string => n !== null)) return parsed as string[];
-            console.error("[bulk-upload] next_hospital_numbers: unexpected response shape", data?.[0]);
-        }
-        if (error) console.error("[bulk-upload] next_hospital_numbers:", error);
-    } catch (e) {
-        console.error("[bulk-upload] next_hospital_numbers:", e);
-    }
-
-    // Fallback: limited concurrency per-row allocation
-    const FALLBACK_CONCURRENCY = 10;
-    const out: string[] = new Array(count).fill("");
-    let nextIdx = 0;
-
-    async function fallbackWorker() {
-        while (nextIdx < count) {
-            const idx = nextIdx++;
-            try {
-                const { data: hn, error: hnError } = await sb.rpc("next_hospital_number", { p_prefix: "NVH" });
-                if (!hnError && typeof hn === "string") {
-                    out[idx] = normalizeHospitalNumber(hn) ?? hn;
-                }
-            } catch (e) {
-                console.error("[bulk-upload] next_hospital_number:", e);
-                out[idx] = "";
-            }
-        }
-    }
-
-    await Promise.all(
-        Array.from({ length: Math.min(FALLBACK_CONCURRENCY, count) }, () => fallbackWorker())
-    );
-
-    return out;
 }
 
 // ─── Resilient batch insert ───────────────────────────────────────────────────
@@ -686,32 +626,15 @@ export async function bulkUploadChunk(
 
         if (!mapped.length) return { success, failed, errors, warnings };
 
-        // Hospital numbers for patients (one shared NVH-XXXXX series)
-        if (type === "patients") {
-            const explicitMax = mapped.reduce((max, m) => {
-                const n = hospitalNumberSuffix(String(m.data.hospital_number ?? "").trim());
-                return n !== null && n > max ? n : max;
-            }, 0);
-            if (explicitMax > 0) {
-                try {
-                    const { error } = await sb.rpc("advance_hospital_number_seq", {
-                        p_prefix: "NVH",
-                        p_number: formatHospitalNumber(explicitMax),
-                    });
-                    if (error) console.error("[bulk-upload] advance_hospital_number_seq:", error);
-                } catch (e) {
-                    console.error("[bulk-upload] advance_hospital_number_seq:", e);
-                }
-            }
-
-            const blanks = mapped.filter((m) => !String(m.data.hospital_number ?? "").trim());
-            if (blanks.length) {
-                const numbers = await allocateHospitalNumbers(sb, blanks.length);
-                blanks.forEach((m, i) => {
-                    if (numbers[i]) m.data.hospital_number = numbers[i];
-                });
-            }
-        }
+        // Hospital numbers: rows that carry an explicit paper-file number keep
+        // it (they steer the series via max()+1 at the database). Rows with a
+        // BLANK number are inserted as-is and trg_patients_assign_hospital_number
+        // assigns the next NVH-XXXXX value inside the insert itself — nothing
+        // is pre-allocated here, so a row that fails to insert (duplicate,
+        // validation, deadline) consumes NO number and the series can never
+        // skip. The old pre-allocation RPC burned one number per failed row.
+        // Explicit values are screened against existing files by
+        // removeExistingPatients() below instead of an advance-the-counter RPC.
 
         // Screen out records that already exist. A re-upload (or paper-record
         // hospital numbers already in the system) would otherwise fail the
