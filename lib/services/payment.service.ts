@@ -7,6 +7,7 @@ import { logAction } from "./audit.service";
 import {
     computeDiscountKobo,
     resolvePayerFromPatient,
+    splitDiscountProportionally,
     PAYER_CONFIG,
     type PaymentType,
     type PayerType,
@@ -38,6 +39,14 @@ export interface CreatePaymentInput {
     payer?: PayerType | string;
     payer_reference?: string;
     payer_code?: string;
+    /**
+     * Links a lab bill to the exact `lab_requests` row that raised it, so a
+     * lab price sync can find ITS bill even after settlement (no fuzzy
+     * description matching for new rows). Nullable text column added by
+     * migration `20260923_payments_lab_request_id.sql` — the insert falls
+     * back gracefully on schemas that don't have it yet.
+     */
+    lab_request_id?: string;
 }
 
 export interface ConfirmPaymentInput {
@@ -362,7 +371,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
             ? `DEP-${Date.now().toString(36).toUpperCase()}`
             : `INV-${Date.now().toString(36).toUpperCase()}`);
 
-    const fullPayload = {
+    const fullPayload: Record<string, any> = {
         patient_id: input.patient_id,
         amount: input.amount,
         amount_kobo: amountKobo,
@@ -382,6 +391,8 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
         invoice_no: invoiceNo,
         notes: input.notes ?? null,
     };
+    // Lab-bill → lab-request link (newer schemas only; stripped on retry).
+    if (input.lab_request_id) fullPayload.lab_request_id = input.lab_request_id;
 
     const compatiblePayload = {
         patient_id: input.patient_id,
@@ -1086,6 +1097,11 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
         : normalizeMethod(input.method) ?? "cash";
 
     // ── Discount across the accumulated bills ──
+    // The discount is computed ONCE from the group's total outstanding bill —
+    // never per bill — then split across the bills proportionally to each
+    // bill's outstanding share (largest-remainder, exact to the kobo). The
+    // front-desk preview mirrors this exact split (same helper), so what the
+    // cashier sees is what the ledger records.
     const discount = computeDiscountKobo({
         totalKobo: totalOutstandingKobo,
         paidKobo: 0,
@@ -1093,18 +1109,10 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
         discountAmount: input.discountAmount,
     });
 
-    // Distribute the discount proportionally across bills (remainder on first).
-    let remainingDiscount = discount.discountKobo;
-    const perBillDiscount = bills.map((b, i) => {
-        const out = outstandingKobo(b);
-        if (remainingDiscount <= 0) return 0;
-        let share = i === 0
-            ? Math.min(out, remainingDiscount)
-            : Math.min(out, Math.round((discount.discountKobo * out) / Math.max(1, totalOutstandingKobo)));
-        share = Math.min(share, remainingDiscount);
-        remainingDiscount -= share;
-        return share;
-    });
+    const perBillDiscount = splitDiscountProportionally(
+        discount.discountKobo,
+        bills.map((b) => outstandingKobo(b))
+    );
 
     // ── Deposit credit first ──
     // Applying deposit credit mutates bill rows (and may fully settle some).
@@ -1203,6 +1211,15 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
         if (nextStatus === "paid") settled++; else partiallyPaid++;
 
         const isThisBillFullyCoveredNow = payNow >= plan.outstanding;
+        // Each bill's ledger row records ITS OWN share of the group discount —
+        // never the group totals — so per-bill history stays truthful: the
+        // shares across the group sum to exactly the group discount.
+        const billOutstandingBeforeDiscount =
+            plan.outstanding + plan.discountKobo;
+        const billEffectivePercent =
+            plan.discountKobo > 0 && billOutstandingBeforeDiscount > 0
+                ? Math.round((plan.discountKobo / billOutstandingBeforeDiscount) * 10000) / 100
+                : null;
 
         await updateRowPaidKobo(supabase, plan.bill.id, String((plan.bill as any).raw_status ?? plan.bill.status), {
             status: nextStatus,
@@ -1219,8 +1236,8 @@ export async function settleAllPatientBills(input: SettleAllPatientBillsInput): 
             payer_reference: payerReference,
             payer_code: input.payerCode ?? null,
             discount_kobo: plan.discountKobo,
-            discount_percent: discount.percent || null,
-            discount_amount_kobo: discount.flatKobo || null,
+            discount_percent: billEffectivePercent,
+            discount_amount_kobo: plan.discountKobo || null,
             updated_at: now,
         });
 
