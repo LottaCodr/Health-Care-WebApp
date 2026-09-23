@@ -1,3 +1,5 @@
+import { parseDbTimestamp } from "./payment-time";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type InvoiceStatus = "pending" | "paid" | "partial" | "waived" | "refunded";
@@ -11,7 +13,8 @@ export interface InvoicePaymentItem {
     status:               InvoiceStatus | string;
     payment_date:         string | null;
     invoice_no:           string;
-    created_at:           string;
+    /** When the bill was raised (DB insert time). Null when not recorded. */
+    created_at:           string | null;
 }
 
 export interface InvoicePatientInfo {
@@ -61,7 +64,11 @@ function formatNaira(kobo: number): string {
 
 function formatDate(value: string | null | undefined): string {
     if (!value) return "—";
-    const d = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+    // Full timestamps go through the DB-safe parser (never re-zoned by the
+    // browser); plain dates (date of birth etc.) stay wall-clock at midnight.
+    const d = value.includes("T")
+        ? parseDbTimestamp(value) ?? new Date(value)
+        : new Date(`${value}T00:00:00`);
     if (isNaN(d.getTime())) return escapeHtml(value);
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -116,11 +123,12 @@ function buildItemsTable(payments: InvoicePaymentItem[]): string {
     }
 
     // Unpaid items first (they need attention), then most recent first.
+    const ts = (iso: string | null | undefined) => parseDbTimestamp(iso)?.getTime() ?? 0;
     const sorted = [...payments].sort((a, b) => {
         const aUrgent = a.status === "pending" || a.status === "partial" ? 0 : 1;
         const bUrgent = b.status === "pending" || b.status === "partial" ? 0 : 1;
         if (aUrgent !== bUrgent) return aUrgent - bUrgent;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return ts(b.created_at) - ts(a.created_at);
     });
 
     const rows = sorted.map((p, i) => {

@@ -266,13 +266,16 @@ export default function PaymentConfirmation() {
                         payer_reference: settleTarget.payer_reference,
                         payer_code: settleTarget.payer_code,
                         payment_date: settleTarget.paid_at ?? settleTarget.processed_date ?? null,
+                        // Settlement stamps straight from the DB row — never a
+                        // client-generated fallback.
+                        settled_at: settleTarget.processed_date ?? settleTarget.paid_at ?? null,
                         invoice_no: settleTarget.invoice_no
                             ?? (settleTarget.patients?.hospital_number
                                 ? `INV-${settleTarget.patients.hospital_number.replace(/[^A-Za-z0-9]/g, "").toUpperCase()}`
                                 : String(settleTarget.id ?? "").slice(0, 8).toUpperCase()),
                         collected_by: settleTarget.processed_by ?? null,
                         notes: settleTarget.notes ?? null,
-                        created_at: settleTarget.created_at ?? new Date().toISOString(),
+                        created_at: settleTarget.created_at ?? null,
                     }}
                     payerHint={resolvePayerFromPatient(settleTarget.patients ?? null)}
                     cashierId={cashierId}

@@ -64,6 +64,8 @@ counters simply stay absent, and correction notes report
 
 The billing workflow uses extra columns on `payments` (`payment_type`, `discount_kobo`, `discount_percent`, `discount_amount_kobo`, `payer`, `payer_reference`, `payer_code`, `applied_kobo`). The app degrades gracefully when they are missing, but run the idempotent migration in `supabase/migrations/20260813_billing_payment_types_discount_payer_deposit.sql` to fully track payment types, discounts, payer identity and deposit-credit accounting.
 
+The payment history shows the moment each bill was settled — taken from the database (`processed_date` / `paid_at`), never reconstructed in the browser. Run the idempotent migration in `supabase/migrations/20260923_payments_settlement_stamps.sql` to guarantee both settlement columns exist (`timestamptz`) and to have Postgres backfill a stamp the moment a bill reaches a settled status without one. The app degrades gracefully without it; verify the time-accuracy rules with `npm run check:payment-times`.
+
 ---
 
 ## Technology stack
