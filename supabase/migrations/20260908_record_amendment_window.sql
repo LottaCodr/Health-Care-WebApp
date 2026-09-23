@@ -120,11 +120,13 @@ language plpgsql
 security definer set search_path = public
 as $$
 declare
-    author_col   text := case when tg_nargs > 0 then tg_args[1] else '' end;
-    anchor_cols  text[] := case when tg_nargs > 1 and coalesce(tg_args[2], '') <> ''
-                                then string_to_array(tg_args[2], ',') else '{}'::text[] end;
-    content_cols text[] := case when tg_nargs > 2 and coalesce(tg_args[3], '') <> ''
-                                then string_to_array(tg_args[3], ',') else '{}'::text[] end;
+    -- PostgreSQL exposes trigger arguments through the zero-based TG_ARGV
+    -- array: author=0, anchors=1, content=2.
+    author_col   text := case when tg_nargs > 0 then tg_argv[0] else '' end;
+    anchor_cols  text[] := case when tg_nargs > 1 and coalesce(tg_argv[1], '') <> ''
+                                then string_to_array(tg_argv[1], ',') else '{}'::text[] end;
+    content_cols text[] := case when tg_nargs > 2 and coalesce(tg_argv[2], '') <> ''
+                                then string_to_array(tg_argv[2], ',') else '{}'::text[] end;
     oldj         jsonb := to_jsonb(old);
     newj         jsonb := to_jsonb(new);
     col          text;

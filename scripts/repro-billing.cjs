@@ -4,6 +4,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const assert = require("node:assert/strict");
 const ts = require("typescript");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -26,6 +27,9 @@ let CURRENT_USER = { id: "staff-frontdesk-1", email: "desk@hospital.test" };
 // reports 0 changed rows and NO error — exactly what a broken staff_has_role()
 // produces for camelCase roles).
 let RLS_BLOCK_PAYMENT_UPDATES = false;
+let RLS_BLOCK_LAB_UPDATES = false;
+let MISSING_LAB_PRICE_COLUMN = false;
+let SERVICE_ROLE_AVAILABLE = false;
 
 let log = [];
 function snapshot(tag, row) {
@@ -33,7 +37,7 @@ function snapshot(tag, row) {
 }
 
 // ─── Fake Supabase builder ────────────────────────────────────────────────────
-function makeClient() {
+function makeClient({ admin = false } = {}) {
     function table(name) {
         const state = {
             op: "select",
@@ -120,10 +124,24 @@ function makeClient() {
                 }
 
                 if (state.op === "update") {
+                    if (
+                        name === "lab_requests" &&
+                        MISSING_LAB_PRICE_COLUMN &&
+                        Object.prototype.hasOwnProperty.call(state.payload ?? {}, "price")
+                    ) {
+                        return {
+                            data: null,
+                            error: {
+                                code: "PGRST204",
+                                message: "Could not find the 'price' column of 'lab_requests' in the schema cache",
+                            },
+                        };
+                    }
                     let n = 0;
                     const updatedRows = [];
                     for (const row of t) {
-                        if (RLS_BLOCK_PAYMENT_UPDATES && name === "payments") break; // policy filtered every row
+                        if (!admin && RLS_BLOCK_PAYMENT_UPDATES && name === "payments") break; // policy filtered every row
+                        if (!admin && RLS_BLOCK_LAB_UPDATES && name === "lab_requests") break;
                         if (!matches(row)) continue;
                         Object.assign(row, state.payload);
                         n++;
@@ -136,6 +154,10 @@ function makeClient() {
                         if (data.length === 1) return { data: data[0], error: null };
                         if (data.length === 0) return { data: null, error: { code: "PGRST116", message: "no rows" } };
                         return { data: null, error: { code: "PGRST116", message: "multiple rows" } };
+                    }
+                    if (state.maybe) {
+                        if (data.length <= 1) return { data: data[0] ?? null, error: null, count: n };
+                        return { data: null, error: { code: "PGRST116", message: "multiple rows" }, count: n };
                     }
                     return { data, error: null, count: n };
                 }
@@ -207,6 +229,11 @@ function loadModule(absPath, cache = new Map(), loading = new Set()) {
         if (spec === "@/utils/supabase/server") {
             return { createClient: async () => makeClient() };
         }
+        if (spec === "@/utils/supabase/admin") {
+            return {
+                createAdminClient: () => SERVICE_ROLE_AVAILABLE ? makeClient({ admin: true }) : null,
+            };
+        }
         let resolved;
         if (spec.startsWith("@/")) {
             resolved = path.join(ROOT, spec.slice(2));
@@ -251,6 +278,9 @@ async function freshContext(user) {
     // reset DB
     for (const k of Object.keys(db)) db[k] = [];
     RLS_BLOCK_PAYMENT_UPDATES = false;
+    RLS_BLOCK_LAB_UPDATES = false;
+    MISSING_LAB_PRICE_COLUMN = false;
+    SERVICE_ROLE_AVAILABLE = false;
     CURRENT_USER = user ?? { id: "staff-frontdesk-1", email: "desk@hospital.test" };
     seed();
     return {
@@ -343,25 +373,96 @@ async function scenarioRlsBlocked() {
         ? "RESOLVED (old bug claimed success): " + JSON.stringify(settleAll.v)
         : "THREW (loud, actionable): " + settleAll.err);
 
-    console.log("\n==== SCENARIO 3 - lab tech sets price on the bill (RLS blocked, no service-role key)");
-    RLS_BLOCK_PAYMENT_UPDATES = true;
+    console.log("\n==== SCENARIO 3A - billing RLS fails after the clinical result saves");
     // the ORDER is created by the doctor…
     const ctxDoc = await freshContext({ id: "staff-doctor-9", email: "doctor@hospital.test" });
     await ctxDoc.labService.createLabRequest({ patientId: "patient-1", testType: "Malaria Test", price: 0, requestedBy: "staff-doctor-9" });
     // …and the lab tech enters the result + price (same DB, new session)
     CURRENT_USER = { id: "staff-lab-1", email: "lab@hospital.test" };
-    RLS_BLOCK_PAYMENT_UPDATES = true; // lab tech's own session is filtered by the payments UPDATE policy
+    RLS_BLOCK_PAYMENT_UPDATES = true; // lab tech cannot update payments directly
     const labService3 = loadModule(path.join(ROOT, "lib/services/lab.service.ts"), new Map());
     const req = db.lab_requests[0];
-    const sync = await Promise.resolve()
-        .then(() => labService3.updateLabRequest(req.id, { status: "completed", result: "P. falciparum seen", price: 2500, completed_by: "staff-lab-1" }))
-        .then((v) => ({ ok: true, v }), (e) => ({ ok: false, err: e.message }));
-    console.log("-- updateLabRequest (complete + price 2500, RLS blocked)");
-    console.log(sync.ok
-        ? "RESOLVED (old bug: bill still N" + db.payments[0].amount + " - silent)"
-        : "THREW (loud, actionable): " + sync.err);
-    console.log("-- lab request row:", JSON.stringify({ status: db.lab_requests[0].status, price: db.lab_requests[0].price ?? null }));
-    console.log("-- bill row:", JSON.stringify({ amount: db.payments[0].amount, status: db.payments[0].status }));
+    const sync = await labService3.updateLabRequest(req.id, {
+        status: "completed",
+        result: "P. falciparum seen",
+        price: 2500,
+        completed_by: "spoofed-client-id",
+    });
+    assert.equal(sync.ok, true, "billing trouble must not fail a saved clinical result");
+    assert.match(sync.request.billing_warning ?? "", /price could not be written/i);
+    assert.equal(db.lab_requests[0].completed_by, "staff-lab-1", "the server must stamp the actor, not trust the client");
+    console.log("-- result action:", JSON.stringify({ ok: sync.ok, warning: sync.request.billing_warning }));
+    console.log("-- lab request row:", JSON.stringify({ status: db.lab_requests[0].status, completed_by: db.lab_requests[0].completed_by }));
+    console.log("-- bill row (unchanged, warning returned):", JSON.stringify({ amount: db.payments[0].amount, status: db.payments[0].status }));
+
+    console.log("\n==== SCENARIO 3B - lab UPDATE is filtered by RLS, no service-role key");
+    const noAdminCtx = await freshContext({ id: "staff-doctor-9", email: "doctor@hospital.test" });
+    await noAdminCtx.labService.createLabRequest({ patientId: "patient-1", testType: "Widal Test", price: 1000, requestedBy: "staff-doctor-9" });
+    CURRENT_USER = { id: "staff-lab-1", email: "lab@hospital.test" };
+    RLS_BLOCK_LAB_UPDATES = true;
+    const noAdminLab = loadModule(path.join(ROOT, "lib/services/lab.service.ts"), new Map());
+    const rejected = await noAdminLab.updateLabRequest(db.lab_requests[0].id, {
+        status: "completed",
+        result: "Negative",
+    });
+    assert.equal(rejected.ok, false, "a zero-row lab write must never report success");
+    assert.match(rejected.message, /20260923143000_fix_lab_result_submission\.sql/);
+    assert.equal(db.lab_requests[0].status, "pending");
+    console.log("-- returned across Server Action boundary:", JSON.stringify(rejected));
+
+    console.log("\n==== SCENARIO 3C - trusted server fallback survives drifted lab RLS");
+    const adminCtx = await freshContext({ id: "staff-doctor-9", email: "doctor@hospital.test" });
+    await adminCtx.labService.createLabRequest({ patientId: "patient-1", testType: "Widal Test", price: 1000, requestedBy: "staff-doctor-9" });
+    CURRENT_USER = { id: "staff-lab-1", email: "lab@hospital.test" };
+    RLS_BLOCK_LAB_UPDATES = true;
+    SERVICE_ROLE_AVAILABLE = true;
+    const adminLab = loadModule(path.join(ROOT, "lib/services/lab.service.ts"), new Map());
+    const recovered = await adminLab.updateLabRequest(db.lab_requests[0].id, {
+        status: "completed",
+        result: "Negative",
+        completed_by: "spoofed-client-id",
+    });
+    assert.equal(recovered.ok, true);
+    assert.equal(db.lab_requests[0].status, "completed");
+    assert.equal(db.lab_requests[0].completed_by, "staff-lab-1");
+    const originalFiledAt = db.lab_requests[0].completed_at;
+    const amended = await adminLab.updateLabRequest(db.lab_requests[0].id, {
+        status: "completed",
+        result: "Positive",
+        completed_at: "2099-01-01T00:00:00.000Z", // malicious/stale client value
+    });
+    assert.equal(amended.ok, true);
+    assert.equal(
+        db.lab_requests[0].completed_at,
+        originalFiledAt,
+        "an amendment must not reset/extend the original 24-hour clock"
+    );
+    console.log("-- recovered action:", JSON.stringify({
+        ok: recovered.ok,
+        status: recovered.request.status,
+        amendmentKeptOriginalClock: db.lab_requests[0].completed_at === originalFiledAt,
+    }));
+
+    console.log("\n==== SCENARIO 3D - old schema has no lab_requests.price column");
+    const oldSchemaCtx = await freshContext({ id: "staff-doctor-9", email: "doctor@hospital.test" });
+    await oldSchemaCtx.labService.createLabRequest({ patientId: "patient-1", testType: "Malaria Test", price: 2000, requestedBy: "staff-doctor-9" });
+    CURRENT_USER = { id: "staff-lab-1", email: "lab@hospital.test" };
+    MISSING_LAB_PRICE_COLUMN = true;
+    const oldSchemaLab = loadModule(path.join(ROOT, "lib/services/lab.service.ts"), new Map());
+    const schemaTolerant = await oldSchemaLab.updateLabRequest(db.lab_requests[0].id, {
+        status: "completed",
+        result: "P. falciparum not seen",
+        price: 2500,
+    });
+    assert.equal(schemaTolerant.ok, true, "an optional missing price column must not block clinical filing");
+    assert.match(schemaTolerant.request.billing_warning ?? "", /price field is missing/i);
+    assert.equal(db.lab_requests[0].status, "completed");
+    assert.equal(db.payments[0].amount, 2500, "billing should still receive the entered price");
+    console.log("-- schema-tolerant action:", JSON.stringify({
+        ok: schemaTolerant.ok,
+        warning: schemaTolerant.request.billing_warning,
+        billAmount: db.payments[0].amount,
+    }));
 }
 
 

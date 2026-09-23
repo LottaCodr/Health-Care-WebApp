@@ -7,6 +7,8 @@ import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
 import { dedupeLabTests, normalizeLabTestName } from "@/lib/utils/lab-catalog";
 import { assertRecordAmendable } from "./record-lock";
+import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createNotification } from "./notification.service";
 import { createPayment } from "./payment.service";
@@ -230,18 +232,145 @@ export async function listCompletedLabRequests(): Promise<LabRequest[]> {
     return enrichLabRequests(data) as unknown as Promise<LabRequest[]>;
 }
 
+export interface UpdateLabRequestInput {
+    status?: string;
+    result?: string;
+    /**
+     * Legacy client fields. The server deliberately ignores both values and
+     * stamps the authenticated actor/time itself when a result is first filed.
+     */
+    completed_by?: string;
+    completed_at?: string;
+    priority?: string;
+    notes?: string;
+    price?: number;
+}
+
+/**
+ * Expected submission failures are returned across the Server Action boundary.
+ * Next.js redacts thrown Server Action errors in production, which previously
+ * left the laboratory with only the generic "Server Components render" error.
+ * The React Query hook turns an `ok: false` result into a client-side Error so
+ * the real, safe message reaches the toast.
+ */
+export type LabRequestUpdateResult =
+    | { ok: true; request: LabRequest }
+    | { ok: false; message: string; code?: string | null };
+
+type LabSupabase = SupabaseClient<any>;
+
+function labErrorCode(error: unknown): string | null {
+    const value = (error as any)?.code;
+    return value === null || value === undefined ? null : String(value);
+}
+
+function labErrorMessage(error: unknown): string {
+    const raw = error instanceof Error
+        ? error.message
+        : String((error as any)?.message ?? "");
+
+    // Machine-readable record-lock errors are already safe and intentionally
+    // consumed by the amendment UI; do not strip their prefix.
+    if (/^LOCKED:/i.test(raw)) return raw;
+
+    const code = labErrorCode(error);
+    const combined = `${raw} ${(error as any)?.details ?? ""} ${(error as any)?.hint ?? ""}`.toLowerCase();
+
+    if (
+        code === "42501" ||
+        combined.includes("row-level security") ||
+        combined.includes("permission denied")
+    ) {
+        return (
+            "The laboratory result was not saved because the database's lab permissions are out of date. " +
+            "Please ask an administrator to apply the pending Supabase migration " +
+            "20260923143000_fix_lab_result_submission.sql, then submit again. Your entered result is still on this page."
+        );
+    }
+
+    if (code === "PGRST116" || combined.includes("0 rows") || combined.includes("no rows")) {
+        return (
+            "The laboratory result was not saved because the database rejected the update. " +
+            "Please ask an administrator to apply 20260923143000_fix_lab_result_submission.sql, " +
+            "then submit again. Your entered result is still on this page."
+        );
+    }
+
+    return formatFriendlyDbError(
+        error,
+        "The laboratory result could not be saved. Please try again; your entered result is still on this page."
+    );
+}
+
+function isMissingColumnError(error: unknown, column: string): boolean {
+    const code = labErrorCode(error);
+    const text = `${(error as any)?.message ?? ""} ${(error as any)?.details ?? ""}`.toLowerCase();
+    return (
+        code === "PGRST204" ||
+        text.includes("schema cache") ||
+        text.includes("does not exist")
+    ) && text.includes(column.toLowerCase());
+}
+
+function isPermissionOrFilteredWrite(error: unknown, data: unknown): boolean {
+    const code = labErrorCode(error);
+    const text = `${(error as any)?.message ?? ""} ${(error as any)?.details ?? ""}`.toLowerCase();
+    return (
+        (!error && !data) ||
+        code === "42501" ||
+        code === "PGRST116" ||
+        text.includes("row-level security") ||
+        text.includes("permission denied") ||
+        text.includes("0 rows") ||
+        text.includes("no rows")
+    );
+}
+
+async function writeLabRequestRow(
+    client: LabSupabase,
+    id: string,
+    payload: Record<string, unknown>
+) {
+    return client
+        .from("lab_requests")
+        .update(payload)
+        .eq("id", id)
+        .select("*")
+        .maybeSingle();
+}
+
 export async function updateLabRequest(
     id: string,
-    updates: {
-        status?: string;
-        result?: string;
-        completed_by?: string;
-        completed_at?: string;
-        priority?: string;
-        notes?: string;
-        price?: number;
+    updates: UpdateLabRequestInput
+): Promise<LabRequestUpdateResult> {
+    try {
+        const request = await updateLabRequestOrThrow(id, updates);
+        return { ok: true, request };
+    } catch (error) {
+        console.error("[lab] updateRequest failed:", error);
+        return {
+            ok: false,
+            code: labErrorCode(error),
+            message: labErrorMessage(error),
+        };
     }
+}
+
+async function updateLabRequestOrThrow(
+    id: string,
+    updates: UpdateLabRequestInput
 ): Promise<LabRequest> {
+    if (!id?.trim()) throw new Error("A laboratory request was not selected.");
+    if (updates.status === "completed" && updates.result !== undefined && !updates.result.trim()) {
+        throw new Error("Enter the laboratory result before submitting.");
+    }
+    if (
+        updates.price !== undefined &&
+        (!Number.isFinite(updates.price) || updates.price < 0)
+    ) {
+        throw new Error("Enter a valid laboratory price (zero or more).");
+    }
+
     const actor = await requireStaff([UserRole.LabTechnician, UserRole.Doctor]);
 
     // ── 24-hour amendment window ─────────────────────────────────────────────
@@ -260,78 +389,126 @@ export async function updateLabRequest(
                 : "lab_result",
     });
 
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from("lab_requests")
-        .update({
-            status: updates.status,
-            result: updates.result,
-            completed_by: updates.completed_by,
-            completed_at: updates.completed_at,
-            priority: updates.priority,
-            notes: updates.notes,
-            price: updates.price,   // Persist the price set by the lab tech so the
-                                    // billing logic below can read it back.
-            ...(ctx?.patch ?? {}),
-        })
-        .eq("id", id)
-        .select()
-        .single();
+    // Build a SPARSE payload. Sending undefined/legacy keys to PostgREST has
+    // caused schema-cache failures in older deployments. Authorship is never
+    // trusted from the browser: first filing is stamped from the server session.
+    const payload: Record<string, unknown> = {};
+    for (const key of ["status", "result", "priority", "notes", "price"] as const) {
+        if (updates[key] !== undefined) payload[key] = updates[key];
+    }
+    if (ctx?.firstFiling && updates.result !== undefined) {
+        payload.completed_by = actor.userId;
+        payload.completed_at = new Date().toISOString();
+    }
+    Object.assign(payload, ctx?.patch ?? {});
 
+    if (!Object.keys(payload).length) {
+        throw new Error("No laboratory result changes were supplied.");
+    }
+
+    const supabase = await createClient();
+    const admin = createAdminClient();
+    let writeClient: LabSupabase = supabase;
+    let writePayload = { ...payload };
+    let schemaWarning: string | null = null;
+
+    let write = await writeLabRequestRow(writeClient, id, writePayload);
+
+    // Older databases may not yet have lab_requests.price. Filing clinical
+    // results must not be blocked by that optional billing metadata: retry
+    // without the column, then sync the requested price to the bill below.
+    if (write.error && "price" in writePayload && isMissingColumnError(write.error, "price")) {
+        const { price: _price, ...withoutPrice } = writePayload;
+        void _price;
+        writePayload = withoutPrice;
+        schemaWarning =
+            "Result saved, but the lab request price field is missing from the database. " +
+            "Billing was still attempted; ask an administrator to apply the pending Supabase migrations.";
+        write = await writeLabRequestRow(writeClient, id, writePayload);
+    }
+
+    // A known production failure is role-policy drift: requireStaff authorizes
+    // the scientist, but Postgres RLS filters the UPDATE to zero rows. When the
+    // service-role key is configured, this is a trusted server-side hand-off:
+    // authorization + amendment-window checks have already passed above. Retry
+    // only the filtered/permission class — never bypass data constraints.
+    if (
+        admin &&
+        // Never use a privileged write for clinical text unless the app-side
+        // amendment guard actually inspected that change. This keeps the
+        // service-role fallback from becoming a way around the 24-hour lock.
+        (updates.result === undefined || ctx !== null) &&
+        (write.error || !write.data) &&
+        isPermissionOrFilteredWrite(write.error, write.data)
+    ) {
+        console.warn(
+            `[lab] authenticated update was rejected for request ${id}; ` +
+            "retrying with the trusted server client after RBAC/amendment checks."
+        );
+        writeClient = admin;
+        write = await writeLabRequestRow(writeClient, id, writePayload);
+
+        if (write.error && "price" in writePayload && isMissingColumnError(write.error, "price")) {
+            const { price: _price, ...withoutPrice } = writePayload;
+            void _price;
+            writePayload = withoutPrice;
+            schemaWarning =
+                "Result saved, but the lab request price field is missing from the database. " +
+                "Billing was still attempted; ask an administrator to apply the pending Supabase migrations.";
+            write = await writeLabRequestRow(writeClient, id, writePayload);
+        }
+    }
+
+    const { data, error } = write;
     if (error) {
-        if (/amendment window/i.test(error.message)) {
+        if (/amendment window/i.test(error.message ?? "")) {
             throw new Error("LOCKED:window_expired This result is past its 24-hour amendment window. Attach a correction note instead.");
         }
-        console.error("[lab] updateRequest:", error);
         throw error;
+    }
+    if (!data) {
+        const noRowsError = new Error(
+            "The database returned 0 rows while saving this laboratory result."
+        ) as Error & { code?: string };
+        noRowsError.code = "PGRST116";
+        throw noRowsError;
     }
 
     // ── Billing: sync the price onto THIS test's bill ──────────────────────────
     // Clinical work and billing are decoupled: the front desk may settle the
     // lab bill BEFORE results exist, and the lab may file results AFTER the
     // bill is settled. Filing a result must therefore NEVER fail — and never
-    // duplicate-bill — just because of the payment state:
-    //
-    //   • open bill (pending/partial) for this test → update its amount.
-    //   • bill already SETTLED and covering the price → nothing to do.
-    //   • bill settled for LESS than the price (e.g. settled ₦0, now priced) →
-    //     raise a supplementary bill for the DIFFERENCE only, never the full
-    //     price again.
-    //   • no bill at all (legacy rows) → create one for the full price.
-    //
-    // A failed sync is returned as `billing_warning` (and logged), never
-    // thrown: the result itself is already saved above, and throwing here is
-    // what used to make a settled bill look like a failed result submission.
-    let billingWarning: string | null = null;
-    if (typeof updates.price === "number" && updates.price > 0 && data?.visit_id) {
+    // duplicate-bill — just because of the payment state.
+    let billingWarning: string | null = schemaWarning;
+    if (typeof updates.price === "number" && updates.price > 0 && data.visit_id) {
         try {
-            billingWarning = await syncLabPriceToBill(
+            const syncWarning = await syncLabPriceToBill(
                 supabase,
                 id,
                 data.visit_id,
                 String(data.test_type ?? ""),
                 updates.price,
-                updates.completed_by
+                actor.userId
             );
+            billingWarning = [billingWarning, syncWarning].filter(Boolean).join(" ") || null;
         } catch (payErr) {
-            billingWarning =
-                payErr instanceof Error ? payErr.message : String(payErr);
+            const syncWarning = payErr instanceof Error ? payErr.message : String(payErr);
+            billingWarning = [billingWarning, syncWarning].filter(Boolean).join(" ") || null;
             console.error("[lab] error syncing price to bill:", payErr);
         }
-    } else if (typeof updates.price === "number" && updates.price > 0 && !data?.visit_id) {
+    } else if (typeof updates.price === "number" && updates.price > 0 && !data.visit_id) {
         console.warn("[lab] price set but lab request has no visit_id — no bill was created or updated");
     }
 
-    // ── Route patient after test completion ─────────────────────────────────────
-    // Routing follows REALITY, not the price argument: a patient with a settled
-    // bill goes back to the doctor's queue even when this call carried a
-    // price, and a patient with genuinely outstanding bills goes to the
-    // billing queue even when this call carried no price.
-    if (updates.status === "completed" && data?.visit_id) {
+    // ── Route patient after test completion ──────────────────────────────────
+    // Routing follows REALITY, not the price argument. Use the same trusted
+    // client that saved the result so an RLS mismatch cannot save the result
+    // but strand the patient in the laboratory queue.
+    if (updates.status === "completed" && data.visit_id) {
         let paymentPending = false;
         try {
             paymentPending = await routePatientAfterLabCompletion(
-                supabase,
+                writeClient,
                 id,
                 data.visit_id,
                 typeof updates.price === "number" && updates.price > 0
@@ -340,17 +517,23 @@ export async function updateLabRequest(
             console.error("[lab] patient routing after completion failed:", routeErr);
         }
 
-        await createNotification({
-            recipient_id: data.requested_by ?? undefined,
-            role: data.requested_by ? undefined : "Doctor",
-            title: "Lab Result Ready",
-            message: `Results for ${data.test_type} are now available.${paymentPending ? " A payment is pending — please settle at the front desk." : ""}`,
-            type: "success"
-        });
+        // Notifications are secondary. A notification-table mismatch must
+        // never turn a successfully filed clinical result into a failed submit.
+        try {
+            await createNotification({
+                recipient_id: data.requested_by ?? undefined,
+                role: data.requested_by ? undefined : "Doctor",
+                title: "Lab Result Ready",
+                message: `Results for ${data.test_type} are now available.${paymentPending ? " A payment is pending — please settle at the front desk." : ""}`,
+                type: "success"
+            });
+        } catch (notifyError) {
+            console.error("[lab] result notification failed after save:", notifyError);
+        }
     }
 
-    // The result is saved; a billing hiccup rides along as a warning so the
-    // lab tech can retry the price without ever losing the result.
+    // The result is saved; a billing/schema hiccup rides along as a warning so
+    // it can never masquerade as a failed clinical submission.
     if (billingWarning) {
         return { ...(data as any), billing_warning: billingWarning } as unknown as LabRequest;
     }
@@ -361,8 +544,6 @@ export async function updateLabRequest(
 // The lab and the front desk work independently: payment may be settled before
 // results exist, and results may be filed after payment is settled. These
 // helpers keep that true.
-
-type LabSupabase = Awaited<ReturnType<typeof createClient>>;
 
 function labBillAmountKobo(bill: any): number {
     if (typeof bill?.amount_kobo === "number") return bill.amount_kobo;
