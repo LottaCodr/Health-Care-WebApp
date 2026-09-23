@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "check:lab-submit": "node scripts/repro-billing.cjs",
     "check:amendments": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-amendment-policy.ts",
     "analyze": "cross-env ANALYZE=true next build --webpack"
   },

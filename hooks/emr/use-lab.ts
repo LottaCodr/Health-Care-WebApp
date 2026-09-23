@@ -83,13 +83,25 @@ export function useUpdateLabRequest() {
     const qc = useQueryClient();
 
     return useMutation({
-        mutationFn: ({
+        mutationFn: async ({
             id,
             updates,
         }: {
             id: string;
             updates: Parameters<typeof LS.updateLabRequest>[1];
-        }) => LS.updateLabRequest(id, updates),
+        }) => {
+            // Expected failures are returned by the Server Action so Next.js
+            // cannot redact their message in production. Re-throw here in the
+            // browser, where every lab form's onError toast can show the real
+            // reason and the scientist's entered values remain on screen.
+            const result = await LS.updateLabRequest(id, updates);
+            if (!result.ok) {
+                const error = new Error(result.message) as Error & { code?: string | null };
+                error.code = result.code;
+                throw error;
+            }
+            return result.request;
+        },
 
         onMutate: async ({ id, updates }) => {
             await qc.cancelQueries({ queryKey: labKeys.detail(id) });

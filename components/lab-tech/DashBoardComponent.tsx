@@ -125,7 +125,10 @@ export default function LabTechDashboard() {
                     refetchPending();
                     refetchCompleted();
                 },
-                onError:   () => toast.error("Failed to submit result."),
+                onError: (err) => toast.error(
+                    err instanceof Error ? err.message : "Failed to submit result.",
+                    { duration: 9000 }
+                ),
                 onSettled: () => setField("dashboardSubmittingId", null),
             }
         );
