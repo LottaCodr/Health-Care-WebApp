@@ -623,7 +623,10 @@ export default function PatientTimelinePage() {
                 type: "payment",
                 title: `Billing: ${p.description ?? "Hospital Service Invoice"}`,
                 description: `Amount: ${amountFormatted} · Category: ${p.category || "Service"} · Invoice: ${p.invoice_no || "Generated"}`,
-                timestamp: p.created_at ?? p.processed_date,
+                // Settlement stamp first (paid_at / processed_date) so a paid
+                // bill is placed at the moment it was settled — never at the
+                // bill-raised time. Open bills fall back to created_at.
+                timestamp: p.paid_at ?? p.processed_date ?? p.created_at ?? "",
                 status: isPaid ? "Paid" : (p.status ?? "Pending"),
                 actor: p.processed_by_name ?? "Front Desk Cashier",
                 meta: amountFormatted,

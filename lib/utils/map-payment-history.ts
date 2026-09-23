@@ -78,10 +78,16 @@ export function mapPaymentsForHistory(rows: DbPayment[]): HistoryPayment[] {
             lab_request_id: (p as any).lab_request_id ?? null,
             deposit_available_kobo: Math.max(0, paid - applied),
             payment_date: (p as any).paid_at ?? p.processed_date ?? p.processedDate ?? null,
+            // Settlement stamp exactly as stored in the database: the moment
+            // money was last received (processed_date) or the bill closed in
+            // full (paid_at). Null for bills that were never settled.
+            settled_at: p.processed_date ?? p.processedDate ?? (p as any).paid_at ?? null,
             invoice_no: (p as any).invoice_no ?? p.id.slice(0, 8).toUpperCase(),
             collected_by: p.processed_by ?? p.processedBy ?? null,
             notes: (p as any).notes ?? null,
-            created_at: p.created_at ?? new Date().toISOString(),
+            // Never fabricate a timestamp on the client — a missing value is
+            // shown as "—", never as "now".
+            created_at: p.created_at ?? null,
         };
     });
 }

@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "check:amendments": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-amendment-policy.ts",
+    "check:payment-times": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-payment-times.ts",
     "analyze": "cross-env ANALYZE=true next build --webpack"
   },
   "dependencies": {

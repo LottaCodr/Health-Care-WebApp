@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
+import { parseDbTimestamp, pickBillDisplayTimestamp } from "@/lib/utils/payment-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,10 +81,17 @@ export interface Payment {
     lab_request_id?: string | null;
     deposit_available_kobo?: number;
     payment_date: string | null;
+    /**
+     * Settlement stamp from the database: the moment money was last received
+     * toward this bill (processed_date) or it closed in full (paid_at).
+     * Null for bills that were never settled.
+     */
+    settled_at:   string | null;
     invoice_no:   string;
     collected_by: string | null;
     notes:        string | null;
-    created_at:   string;
+    /** When the bill was raised (DB insert time). Null when not recorded. */
+    created_at:   string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,25 +120,58 @@ const CATEGORY_LABELS: Record<PaymentCategory, string> = {
 };
 
 /** Local calendar-day key — one "session" per visit day. */
-function sessionKeyOf(iso: string): string {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "unknown";
+function sessionKeyOf(iso: string | null): string {
+    const d = parseDbTimestamp(iso);
+    if (!d) return "unknown";
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function sessionLabel(iso: string): { title: string; relative: string | null } {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return { title: "Unknown date", relative: null };
+function sessionLabel(iso: string | null): { title: string; relative: string | null } {
+    const d = parseDbTimestamp(iso);
+    if (!d) return { title: "Unknown date", relative: null };
     return {
         title: format(d, "EEE, d MMM yyyy"),
         relative: isToday(d) ? "Today" : isYesterday(d) ? "Yesterday" : null,
     };
 }
 
-function sessionTime(iso: string): string {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "—";
+function sessionTime(iso: string | null): string {
+    const d = parseDbTimestamp(iso);
+    if (!d) return "—";
     return format(d, "h:mm a");
+}
+
+/**
+ * The time shown beside each bill — always a timestamp stored in the
+ * database, never a client-generated one.
+ *
+ * Settled bills (paid / partial / waived / refunded) show WHEN THEY WERE
+ * SETTLED (processed_date / paid_at). Open bills show when the bill was
+ * raised (created_at). The prefix keeps the two meanings distinct so a
+ * settlement can never be mistaken for the bill-raised time, and a missing
+ * stamp renders "—" instead of inventing a time.
+ */
+function paymentTimeCell(payment: Payment): string {
+    const picked = pickBillDisplayTimestamp({
+        status: payment.status,
+        paid_at: payment.payment_date,
+        processed_date: payment.settled_at,
+        created_at: payment.created_at,
+    });
+    if (!picked) return "—";
+    const time = sessionTime(picked.iso);
+    if (time === "—") return "—";
+    if (picked.label === "billed") return `Billed ${time}`;
+    const prefix = payment.status === "waived" || payment.status === "refunded"
+        ? "Settled"
+        : "Paid";
+    return `${prefix} ${time}`;
+}
+
+/** Sort/group anchor: when the bill was raised, or — only for legacy rows
+ *  that never stored it — the settlement stamp. Never a client-side "now". */
+function billAnchorIso(payment: Payment): string | null {
+    return payment.created_at ?? payment.settled_at ?? null;
 }
 
 // ─── Summary Cards ────────────────────────────────────────────────────────────
@@ -245,7 +286,7 @@ function PaymentRow({ payment, canManage, onEdit, onSettle }: PaymentRowProps) {
                 </Badge>
             </TableCell>
             <TableCell className="text-xs text-slate-400 whitespace-nowrap print:hidden">
-                {sessionTime(payment.created_at)}
+                {paymentTimeCell(payment)}
             </TableCell>
             <TableCell className="print:hidden">
                 {outstanding && canManage && (
@@ -297,7 +338,7 @@ function SessionGroup({ sessionKey, bills, open, onToggle, canManage, onEdit, on
     const outstanding = nonDeposits
         .filter((p) => p.status === "pending" || p.status === "partial")
         .reduce((s, p) => s + (p.amount_kobo - p.amount_paid_kobo), 0);
-    const { title, relative } = sessionLabel(bills[0]?.created_at ?? "");
+    const { title, relative } = sessionLabel(bills[0]?.created_at ?? bills[0]?.settled_at ?? null);
 
     return (
         <Card className="rounded-2xl border-slate-100 shadow-sm overflow-hidden print:shadow-none">
@@ -674,7 +715,9 @@ export default function PaymentHistory({ patientId, patient = null, readOnly = f
         const aUrgent = a.status === "pending" || a.status === "partial" ? 0 : 1;
         const bUrgent = b.status === "pending" || b.status === "partial" ? 0 : 1;
         if (aUrgent !== bUrgent) return aUrgent - bUrgent;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        const bAnchor = parseDbTimestamp(billAnchorIso(b))?.getTime() ?? 0;
+        const aAnchor = parseDbTimestamp(billAnchorIso(a))?.getTime() ?? 0;
+        return bAnchor - aAnchor;
     }), [filtered]);
 
     // Group into per-day sessions (one encounter/session per visit date),
@@ -682,7 +725,7 @@ export default function PaymentHistory({ patientId, patient = null, readOnly = f
     const sessions = useMemo(() => {
         const groups = new Map<string, Payment[]>();
         for (const p of sorted) {
-            const key = sessionKeyOf(p.created_at);
+            const key = sessionKeyOf(billAnchorIso(p));
             const list = groups.get(key) ?? [];
             list.push(p);
             groups.set(key, list);
