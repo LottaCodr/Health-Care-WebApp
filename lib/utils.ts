@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { Metadata } from "next";
 import { twMerge } from 'tailwind-merge';
 import { siteConfig } from "./config";
+import { parseDbTimestamp } from "@/lib/utils/payment-time";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -126,11 +127,15 @@ export function calculateAge(dob: string | Date): number {
 
 export function fmtDate(iso?: string): string {
     if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const d = parseDbTimestamp(iso) ?? new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 export function fmtTime(iso?: string): string {
     if (!iso) return "";
-    return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const d = parseDbTimestamp(iso) ?? new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 export function fmtFull(iso?: string): string {
     if (!iso) return "—";

@@ -80,7 +80,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
                                             <p className="text-[10px] text-gray-400">
                                                 {payment.created_at
                                                     ? fmtFull(payment.created_at)
-                                                    : "Just now"}
+                                                    : "—"}
                                             </p>
                                             {payment.category && (
                                                 <>
