@@ -70,7 +70,12 @@ export async function createLabRequest(
 
     if (error) { console.error("[lab] createRequest:", error); throw error; }
 
-    // 3. Automatically create a pending payment in billing so it reflects in FrontDesk & Patient Billing
+    // 3. Automatically create a pending payment in billing so it reflects in FrontDesk & Patient Billing.
+    //    The bill is linked to THIS request (lab_request_id) so a later price
+    //    sync can find its own bill even after settlement — no fuzzy matching.
+    //    The front desk may settle this bill immediately, before results exist:
+    //    settling never blocks the lab, and resulting never re-bills a settled
+    //    test (see updateLabRequest).
     try {
         await createPayment({
             patient_id: input.patientId,
@@ -80,6 +85,7 @@ export async function createLabRequest(
             status: "pending",
             processed_by: input.requestedBy || undefined,
             notes: input.notes ? `Clinical notes: ${input.notes}` : undefined,
+            lab_request_id: data.id,
         });
     } catch (payErr) {
         console.error("[lab] auto-create payment failed:", payErr);
@@ -280,142 +286,360 @@ export async function updateLabRequest(
         throw error;
     }
 
-    // ── Billing: create or update a pending payment when a price is set ────────
-    // This covers both: (a) the lab tech entering a price at result-submission
-    // time, and (b) any other code path that calls updateLabRequest with a price.
+    // ── Billing: sync the price onto THIS test's bill ──────────────────────────
+    // Clinical work and billing are decoupled: the front desk may settle the
+    // lab bill BEFORE results exist, and the lab may file results AFTER the
+    // bill is settled. Filing a result must therefore NEVER fail — and never
+    // duplicate-bill — just because of the payment state:
     //
-    // A failed sync is remembered and rethrown AFTER routing below: the result
-    // itself is already saved, and the front desk MUST get the updated price —
-    // swallowing the failure here is how bills silently stayed at ₦0.
-    let billingSyncError: Error | null = null;
+    //   • open bill (pending/partial) for this test → update its amount.
+    //   • bill already SETTLED and covering the price → nothing to do.
+    //   • bill settled for LESS than the price (e.g. settled ₦0, now priced) →
+    //     raise a supplementary bill for the DIFFERENCE only, never the full
+    //     price again.
+    //   • no bill at all (legacy rows) → create one for the full price.
+    //
+    // A failed sync is returned as `billing_warning` (and logged), never
+    // thrown: the result itself is already saved above, and throwing here is
+    // what used to make a settled bill look like a failed result submission.
+    let billingWarning: string | null = null;
     if (typeof updates.price === "number" && updates.price > 0 && data?.visit_id) {
         try {
-            const desc = `Lab Test: ${data.test_type}`;
-            // Locate the bill this price belongs to. Orders for tests that are
-            // not in the catalogue are auto-billed at ₦0, so the match has to be
-            // robust: exact description → fuzzy description → any zero-amount
-            // open lab bill for this patient (the orphan this order created).
-            const { data: openLabBills, error: payLookupError } = await supabase
-                .from("payments")
-                .select("id, amount, amount_kobo, status, description")
-                .eq("patient_id", data.visit_id)
-                .eq("category", "lab")
-                .in("status", ["pending", "partial"])
-                .order("created_at", { ascending: false })
-                .limit(25);
-
-            if (payLookupError) {
-                console.error("[lab] bill lookup failed while setting price:", payLookupError);
-            }
-
-            const candidates = (openLabBills ?? []) as any[];
-            const testTypeLower = String(data.test_type ?? "").trim().toLowerCase();
-            const exact = candidates.find((p) => String(p.description ?? "").trim().toLowerCase() === desc.trim().toLowerCase());
-            const fuzzy = candidates.find((p) => String(p.description ?? "").toLowerCase().includes(testTypeLower));
-            const zeroAmount = candidates.find((p) => !p.amount_kobo || p.amount_kobo <= 0);
-            const target = exact ?? fuzzy ?? zeroAmount;
-
-            if (target) {
-                // Schema-tolerant write: `updated_at` may be missing on older
-                // tables — retry without it instead of failing silently.
-                //
-                // RLS: the `payments` table only allows FrontDesk/Admin to
-                // update rows, and this runs as the lab tech — so writing with
-                // the caller's session would silently match zero rows and the
-                // bill would stay at ₦0 forever (the exact "price not showing
-                // at the front desk" bug). The sync is a trusted server-side
-                // hand-off (the lab tech already passed requireStaff above),
-                // so prefer the service-role client when it is configured and
-                // verify every write actually changed a row.
-                const pricePayload = {
-                    amount: updates.price,
-                    amount_kobo: Math.round(updates.price * 100),
-                    updated_at: new Date().toISOString(),
-                };
-
-                const writeClient = createAdminClient() ?? supabase;
-                const { error: updateError, count } = await writeClient
-                    .from("payments")
-                    .update(pricePayload, { count: "exact" })
-                    .eq("id", target.id);
-
-                let applied = !updateError && (count ?? 0) > 0;
-
-                if (!applied) {
-                    const { updated_at: _omit, ...retryPayload } = pricePayload;
-                    void _omit;
-                    const { error: retryError, count: retryCount } = await writeClient
-                        .from("payments")
-                        .update(retryPayload, { count: "exact" })
-                        .eq("id", target.id);
-                    applied = !retryError && (retryCount ?? 0) > 0;
-                    if (!applied) {
-                        console.error(
-                            "[lab] failed to update lab bill price:",
-                            retryError ?? updateError ?? `${retryCount ?? 0} rows changed`,
-                            { billId: target.id, labRequestId: id }
-                        );
-                        if (writeClient === supabase) {
-                            // No service-role client configured AND the caller's
-                            // own session was filtered out by RLS — surface it
-                            // instead of letting the price silently vanish.
-                            throw new Error(
-                                "Lab result saved, but the price could not be written to the bill " +
-                                "(the database rejected the write). Apply migration " +
-                                "20260829_fix_staff_role_matching_casing.sql or configure " +
-                                "SUPABASE_SERVICE_ROLE_KEY, then set the price again."
-                            );
-                        }
-                    }
-                }
-            } else {
-                // No open lab bill found — create one
-                await createPayment({
-                    patient_id: data.visit_id,
-                    amount: updates.price,
-                    description: desc,
-                    category: "lab",
-                    status: "pending",
-                    processed_by: updates.completed_by || undefined,
-                });
-            }
+            billingWarning = await syncLabPriceToBill(
+                supabase,
+                id,
+                data.visit_id,
+                String(data.test_type ?? ""),
+                updates.price,
+                updates.completed_by
+            );
         } catch (payErr) {
-            // Remember (don't throw yet) — patient routing below must still run.
-            billingSyncError =
-                payErr instanceof Error ? payErr : new Error(String(payErr));
-            console.error("[lab] error updating/creating payment on lab update:", payErr);
+            billingWarning =
+                payErr instanceof Error ? payErr.message : String(payErr);
+            console.error("[lab] error syncing price to bill:", payErr);
         }
     } else if (typeof updates.price === "number" && updates.price > 0 && !data?.visit_id) {
         console.warn("[lab] price set but lab request has no visit_id — no bill was created or updated");
     }
 
     // ── Route patient after test completion ─────────────────────────────────────
+    // Routing follows REALITY, not the price argument: a patient with a settled
+    // bill goes back to the doctor's queue even when this call carried a
+    // price, and a patient with genuinely outstanding bills goes to the
+    // billing queue even when this call carried no price.
     if (updates.status === "completed" && data?.visit_id) {
-        // If a billable price was set, route to front-desk billing queue so the
-        // settle button is available. Otherwise return to the doctor's queue.
-        const hasBillablePrice =
-            typeof updates.price === "number" && updates.price > 0;
-
-        await supabase
-            .from("patients")
-            .update({ status: hasBillablePrice ? "awaiting-payment" : "under-observation" })
-            .eq("id", data.visit_id);
+        let paymentPending = false;
+        try {
+            paymentPending = await routePatientAfterLabCompletion(
+                supabase,
+                id,
+                data.visit_id,
+                typeof updates.price === "number" && updates.price > 0
+            );
+        } catch (routeErr) {
+            console.error("[lab] patient routing after completion failed:", routeErr);
+        }
 
         await createNotification({
             recipient_id: data.requested_by ?? undefined,
             role: data.requested_by ? undefined : "Doctor",
             title: "Lab Result Ready",
-            message: `Results for ${data.test_type} are now available.${hasBillablePrice ? " A payment is pending — please settle at the front desk." : ""}`,
+            message: `Results for ${data.test_type} are now available.${paymentPending ? " A payment is pending — please settle at the front desk." : ""}`,
             type: "success"
         });
     }
 
-    // Routing is done — now surface a failed price→bill sync so the lab tech
-    // sees exactly what happened and can retry the price (the result itself
-    // is already saved above).
-    if (billingSyncError) throw billingSyncError;
-
+    // The result is saved; a billing hiccup rides along as a warning so the
+    // lab tech can retry the price without ever losing the result.
+    if (billingWarning) {
+        return { ...(data as any), billing_warning: billingWarning } as unknown as LabRequest;
+    }
     return data as unknown as LabRequest;
+}
+
+// ─── Lab ↔ billing helpers ────────────────────────────────────────────────────
+// The lab and the front desk work independently: payment may be settled before
+// results exist, and results may be filed after payment is settled. These
+// helpers keep that true.
+
+type LabSupabase = Awaited<ReturnType<typeof createClient>>;
+
+function labBillAmountKobo(bill: any): number {
+    if (typeof bill?.amount_kobo === "number") return bill.amount_kobo;
+    if (typeof bill?.amount === "number") return Math.round(bill.amount * 100);
+    return 0;
+}
+
+function labBillPaidKobo(bill: any): number {
+    return typeof bill?.amount_paid_kobo === "number" ? bill.amount_paid_kobo : 0;
+}
+
+function labBillStatus(bill: any): string {
+    return String(bill?.status ?? "").toLowerCase();
+}
+
+/** All lab bills for a patient (any status — settled bills matter here). */
+async function listPatientLabBills(client: LabSupabase, patientId: string): Promise<any[]> {
+    const withLink = await client
+        .from("payments")
+        .select("id, amount, amount_kobo, amount_paid_kobo, status, description, lab_request_id, created_at")
+        .eq("patient_id", patientId)
+        .eq("category", "lab")
+        .order("created_at", { ascending: false })
+        .limit(50);
+    if (!withLink.error) return withLink.data ?? [];
+
+    // Older schema without the lab_request_id column — retry without it and
+    // fall back to description matching.
+    if (/lab_request_id|does not exist/i.test(withLink.error.message ?? "")) {
+        const legacy = await client
+            .from("payments")
+            .select("id, amount, amount_kobo, amount_paid_kobo, status, description, created_at")
+            .eq("patient_id", patientId)
+            .eq("category", "lab")
+            .order("created_at", { ascending: false })
+            .limit(50);
+        if (!legacy.error) return legacy.data ?? [];
+        console.error("[lab] lab bill lookup failed:", legacy.error);
+        return [];
+    }
+
+    console.error("[lab] lab bill lookup failed:", withLink.error);
+    return [];
+}
+
+/**
+ * Outstanding (unpaid) balance across ALL of a patient's bills, in kobo.
+ * Deposit rows are credit, not debt, so they are excluded. Returns `null`
+ * when the lookup itself fails so callers can fall back explicitly.
+ */
+async function patientOutstandingKobo(
+    client: LabSupabase,
+    patientId: string
+): Promise<number | null> {
+    const { data, error } = await client
+        .from("payments")
+        .select("amount, amount_kobo, amount_paid_kobo, status, category, payment_type")
+        .eq("patient_id", patientId)
+        .in("status", ["pending", "partial"])
+        .limit(200);
+
+    if (error) {
+        console.error("[lab] outstanding-balance lookup failed:", error);
+        return null;
+    }
+
+    let outstanding = 0;
+    for (const row of data ?? []) {
+        const category = String((row as any)?.category ?? "").toLowerCase();
+        const type = String((row as any)?.payment_type ?? "").toLowerCase();
+        if (category === "deposit" || type === "deposit" || type === "advance") continue;
+        const total = labBillAmountKobo(row);
+        const paid = labBillPaidKobo(row);
+        outstanding += Math.max(0, total - paid);
+    }
+    return outstanding;
+}
+
+/**
+ * Write a lab price onto the bill that belongs to THIS lab request.
+ * Settlement-aware: settled bills are never re-billed in full. Returns a
+ * warning message when the price could not be reflected (caller surfaces it
+ * without failing the result), otherwise null.
+ */
+async function syncLabPriceToBill(
+    supabase: LabSupabase,
+    labRequestId: string,
+    patientId: string,
+    testType: string,
+    price: number,
+    completedBy?: string
+): Promise<string | null> {
+    const desc = `Lab Test: ${testType}`;
+    const priceKobo = Math.round(price * 100);
+    const bills = await listPatientLabBills(supabase, patientId);
+
+    // Match priority: exact request link → exact description → fuzzy
+    // description. (Orders for tests outside the catalogue are auto-billed at
+    // ₦0, so a zero-amount open bill is the orphan this order created.)
+    const testTypeLower = testType.trim().toLowerCase();
+    const linked = bills.find((p) => p.lab_request_id && String(p.lab_request_id) === String(labRequestId));
+    const exact = bills.find((p) => String(p.description ?? "").trim().toLowerCase() === desc.trim().toLowerCase());
+    const fuzzy = testTypeLower
+        ? bills.find((p) => String(p.description ?? "").toLowerCase().includes(testTypeLower))
+        : undefined;
+    const match = linked ?? exact ?? fuzzy;
+
+    // ── Case 1: this test's bill is still open → update its amount ──
+    const openStatuses = new Set(["pending", "partial"]);
+    const openTarget =
+        (match && openStatuses.has(labBillStatus(match)) ? match : null) ??
+        bills.find((p) => openStatuses.has(labBillStatus(p)) && labBillAmountKobo(p) <= 0) ??
+        null;
+
+    if (openTarget) {
+        // Never drop the bill below what the front desk already collected.
+        const paidKobo = labBillPaidKobo(openTarget);
+        const effectiveKobo = Math.max(priceKobo, paidKobo);
+
+        // RLS: the `payments` table only allows FrontDesk/Admin to update
+        // rows, and this runs as the lab tech — so writing with the caller's
+        // session would silently match zero rows and the bill would stay at
+        // ₦0 forever. The sync is a trusted server-side hand-off (the lab
+        // tech already passed requireStaff above), so prefer the service-role
+        // client when configured and verify the write changed a row.
+        const pricePayload: Record<string, any> = {
+            amount: effectiveKobo / 100,
+            amount_kobo: effectiveKobo,
+            updated_at: new Date().toISOString(),
+        };
+
+        const writeClient = createAdminClient() ?? supabase;
+        const first = await writeClient
+            .from("payments")
+            .update(pricePayload, { count: "exact" })
+            .eq("id", openTarget.id);
+
+        let applied = !first.error && ((first.count as number | null) ?? 0) > 0;
+
+        if (!applied) {
+            // Schema-tolerant retry: `updated_at` may be missing on older tables.
+            const { updated_at: _omit, ...retryPayload } = pricePayload;
+            void _omit;
+            const retry = await writeClient
+                .from("payments")
+                .update(retryPayload, { count: "exact" })
+                .eq("id", openTarget.id);
+            applied = !retry.error && ((retry.count as number | null) ?? 0) > 0;
+
+            if (!applied) {
+                console.error(
+                    "[lab] failed to update lab bill price:",
+                    retry.error ?? first.error ?? "0 rows changed",
+                    { billId: openTarget.id, labRequestId }
+                );
+                return (
+                    "Result saved, but the price could not be written to the bill " +
+                    "(the database rejected the write). Ask the front desk to correct " +
+                    "the bill price, or configure SUPABASE_SERVICE_ROLE_KEY and set " +
+                    "the price again."
+                );
+            }
+        }
+        return null;
+    }
+
+    // ── Case 2: this test's bill is already settled ──
+    // The front desk settled before results existed — the normal, supported
+    // flow. Never create a duplicate full-price bill.
+    if (match && !openStatuses.has(labBillStatus(match))) {
+        const status = labBillStatus(match);
+        if (status !== "paid") {
+            // Waived / refunded / failed: the money question is already
+            // decided — leave it alone.
+            console.info(
+                `[lab] price set on ${status} lab bill ${match.id} — no new bill raised.`
+            );
+            return null;
+        }
+        const settledKobo = labBillAmountKobo(match);
+        if (settledKobo >= priceKobo) {
+            // Already paid in full (or over the new price) — nothing to bill.
+            console.info(
+                `[lab] lab bill ${match.id} already settled at/above the new price — no new bill raised.`
+            );
+            return null;
+        }
+        // Settled for less than the new price (e.g. a ₦0 catalogue-miss bill
+        // settled early): bill ONLY the difference.
+        const balanceKobo = priceKobo - settledKobo;
+        await createPayment({
+            patient_id: patientId,
+            amount: balanceKobo / 100,
+            description: `${desc} (balance)`,
+            category: "lab",
+            status: "pending",
+            processed_by: completedBy || undefined,
+            notes:
+                `Balance on settled lab bill: priced ₦${(priceKobo / 100).toLocaleString("en-NG")} ` +
+                `after ₦${(settledKobo / 100).toLocaleString("en-NG")} was already settled.`,
+            lab_request_id: labRequestId,
+        });
+        console.info(
+            `[lab] raised balance bill of ${balanceKobo} kobo for settled lab bill ${match.id}.`
+        );
+        return null;
+    }
+
+    // ── Case 3: no bill for this test at all (legacy rows) → create one ──
+    await createPayment({
+        patient_id: patientId,
+        amount: price,
+        description: desc,
+        category: "lab",
+        status: "pending",
+        processed_by: completedBy || undefined,
+        lab_request_id: labRequestId,
+    });
+    return null;
+}
+
+/**
+ * Route the patient after a lab test completes. Returns whether a payment is
+ * genuinely pending (drives the notification text).
+ *
+ * Rules:
+ *  - Only the lab flow's own patients are routed: anyone the lab doesn't own
+ *    (admitted, discharged, or sitting in another department's queue) keeps
+ *    their status — the bill is still visible in the checkout queue.
+ *  - Other pending lab tests → stay `sent-to-lab`.
+ *  - Otherwise the REAL outstanding balance decides: > ₦0 → `awaiting-payment`,
+ *    else back to the doctor via `under-observation`.
+ */
+async function routePatientAfterLabCompletion(
+    supabase: LabSupabase,
+    labRequestId: string,
+    patientId: string,
+    priceSetThisCall: boolean
+): Promise<boolean> {
+    const { data: currentPatient } = await supabase
+        .from("patients")
+        .select("status")
+        .eq("id", patientId)
+        .maybeSingle();
+
+    const currentStatus = String(currentPatient?.status ?? "").toLowerCase();
+    if (currentStatus !== "sent-to-lab") {
+        // Another department (or discharge) owns this patient — don't clobber it.
+        const outstanding = await patientOutstandingKobo(supabase, patientId);
+        return (outstanding ?? (priceSetThisCall ? 1 : 0)) > 0;
+    }
+
+    // More lab work still pending → stay in the lab queue.
+    const { data: otherPending } = await supabase
+        .from("lab_requests")
+        .select("id")
+        .eq("visit_id", patientId)
+        .eq("status", "pending")
+        .neq("id", labRequestId)
+        .not("test_type", "like", "[RADIOLOGY]%")
+        .limit(1);
+    if (otherPending && otherPending.length > 0) {
+        return ((await patientOutstandingKobo(supabase, patientId)) ?? 0) > 0;
+    }
+
+    const outstanding = await patientOutstandingKobo(supabase, patientId);
+    // If the balance lookup itself failed, fall back to the price heuristic
+    // rather than guessing the patient needs no billing.
+    const paymentPending =
+        outstanding === null ? priceSetThisCall : outstanding > 0;
+
+    await supabase
+        .from("patients")
+        .update({ status: paymentPending ? "awaiting-payment" : "under-observation" })
+        .eq("id", patientId);
+
+    return paymentPending;
 }
 
 // ─── Lab Test Catalog ─────────────────────────────────────────────────────────

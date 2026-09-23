@@ -272,8 +272,13 @@ function LabTechPendingRow({ req, patientId, patient, onSubmitted }: { req: any;
                 },
                 },
             {
-                onSuccess: () => {
-                    toast.success("Result submitted and updated in billing.");
+                onSuccess: (updated) => {
+                    const warning = (updated as any)?.billing_warning as string | undefined;
+                    if (warning) {
+                        toast.warning(`Result submitted. ${warning}`, { duration: 9000 });
+                    } else {
+                        toast.success("Result submitted and updated in billing.");
+                    }
                     setOpen(false);
                     setPrice("");
                     onSubmitted();

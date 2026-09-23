@@ -115,6 +115,15 @@ export interface DiscountComputation {
 }
 
 /**
+ * Feature flag: percentage discounts are hidden from the front-desk UI for
+ * now — only flat (₦) discounts are offered. The billing engine still honors
+ * a percentage if one is ever passed (and historical percent discounts keep
+ * displaying as their stored ₦ value), so flipping this back to `true` and
+ * re-adding the input is all it takes to restore the feature.
+ */
+export const DISCOUNT_PERCENT_ENABLED = false;
+
+/**
  * Compute a discount from an optional percentage and/or flat amount.
  * Both can be combined; the result is clamped so the bill can never go
  * below what the patient has already paid toward it.
@@ -144,6 +153,70 @@ export function computeDiscountKobo(input: {
         percent: rawPercent,
         flatKobo: rawFlat,
     };
+}
+
+/**
+ * Split a group-level discount across individual bills, proportionally to
+ * each bill's outstanding balance.
+ *
+ * The discount is ALWAYS computed from the group's total bill first (see
+ * `computeDiscountKobo`); this only decides each bill's *share* of that
+ * total so the ledger stays auditable. Uses the largest-remainder method:
+ * every bill gets `floor(share)`, then leftover kobo go one-by-one to the
+ * bills with the largest fractional remainder (ties broken by bill order),
+ * so the shares always sum to EXACTLY `totalDiscountKobo` — deterministic,
+ * never random.
+ *
+ * Shared by the server settle-all engine and the front-desk preview so both
+ * always agree on the split.
+ */
+export function splitDiscountProportionally(
+    totalDiscountKobo: number,
+    outstandingsKobo: number[]
+): number[] {
+    const n = outstandingsKobo.length;
+    const shares = new Array<number>(n).fill(0);
+    const discount = Math.max(0, Math.round(totalDiscountKobo ?? 0));
+    if (discount <= 0 || n === 0) return shares;
+
+    const total = outstandingsKobo.reduce((s, o) => s + Math.max(0, Math.round(o ?? 0)), 0);
+    if (total <= 0) return shares;
+
+    // Floor shares + fractional remainders (scaled to integers for exactness).
+    const remainders: { index: number; remainder: number }[] = [];
+    let assigned = 0;
+    for (let i = 0; i < n; i++) {
+        const out = Math.max(0, Math.round(outstandingsKobo[i] ?? 0));
+        if (out <= 0) {
+            remainders.push({ index: i, remainder: -1 });
+            continue;
+        }
+        const exact = (discount * out) / total;
+        const floor = Math.floor(exact);
+        // Remainder scaled by `total` stays an integer: (discount*out) % total.
+        const remainder = discount * out - floor * total;
+        shares[i] = Math.min(floor, out);
+        assigned += shares[i];
+        remainders.push({ index: i, remainder: out > shares[i] ? remainder : -1 });
+    }
+
+    // Hand out leftover kobo to the largest remainders, in bill order on ties.
+    let leftover = discount - assigned;
+    if (leftover > 0) {
+        const ordered = [...remainders]
+            .filter((r) => r.remainder >= 0)
+            .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+        for (const { index } of ordered) {
+            if (leftover <= 0) break;
+            const out = Math.max(0, Math.round(outstandingsKobo[index] ?? 0));
+            if (shares[index] < out) {
+                shares[index] += 1;
+                leftover -= 1;
+            }
+        }
+    }
+
+    return shares;
 }
 
 /** Format kobo as ₦ with 2dp, Nigerian locale. */

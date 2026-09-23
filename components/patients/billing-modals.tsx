@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
-    X, Loader2, CheckCircle2, Receipt, AlertTriangle, Banknote, CreditCard,
-    ArrowLeftRight, Percent, Wallet, Layers, ShieldCheck, BadgePercent,
+    Loader2, CheckCircle2, Receipt, AlertTriangle, Banknote, CreditCard,
+    ArrowLeftRight, Wallet, Layers, ShieldCheck, BadgePercent,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -17,6 +17,7 @@ import {
     computeDiscountKobo,
     formatKobo,
     resolvePayerFromPatient,
+    splitDiscountProportionally,
     PAYMENT_TYPE_CONFIG,
     PAYER_CONFIG,
     type PaymentType,
@@ -24,6 +25,28 @@ import {
     type ResolvedPayer,
 } from "@/lib/utils/billing";
 import type { Payment } from "@/components/patients/payment-history";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 
 /** Extract a human-readable message from a server-action / mutation error. */
@@ -63,13 +86,13 @@ export function PayerBadge({ payer, reference, className = "" }: {
         company: "bg-sky-50 text-sky-700 border-sky-200",
     };
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold ${styles[type]} ${className}`}>
+        <Badge variant="outline" className={cn("gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-full", styles[type], className)}>
             <ShieldCheck size={10} />
             {cfg.label}
             {reference && type !== "private" && (
                 <span className="font-semibold opacity-80">· {reference}</span>
             )}
-        </span>
+        </Badge>
     );
 }
 
@@ -134,14 +157,6 @@ function MethodPicker({ value, onChange, disabled }: {
     );
 }
 
-function useEscape(onClose: () => void, disabled: boolean) {
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && !disabled) onClose(); };
-        document.addEventListener("keydown", handler);
-        return () => document.removeEventListener("keydown", handler);
-    }, [disabled, onClose]);
-}
-
 function ModalShell({ title, subtitle, icon, onClose, disabled, children, wide }: {
     title: string;
     subtitle?: string;
@@ -152,49 +167,80 @@ function ModalShell({ title, subtitle, icon, onClose, disabled, children, wide }
     children: React.ReactNode;
 }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm print:hidden" role="presentation">
-            <div role="dialog" aria-modal="true"
-                className={`bg-white rounded-3xl w-full ${wide ? "max-w-2xl" : "max-w-lg"} shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col`}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-                            {icon ?? <CheckCircle2 size={16} className="text-teal-600" />}
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-800 text-sm">{title}</h3>
-                            {subtitle && <p className="text-[10px] text-slate-400">{subtitle}</p>}
-                        </div>
+        <Dialog open onOpenChange={(open) => { if (!open && !disabled) onClose(); }}>
+            <DialogContent
+                className={cn(
+                    "print:hidden p-0 gap-0 overflow-hidden rounded-3xl border-slate-100 max-h-[92vh] flex flex-col",
+                    wide ? "sm:max-w-2xl" : "sm:max-w-lg"
+                )}
+                onEscapeKeyDown={(e) => { if (disabled) e.preventDefault(); }}
+                onPointerDownOutside={(e) => { if (disabled) e.preventDefault(); }}
+                onInteractOutside={(e) => { if (disabled) e.preventDefault(); }}
+            >
+                <DialogHeader className="flex flex-row items-center gap-2.5 px-6 py-4 border-b border-slate-100 shrink-0 text-left space-y-0 pr-12">
+                    <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+                        {icon ?? <CheckCircle2 size={16} className="text-teal-600" />}
                     </div>
-                    <button onClick={onClose} disabled={disabled} className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Close">
-                        <X size={20} />
-                    </button>
-                </div>
+                    <div className="min-w-0">
+                        <DialogTitle className="font-bold text-slate-800 text-sm">{title}</DialogTitle>
+                        {subtitle && (
+                            <DialogDescription className="text-[10px] text-slate-400 truncate">
+                                {subtitle}
+                            </DialogDescription>
+                        )}
+                    </div>
+                </DialogHeader>
                 <div className="p-6 overflow-y-auto">{children}</div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 
-function FieldLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
+function ModalActions({ onClose, disabled, pending, onConfirm, confirmLabel, confirmIcon }: {
+    onClose: () => void;
+    disabled?: boolean;
+    pending?: boolean;
+    onConfirm: () => void;
+    confirmLabel: React.ReactNode;
+    confirmIcon?: React.ReactNode;
+}) {
+    return (
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-1">
+            <Button type="button" variant="ghost" onClick={onClose} disabled={disabled}
+                className="text-slate-500 hover:text-slate-700 font-semibold">
+                Cancel
+            </Button>
+            <Button type="button" onClick={onConfirm} disabled={disabled}
+                className="bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-lg shadow-teal-200 rounded-xl">
+                {pending ? <><Loader2 size={15} className="animate-spin" /> Processing…</>
+                    : <>{confirmIcon}{confirmLabel}</>}
+            </Button>
+        </DialogFooter>
+    );
+}
+
+function FieldLabel({ children, hint, htmlFor }: { children: React.ReactNode; hint?: string; htmlFor?: string }) {
     return (
         <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{children}</label>
+            <Label htmlFor={htmlFor} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{children}</Label>
             {hint && <span className="text-[9px] text-slate-300 font-semibold normal-case">{hint}</span>}
         </div>
     );
 }
 
-function NairaInput({ value, onChange, disabled, placeholder = "0.00", autoFocus }: {
+function NairaInput({ value, onChange, disabled, placeholder = "0.00", autoFocus, id }: {
     value: string;
     onChange: (v: string) => void;
     disabled?: boolean;
     placeholder?: string;
     autoFocus?: boolean;
+    id?: string;
 }) {
     return (
         <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">₦</span>
-            <input
+            <Input
+                id={id}
                 type="number"
                 min="0"
                 step="0.01"
@@ -203,8 +249,63 @@ function NairaInput({ value, onChange, disabled, placeholder = "0.00", autoFocus
                 disabled={disabled}
                 autoFocus={autoFocus}
                 placeholder={placeholder}
-                className="w-full h-11 pl-8 pr-3 rounded-xl border border-slate-200 bg-white text-base font-extrabold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-400/25 focus:border-teal-400 transition-all disabled:bg-slate-50"
+                className="h-11 pl-8 text-base font-extrabold text-slate-900 rounded-xl border-slate-200 focus-visible:ring-teal-400/25"
             />
+        </div>
+    );
+}
+
+/** Payer dropdown (shadcn Select) shared by the settle modals. */
+function PayerSelect({ value, onChange, disabled, reference }: {
+    value: PayerType;
+    onChange: (v: PayerType) => void;
+    disabled?: boolean;
+    reference?: string;
+}) {
+    return (
+        <Select value={value} onValueChange={(v) => onChange(v as PayerType)} disabled={disabled}>
+            <SelectTrigger className="w-full rounded-xl border-slate-200 focus:ring-teal-400">
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="private">Private Client — cash / card / transfer</SelectItem>
+                <SelectItem value="hmo">
+                    HMO — settle against insurer{reference ? ` (${reference})` : ""}
+                </SelectItem>
+                <SelectItem value="company">
+                    Company — settle against employer{reference ? ` (${reference})` : ""}
+                </SelectItem>
+            </SelectContent>
+        </Select>
+    );
+}
+
+/** Deposit-credit opt-in row (shadcn Checkbox) shared by the settle modals. */
+function DepositCreditRow({ availableKobo, checked, onChange, disabled, id }: {
+    availableKobo: number;
+    checked: boolean;
+    onChange: (v: boolean) => void;
+    disabled?: boolean;
+    id: string;
+}) {
+    if (availableKobo <= 0) return null;
+    return (
+        <div className={cn(
+            "flex items-start gap-2.5 px-3 py-2.5 rounded-xl border transition-colors",
+            checked ? "bg-emerald-50 border-emerald-200" : "bg-white border-slate-200"
+        )}>
+            <Checkbox id={id} checked={checked} disabled={disabled}
+                onCheckedChange={(v) => onChange(v === true)}
+                className="mt-0.5 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600" />
+            <Label htmlFor={id} className="flex-1 cursor-pointer">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <Wallet size={12} className="text-emerald-600" />
+                    Use deposit credit ({formatKobo(availableKobo)} available)
+                </span>
+                <span className="block text-[10px] text-slate-400 mt-0.5 font-normal">
+                    Apply the patient&apos;s advance-deposit balance toward this bill before collecting.
+                </span>
+            </Label>
         </div>
     );
 }
@@ -238,21 +339,20 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
     );
     const [paymentType, setPaymentType] = useState<PaymentType>("full");
     const [collectAmount, setCollectAmount] = useState<string>("");
-    const [discountPercent, setDiscountPercent] = useState<string>("");
+    // NOTE: percentage discounts are hidden for now — amount-only (see
+    // DISCOUNT_PERCENT_ENABLED in lib/utils/billing.ts).
     const [discountAmount, setDiscountAmount] = useState<string>("");
     const [payerType, setPayerType] = useState<PayerType>(resolvedPayer.type);
     const [payerCode, setPayerCode] = useState<string>("");
     const [useCredit, setUseCredit] = useState<boolean>(false);
     const [method, setMethod] = useState<string>(resolvedPayer.type === "private" ? "cash" : resolvedPayer.type);
 
-    useEscape(onClose, isPending);
-
     const totalKobo = Math.max(0, Math.round((Number(billTotal) || 0) * 100));
     const paidKobo = payment.amount_paid_kobo;
     const discount = computeDiscountKobo({
         totalKobo,
         paidKobo,
-        discountPercent: Number(discountPercent) || 0,
+        discountPercent: 0,
         discountAmount: Number(discountAmount) || 0,
     });
     const effectiveTotalKobo = Math.max(paidKobo, totalKobo - discount.discountKobo);
@@ -286,7 +386,6 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                 correctedAmount: Math.round(Number(billTotal) * 100) !== payment.amount_kobo
                     ? Number(billTotal)
                     : undefined,
-                discountPercent: Number(discountPercent) > 0 ? Number(discountPercent) : undefined,
                 discountAmount: Number(discountAmount) > 0 ? Number(discountAmount) : undefined,
                 method,
                 payer: payerType,
@@ -317,8 +416,8 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
             <div className="space-y-4">
                 {/* Bill total (price correction) */}
                 <div className="space-y-1.5">
-                    <FieldLabel hint="price correction allowed">Bill total (editable)</FieldLabel>
-                    <NairaInput value={billTotal} onChange={setBillTotal} disabled={isPending} />
+                    <FieldLabel htmlFor="settle-bill-total" hint="price correction allowed">Bill total (editable)</FieldLabel>
+                    <NairaInput id="settle-bill-total" value={billTotal} onChange={setBillTotal} disabled={isPending} />
                 </div>
 
                 {/* Payment type */}
@@ -333,10 +432,10 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                 {/* Amount for partial / deposit */}
                 {paymentType !== "full" && (
                     <div className="space-y-1.5">
-                        <FieldLabel>
+                        <FieldLabel htmlFor="settle-collect">
                             {paymentType === "partial" ? "Amount to collect now" : "Deposit amount"}
                         </FieldLabel>
-                        <NairaInput value={collectAmount} onChange={setCollectAmount} disabled={isPending} autoFocus />
+                        <NairaInput id="settle-collect" value={collectAmount} onChange={setCollectAmount} disabled={isPending} autoFocus />
                         {paymentType === "deposit" && (
                             <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 leading-snug">
                                 <AlertTriangle size={10} className="inline mr-1" />
@@ -347,27 +446,15 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                     </div>
                 )}
 
-                {/* Discount */}
+                {/* Discount — flat amount only (percentage hidden for now) */}
                 <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
                     <div className="flex items-center gap-2">
                         <BadgePercent size={13} className="text-teal-600" />
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Discount</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <FieldLabel>By percentage (%)</FieldLabel>
-                            <div className="relative">
-                                <input type="number" min="0" max="100" step="0.1" value={discountPercent}
-                                    onChange={(e) => setDiscountPercent(e.target.value)} disabled={isPending}
-                                    placeholder="e.g. 10"
-                                    className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-400/25 focus:border-teal-400" />
-                                <Percent size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <FieldLabel>By amount (₦)</FieldLabel>
-                            <NairaInput value={discountAmount} onChange={setDiscountAmount} disabled={isPending} />
-                        </div>
+                    <div className="space-y-1">
+                        <FieldLabel htmlFor="settle-discount-amount">Discount amount (₦)</FieldLabel>
+                        <NairaInput id="settle-discount-amount" value={discountAmount} onChange={setDiscountAmount} disabled={isPending} />
                     </div>
                     {discount.discountKobo > 0 && (
                         <p className="text-[10px] font-semibold text-teal-700">
@@ -382,28 +469,19 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                     <div className="flex items-center gap-2 flex-wrap">
                         <PayerBadge payer={resolvedPayer.type} reference={resolvedPayer.reference || null} />
                         {autoPayerChanged && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border-amber-200">
                                 overridden
-                            </span>
+                            </Badge>
                         )}
                     </div>
-                    <select
-                        value={payerType}
-                        onChange={(e) => setPayerType(e.target.value as PayerType)}
-                        disabled={isPending}
-                        className="w-full text-sm border border-slate-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                    >
-                        <option value="private">Private Client — cash / card / transfer</option>
-                        <option value="hmo">HMO — settle against insurer{resolvedPayer.reference ? ` (${resolvedPayer.reference})` : ""}</option>
-                        <option value="company">Company — settle against employer{resolvedPayer.reference ? ` (${resolvedPayer.reference})` : ""}</option>
-                    </select>
+                    <PayerSelect value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
                     {isHmoCompany && (
-                        <input
+                        <Input
                             value={payerCode}
                             onChange={(e) => setPayerCode(e.target.value)}
                             disabled={isPending}
                             placeholder={payerType === "hmo" ? "HMO authorization / claim code (optional)" : "Company reference / LPO number (optional)"}
-                            className="w-full text-sm border border-slate-200 bg-white rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                            className="rounded-xl border-slate-200 focus-visible:ring-teal-400"
                         />
                     )}
                     {!isHmoCompany && (
@@ -415,21 +493,13 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                 </div>
 
                 {/* Deposit credit */}
-                {creditAvailableKobo > 0 && (
-                    <label className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-colors ${useCredit ? "bg-emerald-50 border-emerald-200" : "bg-white border-slate-200"}`}>
-                        <input type="checkbox" checked={useCredit} disabled={isPending}
-                            onChange={(e) => setUseCredit(e.target.checked)} className="mt-0.5 accent-emerald-600" />
-                        <span className="flex-1">
-                            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                                <Wallet size={12} className="text-emerald-600" />
-                                Use deposit credit ({formatKobo(creditAvailableKobo)} available)
-                            </span>
-                            <span className="block text-[10px] text-slate-400 mt-0.5">
-                                Apply the patient&apos;s advance-deposit balance toward this bill before collecting.
-                            </span>
-                        </span>
-                    </label>
-                )}
+                <DepositCreditRow
+                    id="settle-use-credit"
+                    availableKobo={creditAvailableKobo}
+                    checked={useCredit}
+                    onChange={setUseCredit}
+                    disabled={isPending}
+                />
 
                 {/* Preview */}
                 <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-1.5 text-xs">
@@ -451,7 +521,8 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                             <span>Deposit credit</span><span className="font-semibold">−{formatKobo(creditUsedKobo)}</span>
                         </div>
                     )}
-                    <div className="flex justify-between text-slate-800 border-t border-slate-200 pt-1.5 font-bold">
+                    <Separator />
+                    <div className="flex justify-between text-slate-800 font-bold">
                         <span>{paymentType === "deposit" ? "Deposit to record" : "Collect now"}</span>
                         <span>{formatKobo(collectedKobo)}</span>
                     </div>
@@ -463,17 +534,14 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
-                    <button type="button" onClick={onClose} disabled={isPending}
-                        className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50">
-                        Cancel
-                    </button>
-                    <button type="button" onClick={handleConfirm} disabled={!valid || isPending}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-lg shadow-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        {isPending ? <><Loader2 size={15} className="animate-spin" /> Processing…</>
-                            : <><CheckCircle2 size={15} /> {paymentType === "deposit" ? "Record Deposit" : "Confirm Payment"}</>}
-                    </button>
-                </div>
+                <ModalActions
+                    onClose={onClose}
+                    disabled={!valid || isPending}
+                    pending={isPending}
+                    onConfirm={handleConfirm}
+                    confirmIcon={<CheckCircle2 size={15} />}
+                    confirmLabel={paymentType === "deposit" ? "Record Deposit" : "Confirm Payment"}
+                />
             </div>
         </ModalShell>
     );
@@ -504,21 +572,31 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
 
     const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
     const [collectAmount, setCollectAmount] = useState<string>(String(totalOutstandingKobo / 100));
-    const [discountPercent, setDiscountPercent] = useState<string>("");
+    // NOTE: percentage discounts are hidden for now — amount-only (see
+    // DISCOUNT_PERCENT_ENABLED in lib/utils/billing.ts).
     const [discountAmount, setDiscountAmount] = useState<string>("");
     const [payerType, setPayerType] = useState<PayerType>(resolvedPayer.type);
     const [payerCode, setPayerCode] = useState<string>("");
     const [method, setMethod] = useState<string>(resolvedPayer.type === "private" ? "cash" : resolvedPayer.type);
     const [useCredit, setUseCredit] = useState<boolean>(false);
 
-    useEscape(onClose, isPending);
-
+    // The discount is computed ONCE from the group's total bill, then split
+    // across the bills proportionally (same helper the server uses, so this
+    // preview is exactly what the ledger will record).
     const discount = computeDiscountKobo({
         totalKobo: totalOutstandingKobo,
         paidKobo: 0,
-        discountPercent: Number(discountPercent) || 0,
+        discountPercent: 0,
         discountAmount: Number(discountAmount) || 0,
     });
+    const discountShares = useMemo(
+        () => splitDiscountProportionally(
+            discount.discountKobo,
+            outstandingBills.map((b) => b.amount_kobo - b.amount_paid_kobo)
+        ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [discount.discountKobo, outstandingBills.length, totalOutstandingKobo]
+    );
     const creditAvailableKobo = credit?.availableKobo ?? 0;
     const creditUsedKobo = useCredit ? Math.min(creditAvailableKobo, Math.max(0, totalOutstandingKobo - discount.discountKobo)) : 0;
     const afterDiscountCredit = Math.max(0, totalOutstandingKobo - discount.discountKobo - creditUsedKobo);
@@ -534,7 +612,6 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
                 patientId,
                 paymentType,
                 amountPaid: paymentType === "partial" ? collectedKobo / 100 : undefined,
-                discountPercent: Number(discountPercent) > 0 ? Number(discountPercent) : undefined,
                 discountAmount: Number(discountAmount) > 0 ? Number(discountAmount) : undefined,
                 method: isHmoCompany ? payerType : method,
                 payer: payerType,
@@ -577,35 +654,41 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
 
                 {paymentType === "partial" && (
                     <div className="space-y-1.5">
-                        <FieldLabel hint={`max ${formatKobo(afterDiscountCredit)}`}>Amount to collect now</FieldLabel>
-                        <NairaInput value={collectAmount} onChange={setCollectAmount} disabled={isPending} autoFocus />
+                        <FieldLabel htmlFor="settle-all-collect" hint={`max ${formatKobo(afterDiscountCredit)}`}>Amount to collect now</FieldLabel>
+                        <NairaInput id="settle-all-collect" value={collectAmount} onChange={setCollectAmount} disabled={isPending} autoFocus />
                         <p className="text-[10px] text-amber-600">
                             Remaining balance of {formatKobo(Math.max(0, afterDiscountCredit - collectedKobo))} stays outstanding on the affected bills.
                         </p>
                     </div>
                 )}
 
-                {/* Discount */}
+                {/* Discount — computed from the TOTAL bill, split proportionally */}
                 <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
                     <div className="flex items-center gap-2">
                         <BadgePercent size={13} className="text-teal-600" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Discount across all bills</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Discount on the total bill</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <FieldLabel>By percentage (%)</FieldLabel>
-                            <div className="relative">
-                                <input type="number" min="0" max="100" step="0.1" value={discountPercent}
-                                    onChange={(e) => setDiscountPercent(e.target.value)} disabled={isPending} placeholder="e.g. 5"
-                                    className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-400/25 focus:border-teal-400" />
-                                <Percent size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <div className="space-y-1">
+                        <FieldLabel htmlFor="settle-all-discount">Discount amount (₦) — off {formatKobo(totalOutstandingKobo)}</FieldLabel>
+                        <NairaInput id="settle-all-discount" value={discountAmount} onChange={setDiscountAmount} disabled={isPending} />
+                    </div>
+                    {discount.discountKobo > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                            <Separator />
+                            <p className="text-[10px] font-bold text-slate-500">
+                                Split proportionally across the {outstandingBills.length} bill{outstandingBills.length === 1 ? "" : "s"}:
+                            </p>
+                            <div className="max-h-36 overflow-y-auto space-y-1 rounded-xl border border-slate-100 bg-white p-2">
+                                {outstandingBills.map((b, i) => (
+                                    <div key={b.id} className="flex items-center justify-between gap-2 text-[11px]">
+                                        <span className="text-slate-500 truncate flex-1">{b.description}</span>
+                                        <span className="text-slate-400 whitespace-nowrap">{formatKobo(b.amount_kobo - b.amount_paid_kobo)}</span>
+                                        <span className="text-teal-700 font-bold whitespace-nowrap">−{formatKobo(discountShares[i] ?? 0)}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <div className="space-y-1">
-                            <FieldLabel>By amount (₦)</FieldLabel>
-                            <NairaInput value={discountAmount} onChange={setDiscountAmount} disabled={isPending} />
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Payer */}
@@ -614,16 +697,11 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
                     <div className="flex items-center gap-2">
                         <PayerBadge payer={resolvedPayer.type} reference={resolvedPayer.reference || null} />
                     </div>
-                    <select value={payerType} onChange={(e) => setPayerType(e.target.value as PayerType)} disabled={isPending}
-                        className="w-full text-sm border border-slate-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400">
-                        <option value="private">Private Client — cash / card / transfer</option>
-                        <option value="hmo">HMO — settle against insurer</option>
-                        <option value="company">Company — settle against employer</option>
-                    </select>
+                    <PayerSelect value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
                     {isHmoCompany && (
-                        <input value={payerCode} onChange={(e) => setPayerCode(e.target.value)} disabled={isPending}
+                        <Input value={payerCode} onChange={(e) => setPayerCode(e.target.value)} disabled={isPending}
                             placeholder={payerType === "hmo" ? "HMO authorization / claim code (optional)" : "Company reference / LPO number (optional)"}
-                            className="w-full text-sm border border-slate-200 bg-white rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+                            className="rounded-xl border-slate-200 focus-visible:ring-teal-400" />
                     )}
                     {!isHmoCompany && (
                         <div className="pt-1">
@@ -633,18 +711,13 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
                     )}
                 </div>
 
-                {creditAvailableKobo > 0 && (
-                    <label className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-colors ${useCredit ? "bg-emerald-50 border-emerald-200" : "bg-white border-slate-200"}`}>
-                        <input type="checkbox" checked={useCredit} disabled={isPending}
-                            onChange={(e) => setUseCredit(e.target.checked)} className="mt-0.5 accent-emerald-600" />
-                        <span className="flex-1">
-                            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                                <Wallet size={12} className="text-emerald-600" />
-                                Use deposit credit ({formatKobo(creditAvailableKobo)} available)
-                            </span>
-                        </span>
-                    </label>
-                )}
+                <DepositCreditRow
+                    id="settle-all-use-credit"
+                    availableKobo={creditAvailableKobo}
+                    checked={useCredit}
+                    onChange={setUseCredit}
+                    disabled={isPending}
+                />
 
                 <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-500">
@@ -652,7 +725,7 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
                     </div>
                     {discount.discountKobo > 0 && (
                         <div className="flex justify-between text-teal-700">
-                            <span>Discount</span><span className="font-semibold">−{formatKobo(discount.discountKobo)}</span>
+                            <span>Discount (on total)</span><span className="font-semibold">−{formatKobo(discount.discountKobo)}</span>
                         </div>
                     )}
                     {creditUsedKobo > 0 && (
@@ -660,20 +733,20 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
                             <span>Deposit credit</span><span className="font-semibold">−{formatKobo(creditUsedKobo)}</span>
                         </div>
                     )}
-                    <div className="flex justify-between text-slate-800 border-t border-slate-200 pt-1.5 font-bold">
+                    <Separator />
+                    <div className="flex justify-between text-slate-800 font-bold">
                         <span>Collect now</span><span>{formatKobo(collectedKobo)}</span>
                     </div>
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
-                    <button type="button" onClick={onClose} disabled={isPending}
-                        className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50">Cancel</button>
-                    <button type="button" onClick={handleSettleAll} disabled={!valid || isPending}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-lg shadow-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        {isPending ? <><Loader2 size={15} className="animate-spin" /> Settling…</>
-                            : <><CheckCircle2 size={15} /> Settle {outstandingBills.length} Bill{outstandingBills.length === 1 ? "" : "s"}</>}
-                    </button>
-                </div>
+                <ModalActions
+                    onClose={onClose}
+                    disabled={!valid || isPending}
+                    pending={isPending}
+                    onConfirm={handleSettleAll}
+                    confirmIcon={<CheckCircle2 size={15} />}
+                    confirmLabel={<>Settle {outstandingBills.length} Bill{outstandingBills.length === 1 ? "" : "s"}</>}
+                />
             </div>
         </ModalShell>
     );
@@ -702,8 +775,6 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
     const [notes, setNotes] = useState<string>("");
     const [payerType, setPayerType] = useState<PayerType>(resolvedPayer.type);
     const [method, setMethod] = useState<string>(resolvedPayer.type === "private" ? "cash" : resolvedPayer.type);
-
-    useEscape(onClose, isPending);
 
     const amountKobo = Math.round((Number(amount) || 0) * 100);
     const valid = amountKobo > 0;
@@ -741,8 +812,8 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
                 </div>
 
                 <div className="space-y-1.5">
-                    <FieldLabel>Deposit amount</FieldLabel>
-                    <NairaInput value={amount} onChange={setAmount} disabled={isPending} autoFocus />
+                    <FieldLabel htmlFor="deposit-amount">Deposit amount</FieldLabel>
+                    <NairaInput id="deposit-amount" value={amount} onChange={setAmount} disabled={isPending} autoFocus />
                 </div>
 
                 <div className="space-y-1.5">
@@ -750,12 +821,7 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
                     <div className="flex items-center gap-2 mb-1">
                         <PayerBadge payer={resolvedPayer.type} reference={resolvedPayer.reference || null} />
                     </div>
-                    <select value={payerType} onChange={(e) => setPayerType(e.target.value as PayerType)} disabled={isPending}
-                        className="w-full text-sm border border-slate-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400">
-                        <option value="private">Private Client — cash / card / transfer</option>
-                        <option value="hmo">HMO</option>
-                        <option value="company">Company</option>
-                    </select>
+                    <PayerSelect value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
                     {payerType === "private" && (
                         <div className="pt-1">
                             <FieldLabel>Payment method</FieldLabel>
@@ -765,21 +831,21 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
                 </div>
 
                 <div className="space-y-1.5">
-                    <FieldLabel>Notes (optional)</FieldLabel>
+                    <FieldLabel htmlFor="deposit-notes">Notes (optional)</FieldLabel>
                     <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isPending}
+                        id="deposit-notes"
                         placeholder="e.g. Admission deposit, theatre booking…"
                         className="w-full text-sm border border-slate-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none" />
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
-                    <button type="button" onClick={onClose} disabled={isPending}
-                        className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50">Cancel</button>
-                    <button type="button" onClick={handleDeposit} disabled={!valid || isPending}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-lg shadow-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        {isPending ? <><Loader2 size={15} className="animate-spin" /> Recording…</>
-                            : <><CheckCircle2 size={15} /> Record Deposit</>}
-                    </button>
-                </div>
+                <ModalActions
+                    onClose={onClose}
+                    disabled={!valid || isPending}
+                    pending={isPending}
+                    onConfirm={handleDeposit}
+                    confirmIcon={<CheckCircle2 size={15} />}
+                    confirmLabel="Record Deposit"
+                />
             </div>
         </ModalShell>
     );
@@ -797,8 +863,6 @@ export interface QueueSettleAllModalProps {
 export function QueueSettleAllModal({ totalBills, totalKobo, cashierId, onClose }: QueueSettleAllModalProps) {
     const { mutate: settleQueue, isPending } = useSettleAllPendingBills();
     const [method, setMethod] = useState<string>("cash");
-
-    useEscape(onClose, isPending);
 
     function handleSettleQueue() {
         if (isPending) return;
@@ -847,15 +911,14 @@ export function QueueSettleAllModal({ totalBills, totalKobo, cashierId, onClose 
                     </div>
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
-                    <button type="button" onClick={onClose} disabled={isPending}
-                        className="px-5 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50">Cancel</button>
-                    <button type="button" onClick={handleSettleQueue} disabled={isPending}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-lg shadow-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        {isPending ? <><Loader2 size={15} className="animate-spin" /> Settling…</>
-                            : <><CheckCircle2 size={15} /> Settle All {totalBills} Bills</>}
-                    </button>
-                </div>
+                <ModalActions
+                    onClose={onClose}
+                    disabled={isPending}
+                    pending={isPending}
+                    onConfirm={handleSettleQueue}
+                    confirmIcon={<CheckCircle2 size={15} />}
+                    confirmLabel={<>Settle All {totalBills} Bills</>}
+                />
             </div>
         </ModalShell>
     );

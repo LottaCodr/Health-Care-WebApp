@@ -186,6 +186,13 @@ export interface LabRequest {
     completed_by?: string;   // add this
     completed_at?: string;   // add this
     created_at?: string;
+    /**
+     * Transient (never stored): when a result is filed but its price could
+     * not be reflected on the bill, the service returns the result WITH this
+     * warning instead of failing — so billing trouble can never block or
+     * masquerade as a failed result submission.
+     */
+    billing_warning?: string;
 }
 
 // Payment entity
@@ -227,6 +234,8 @@ export interface Payment {
     payer_code?: string;      // authorization / claim / corporate reference code
     // Deposit accounting: how much of a deposit row has been applied to bills.
     applied_kobo?: number;
+    // Lab-bill → lab_requests link (exact bill matching for price syncs).
+    lab_request_id?: string | null;
     // Patients join (listPendingPayments enrichment).
     patients?: any;
 }

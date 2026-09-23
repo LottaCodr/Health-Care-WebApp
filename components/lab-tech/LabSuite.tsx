@@ -7,6 +7,7 @@ import { UserRole, PatientStatus } from "@/types/models";
 import { useLabRequest, useUpdateLabRequest, useUpdatePatientStatus } from "@/hooks/emr/use-emr";
 import { LoadingSkeleton, SuccessAlert } from "@/components/emr";
 import { Beaker, Clock, User, Calendar, FileText, AlertTriangle, Phone, Hash, Droplets, FlaskConical } from "lucide-react";
+import { toast } from "sonner";
 import TestTemplateForm from "./TestTemplateForm";
 import { findTemplate } from "./test-templates";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
@@ -38,10 +39,11 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
             const parsedPrice = Number(price);
 
             // The service (lab.service.ts updateLabRequest) handles everything:
-            //  • persists the price
-            //  • creates / updates a pending payment when price > 0
-            //  • routes the patient to "awaiting-payment" (billable) or
-            //    "under-observation" (no charge) on completion
+            //  • persists the result — this NEVER fails because of billing:
+            //    results file fine whether the bill is pending or settled
+            //  • syncs the price onto THIS test's bill (updates the open bill,
+            //    skips settled bills, or raises a balance-only bill)
+            //  • routes the patient by their REAL outstanding balance
             updateLabRequestMutation.mutate({
                 id: requestId,
                 updates: {
@@ -51,17 +53,32 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                     result: resultString,
                     ...(parsedPrice > 0 ? { price: parsedPrice } : {}),
                 },
+            }, {
+                onSuccess: (updated) => {
+                    // Billing trouble rides along as a warning — the result
+                    // itself is saved, so this is still a success.
+                    const warning = (updated as any)?.billing_warning as string | undefined;
+                    if (warning) {
+                        toast.warning(warning, { duration: 9000 });
+                        setSuccess(
+                            "Test results submitted. However, the price could not be synced to billing — the front desk may need to correct the bill."
+                        );
+                    } else {
+                        setSuccess(
+                            parsedPrice > 0
+                                ? "Test results submitted and billing synced."
+                                : "Test results submitted successfully."
+                        );
+                    }
+                    if (onComplete) setTimeout(onComplete, 2000);
+                },
+                onError: (err) => {
+                    toast.error(err instanceof Error ? err.message : "Failed to submit result.");
+                },
+                onSettled: () => setSubmitting(false),
             });
-
-            setSuccess(
-                parsedPrice > 0
-                    ? "Test results submitted. A payment bill has been created — the patient is now in the front-desk billing queue."
-                    : "Test results submitted successfully."
-            );
-            if (onComplete) setTimeout(onComplete, 2000);
         } catch (error) {
             console.error(error);
-        } finally {
             setSubmitting(false);
         }
     };

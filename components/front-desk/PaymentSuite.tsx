@@ -223,7 +223,7 @@ export default function PaymentConfirmation() {
                         <span className="font-semibold">Full payment</span>,{" "}
                         <span className="font-semibold">Part payment</span>, or{" "}
                         <span className="font-semibold">Deposit (advance)</span>, apply a{" "}
-                        <span className="font-semibold">% or ₦ discount</span>, and the payer is{" "}
+                        <span className="font-semibold">₦ discount</span>, and the payer is{" "}
                         <span className="font-semibold">auto-identified</span> (HMO / Company / Private) from registration.
                     </p>
                 </div>

@@ -75,6 +75,7 @@ export function mapPaymentsForHistory(rows: DbPayment[]): HistoryPayment[] {
             discount_percent:
                 typeof (p as any).discount_percent === "number" ? (p as any).discount_percent : null,
             applied_kobo: applied,
+            lab_request_id: (p as any).lab_request_id ?? null,
             deposit_available_kobo: Math.max(0, paid - applied),
             payment_date: (p as any).paid_at ?? p.processed_date ?? p.processedDate ?? null,
             invoice_no: (p as any).invoice_no ?? p.id.slice(0, 8).toUpperCase(),
