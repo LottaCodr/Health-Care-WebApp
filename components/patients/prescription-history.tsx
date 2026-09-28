@@ -10,6 +10,10 @@ import {
   Pill, Eye, DownloadCloud, ClipboardList,
   Clock, CheckCircle2, XCircle, Loader2,
 } from "lucide-react";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -163,30 +167,30 @@ export default function PrescriptionHistory({ patientId }: Props) {
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-50">
+        <Table className="w-full text-sm">
+          <TableHeader>
+            <TableRow className="border-b border-gray-50">
               {["Date", "Medication", "Dosage", "Route", "Duration", "Notes", "Price (NGN)", "Status", ""].map((h) => (
-                <th
+                <TableHead
                   key={h}
                   className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap"
                 >
                   {h}
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
+            </TableRow>
+          </TableHeader>
+          <TableBody className="divide-y divide-gray-50">
             {prescriptions.map((rx: any) => (
-              <tr key={rx.id ?? rx.$id} className="group hover:bg-gray-50/60 transition-colors">
-                <td className="px-5 py-3.5 text-xs text-gray-500 font-medium whitespace-nowrap">
+              <TableRow key={rx.id ?? rx.$id} className="group hover:bg-gray-50/60 transition-colors">
+                <TableCell className="px-5 py-3.5 text-xs text-gray-500 font-medium whitespace-nowrap">
                   {rx.date
                     ? new Date(rx.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
                     : rx.created_at
                       ? new Date(rx.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
                       : "—"}
-                </td>
-                <td className="px-5 py-3.5">
+                </TableCell>
+                <TableCell className="px-5 py-3.5">
                   <span className="text-sm font-semibold text-gray-800">
                     {rx.medication ?? rx.drug_name ?? rx.drugName ?? "—"}
                   </span>
@@ -202,22 +206,22 @@ export default function PrescriptionHistory({ patientId }: Props) {
                       compact
                     />
                   </div>
-                </td>
-                <td className="px-5 py-3.5 text-xs text-gray-600 font-medium whitespace-nowrap">
+                </TableCell>
+                <TableCell className="px-5 py-3.5 text-xs text-gray-600 font-medium whitespace-nowrap">
                   {rx.dosage ?? "—"}
-                </td>
-                <td className="px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap">
+                </TableCell>
+                <TableCell className="px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap">
                   {rx.route ?? "—"}
-                </td>
-                <td className="px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap">
+                </TableCell>
+                <TableCell className="px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap">
                   {rx.duration ?? "—"}
-                </td>
-                <td className="px-5 py-3.5 text-xs text-gray-400 max-w-[140px] truncate" title={rx.notes ?? rx.note ?? ""}>
+                </TableCell>
+                <TableCell className="px-5 py-3.5 text-xs text-gray-400 max-w-[140px] truncate" title={rx.notes ?? rx.note ?? ""}>
                   {rx.notes ?? rx.note ?? "—"}
-                </td>
-                <td className="px-5 py-3.5 whitespace-nowrap">
+                </TableCell>
+                <TableCell className="px-5 py-3.5 whitespace-nowrap">
                   {isPharmacist && !rx.dispensed ? (
-                    <input
+                    <Input
                       type="number"
                       min="0"
                       value={prices[rx.id ?? rx.$id] ?? rx.price ?? ""}
@@ -230,34 +234,34 @@ export default function PrescriptionHistory({ patientId }: Props) {
                       {new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(rx.price ?? 0)}
                     </span>
                   )}
-                </td>
-                <td className="px-5 py-3.5 whitespace-nowrap">
+                </TableCell>
+                <TableCell className="px-5 py-3.5 whitespace-nowrap">
                   <StatusBadge status={rx.status ?? "Active"} />
-                </td>
-                <td className="px-5 py-3.5">
+                </TableCell>
+                <TableCell className="px-5 py-3.5">
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                     {isPharmacist && !rx.dispensed && (
-                        <button
+                        <Button
                           onClick={() => handleDispense(rx.id ?? rx.$id, rx.price)}
                           disabled={dispensingId === (rx.id ?? rx.$id)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold transition-colors disabled:opacity-50"
                         >
                           {dispensingId === (rx.id ?? rx.$id) ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
                           Dispense
-                        </button>
+                        </Button>
                     )}
-                    <button
+                    <Button
                       aria-label="View prescription"
                       className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-colors"
                     >
                       <Eye size={13} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       aria-label="Download prescription"
                       className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-colors"
                     >
                       <DownloadCloud size={13} />
-                    </button>
+                    </Button>
                     <RecordAmendmentControls
                       type="prescription"
                       id={rx.id ?? rx.$id}
@@ -270,11 +274,11 @@ export default function PrescriptionHistory({ patientId }: Props) {
                       compact
                     />
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

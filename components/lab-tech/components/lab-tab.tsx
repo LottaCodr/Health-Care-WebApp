@@ -25,6 +25,13 @@ import { RecordAmendmentControls } from "@/components/records";
 import { calculateAge } from "@/utils/export";
 import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
 import { fmtDate, fmtFull } from "@/lib/utils";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
 
 // ─── Priority badge ───────────────────────────────────────────────────────────
 
@@ -72,24 +79,24 @@ function StructuredResultDisplay({ result }: { result?: string }) {
             )}
             {rows.length > 0 ? (
                 <div className="overflow-hidden rounded-xl border border-gray-200">
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200">
-                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Test</th>
+                    <Table className="w-full text-xs">
+                        <TableHeader>
+                            <TableRow className="bg-gray-50 border-b border-gray-200">
+                                <TableHead className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Test</TableHead>
                                 {hasFlags && (
-                                    <th className="text-center px-2 py-2 font-black uppercase tracking-widest text-gray-500 w-10">Flag</th>
+                                    <TableHead className="text-center px-2 py-2 font-black uppercase tracking-widest text-gray-500 w-10">Flag</TableHead>
                                 )}
-                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Result</th>
-                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500 hidden sm:table-cell">Ref. Range</th>
-                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Unit</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
+                                <TableHead className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Result</TableHead>
+                                <TableHead className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500 hidden sm:table-cell">Ref. Range</TableHead>
+                                <TableHead className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Unit</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-gray-100 bg-white">
                             {rows.map((r, i) => (
-                                <tr key={i} className="hover:bg-gray-50/50">
-                                    <td className="px-3 py-2.5 font-semibold text-gray-800">{r.label}</td>
+                                <TableRow key={i} className="hover:bg-gray-50/50">
+                                    <TableCell className="px-3 py-2.5 font-semibold text-gray-800">{r.label}</TableCell>
                                     {hasFlags && (
-                                        <td className="px-2 py-2.5 text-center">
+                                        <TableCell className="px-2 py-2.5 text-center">
                                             {r.flag && (
                                                 <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-black border ${
                                                     r.flag === "H" ? "bg-red-50 text-red-700 border-red-200" : "bg-sky-50 text-sky-700 border-sky-200"
@@ -97,15 +104,15 @@ function StructuredResultDisplay({ result }: { result?: string }) {
                                                     {r.flag}
                                                 </span>
                                             )}
-                                        </td>
+                                        </TableCell>
                                     )}
-                                    <td className="px-3 py-2.5 font-bold text-indigo-700">{r.value || "—"}</td>
-                                    <td className="px-3 py-2.5 text-gray-500 hidden sm:table-cell">{r.ref || "—"}</td>
-                                    <td className="px-3 py-2.5 text-gray-500 font-mono text-[11px]">{r.unit || "—"}</td>
-                                </tr>
+                                    <TableCell className="px-3 py-2.5 font-bold text-indigo-700">{r.value || "—"}</TableCell>
+                                    <TableCell className="px-3 py-2.5 text-gray-500 hidden sm:table-cell">{r.ref || "—"}</TableCell>
+                                    <TableCell className="px-3 py-2.5 text-gray-500 font-mono text-[11px]">{r.unit || "—"}</TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
             ) : (
                 <p className="text-xs text-gray-400 italic">No structured values recorded.</p>
@@ -307,10 +314,10 @@ function LabTechPendingRow({ req, patientId, patient, onSubmitted }: { req: any;
                         {req.notes && <p className="text-xs text-blue-600 italic line-clamp-1">&quot;{req.notes}&quot;</p>}
                     </div>
                 </div>
-                <button onClick={() => setOpen(v => !v)}
+                <Button onClick={() => setOpen(v => !v)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${open ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-200"}`}>
                     {open ? <><ChevronUp size={12} /> Cancel</> : <><FileText size={11} /> Enter Result</>}
-                </button>
+                </Button>
             </div>
 
             {open && (
@@ -327,12 +334,12 @@ function LabTechPendingRow({ req, patientId, patient, onSubmitted }: { req: any;
 
                     {/* Optional price update → updates billing */}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
                             <span>Test Price (NGN)</span> <span className="text-gray-300 font-normal normal-case">(Optional • updates frontdesk billing)</span>
-                        </label>
+                        </Label>
                         <div className="relative w-full sm:w-1/2">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500">₦</span>
-                            <input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)}
+                            <Input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)}
                                 placeholder="e.g. 5000"
                                 className="w-full h-10 pl-7 pr-3 text-sm font-semibold text-gray-800 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-300 transition-all" />
                         </div>
@@ -354,10 +361,10 @@ function LabTechPendingRow({ req, patientId, patient, onSubmitted }: { req: any;
                     />
 
                     <div className="flex justify-end pt-1">
-                        <button onClick={() => { setOpen(false); setPrice(""); }}
+                        <Button onClick={() => { setOpen(false); setPrice(""); }}
                             className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
                             Cancel
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
@@ -453,13 +460,13 @@ export function SendLabRequestModal({
                             <p className="text-xs text-gray-400">Order test for {patient.name} • Auto-billed to FrontDesk</p>
                         </div>
                     </div>
-                    <button
+                    <Button
                         type="button"
                         onClick={onClose}
                         className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
                     >
                         <X size={16} />
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Modal Body / Form */}
@@ -467,23 +474,23 @@ export function SendLabRequestModal({
                     
                     {/* Catalog Test Quick Picker */}
                     <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center justify-between mb-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center justify-between mb-1.5">
                             <span>Select from Test Catalog</span>
                             {selectedTestName && (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={() => setSelectedTestName("")}
                                     className="text-indigo-600 hover:underline text-[10px] font-bold"
                                 >
                                     Clear selection
-                                </button>
+                                </Button>
                             )}
-                        </label>
+                        </Label>
 
                         {/* Search catalog */}
                         <div className="relative mb-2">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
+                            <Input
                                 type="text"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
@@ -497,7 +504,7 @@ export function SendLabRequestModal({
                             {filteredCatalog.slice(0, 16).map(item => {
                                 const isSelected = selectedTestName === item.test_name;
                                 return (
-                                    <button
+                                    <Button
                                         key={item.id ?? item.test_name}
                                         type="button"
                                         onClick={() => handleSelectCatalogItem(item)}
@@ -513,7 +520,7 @@ export function SendLabRequestModal({
                                                 ₦{item.price.toLocaleString("en-NG")}
                                             </span>
                                         )}
-                                    </button>
+                                    </Button>
                                 );
                             })}
                             {filteredCatalog.length === 0 && (
@@ -524,10 +531,10 @@ export function SendLabRequestModal({
 
                     {/* Or Custom Test Name */}
                     <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
                             Or Enter Custom Test Name
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                             type="text"
                             value={customTestName}
                             onChange={e => {
@@ -543,12 +550,12 @@ export function SendLabRequestModal({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Test Price */}
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
                                 Test Price (NGN) <span className="text-emerald-600 font-bold">• Billed</span>
-                            </label>
+                            </Label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">₦</span>
-                                <input
+                                <Input
                                     type="number"
                                     min="0"
                                     step="1"
@@ -562,27 +569,31 @@ export function SendLabRequestModal({
 
                         {/* Priority */}
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
                                 Urgency Priority
-                            </label>
-                            <select
+                            </Label>
+                            <Select
                                 value={priority}
-                                onChange={e => setPriority(e.target.value as any)}
-                                className="w-full h-10 text-xs font-bold border border-gray-200 bg-white rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                onValueChange={v => setPriority(v as any)}
                             >
-                                <option value="routine">Routine (Standard)</option>
-                                <option value="urgent">Urgent (Priority)</option>
-                                <option value="stat">STAT (Immediate Critical)</option>
-                            </select>
+                                <SelectTrigger className="h-10 w-full rounded-xl border-gray-200 bg-white px-3 text-xs font-bold">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="routine">Routine (Standard)</SelectItem>
+                                    <SelectItem value="urgent">Urgent (Priority)</SelectItem>
+                                    <SelectItem value="stat">STAT (Immediate Critical)</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
                     {/* Clinical Notes / Indication */}
                     <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
                             Clinical Indication / Doctor Notes (Optional)
-                        </label>
-                        <textarea
+                        </Label>
+                        <Textarea
                             rows={2}
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
@@ -601,14 +612,14 @@ export function SendLabRequestModal({
 
                     {/* Submit Buttons */}
                     <div className="pt-2 flex items-center justify-end gap-2">
-                        <button
+                        <Button
                             type="button"
                             onClick={onClose}
                             className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="submit"
                             disabled={isPending || !finalTestType}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -624,7 +635,7 @@ export function SendLabRequestModal({
                                     Send Lab Request &amp; Bill
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>
@@ -701,13 +712,13 @@ export default function LabTab({ patient, userRole }: Props) {
                 </div>
 
                 {canSendRequest && (
-                    <button
+                    <Button
                         type="button"
                         onClick={() => setIsSendRequestModalOpen(true)}
                         className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-colors shrink-0"
                     >
                         <Plus size={14} /> Send Lab Request
-                    </button>
+                    </Button>
                 )}
             </div>
 

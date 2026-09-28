@@ -2,6 +2,8 @@
 
 import React from "react";
 import { AlertCircle, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 
 export function ErrorAlert({ error, message, onDismiss }: { error?: Error; message?: string; onDismiss?: () => void }) {
     const displayMessage = message || (error ? error.message : "A critical system error occurred.");
@@ -18,9 +20,9 @@ export function ErrorAlert({ error, message, onDismiss }: { error?: Error; messa
                     <p className="text-sm font-bold text-red-700/80 mt-1 leading-relaxed">{displayMessage}</p>
                 </div>
                 {onDismiss && (
-                    <button onClick={onDismiss} className="p-2 hover:bg-red-100 rounded-xl transition-colors text-red-400 hover:text-red-700">
+                    <Button onClick={onDismiss} className="p-2 hover:bg-red-100 rounded-xl transition-colors text-red-400 hover:text-red-700">
                         <X size={20} />
-                    </button>
+                    </Button>
                 )}
             </div>
         </div>

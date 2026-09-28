@@ -2,6 +2,8 @@
 
 import React from "react";
 import { CheckCircle2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 
 export function SuccessAlert({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
     return (
@@ -16,9 +18,9 @@ export function SuccessAlert({ message, onDismiss }: { message: string; onDismis
                     <p className="text-sm font-bold text-emerald-700/80 mt-1 leading-relaxed">{message}</p>
                 </div>
                 {onDismiss && (
-                    <button onClick={onDismiss} className="p-2 hover:bg-emerald-100 rounded-xl transition-colors text-emerald-400 hover:text-emerald-700">
+                    <Button onClick={onDismiss} className="p-2 hover:bg-emerald-100 rounded-xl transition-colors text-emerald-400 hover:text-emerald-700">
                         <X size={20} />
-                    </button>
+                    </Button>
                 )}
             </div>
         </div>

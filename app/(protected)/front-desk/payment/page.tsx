@@ -1,45 +1,47 @@
 "use client";
 
 import PaymentSuite from "@/components/front-desk/PaymentSuite";
+import PaymentHistoryPanel from "@/components/front-desk/PaymentHistoryPanel";
+import RecentPaymentsPanel from "@/components/front-desk/RecentPaymentsPanel";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Wallet, History } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-    usePendingPayments,
-    usePaymentsByPatient,
-    useCreatePayment,
-    useConfirmPayment
-} from "@/hooks/emr/use-payment";
+    Tabs, TabsContent, TabsList, TabsTrigger,
+} from "@/components/ui/tabs";
+import { ArrowLeft, Wallet, History, UserSearch } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { usePendingPayments } from "@/hooks/emr/use-payment";
 
 export default function PaymentPage() {
     const router = useRouter();
-
-    // Use payment hooks
-    const pendingPaymentsQuery = usePendingPayments();
-    // NOTE: Assuming patientId is available for demonstration; in this file, use as needed.
-    // const paymentsByPatientQuery = usePaymentsByPatient(patientId);
-    // (createPaymentMutation and confirmPaymentMutation are left in case needed for other tabs)
+    const pending = usePendingPayments();
+    const pendingCount = Array.isArray(pending.data) ? pending.data.length : 0;
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-8">
-            <div className="flex items-center gap-3 mb-8">
+        <div className="mx-auto max-w-6xl px-4 py-8">
+            <div className="mb-8 flex items-center gap-3">
                 <Button onClick={() => router.back()} variant="ghost" className="gap-2 rounded-xl px-3">
                     <ArrowLeft size={18} />
                 </Button>
-                <span className="flex items-center gap-2 text-blue-800 font-bold text-2xl">
+                <span className="flex items-center gap-2 text-2xl font-bold text-blue-800">
                     <Wallet size={24} /> Billing & Checkout
                 </span>
             </div>
 
             <Tabs defaultValue="checkout" className="space-y-6">
-                <TabsList className="bg-white border border-gray-100 rounded-2xl p-1">
-                    <TabsTrigger value="checkout" className="rounded-xl text-sm font-semibold gap-2">
+                <TabsList className="rounded-2xl border border-gray-100 bg-white p-1">
+                    <TabsTrigger value="checkout" className="gap-2 rounded-xl text-sm font-semibold">
                         <Wallet size={14} /> Checkout Queue
+                        {pendingCount > 0 && (
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1.5 text-[10px] font-black text-amber-700">
+                                {pendingCount}
+                            </span>
+                        )}
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="rounded-xl text-sm font-semibold gap-2">
-                        <History size={14} /> Patient History
+                    <TabsTrigger value="history" className="gap-2 rounded-xl text-sm font-semibold">
+                        <UserSearch size={14} /> Patient History
+                    </TabsTrigger>
+                    <TabsTrigger value="recent" className="gap-2 rounded-xl text-sm font-semibold">
+                        <History size={14} /> Recent Activity
                     </TabsTrigger>
                 </TabsList>
 
@@ -48,19 +50,11 @@ export default function PaymentPage() {
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-0">
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-3">
-                        <h3 className="text-sm font-bold text-gray-900">Per-patient payment history</h3>
-                        <p className="text-sm text-gray-500">
-                            Open a patient from the registry, then use the <strong>Billing</strong> tab on their
-                            profile (for patients awaiting payment or discharged).
-                        </p>
-                        <Link
-                            href="/front-desk/patient"
-                            className="inline-flex text-sm font-semibold text-blue-600 hover:text-blue-800"
-                        >
-                            Go to Patient Registry →
-                        </Link>
-                    </div>
+                    <PaymentHistoryPanel />
+                </TabsContent>
+
+                <TabsContent value="recent" className="mt-0">
+                    <RecentPaymentsPanel />
                 </TabsContent>
             </Tabs>
         </div>

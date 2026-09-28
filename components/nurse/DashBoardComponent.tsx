@@ -13,6 +13,8 @@ import { usePatientsByStatus, useCompletedNursingActions } from "@/hooks/emr/use
 import NursePatientSearch from "./component/nurse-patient-search";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { AttendantPill } from "@/components/emr/care-team";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -215,13 +217,13 @@ export default function NurseDashboard() {
                 <p className="text-xs text-gray-400">
                     {total > 0 ? `${total} patient${total !== 1 ? "s" : ""} across all stages` : "All clear"}
                 </p>
-                <button onClick={refetchAll}
+                <Button onClick={refetchAll}
                     type="button"
                     aria-label="Refresh nursing queues"
                     disabled={l1 || l2 || l3 || l4}
                     className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors disabled:cursor-wait disabled:opacity-60">
                     <RefreshCcw size={13} className={l1 || l2 || l3 || l4 ? "animate-spin" : ""} />
-                </button>
+                </Button>
             </div>
 
             {/* ── Three status groups ── */}

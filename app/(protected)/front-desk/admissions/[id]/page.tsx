@@ -19,6 +19,11 @@ import {
     ClipboardList, LogOut, Edit2, History,
 } from "lucide-react";
 import Link from "next/link";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,38 +112,38 @@ function WardForm({ admission, staffId, onSaved }: {
             </p>
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
                         Ward / Unit <span className="text-red-400">*</span>
-                    </label>
-                    <input value={wardName} onChange={e => setWardName(e.target.value)}
+                    </Label>
+                    <Input value={wardName} onChange={e => setWardName(e.target.value)}
                         placeholder="e.g. Maternity Ward B"
                         autoFocus
                         className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300" />
                 </div>
                 <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
                         Bed Number
-                    </label>
-                    <input value={bedNumber} onChange={e => setBedNumber(e.target.value)}
+                    </Label>
+                    <Input value={bedNumber} onChange={e => setBedNumber(e.target.value)}
                         placeholder="e.g. Bed 4"
                         className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300" />
                 </div>
                 <div className="col-span-2">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
                         Special Instructions
-                    </label>
-                    <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)}
+                    </Label>
+                    <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)}
                         placeholder="Isolation, dietary restrictions, monitoring frequency…"
                         className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300" />
                 </div>
             </div>
-            <button onClick={handleSave} disabled={saving || !wardName.trim()}
+            <Button onClick={handleSave} disabled={saving || !wardName.trim()}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-colors shadow-sm shadow-indigo-200">
                 {saving
                     ? <><Loader2 size={14} className="animate-spin" /> Saving…</>
                     : <><BedDouble size={14} /> {admission.ward_name ? "Update Assignment" : "Confirm Ward Assignment"}</>
                 }
-            </button>
+            </Button>
         </div>
     );
 }
@@ -278,10 +283,10 @@ export default function AdmissionDetailPage() {
                     </div>
                     <div className="ml-auto">
                         {current.status === "active" && (
-                            <button onClick={() => setShowForm(v => !v)}
+                            <Button onClick={() => setShowForm(v => !v)}
                                 className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
                                 <Edit2 size={12} /> {hasWard ? "Edit Ward" : "Assign Ward"}
-                            </button>
+                            </Button>
                         )}
                     </div>
                 </div>
@@ -321,13 +326,13 @@ export default function AdmissionDetailPage() {
                 {/* Discharge action */}
                 {current.status === "active" && hasWard && (
                     <div className="px-6 pb-5 pt-2 border-t border-gray-50">
-                        <button onClick={handleDischarge} disabled={discharging}
+                        <Button onClick={handleDischarge} disabled={discharging}
                             className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-bold rounded-xl border border-red-200 disabled:opacity-50 transition-colors">
                             {discharging
                                 ? <><Loader2 size={14} className="animate-spin" /> Processing…</>
                                 : <><LogOut size={14} /> Discharge from Ward → Billing</>
                             }
-                        </button>
+                        </Button>
                     </div>
                 )}
             </div>

@@ -95,7 +95,7 @@ interface TabPillProps {
 
 function TabPill({ tab, active, count, onClick }: TabPillProps) {
     return (
-        <button
+        <Button
             onClick={onClick}
             className={`
                 relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap
@@ -120,7 +120,7 @@ function TabPill({ tab, active, count, onClick }: TabPillProps) {
                     {count > 999 ? "999+" : count}
                 </span>
             )}
-        </button>
+        </Button>
     );
 }
 
@@ -130,14 +130,14 @@ function PaginationBtn({ onClick, disabled, label, children }: {
     onClick: () => void; disabled: boolean; label: string; children: React.ReactNode;
 }) {
     return (
-        <button
+        <Button
             onClick={onClick}
             disabled={disabled}
             aria-label={label}
             className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:border-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
             {children}
-        </button>
+        </Button>
     );
 }
 
@@ -357,20 +357,20 @@ export default function PatientsComponent() {
                                 </p>
                             </div>
                             {search && (
-                                <button
+                                <Button
                                     onClick={() => setSearch("")}
                                     className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
                                 >
                                     Clear search
-                                </button>
+                                </Button>
                             )}
                             {!search && activeTab !== "all" && (
-                                <button
+                                <Button
                                     onClick={() => setActiveTab("all")}
                                     className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
                                 >
                                     View all patients
-                                </button>
+                                </Button>
                             )}
                         </div>
                     ) : (

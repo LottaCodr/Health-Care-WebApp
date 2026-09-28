@@ -8,6 +8,12 @@ import {
     useCreateFluidEntry,
     useDeleteFluidEntry,
 } from "@/hooks/emr/use-nurse-chart";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,7 +45,7 @@ function FluidFormModal({ patientId, staffId }: FluidFormModalProps) {
     const form   = store.fluidForm;
 
     const inputNum = (field: keyof typeof form, placeholder: string) => (
-        <input
+        <Input
             type="number"
             min="0"
             value={form[field] as string}
@@ -78,22 +84,22 @@ function FluidFormModal({ patientId, staffId }: FluidFormModalProps) {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
                     <h3 className="text-sm font-semibold text-slate-800">Record Fluid Balance</h3>
-                    <button onClick={() => store.closeFluidForm()} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
+                    <Button onClick={() => store.closeFluidForm()} className="text-slate-400 hover:text-slate-600 text-xl">×</Button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                     {/* Date + Time */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="label-xs">Date *</label>
-                            <input type="date" value={form.recordDate}
+                            <Label className="label-xs">Date *</Label>
+                            <Input type="date" value={form.recordDate}
                                 onChange={(e) => store.setFluidField("recordDate", e.target.value)}
                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                             />
                         </div>
                         <div>
-                            <label className="label-xs">Time *</label>
-                            <input type="time" value={form.recordTime}
+                            <Label className="label-xs">Time *</Label>
+                            <Input type="time" value={form.recordTime}
                                 onChange={(e) => store.setFluidField("recordTime", e.target.value)}
                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                             />
@@ -106,16 +112,16 @@ function FluidFormModal({ patientId, staffId }: FluidFormModalProps) {
                             <span className="w-2 h-2 rounded-full bg-teal-400 inline-block" /> Intake (mL)
                         </p>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="label-xs">Oral</label>{inputNum("oralMl", "0")}</div>
-                            <div><label className="label-xs">IV</label>{inputNum("ivMl", "0")}</div>
-                            <div><label className="label-xs">NG Tube</label>{inputNum("ngMl", "0")}</div>
+                            <div><Label className="label-xs">Oral</Label>{inputNum("oralMl", "0")}</div>
+                            <div><Label className="label-xs">IV</Label>{inputNum("ivMl", "0")}</div>
+                            <div><Label className="label-xs">NG Tube</Label>{inputNum("ngMl", "0")}</div>
                             <div>
-                                <label className="label-xs">Other Input</label>
+                                <Label className="label-xs">Other Input</Label>
                                 {inputNum("otherInputMl", "0")}
                             </div>
                             <div className="col-span-2 rounded-xl bg-teal-50/50 border border-teal-100 p-3">
-                                <label className="label-xs !text-teal-700">Fluid / Solution — what was given</label>
-                                <input
+                                <Label className="label-xs !text-teal-700">Fluid / Solution — what was given</Label>
+                                <Input
                                     value={form.inputFluidType}
                                     onChange={(e) => store.setFluidField("inputFluidType", e.target.value)}
                                     placeholder="e.g. 0.9% Normal Saline, D5W, Ringer's Lactate, water, NG formula…"
@@ -126,8 +132,8 @@ function FluidFormModal({ patientId, staffId }: FluidFormModalProps) {
                                 </p>
                             </div>
                             <div className="col-span-2">
-                                <label className="label-xs">Other Input Type</label>
-                                <input
+                                <Label className="label-xs">Other Input Type</Label>
+                                <Input
                                     value={form.otherInputType}
                                     onChange={(e) => store.setFluidField("otherInputType", e.target.value)}
                                     placeholder="e.g. TPN, blood"
@@ -143,19 +149,19 @@ function FluidFormModal({ patientId, staffId }: FluidFormModalProps) {
                             <span className="w-2 h-2 rounded-full bg-rose-400 inline-block" /> Output (mL)
                         </p>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="label-xs">Urine</label>{inputNum("urineMl", "0")}</div>
-                            <div><label className="label-xs">Aspirate</label>{inputNum("aspirateMl", "0")}</div>
-                            <div><label className="label-xs">Vomit</label>{inputNum("vomitMl", "0")}</div>
-                            <div><label className="label-xs">Bowel</label>{inputNum("bowelMl", "0")}</div>
-                            <div><label className="label-xs">Drain</label>{inputNum("drainMl", "0")}</div>
-                            <div><label className="label-xs">Other Output</label>{inputNum("otherOutputMl", "0")}</div>
+                            <div><Label className="label-xs">Urine</Label>{inputNum("urineMl", "0")}</div>
+                            <div><Label className="label-xs">Aspirate</Label>{inputNum("aspirateMl", "0")}</div>
+                            <div><Label className="label-xs">Vomit</Label>{inputNum("vomitMl", "0")}</div>
+                            <div><Label className="label-xs">Bowel</Label>{inputNum("bowelMl", "0")}</div>
+                            <div><Label className="label-xs">Drain</Label>{inputNum("drainMl", "0")}</div>
+                            <div><Label className="label-xs">Other Output</Label>{inputNum("otherOutputMl", "0")}</div>
                         </div>
                     </div>
 
                     {/* Notes */}
                     <div>
-                        <label className="label-xs">Notes</label>
-                        <textarea rows={2}
+                        <Label className="label-xs">Notes</Label>
+                        <Textarea rows={2}
                             value={form.notes}
                             onChange={(e) => store.setFluidField("notes", e.target.value)}
                             placeholder="Clinical notes…"
@@ -165,14 +171,14 @@ function FluidFormModal({ patientId, staffId }: FluidFormModalProps) {
                 </div>
 
                 <div className="px-6 py-4 border-t border-slate-100 shrink-0 flex justify-end gap-3">
-                    <button onClick={() => store.closeFluidForm()} className="px-4 py-2 text-sm text-slate-600">Cancel</button>
-                    <button
+                    <Button onClick={() => store.closeFluidForm()} className="px-4 py-2 text-sm text-slate-600">Cancel</Button>
+                    <Button
                         onClick={handleSubmit}
                         disabled={!form.recordDate || !form.recordTime || create.isPending}
                         className="px-5 py-2 text-sm font-medium bg-teal-600 hover:bg-teal-700 text-white rounded-lg disabled:opacity-50 transition-colors"
                     >
                         {create.isPending ? "Saving…" : "Record Entry"}
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -232,19 +238,19 @@ export default function FluidBalanceChart({ patientId, staffId, readOnly = false
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Fluid Balance Chart</h3>
                 <div className="flex items-center gap-3">
-                    <input
+                    <Input
                         type="date"
                         value={dateFilter}
                         onChange={(e) => store.setFluidDate(e.target.value)}
                         className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                     />
                     {!readOnly && (
-                        <button
+                        <Button
                             onClick={() => store.openFluidForm()}
                             className="flex items-center gap-1 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-lg transition-colors"
                         >
                             + Add Entry
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -261,41 +267,41 @@ export default function FluidBalanceChart({ patientId, staffId, readOnly = false
                 </div>
             ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-100">
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="bg-slate-50 text-slate-500 uppercase tracking-wide">
-                                <th className="px-3 py-2.5 text-left font-medium">Time</th>
+                    <Table className="w-full text-xs">
+                        <TableHeader>
+                            <TableRow className="bg-slate-50 text-slate-500 uppercase tracking-wide">
+                                <TableHead className="px-3 py-2.5 text-left font-medium">Time</TableHead>
                                 {/* Intake */}
-                                <th className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">Oral</th>
-                                <th className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">IV</th>
-                                <th className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">NG</th>
-                                <th className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">Other In</th>
-                                <th className="px-3 py-2.5 text-left font-medium">Fluid / Solution</th>
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">Oral</TableHead>
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">IV</TableHead>
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">NG</TableHead>
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-teal-50/60 text-teal-700">Other In</TableHead>
+                                <TableHead className="px-3 py-2.5 text-left font-medium">Fluid / Solution</TableHead>
                                 {/* Output */}
-                                <th className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Urine</th>
-                                <th className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Aspirate</th>
-                                <th className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Vomit</th>
-                                <th className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Bowel</th>
-                                <th className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Drain</th>
-                                <th className="px-3 py-2.5 text-center font-medium">Balance</th>
-                                <th className="px-3 py-2.5 text-left font-medium">Signed</th>
-                                {!readOnly && <th className="px-3 py-2.5" />}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Urine</TableHead>
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Aspirate</TableHead>
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Vomit</TableHead>
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Bowel</TableHead>
+                                <TableHead className="px-3 py-2.5 text-center font-medium bg-rose-50/60 text-rose-600">Drain</TableHead>
+                                <TableHead className="px-3 py-2.5 text-center font-medium">Balance</TableHead>
+                                <TableHead className="px-3 py-2.5 text-left font-medium">Signed</TableHead>
+                                {!readOnly && <TableHead className="px-3 py-2.5" />}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-slate-100">
                             {rows.map((row: any) => {
                                 const rowIn  = (row.oral_ml || 0) + (row.iv_ml || 0) + (row.ng_ml || 0) + (row.other_input_ml || 0);
                                 const rowOut = (row.urine_ml || 0) + (row.aspirate_ml || 0) + (row.vomit_ml || 0) + (row.bowel_ml || 0) + (row.drain_ml || 0) + (row.other_output_ml || 0);
                                 const rowBal = rowIn - rowOut;
 
                                 return (
-                                    <tr key={row.id} className="bg-white hover:bg-slate-50 transition-colors">
-                                        <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">{row.record_time?.slice(0, 5)}</td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.oral_ml)}</td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.iv_ml)}</td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.ng_ml)}</td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.other_input_ml)}</td>
-                                        <td className="px-3 py-2.5 text-left text-slate-600">
+                                    <TableRow key={row.id} className="bg-white hover:bg-slate-50 transition-colors">
+                                        <TableCell className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">{row.record_time?.slice(0, 5)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.oral_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.iv_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.ng_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/30">{mlOrDash(row.other_input_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-left text-slate-600">
                                             {row.input_fluid_type || row.other_input_type ? (
                                                 <span className="inline-block max-w-[160px] truncate align-middle font-medium text-slate-700" title={row.input_fluid_type || row.other_input_type}>
                                                     {row.input_fluid_type || row.other_input_type}
@@ -303,20 +309,20 @@ export default function FluidBalanceChart({ patientId, staffId, readOnly = false
                                             ) : (
                                                 <span className="text-slate-300">—</span>
                                             )}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.urine_ml)}</td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.aspirate_ml)}</td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.vomit_ml)}</td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.bowel_ml)}</td>
-                                        <td className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.drain_ml)}</td>
-                                        <td className="px-3 py-2.5 text-center font-semibold">
+                                        </TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.urine_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.aspirate_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.vomit_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.bowel_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center text-slate-600 bg-rose-50/30">{mlOrDash(row.drain_ml)}</TableCell>
+                                        <TableCell className="px-3 py-2.5 text-center font-semibold">
                                             <span className={rowBal >= 0 ? "text-blue-600" : "text-orange-600"}>
                                                 {rowBal >= 0 ? "+" : ""}{rowBal}
                                             </span>
-                                        </td>
-                                        <td className="px-3 py-2.5 text-slate-500">{row.signed_by}</td>
+                                        </TableCell>
+                                        <TableCell className="px-3 py-2.5 text-slate-500">{row.signed_by}</TableCell>
                                         {!readOnly && (
-                                            <td className="px-3 py-2.5">
+                                            <TableCell className="px-3 py-2.5">
                                                 {/* A mis-keyed volume is corrected in place for 24 hours;
                                                     after that the row is frozen and the correction is a note. */}
                                                 <RecordAmendmentControls
@@ -328,19 +334,19 @@ export default function FluidBalanceChart({ patientId, staffId, readOnly = false
                                                     invalidateKeys={[["fluid_balance"], ["drug_chart"]]}
                                                     compact
                                                 />
-                                                <button
+                                                <Button
                                                     onClick={() => deleteEntry.mutate({ id: row.id, patientId, date: dateFilter })}
                                                     className="text-red-400 hover:text-red-600 text-xs block mt-1"
                                                 >
                                                     Delete
-                                                </button>
-                                            </td>
+                                                </Button>
+                                            </TableCell>
                                         )}
-                                    </tr>
+                                    </TableRow>
                                 );
                             })}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
             )}
 

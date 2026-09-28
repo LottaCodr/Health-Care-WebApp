@@ -12,6 +12,8 @@ import {
     Stethoscope, AlertCircle, TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -100,10 +102,10 @@ export default function PharmacistDashboard() {
                                 {active.length} pending
                             </span>
                         )}
-                        <button onClick={() => refetch()}
+                        <Button onClick={() => refetch()}
                             className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
                             <RefreshCcw size={13} />
-                        </button>
+                        </Button>
                     </div>
                 </div>
 

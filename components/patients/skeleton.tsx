@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, Variants } from "framer-motion";
 import { FaUserMd, FaNotesMedical, FaHeartbeat, FaPills } from "react-icons/fa";
 import { MdOutlineMedication } from "react-icons/md";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+
 
 const shimmerVariants: Variants = {
   animate: {
@@ -91,42 +93,42 @@ export default function PatientDetailsSkeleton() {
         <CardContent className="space-y-6 mt-4">
           {/* Simulate a table of consultations */}
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400">
+            <Table className="min-w-full divide-y divide-gray-200">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="px-3 py-2 text-left text-xs font-semibold text-gray-400">
                     <AnimatedSkeleton className="h-3 w-16" />
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400">
+                  </TableHead>
+                  <TableHead className="px-3 py-2 text-left text-xs font-semibold text-gray-400">
                     <AnimatedSkeleton className="h-3 w-20" />
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400">
+                  </TableHead>
+                  <TableHead className="px-3 py-2 text-left text-xs font-semibold text-gray-400">
                     <AnimatedSkeleton className="h-3 w-24" />
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400">
+                  </TableHead>
+                  <TableHead className="px-3 py-2 text-left text-xs font-semibold text-gray-400">
                     <AnimatedSkeleton className="h-3 w-16" />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className="bg-white/70 dark:bg-muted/30">
-                    <td className="px-3 py-3">
+                  <TableRow key={i} className="bg-white/70 dark:bg-muted/30">
+                    <TableCell className="px-3 py-3">
                       <AnimatedSkeleton className="h-4 w-16" />
-                    </td>
-                    <td className="px-3 py-3">
+                    </TableCell>
+                    <TableCell className="px-3 py-3">
                       <AnimatedSkeleton className="h-4 w-20" />
-                    </td>
-                    <td className="px-3 py-3">
+                    </TableCell>
+                    <TableCell className="px-3 py-3">
                       <AnimatedSkeleton className="h-4 w-24" />
-                    </td>
-                    <td className="px-3 py-3">
+                    </TableCell>
+                    <TableCell className="px-3 py-3">
                       <AnimatedSkeleton className="h-4 w-16" />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           {/* Simulate a button skeleton */}
           <div className="flex justify-end">

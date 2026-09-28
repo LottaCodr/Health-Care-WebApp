@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { useAllergies } from "@/hooks/emr/use-clinical-modules";
 import { hasActualAllergy } from "@/lib/utils";
 import { ShieldAlert, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 
 const SEVERITY_RANK: Record<string, number> = {
     "life-threatening": 4,
@@ -103,7 +105,7 @@ export default function AllergyAlertBanner({ patientId, legacyAllergies, onViewA
                     </p>
                 </div>
             </div>
-            <button
+            <Button
                 type="button"
                 onClick={viewAll}
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-colors ${
@@ -113,7 +115,7 @@ export default function AllergyAlertBanner({ patientId, legacyAllergies, onViewA
                 }`}
             >
                 View allergies <ArrowRight size={13} />
-            </button>
+            </Button>
         </div>
     );
 }

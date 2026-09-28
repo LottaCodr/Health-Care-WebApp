@@ -1439,6 +1439,51 @@ export async function listPaymentsByPatient(patientId: string): Promise<Payment[
     return rows;
 }
 
+/**
+ * The most recently touched payments (new bills, settlements, corrections),
+ * newest first, with the patient's identity attached for display.
+ *
+ * Primary ordering is `updated_at` (the 2026-08-29 billing migration). On
+ * databases that predate it the column may not exist — the query then falls
+ * back to `created_at` so the "Recent Activity" tab degrades gracefully
+ * instead of erroring (same convention as the rest of this service).
+ */
+export async function listRecentPayments(limit = 25): Promise<Payment[]> {
+    await requireStaff();
+    const supabase = await createClient();
+    const safeLimit = Math.max(1, Math.min(Number(limit) || 25, 100));
+
+    const SELECT = `
+        *,
+        patients ( id, name, phone, hospital_number )
+    `.trim();
+
+    let { data, error } = await supabase
+        .from("payments")
+        .select(SELECT)
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(safeLimit);
+
+    if (error) {
+        console.error("[payment] listRecent (updated_at):", error.message);
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from("payments")
+            .select(SELECT)
+            .order("created_at", { ascending: false })
+            .limit(safeLimit);
+
+        if (fallbackError) {
+            console.error("[payment] listRecent (created_at):", fallbackError);
+            return [];
+        }
+        data = fallbackData;
+    }
+
+    return (data ?? []).map((row: any) =>
+        normalizePayment({ ...row, patients: row?.patients ?? null })
+    );
+}
+
 export async function listPendingPayments(): Promise<Payment[]> {
     await requireStaff();
     const supabase = await createClient();

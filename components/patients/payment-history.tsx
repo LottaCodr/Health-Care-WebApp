@@ -303,7 +303,7 @@ function SessionGroup({ sessionKey, bills, open, onToggle, canManage, onEdit, on
         <Card className="rounded-2xl border-slate-100 shadow-sm overflow-hidden print:shadow-none">
             <Collapsible open={open} onOpenChange={onToggle}>
                 <CollapsibleTrigger asChild>
-                    <button type="button" className="w-full flex items-center gap-3 px-4 sm:px-5 py-3.5 text-left hover:bg-slate-50/60 transition-colors">
+                    <Button type="button" className="w-full flex items-center gap-3 px-4 sm:px-5 py-3.5 text-left hover:bg-slate-50/60 transition-colors">
                         <div className={cn(
                             "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
                             outstanding > 0 ? "bg-amber-50 border-amber-100" : "bg-green-50 border-green-100"
@@ -338,7 +338,7 @@ function SessionGroup({ sessionKey, bills, open, onToggle, canManage, onEdit, on
                             </p>
                         </div>
                         <ChevronDown size={16} className={cn("text-slate-400 shrink-0 transition-transform print:hidden", open && "rotate-180")} />
-                    </button>
+                    </Button>
                 </CollapsibleTrigger>
                 {/* forceMount + print override so a printed history always shows every session, open or not. */}
                 <CollapsibleContent forceMount className="print:!block print:!h-auto print:!overflow-visible data-[state=closed]:print:animate-none">

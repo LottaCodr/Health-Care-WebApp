@@ -14,6 +14,8 @@ import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-
 import { RecordAmendmentControls } from "@/components/records";
 import { calculateAge } from "@/utils/export";
 import { fmtDate } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+
 
 interface LabSuiteProps {
     requestId: string;
@@ -241,7 +243,7 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                         <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Price (NGN):</span>
                         <div className="relative w-32">
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">₦</span>
-                            <input
+                            <Input
                                 type="number"
                                 min="0"
                                 value={price}

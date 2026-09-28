@@ -21,6 +21,21 @@ export function usePendingPayments() {
     });
 }
 
+/**
+ * Most recently touched payments across all patients (new bills,
+ * settlements, corrections) — powers the "Recent Activity" tab on the
+ * front-desk payments page.
+ */
+export function useRecentPayments(limit = 25) {
+    return useQuery({
+        queryKey: paymentKeys.recent(limit),
+        queryFn: () => PS.listRecentPayments(limit),
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
 export function usePaymentsByPatient(patientId: string) {
     return useQuery({
         queryKey: paymentKeys.byPatient(patientId),

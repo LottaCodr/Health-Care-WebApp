@@ -20,6 +20,8 @@ import {
 } from "@/hooks/emr/use-amendments";
 import { fmtDate, fmtFull } from "@/lib/utils";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+
 
 type QueryKey = readonly (string | number)[];
 
@@ -72,13 +74,13 @@ export function RecordAddendumPanel({
                     Corrections ({notes.length})
                 </p>
                 {!open && !readOnly && (
-                    <button
+                    <Button
                         type="button"
                         onClick={() => setOpen(true)}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-bold text-gray-600 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                     >
                         <MessageSquarePlus size={11} /> Add correction note
-                    </button>
+                    </Button>
                 )}
             </div>
 
@@ -130,7 +132,7 @@ export function RecordAddendumPanel({
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                         {AMENDMENT_REASONS.map(r => (
-                            <button
+                            <Button
                                 key={r.value}
                                 type="button"
                                 onClick={() => setReason(r.value)}
@@ -141,7 +143,7 @@ export function RecordAddendumPanel({
                                 }`}
                             >
                                 {r.label}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                     <Textarea
@@ -156,14 +158,14 @@ export function RecordAddendumPanel({
                     <div className="flex items-center justify-between gap-2">
                         <span className="text-[10px] text-gray-400">{content.length}/4000</span>
                         <div className="flex items-center gap-2">
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => { setOpen(false); setContent(""); }}
                                 className="h-8 px-3 rounded-lg text-[11px] font-bold text-gray-500 hover:text-gray-800 transition-colors"
                             >
                                 Cancel
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
                                 onClick={handleSubmit}
                                 disabled={add.isPending}
@@ -171,7 +173,7 @@ export function RecordAddendumPanel({
                             >
                                 {add.isPending ? <Loader2 size={12} className="animate-spin" /> : <PenLine size={12} />}
                                 Attach correction
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CheckCircle2, ChevronDown, Loader2, LogOut, Settings } from "lucide-react";
 import { getRoleLabel, getRoleSettingsRoute } from "@/lib/roles";
+import { Button } from "@/components/ui/button";
+
 
 function initials(name?: string) {
     const parts = (name ?? "Staff").trim().split(/\s+/).filter(Boolean);
@@ -28,7 +30,7 @@ export function NavUser() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button
+                <Button
                     type="button"
                     aria-label="Open account menu"
                     className="group flex max-w-[12rem] items-center gap-2 rounded-full border border-gray-100 bg-white p-1 pr-2 shadow-sm transition-all hover:border-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:gap-3 sm:pr-3"
@@ -48,7 +50,7 @@ export function NavUser() {
                         </p>
                     </div>
                     <ChevronDown size={13} className="hidden shrink-0 text-gray-400 sm:block" />
-                </button>
+                </Button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent

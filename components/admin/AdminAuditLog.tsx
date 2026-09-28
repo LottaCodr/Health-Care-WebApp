@@ -10,9 +10,13 @@ import { listAuditLogs } from "@/lib/services/audit.service";
 import { fmtFull } from "@/lib/utils";
 import {
     ScrollText, Search, X, RefreshCcw,
-    ChevronDown, Loader2, AlertTriangle,
+    Loader2, AlertTriangle,
     User, Clock, Filter,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -132,14 +136,14 @@ export default function AdminAuditLog() {
                     <p className="text-xs text-gray-400 mt-0.5">{filtered.length} of {logs.length} entries</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={exportCsv}
+                    <Button onClick={exportCsv}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-700 shadow-sm transition-all">
                         Export CSV
-                    </button>
-                    <button onClick={fetchLogs}
+                    </Button>
+                    <Button onClick={fetchLogs}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-700 shadow-sm transition-all">
                         <RefreshCcw size={13} /> Refresh
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -156,21 +160,24 @@ export default function AdminAuditLog() {
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-50 flex-wrap">
                     <div className="relative flex-1 min-w-[180px]">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <input value={search} onChange={(e) => setSearch(e.target.value)}
+                        <Input value={search} onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search action, entity, user..."
                             className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400/25 focus:border-gray-400 focus:bg-white transition-all" />
-                        {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
+                        {search && <Button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></Button>}
                     </div>
                     {[
                         { value: action, onChange: setAction, options: actionTypes, placeholder: "Action" },
                         { value: entity, onChange: setEntity, options: entityTypes, placeholder: "Entity" },
                     ].map(({ value, onChange, options, placeholder }) => (
                         <div key={placeholder} className="relative">
-                            <select value={value} onChange={(e) => onChange(e.target.value)}
-                                className="h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none appearance-none cursor-pointer capitalize">
-                                {options.map((o) => <option key={o} value={o} className="capitalize">{o === "all" ? `All ${placeholder}s` : o}</option>)}
-                            </select>
-                            <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <Select value={value} onValueChange={onChange}>
+                                <SelectTrigger className="h-9 w-full rounded-xl border-gray-200 bg-gray-50 px-3 text-sm font-medium text-gray-700 capitalize">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {options.map((o) => <SelectItem key={o} value={o} className="capitalize">{o === "all" ? `All ${placeholder}s` : o}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
                     ))}
                 </div>
@@ -193,7 +200,7 @@ export default function AdminAuditLog() {
                         <div key={log.id}
                             className={`rounded-2xl border transition-all overflow-hidden
                                 ${expanded === log.id ? "border-gray-200 bg-gray-50" : "border-gray-100 bg-gray-50/50 hover:bg-white hover:border-gray-200"}`}>
-                            <button onClick={() => setExpanded(expanded === log.id ? null : log.id)}
+                            <Button onClick={() => setExpanded(expanded === log.id ? null : log.id)}
                                 className="w-full flex items-center gap-4 p-4 text-left">
                                 <ActionBadge action={log.action} />
                                 <div className="flex-1 min-w-0">
@@ -214,7 +221,7 @@ export default function AdminAuditLog() {
                                         </div>
                                     </div>
                                 </div>
-                            </button>
+                            </Button>
 
                             {/* Expanded changes */}
                             {expanded === log.id && log.changes && Object.keys(log.changes).length > 0 && (

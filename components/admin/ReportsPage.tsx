@@ -17,6 +17,8 @@ import {
 } from "@/hooks/emr/use-clinical-modules";
 import { toCsv } from "@/lib/utils/csv";
 import { fmtFull } from "@/lib/utils";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+
 
 function download(filename: string, content: string) {
     const blob = new Blob([content], { type: "text/csv" });
@@ -136,22 +138,22 @@ export default function ReportsPage() {
             <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
                 <p className="mb-2 text-sm font-bold text-gray-900">Mortality register ({mortality?.rows?.length ?? 0} records)</p>
                 <div className="max-h-56 overflow-auto">
-                    <table className="w-full text-left text-xs">
-                        <thead className="sticky top-0 bg-white text-[10px] uppercase text-gray-400">
-                            <tr><th className="py-1.5 pr-3">Date</th><th className="py-1.5 pr-3">Patient</th><th className="py-1.5 pr-3">Cause</th><th className="py-1.5 pr-3">ICD-10</th><th className="py-1.5">Manner</th></tr>
-                        </thead>
-                        <tbody>
+                    <Table className="w-full text-left text-xs">
+                        <TableHeader className="sticky top-0 bg-white text-[10px] uppercase text-gray-400">
+                            <TableRow><TableHead className="py-1.5 pr-3">Date</TableHead><TableHead className="py-1.5 pr-3">Patient</TableHead><TableHead className="py-1.5 pr-3">Cause</TableHead><TableHead className="py-1.5 pr-3">ICD-10</TableHead><TableHead className="py-1.5">Manner</TableHead></TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {(mortality?.rows ?? []).slice(0, 30).map((r, i) => (
-                                <tr key={i} className="border-t border-gray-50">
-                                    <td className="py-1.5 pr-3">{r.date_of_death}</td>
-                                    <td className="py-1.5 pr-3 font-semibold">{r.patient}</td>
-                                    <td className="py-1.5 pr-3">{r.immediate_cause}</td>
-                                    <td className="py-1.5 pr-3 font-mono">{r.icd10}</td>
-                                    <td className="py-1.5">{r.manner}</td>
-                                </tr>
+                                <TableRow key={i} className="border-t border-gray-50">
+                                    <TableCell className="py-1.5 pr-3">{r.date_of_death}</TableCell>
+                                    <TableCell className="py-1.5 pr-3 font-semibold">{r.patient}</TableCell>
+                                    <TableCell className="py-1.5 pr-3">{r.immediate_cause}</TableCell>
+                                    <TableCell className="py-1.5 pr-3 font-mono">{r.icd10}</TableCell>
+                                    <TableCell className="py-1.5">{r.manner}</TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
                 <Button size="sm" variant="outline" className="mt-2 gap-1.5"
                     onClick={() => download("mortality_register.csv", toCsv(mortality?.columns ?? [], mortality?.rows ?? []))}>

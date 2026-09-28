@@ -28,6 +28,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
@@ -459,27 +463,27 @@ function StepSelect({
         <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
           <AlertTriangle size={16} />
           {error}
-          <button
+          <Button
             onClick={() => setError(null)}
             className="ml-auto text-red-500 hover:text-red-700"
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Upload type selector */}
       <div>
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
+        <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
           What would you like to import?
-        </label>
+        </Label>
         <div className="grid grid-cols-3 gap-3">
           {(Object.keys(UPLOAD_TYPE_CONFIG) as UploadType[]).map((t) => {
             const cfg = UPLOAD_TYPE_CONFIG[t];
             const Icon = cfg.icon;
             const isSelected = uploadType === t;
             return (
-              <button
+              <Button
                 key={t}
                 onClick={() => onTypeChange(t)}
                 className={cn(
@@ -517,7 +521,7 @@ function StepSelect({
                     <ArrowRight size={12} className="text-primary-foreground rotate-90" />
                   </div>
                 )}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -616,7 +620,7 @@ function StepSelect({
           {isDragging ? "Drop your CSV file here" : "Click or drag & drop a CSV file"}
         </p>
         <p className="text-xs text-gray-400 mt-1">CSV format · UTF-8 encoded · Max {MAX_FILE_SIZE / 1024 / 1024}MB</p>
-        <input
+        <Input
           ref={fileRef}
           type="file"
           accept=".csv,text/csv"
@@ -696,13 +700,13 @@ function StepPreview({
             </p>
           </div>
         </div>
-        <button
+        <Button
           onClick={onBack}
           className="text-xs text-gray-400 hover:text-gray-600 font-medium flex items-center gap-1"
         >
           <X size={12} />
           Change file
-        </button>
+        </Button>
       </div>
 
       {/* No column matches the importer's field names: the file has no header
@@ -755,12 +759,12 @@ function StepPreview({
             ))}
           </div>
           {validationErrors.length > 5 && (
-            <button
+            <Button
               onClick={() => setShowAllErrors((v) => !v)}
               className="text-xs text-amber-600 font-semibold hover:underline mt-2"
             >
               {showAllErrors ? "Show less" : `Show all ${validationErrors.length} errors`}
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -784,12 +788,12 @@ function StepPreview({
             ))}
           </div>
           {notes.length > 5 && (
-            <button
+            <Button
               onClick={() => setShowAllNotes((v) => !v)}
               className="text-xs text-blue-600 font-semibold hover:underline mt-2"
             >
               {showAllNotes ? "Show less" : `Show all ${notes.length} notes`}
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -803,11 +807,11 @@ function StepPreview({
           )}
         </p>
         <div className="overflow-x-auto rounded-2xl border border-gray-100 max-h-64 overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-gray-50 z-10">
-              <tr>
+          <Table className="w-full text-xs">
+            <TableHeader className="sticky top-0 bg-gray-50 z-10">
+              <TableRow>
                 {headers.map((h) => (
-                  <th
+                  <TableHead
                     key={h}
                     className={cn(
                       "px-3 py-2.5 text-left font-semibold whitespace-nowrap border-b border-gray-100",
@@ -820,22 +824,22 @@ function StepPreview({
                     {REQUIRED_HEADERS[uploadType].includes(h) && (
                       <span className="text-[9px] text-primary/60 ml-0.5">*</span>
                     )}
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-gray-100">
               {preview.map((row, i) => (
-                <tr key={i} className="hover:bg-gray-50">
+                <TableRow key={i} className="hover:bg-gray-50">
                   {headers.map((h) => (
-                    <td key={h} className="px-3 py-2 text-gray-600 max-w-[160px] truncate">
+                    <TableCell key={h} className="px-3 py-2 text-gray-600 max-w-[160px] truncate">
                       {row[h] || <span className="text-gray-300 italic">—</span>}
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
@@ -1080,12 +1084,12 @@ function StepDone({
             ))}
           </div>
           {notes.length > 5 && (
-            <button
+            <Button
               onClick={() => setShowAllNotes((v) => !v)}
               className="text-xs text-blue-600 font-semibold hover:underline"
             >
               {showAllNotes ? "Show less" : `Show all ${notes.length} notes`}
-            </button>
+            </Button>
           )}
         </div>
       )}

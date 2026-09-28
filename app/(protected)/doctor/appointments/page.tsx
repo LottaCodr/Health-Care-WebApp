@@ -4,6 +4,8 @@ import { ArrowLeft, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import AppointmentComponent from "@/components/front-desk/AppointmentComponent";
+import { Button } from "@/components/ui/button";
+
 
 export default function AppointmentsPage() {
     const router = useRouter();
@@ -13,14 +15,14 @@ export default function AppointmentsPage() {
     return (
         <div className="mx-auto w-full max-w-7xl space-y-5">
             <header className="flex items-center gap-3">
-                <button
+                <Button
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-800"
                 >
                     <ArrowLeft size={17} />
-                </button>
+                </Button>
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 text-gray-950">
                         <CalendarDays size={18} className="shrink-0 text-red-700" />

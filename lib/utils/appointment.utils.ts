@@ -9,6 +9,20 @@ export function toLocalISODate(date = new Date()): string {
     return `${year}-${month}-${day}`;
 }
 
+/**
+ * Start of the hospital's current calendar day (Africa/Lagos, UTC+1 — no DST)
+ * expressed as a UTC ISO timestamp.
+ *
+ * Use this as the `created_at >= …` boundary when filtering patients by
+ * "registered today" on the server side. Comparing the UTC date-part of
+ * `created_at` with the Lagos calendar date client-side is wrong during the
+ * first hospital hour (00:00–01:00 WAT), when the two dates differ.
+ */
+export function startOfHospitalDayUtcIso(date = new Date()): string {
+    const hospitalDay = toHospitalISODate(date);
+    return new Date(`${hospitalDay}T00:00:00+01:00`).toISOString();
+}
+
 /** Calendar date at the hospital, independent of the server's UTC timezone. */
 export function toHospitalISODate(date = new Date()): string {
     const parts = new Intl.DateTimeFormat("en-CA", {

@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { DrugInventoryItem } from "@/types/models";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +101,7 @@ function DrugAutocomplete({
             {/* Input */}
             <div className="relative">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                <input
+                <Input
                     value={query}
                     onChange={(e) => handleInput(e.target.value)}
                     onFocus={() => setOpen(true)}
@@ -121,7 +123,7 @@ function DrugAutocomplete({
                             const s = stockStatus(item);
                             const outOfStock = item.quantity === 0;
                             return (
-                                <button
+                                <Button
                                     key={item.id}
                                     type="button"
                                     onClick={() => handleSelect(item)}
@@ -158,7 +160,7 @@ function DrugAutocomplete({
                                             <p className={`text-[10px] font-bold ${s.color}`}>{s.label}</p>
                                         </div>
                                     </div>
-                                </button>
+                                </Button>
                             );
                         })}
                     </div>
@@ -361,14 +363,14 @@ export default function PrescriptionDetails({ patientId, patient, onSuccess }: P
                                     </span>
                                 )}
                             </div>
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => removeMed(idx)}
                                 disabled={busy || medications.length === 1}
                                 className="w-7 h-7 rounded-lg border border-gray-200 bg-white hover:bg-red-50 hover:border-red-100 flex items-center justify-center text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                             >
                                 <Trash2 size={12} />
-                            </button>
+                            </Button>
                         </div>
 
                         {/* Fields */}
@@ -420,10 +422,10 @@ export default function PrescriptionDetails({ patientId, patient, onSuccess }: P
             </div>
 
             {/* Add medication */}
-            <button type="button" onClick={addMed} disabled={busy}
+            <Button type="button" onClick={addMed} disabled={busy}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-gray-200 hover:border-violet-300 hover:bg-violet-50/40 text-gray-400 hover:text-violet-600 text-xs font-bold uppercase tracking-widest transition-all disabled:opacity-50">
                 <Plus size={13} /> Add Another Medication
-            </button>
+            </Button>
 
             {/* Total */}
             {hasPrice && (
@@ -444,7 +446,7 @@ export default function PrescriptionDetails({ patientId, patient, onSuccess }: P
             </div>
 
             {/* Submit */}
-            <button
+            <Button
                 type="submit"
                 disabled={busy || !medications.length || !patientId}
                 className="w-full h-12 flex items-center justify-center gap-2 bg-violet-700 hover:bg-violet-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-violet-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -453,7 +455,7 @@ export default function PrescriptionDetails({ patientId, patient, onSuccess }: P
                     ? <><Loader2 size={15} className="animate-spin" /> Dispensing...</>
                     : <><Pill size={15} /> Dispense & Create Payment</>
                 }
-            </button>
+            </Button>
         </form>
     );
 }

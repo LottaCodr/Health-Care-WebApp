@@ -4,6 +4,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useSearchPatients } from "@/hooks/emr/use-patients";
 import { Search, X, ChevronRight, Loader2, User } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -30,17 +33,17 @@ export default function NursePatientSearch({ basePath = "/nurse/queue/patient" }
         <div className="relative">
             <div className="relative">
                 <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                <input
+                <Input
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     placeholder="Search any patient by name or phone — not just your queue…"
                     className="w-full h-11 pl-10 pr-9 rounded-2xl border border-gray-200 bg-white text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400/25 focus:border-teal-400 transition-all shadow-sm"
                 />
                 {query && (
-                    <button onClick={() => setQuery("")}
+                    <Button onClick={() => setQuery("")}
                         className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                         <X size={14} />
-                    </button>
+                    </Button>
                 )}
             </div>
 

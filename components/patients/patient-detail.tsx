@@ -29,6 +29,8 @@ import {
     Baby, BookUser, Pill, History, Syringe, Download, Pencil,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+
 
 const PatientDetailTabs = dynamic(() => import("./patient-detail-tabs"), {
   loading: () => (
@@ -148,12 +150,12 @@ export default function PatientDetailsComponent({ patient }: Props) {
                     <AlertTriangle size={28} className="text-red-500" />
                 </div>
                 <p className="text-gray-600 font-semibold">Patient not found.</p>
-                <button
+                <Button
                     onClick={handleBack}
                     className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
                 >
                     <ArrowLeft size={15} /> Go back
-                </button>
+                </Button>
             </div>
         );
     }
@@ -170,7 +172,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                         This patient is discharged. Start a re-encounter to check them in again.
                    
                     </p>
-                    <button
+                    <Button
                         type="button"
                         onClick={() => setReturnOpen(true)}
                         className="shrink-0 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold"
@@ -178,7 +180,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                         Start Re-encounter
                    
                    
-                    </button>
+                    </Button>
                 </div>
             )}
 
@@ -302,13 +304,13 @@ function PatientProfile({
                         <span className="font-mono text-sm font-bold text-gray-800">
                             {displayHospitalNumber(p.hospital_number)}
                         </span>
-                        <button
+                        <Button
                             type="button"
                             onClick={onCopyId}
                             className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-semibold transition-colors"
                         >
                             {showCopied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
-                        </button>
+                        </Button>
                     </span>
                 ),
             },
@@ -386,13 +388,13 @@ function PatientProfile({
                                 <span className="font-mono text-xs font-bold text-white tracking-wide max-w-[160px] truncate">
                                     {displayHospitalNumber(p.hospital_number)}
                                 </span>
-                                <button
+                                <Button
                                     type="button"
                                     onClick={onCopyId}
                                     className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold transition-colors"
                                 >
                                     {showCopied ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy</>}
-                                </button>
+                                </Button>
                             </span>
                             {patient.gender && (
                                 <span className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
@@ -424,7 +426,7 @@ function PatientProfile({
                         </span>
 
                         <div className="flex flex-wrap items-center gap-2">
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => router.push(`/patient-timeline/${patient.id}`)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all backdrop-blur-sm shadow-xs"
@@ -432,10 +434,10 @@ function PatientProfile({
                             >
                                 <History size={12} />
                                 View Timeline
-                            </button>
+                            </Button>
 
                             {onEditDemographics && (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={onEditDemographics}
                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all backdrop-blur-sm shadow-xs"
@@ -443,11 +445,11 @@ function PatientProfile({
                                 >
                                     <Pencil size={12} />
                                     Edit Demographics
-                                </button>
+                                </Button>
                             )}
 
                             {canDownload && (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={onDownload}
                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all backdrop-blur-sm"
@@ -455,7 +457,7 @@ function PatientProfile({
                                 >
                                     <Download size={12} />
                                     Download Record
-                                </button>
+                                </Button>
                             )}
                         </div>
                     </div>
@@ -468,7 +470,7 @@ function PatientProfile({
                     const Icon     = g.icon;
                     const isActive = activeGroup === g.id;
                     return (
-                        <button
+                        <Button
                             key={g.id}
                             type="button"
                             onClick={() => setActiveGroup(g.id)}
@@ -480,7 +482,7 @@ function PatientProfile({
                         >
                             <Icon size={15} />
                             {g.label}
-                        </button>
+                        </Button>
                     );
                 })}
             </div>

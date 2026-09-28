@@ -18,6 +18,10 @@ import {
 import { useRadiologyStore } from "@/store/radiology-store";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,47 +111,47 @@ function RequestCard({ request }: { request: any }) {
                         <p className="text-xs text-blue-600 italic">"{request.notes}"</p>
                     )}
                 </div>
-                <button onClick={() => toggleInlineExpanded(request.id)}
+                <Button onClick={() => toggleInlineExpanded(request.id)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm w-full justify-center sm:w-auto shrink-0 ${
                         open ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-cyan-200"
                     }`}>
                     <FileText size={12} />
                     {open ? "Cancel" : "Enter Report"}
-                </button>
+                </Button>
             </div>
 
             {open && (
                 <div className="px-5 pb-5 pt-2 space-y-3 border-t border-cyan-100 bg-cyan-50/20">
                     <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600">Radiology Report / Findings</p>
-                    <textarea
+                    <Textarea
                         value={form.resultText} rows={6}
                         onChange={e => setInlineFormField(request.id, "resultText", e.target.value)}
                         placeholder={`Describe findings systematically:\n\nLungs: Clear. No consolidation or effusion.\nHeart: Normal size and contour.\n\nImpression:\n1. No acute cardiopulmonary disease.`}
                         className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 placeholder:text-gray-300 transition-all"
                     />
-                    <label className="flex items-center gap-3 cursor-pointer">
+                    <Label className="flex items-center gap-3 cursor-pointer">
                         <div onClick={() => setInlineFormField(request.id, "isCritical", !form.isCritical)}
                             className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${form.isCritical ? "bg-red-600 border-red-600" : "border-gray-300 hover:border-red-400"}`}>
                             {form.isCritical && <CheckCircle2 size={11} className="text-white" />}
                         </div>
                         <p className="text-xs font-bold text-red-600">⚠ Critical Finding — notify doctor immediately</p>
-                    </label>
+                    </Label>
                     {form.isCritical && (
-                        <textarea rows={2} value={form.criticalNote}
+                        <Textarea rows={2} value={form.criticalNote}
                             onChange={e => setInlineFormField(request.id, "criticalNote", e.target.value)}
                             placeholder="Describe the critical finding and urgency of action..."
                             className="w-full px-4 py-3 rounded-xl border-2 border-red-200 bg-red-50 text-sm text-red-800 placeholder:text-red-300 focus:outline-none focus:border-red-400 resize-none"
                         />
                     )}
                     <div className="flex justify-end gap-2">
-                        <button onClick={() => toggleInlineExpanded(request.id)}
+                        <Button onClick={() => toggleInlineExpanded(request.id)}
                             className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
                             Cancel
-                        </button>
-                        <button onClick={handleSubmit} disabled={saving || !form.resultText.trim()}
+                        </Button>
+                        <Button onClick={handleSubmit} disabled={saving || !form.resultText.trim()}
                             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-sm shadow-cyan-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             {saving ? <><Loader2 size={12} className="animate-spin" /> Submitting...</> : <><CheckCircle2 size={13} /> Submit Report</>}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
@@ -163,7 +167,7 @@ function CompletedCard({ request }: { request: any }) {
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <button type="button" onClick={() => setExpanded(v => !v)}
+            <Button type="button" onClick={() => setExpanded(v => !v)}
                 className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50/60 transition-colors">
                 <CheckCircle2 size={14} className="text-green-500 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -177,7 +181,7 @@ function CompletedCard({ request }: { request: any }) {
                     <p className="text-[10px] text-gray-400">{fmtTime(request.completed_at)}</p>
                     <ChevronDown size={13} className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
                 </div>
-            </button>
+            </Button>
             {expanded && request.result && (
                 <div className="px-4 pb-4 border-t border-gray-50 pt-3">
                     <pre className="text-xs text-gray-600 whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5 max-h-48 overflow-y-auto">
@@ -227,13 +231,13 @@ export default function RadiologyDashboard() {
                         <Link href="/radiology/reports" className="inline-flex h-9 items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3 text-xs font-bold text-cyan-700 transition-colors hover:bg-cyan-100">
                             <FileText size={13} /> Reports
                         </Link>
-                        <button onClick={() => refetch()}
+                        <Button onClick={() => refetch()}
                             type="button"
                             aria-label="Refresh radiology queue"
                             disabled={loadingPending || loadingCompleted}
                             className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60">
                             <RefreshCcw size={13} className={loadingPending || loadingCompleted ? "animate-spin" : ""} />
-                        </button>
+                        </Button>
                     </div>
                 }
             />
@@ -284,7 +288,7 @@ export default function RadiologyDashboard() {
                     ) : pendingError ? (
                         <div className="flex flex-col items-center justify-center py-12 gap-3">
                             <AlertTriangle size={18} className="text-red-500" />
-                            <button onClick={() => refetch()} className="text-xs text-red-600 hover:underline">Retry</button>
+                            <Button onClick={() => refetch()} className="text-xs text-red-600 hover:underline">Retry</Button>
                         </div>
                     ) : sortedPending.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">

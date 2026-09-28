@@ -26,6 +26,10 @@ import {
     Play,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
     Pending: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", dot: "bg-amber-500" },
@@ -108,7 +112,7 @@ function TaskCard({
 
                 <div className="flex items-center gap-2 shrink-0">
                     {isPending && (
-                        <button
+                        <Button
                             type="button"
                             onClick={() => onStatusChange(task.id, "InProgress")}
                             disabled={updating}
@@ -116,10 +120,10 @@ function TaskCard({
                         >
                             {updating ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
                             Start
-                        </button>
+                        </Button>
                     )}
                     {isInProgress && (
-                        <button
+                        <Button
                             type="button"
                             onClick={() => onStatusChange(task.id, "Completed")}
                             disabled={updating}
@@ -127,10 +131,10 @@ function TaskCard({
                         >
                             {updating ? <Loader2 size={12} className="animate-spin" /> : <CheckCheck size={12} />}
                             Done
-                        </button>
+                        </Button>
                     )}
                     {isCompleted && <CheckCircle2 size={18} className="text-green-500" />}
-                    <button
+                    <Button
                         type="button"
                         onClick={() => setExpanded((v) => !v)}
                         className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
@@ -138,7 +142,7 @@ function TaskCard({
                         }`}
                     >
                         <ChevronDown size={13} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -298,7 +302,7 @@ export default function NurseTasksPage() {
                     const Icon = s.icon;
                     const filterKey = statFilterMap[s.label];
                     return (
-                        <button
+                        <Button
                             key={s.label}
                             type="button"
                             onClick={() =>
@@ -313,7 +317,7 @@ export default function NurseTasksPage() {
                                 <p className="text-2xl font-extrabold text-gray-900 leading-none">{s.value}</p>
                                 <p className="text-xs text-gray-400 font-medium mt-1">{s.label}</p>
                             </div>
-                        </button>
+                        </Button>
                     );
                 })}
             </div>
@@ -331,55 +335,58 @@ export default function NurseTasksPage() {
                     </div>
                     <div className="flex items-center gap-2">
                         {statusFilter !== "all" && (
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => setStatusFilter("all")}
                                 className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-100"
                             >
                                 {statusFilter} <X size={11} />
-                            </button>
+                            </Button>
                         )}
-                        <button
+                        <Button
                             type="button"
                             onClick={() => refetch()}
                             className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
                         >
                             <RefreshCcw size={13} />
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-50">
                     <div className="relative flex-1">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <input
+                        <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search patient name, ID, or task type..."
                             className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400/25 focus:border-teal-400 focus:bg-white transition-all"
                         />
                         {search && (
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => setSearch("")}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             >
                                 <X size={13} />
-                            </button>
+                            </Button>
                         )}
                     </div>
                     <div className="relative">
-                        <select
+                        <Select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                            className="h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none appearance-none cursor-pointer"
+                            onValueChange={v => setStatusFilter(v as typeof statusFilter)}
                         >
-                            <option value="all">All Status</option>
-                            <option value="Pending">Pending</option>
-                            <option value="InProgress">In Progress</option>
-                            <option value="Completed">Completed</option>
-                        </select>
-                        <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <SelectTrigger className="h-9 w-[160px] rounded-xl border-gray-200 bg-gray-50 px-3 text-sm font-medium text-gray-700">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="Pending">Pending</SelectItem>
+                                <SelectItem value="InProgress">In Progress</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 

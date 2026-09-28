@@ -13,6 +13,10 @@ import { SettleBillModal, QueueSettleAllModal, PayerBadge } from "@/components/p
 import { formatKobo, resolvePayerFromPatient, PAYMENT_TYPE_CONFIG } from "@/lib/utils/billing";
 import { displayHospitalNumber } from "@/lib/hospital-number";
 import { fmtDate, fmtFull } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── PaymentList ──────────────────────────────────────────────────────────────
 
@@ -39,43 +43,43 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
 
                 return (
                     <div key={payment.id} className="px-6 py-5 hover:bg-gray-50/30 transition-colors">
-                        <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
 
                             {/* Patient avatar */}
-                            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 font-black text-gray-500 text-sm mt-0.5 hidden sm:flex">
+                            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 font-black text-gray-500 text-sm mt-0.5 sm:flex">
                                 {patientName?.[0]?.toUpperCase() ?? <User size={16} />}
                             </div>
 
                             {/* Info */}
-                            <div className="flex-1 min-w-0 space-y-3">
+                            <div className="min-w-0 flex-1 space-y-3">
 
                                     {/* Patient name + phone + hospital number */}
                                 <div className="flex items-start justify-between gap-3">
                                     <div>
-                                        <p className="text-sm font-bold text-gray-900 flex items-center gap-2 flex-wrap">
-                                            <span className="sm:hidden w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-black text-gray-500">{patientName?.[0]?.toUpperCase()}</span>
+                                        <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-gray-900">
+                                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-xs font-black text-gray-500 sm:hidden">{patientName?.[0]?.toUpperCase()}</span>
                                             {patientName}
                                             <PayerBadge payer={payer.type} reference={payer.reference || null} />
                                         </p>
                                         {patientPhone && (
-                                            <p className="text-xs text-gray-400 mt-0.5">{patientPhone}</p>
+                                            <p className="mt-0.5 text-xs text-gray-400">{patientPhone}</p>
                                         )}
-                                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">HN: {displayHospitalNumber(patientHospitalNumber)}</p>
+                                        <p className="mt-0.5 font-mono text-[10px] text-gray-400">HN: {displayHospitalNumber(patientHospitalNumber)}</p>
                                     </div>
-                                    <span className="lg:hidden inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full bg-gray-50 text-gray-600 border border-gray-100">
+                                    <Badge variant="outline" className="hidden gap-1 rounded-full bg-gray-50 text-gray-600 lg:inline-flex">
                                         <Clock size={10} /> {payment.created_at ? fmtDate(payment.created_at) : "—"}
-                                    </span>
+                                    </Badge>
                                 </div>
 
                                 {/* What they're paying for */}
-                                <div className="flex items-start gap-2 px-3 py-2.5 bg-gray-50 rounded-xl border border-gray-100">
-                                    <Receipt size={12} className="text-gray-400 shrink-0 mt-0.5" />
+                                <div className="flex items-start gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                                    <Receipt size={12} className="mt-0.5 shrink-0 text-gray-400" />
                                     <div className="min-w-0 flex-1">
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{descLabel}</p>
                                         {descDetail && (
-                                            <p className="text-xs font-medium text-gray-700 truncate mt-0.5">{descDetail}</p>
+                                            <p className="mt-0.5 truncate text-xs font-medium text-gray-700">{descDetail}</p>
                                         )}
-                                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
                                             <Clock size={9} className="text-gray-300" />
                                             <p className="text-[10px] text-gray-400">
                                                 {payment.created_at
@@ -84,13 +88,13 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
                                             </p>
                                             {payment.category && (
                                                 <>
-                                                    <span className="text-gray-300 mx-1">•</span>
+                                                    <span className="mx-1 text-gray-300">•</span>
                                                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{payment.category}</span>
                                                 </>
                                             )}
                                             {paymentType && (
                                                 <>
-                                                    <span className="text-gray-300 mx-1">•</span>
+                                                    <span className="mx-1 text-gray-300">•</span>
                                                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">
                                                         {PAYMENT_TYPE_CONFIG[paymentType as keyof typeof PAYMENT_TYPE_CONFIG]?.short ?? paymentType ?? ""}
                                                     </span>
@@ -102,9 +106,9 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
                             </div>
 
                             {/* Amount + settle */}
-                            <div className="flex flex-col gap-3 shrink-0 w-full lg:w-[220px] lg:items-end">
+                            <div className="flex w-full shrink-0 flex-col gap-3 lg:w-[220px] lg:items-end">
                                 <div className="w-full lg:text-right">
-                                    <div className="flex items-center justify-between gap-2 lg:justify-end mb-1.5">
+                                    <div className="mb-1.5 flex items-center justify-between gap-2 lg:justify-end">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                                             {paidKobo > 0 ? "Balance" : "Amount"}
                                         </p>
@@ -113,18 +117,18 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
                                         {formatKobo(paidKobo > 0 ? balanceKobo : totalKobo)}
                                     </p>
                                     {paidKobo > 0 && (
-                                        <p className="text-[10px] text-gray-400 mt-0.5 lg:text-right">
+                                        <p className="mt-0.5 text-[10px] text-gray-400 lg:text-right">
                                             of {formatKobo(totalKobo)} ({PAYMENT_TYPE_CONFIG[(paymentType ?? "partial") as keyof typeof PAYMENT_TYPE_CONFIG]?.short ?? "Part"} paid)
                                         </p>
                                     )}
                                 </div>
 
-                                <button
+                                <Button
                                     onClick={() => onSettle(payment)}
-                                    className="flex items-center justify-center gap-1.5 w-full lg:w-auto px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+                                    className="h-10 w-full gap-1.5 rounded-xl bg-green-600 text-xs font-bold text-white shadow-sm shadow-green-200 hover:bg-green-700 lg:w-auto"
                                 >
                                     <CheckCircle2 size={13} /> Settle Bill
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -152,73 +156,80 @@ export default function PaymentConfirmation() {
         [payments]
     );
 
-    // ── Loading ──
+    // ── Loading ─
     if (isLoading) return (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex items-center justify-center py-16 gap-3">
-            <Loader2 size={18} className="text-green-500 animate-spin" />
-            <p className="text-sm text-gray-400 font-medium">Loading payments...</p>
-        </div>
+        <Card className="flex items-center justify-center gap-3 rounded-3xl border-gray-100 bg-white py-16 shadow-sm">
+            <Loader2 size={18} className="animate-spin text-green-500" />
+            <p className="text-sm font-medium text-gray-400">Loading payments...</p>
+        </Card>
     );
 
     // ── Error ──
     if (isError) return (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-16 gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center">
+        <Card className="flex flex-col items-center justify-center gap-4 rounded-3xl border-gray-100 bg-white py-16 shadow-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50">
                 <AlertTriangle size={20} className="text-red-500" />
             </div>
             <p className="text-sm font-semibold text-gray-600">Failed to load payments</p>
-            <button onClick={() => refetch()}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">
+            <Button variant="secondary" size="sm" onClick={() => refetch()}
+                className="gap-2 rounded-xl bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200">
                 <RefreshCcw size={13} /> Retry
-            </button>
-        </div>
+            </Button>
+        </Card>
     );
 
     return (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <Card className="overflow-hidden rounded-3xl border-gray-100 bg-white shadow-sm">
 
             {/* ── Header ── */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-5 border-b border-gray-50">
+            <div className="flex flex-col justify-between gap-3 border-b border-gray-50 px-6 py-5 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-green-50">
                         <BadgeDollarSign size={18} className="text-green-600" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-gray-900 leading-tight">Pending Payments</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">Full / part / deposit payments • discounts • auto-identified payer</p>
+                        <h3 className="text-sm font-bold leading-tight text-gray-900">Pending Payments</h3>
+                        <p className="mt-0.5 text-xs text-gray-400">Full / part / deposit payments • discounts • auto-identified payer</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
                     {payments && payments.length > 0 && (
                         <>
-                            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
+                            <Badge variant="outline" className="gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700">
                                 <BadgeDollarSign size={11} />
                                 {formatKobo(totalPending)} total
-                            </span>
-                            <span className="text-xs font-bold px-2.5 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                            </Badge>
+                            <Badge variant="outline" className="rounded-full bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700">
                                 {payments.length} pending
-                            </span>
-                            <button
+                            </Badge>
+                            <Button
                                 onClick={() => setSettleAllOpen(true)}
                                 title="Settle every pending bill across all patients at once"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-sm shadow-orange-200 transition-colors">
+                                size="sm"
+                                className="gap-1.5 rounded-xl bg-orange-600 text-xs font-bold shadow-sm shadow-orange-200 hover:bg-orange-700"
+                            >
                                 <Layers size={13} /> Settle All
-                            </button>
+                            </Button>
                         </>
                     )}
-                    <button onClick={() => refetch()} aria-label="Refresh"
-                        className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors">
+                    <Button
+                        onClick={() => refetch()}
+                        aria-label="Refresh"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 rounded-xl"
+                    >
                         <RefreshCcw size={13} />
-                    </button>
+                    </Button>
                 </div>
             </div>
 
             {/* Hint banner */}
             {payments && payments.length > 0 && (
-                <div className="mx-6 mt-4 flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
-                    <Wallet size={12} className="text-blue-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-blue-700 leading-relaxed">
+                <div className="mx-6 mt-4 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5">
+                    <Wallet size={12} className="mt-0.5 shrink-0 text-blue-500" />
+                    <p className="text-xs leading-relaxed text-blue-700">
                         <span className="font-bold">Settle a bill</span> to choose{" "}
                         <span className="font-semibold">Full payment</span>,{" "}
                         <span className="font-semibold">Part payment</span>, or{" "}
@@ -229,20 +240,20 @@ export default function PaymentConfirmation() {
                 </div>
             )}
 
-            {/* ── Empty ── */}
+            {/* ── Empty ─ */}
             {(!payments || payments.length === 0) && (
-                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">
+                <div className="flex flex-col items-center justify-center gap-3 py-16">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-green-100 bg-green-50">
                         <CheckCircle2 size={22} className="text-green-500" />
                     </div>
                     <div className="text-center">
                         <p className="text-sm font-semibold text-gray-600">All clear</p>
-                        <p className="text-xs text-gray-400 mt-1">No pending payments to confirm</p>
+                        <p className="mt-1 text-xs text-gray-400">No pending payments to confirm</p>
                     </div>
                 </div>
             )}
 
-            {/* ── Rows ── */}
+            {/* ── Rows ─ */}
             {payments && payments.length > 0 && (
                 <PaymentList
                     payments={payments}
@@ -289,6 +300,6 @@ export default function PaymentConfirmation() {
                     onClose={() => setSettleAllOpen(false)}
                 />
             )}
-        </div>
+        </Card>
     );
 }

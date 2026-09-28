@@ -16,6 +16,8 @@ import {
     ShieldAlert, Activity, ChevronDown, ChevronUp,
     Pill, FlaskConical, User, BookOpen,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -92,11 +94,11 @@ export function AITriageScore(props: TriageProps) {
                         <AIBadge />
                     </div>
                 </div>
-                <button onClick={analyse} disabled={loading}
+                <Button onClick={analyse} disabled={loading}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-all disabled:opacity-50">
                     {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                     {loading ? "Scoring..." : result ? "Rescore" : "Score Risk"}
-                </button>
+                </Button>
             </div>
 
             {!result && !loading && !error && (
@@ -233,11 +235,11 @@ export function AILabInterpretation(props: LabProps) {
                         <AIBadge />
                     </div>
                 </div>
-                <button onClick={analyse} disabled={loading}
+                <Button onClick={analyse} disabled={loading}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-all disabled:opacity-50">
                     {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                     {loading ? "Interpreting..." : result ? "Re-interpret" : "Interpret Results"}
-                </button>
+                </Button>
             </div>
 
             {!result && !loading && !error && (
@@ -363,11 +365,11 @@ export function AIPrescriptionCheck(props: RxProps) {
                         <AIBadge />
                     </div>
                 </div>
-                <button onClick={analyse} disabled={loading || !props.drugName}
+                <Button onClick={analyse} disabled={loading || !props.drugName}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-all disabled:opacity-50">
                     {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                     {loading ? "Checking..." : result ? "Re-check" : "Check Safety"}
-                </button>
+                </Button>
             </div>
 
             {!result && !loading && !error && (
@@ -482,15 +484,15 @@ export function AIPatientSummary(props: SummaryProps) {
                 </div>
                 <div className="flex items-center gap-2">
                     {result && (
-                        <button onClick={() => setExpanded(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                        <Button onClick={() => setExpanded(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        </button>
+                        </Button>
                     )}
-                    <button onClick={generate} disabled={loading}
+                    <Button onClick={generate} disabled={loading}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-all disabled:opacity-50">
                         {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                         {loading ? "Generating..." : result ? "Regenerate" : "Generate Summary"}
-                    </button>
+                    </Button>
                 </div>
             </div>
 

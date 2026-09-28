@@ -24,6 +24,8 @@ import { getPatientById } from "@/lib/services/patient.service";
 import { calculateAge, formatDate } from "@/lib/utils";
 import { PatientStatus, type Patient } from "@/types/models";
 import { AttendantPill } from "@/components/emr/care-team";
+import { Button } from "@/components/ui/button";
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ROLE → VISIBLE STATUSES
@@ -292,7 +294,7 @@ function PatientGrid({
                                     {canReturn && (patient.status === "registered" || patient.status === "discharged") && (
                                         <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-50">
                                             {patient.status === "registered" && (
-                                                <button
+                                                <Button
                                                     type="button"
                                                     onClick={(e) => handleStartEncounter(e, patient)}
                                                     disabled={startEncounterMutation.isPending}
@@ -304,10 +306,10 @@ function PatientGrid({
                                                         ? <Loader2 size={11} className="animate-spin" />
                                                         : <Stethoscope size={11} />}
                                                     Start Encounter
-                                                </button>
+                                                </Button>
                                             )}
                                             {patient.status === "discharged" && (
-                                                <button
+                                                <Button
                                                     type="button"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -316,7 +318,7 @@ function PatientGrid({
                                                     className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-100"
                                                 >
                                                     <RotateCcw size={11} /> Re-encounter
-                                                </button>
+                                                </Button>
                                             )}
                                         </div>
                                     )}

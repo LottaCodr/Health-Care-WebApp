@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { patientKeys } from "../query-keys";
 import * as PatientService from "@/lib/services/patient.service";
 import type { Patient, PatientStatus } from "@/types/models";
+import { startOfHospitalDayUtcIso } from "@/lib/utils/appointment.utils";
 import { enqueueOfflineRegistration } from "@/components/layout/OfflineSync";
 
 // ─── Cache config ─────────────────────────────────────────────────────────────
@@ -53,6 +54,34 @@ export function useAllPatients() {
     return useQuery({
         queryKey: patientKeys.lists(),
         queryFn: () => PatientService.getAllPatients(),
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+/**
+ * Today's new arrivals, resolved entirely on the server:
+ *  - `total`   — exact count of patients registered since the start of the
+ *                hospital day (drives the "New Arrivals" stat card).
+ *  - `patients`— the most recent arrivals (drives the "Today's Arrivals" list).
+ *
+ * The boundary is the start of the Africa/Lagos hospital day in UTC, so the
+ * first hour of the day (00:00–01:00 WAT, when the UTC date lags the
+ * hospital date) is counted correctly — and the dashboard no longer needs to
+ * pull the whole patients table into the browser.
+ */
+export function useTodaysArrivals(limit = 50) {
+    return useQuery({
+        queryKey: patientKeys.arrivalsToday(),
+        queryFn: async () => {
+            const since = startOfHospitalDayUtcIso();
+            const [patients, total] = await Promise.all([
+                PatientService.listPatientsCreatedSince(since, limit),
+                PatientService.countPatientsCreatedSince(since),
+            ]);
+            return { patients, total };
+        },
         staleTime: LIST_STALE,
         gcTime: GC_TIME,
         refetchOnWindowFocus: false,

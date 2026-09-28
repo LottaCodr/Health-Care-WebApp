@@ -4,6 +4,12 @@ import React, { useState, useRef } from "react";
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument } from "@/hooks/emr/use-patient-document";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/patient-documents.types";
 import type { DocumentType, PatientDocument } from "@/lib/patient-documents.types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -54,10 +60,10 @@ function ImageModal({ url, name, onClose }: { url: string; name: string; onClose
     return (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
             <div className="relative max-w-4xl max-h-[90vh] w-full" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose}
+                <Button onClick={onClose}
                     className="absolute -top-10 right-0 text-white/70 hover:text-white text-sm font-semibold">
                     ✕ Close
-                </button>
+                </Button>
                 <img src={url} alt={name} className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-2xl" />
                 <p className="text-white/60 text-xs text-center mt-3">{name}</p>
             </div>
@@ -131,7 +137,7 @@ function UploadForm({ patientId, uploadedBy, onDone }: UploadFormProps) {
                         {isDragging ? "Drop to upload" : "Click or drag & drop"}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">{ACCEPTED_DISPLAY} · max {MAX_SIZE_MB}MB</p>
-                    <input ref={fileRef} type="file" accept={ACCEPTED_DISPLAY} className="hidden"
+                    <Input ref={fileRef} type="file" accept={ACCEPTED_DISPLAY} className="hidden"
                         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                 </div>
             ) : (
@@ -141,7 +147,7 @@ function UploadForm({ patientId, uploadedBy, onDone }: UploadFormProps) {
                         <p className="text-sm font-semibold text-gray-800 truncate">{file.name}</p>
                         <p className="text-xs text-gray-400">{formatSize(file.size)}</p>
                     </div>
-                    <button onClick={() => setFile(null)} className="text-xs text-gray-400 hover:text-red-500 font-medium">Remove</button>
+                    <Button onClick={() => setFile(null)} className="text-xs text-gray-400 hover:text-red-500 font-medium">Remove</Button>
                 </div>
             )}
 
@@ -150,35 +156,39 @@ function UploadForm({ patientId, uploadedBy, onDone }: UploadFormProps) {
             {/* Metadata */}
             <div className="space-y-3">
                 <div>
-                    <label className="label-xs">Document Type</label>
-                    <select value={documentType} onChange={e => setDocumentType(e.target.value as DocumentType)}
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
-                        {(Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map(t => (
-                            <option key={t} value={t}>{DOCUMENT_TYPE_LABELS[t]}</option>
-                        ))}
-                    </select>
+                    <Label className="label-xs">Document Type</Label>
+                    <Select value={documentType} onValueChange={v => setDocumentType(v as DocumentType)}>
+                        <SelectTrigger className="w-full rounded-xl border-gray-200 bg-white px-3 py-2 text-sm">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {(Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map(t => (
+                                <SelectItem key={t} value={t}>{DOCUMENT_TYPE_LABELS[t]}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <div>
-                    <label className="label-xs">Source Hospital / Clinic</label>
-                    <input value={sourceHospital} onChange={e => setSourceHospital(e.target.value)}
+                    <Label className="label-xs">Source Hospital / Clinic</Label>
+                    <Input value={sourceHospital} onChange={e => setSourceHospital(e.target.value)}
                         placeholder="e.g. National Hospital Abuja, Lagos University Teaching Hospital…"
                         className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                 </div>
                 <div>
-                    <label className="label-xs">Description (optional)</label>
-                    <textarea rows={2} value={description} onChange={e => setDescription(e.target.value)}
+                    <Label className="label-xs">Description (optional)</Label>
+                    <Textarea rows={2} value={description} onChange={e => setDescription(e.target.value)}
                         placeholder="Brief note about this document…"
                         className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300" />
                 </div>
             </div>
 
             <div className="flex gap-3">
-                <button onClick={onDone} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
-                <button onClick={handleSubmit}
+                <Button onClick={onDone} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</Button>
+                <Button onClick={handleSubmit}
                     disabled={!file || upload.isPending}
                     className="flex-1 py-2.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50 transition-colors">
                     {upload.isPending ? "Uploading…" : "Upload Document"}
-                </button>
+                </Button>
             </div>
 
             <style jsx>{`
@@ -224,12 +234,12 @@ function DocumentCard({
                     <span className="text-4xl">{icon}</span>
                 )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                <button onClick={handleView}
+                <Button onClick={handleView}
                     className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <span className="bg-white/90 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow">
                         {isPDF ? "Open PDF" : "View Image"}
                     </span>
-                </button>
+                </Button>
             </div>
 
             {/* Metadata */}
@@ -267,13 +277,13 @@ function DocumentCard({
                             </a>
                         )}
                         {canDelete && (
-                            <button
+                            <Button
                                 onClick={() => del.mutate({ id: doc.id, storagePath: doc.storage_path, patientId })}
                                 disabled={del.isPending}
                                 className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors text-xs disabled:opacity-50"
                                 title="Delete">
                                 ✕
-                            </button>
+                            </Button>
                         )}
                     </div>
                 </div>
@@ -313,10 +323,10 @@ export default function PatientDocumentsTab({ patientId, staffId, canUpload }: P
                     </p>
                 </div>
                 {canUpload && !showUpload && (
-                    <button onClick={() => setShowUpload(true)}
+                    <Button onClick={() => setShowUpload(true)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors">
                         + Upload Document
-                    </button>
+                    </Button>
                 )}
             </div>
 
@@ -335,23 +345,23 @@ export default function PatientDocumentsTab({ patientId, staffId, canUpload }: P
             {/* Type filter tabs */}
             {docs.length > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <button onClick={() => setTypeFilter("all")}
+                    <Button onClick={() => setTypeFilter("all")}
                         className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
                             typeFilter === "all"
                                 ? "bg-gray-800 text-white border-gray-800"
                                 : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                         }`}>
                         All ({docs.length})
-                    </button>
+                    </Button>
                     {usedTypes.map(t => (
-                        <button key={t} onClick={() => setTypeFilter(t)}
+                        <Button key={t} onClick={() => setTypeFilter(t)}
                             className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
                                 typeFilter === t
                                     ? `${TYPE_COLORS[t]} border-current`
                                     : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                             }`}>
                             {DOCUMENT_TYPE_LABELS[t]} ({docs.filter((d: PatientDocument) => d.document_type === t).length})
-                        </button>
+                        </Button>
                     ))}
                 </div>
             )}
@@ -373,10 +383,10 @@ export default function PatientDocumentsTab({ patientId, staffId, canUpload }: P
                         </p>
                     </div>
                     {canUpload && !showUpload && (
-                        <button onClick={() => setShowUpload(true)}
+                        <Button onClick={() => setShowUpload(true)}
                             className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors">
                             + Upload First Document
-                        </button>
+                        </Button>
                     )}
                 </div>
             ) : (

@@ -14,6 +14,8 @@ import { LogOut, ChevronRight, Loader2 } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import Link from "next/link";
 import { normalizeUserRole } from "@/lib/roles";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Role config ──────────────────────────────────────────────────────────────
 // Keys must match the exact DB values from staffs.role (case-sensitive in Postgres).
@@ -176,14 +178,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         <p className="text-white text-xs font-bold truncate leading-tight">{user?.name ?? "Staff"}</p>
                         <p className="text-white/45 text-[9px] font-medium truncate mt-0.5">{user?.email}</p>
                     </div>
-                    <button
+                    <Button
                         onClick={() => setShowLogout(true)}
                         disabled={isLoggingOut}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                         aria-label="Log out"
                     >
                         {isLoggingOut ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />}
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Logout confirmation */}
@@ -199,20 +201,20 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                             <p className="text-xs text-white/50 font-medium text-center">Signing you out securely…</p>
                             <p className="text-[10px] text-white/25 font-medium text-center -mt-1">You&apos;ll be taken to the login page</p>
                             <div className="flex gap-2">
-                                <button
+                                <Button
                                     onClick={() => setShowLogout(false)}
                                     disabled={isLoggingOut}
                                     className="flex-1 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     Cancel
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     onClick={async () => { await logout?.(); }}
                                     disabled={isLoggingOut}
                                     className="flex-1 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-all border border-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                                 >
                                     {isLoggingOut ? <><Loader2 size={12} className="animate-spin" /> Signing out…</> : "Sign Out"}
-                                </button>
+                                </Button>
                             </div>
                         </motion.div>
                     )}
