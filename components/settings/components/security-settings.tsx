@@ -227,13 +227,13 @@ export default function SecuritySettings() {
                                                     placeholder="Current password"
                                                     {...field}
                                                 />
-                                                <Button
+                                                <button
                                                     type="button"
                                                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                                                     className="absolute inset-y-0 right-0 flex items-center pr-3"
                                                 >
                                                     {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                </Button>
+                                                </button>
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -254,13 +254,13 @@ export default function SecuritySettings() {
                                                     placeholder="New password"
                                                     {...field}
                                                 />
-                                                <Button
+                                                <button
                                                     type="button"
                                                     onClick={() => setShowNewPassword(!showNewPassword)}
                                                     className="absolute inset-y-0 right-0 flex items-center pr-3"
                                                 >
                                                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                </Button>
+                                                </button>
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -305,13 +305,13 @@ export default function SecuritySettings() {
                                                     placeholder="Confirm new password"
                                                     {...field}
                                                 />
-                                                <Button
+                                                <button
                                                     type="button"
                                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                                     className="absolute inset-y-0 right-0 flex items-center pr-3"
                                                 >
                                                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                </Button>
+                                                </button>
                                             </div>
                                         </FormControl>
                                         <FormMessage />

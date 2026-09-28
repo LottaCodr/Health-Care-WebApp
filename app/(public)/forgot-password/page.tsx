@@ -15,10 +15,6 @@ import {
 import Image from "next/image";
 import NetworkStatusBanner from "@/components/layout/NetworkStatusBanner";
 import supabase from "@/utils/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -150,7 +146,7 @@ export default function ForgotPasswordPage() {
                                 >
                                     Back to Sign In
                                 </Link>
-                                <Button
+                                <button
                                     type="button"
                                     onClick={() => {
                                         setSent(false);
@@ -160,7 +156,7 @@ export default function ForgotPasswordPage() {
                                     className="w-full h-10 flex items-center justify-center gap-2 text-xs font-bold text-gray-500 hover:text-gray-800 transition-colors"
                                 >
                                     <ArrowLeft size={13} /> Use a different email
-                                </Button>
+                                </button>
                             </div>
                         </div>
                     ) : (
@@ -188,12 +184,12 @@ export default function ForgotPasswordPage() {
 
                             <form onSubmit={handleSend} className="mt-6 space-y-4">
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="fp-email" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
+                                    <label htmlFor="fp-email" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
                                         Work Email
-                                    </Label>
+                                    </label>
                                     <div className="relative">
                                         <Mail size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-                                        <Input
+                                        <input
                                             id="fp-email"
                                             type="email"
                                             autoComplete="email"
@@ -207,7 +203,7 @@ export default function ForgotPasswordPage() {
                                     </div>
                                 </div>
 
-                                <Button
+                                <button
                                     type="submit"
                                     disabled={loading}
                                     className="w-full h-11 flex items-center justify-center gap-2 bg-[#0a1628] hover:bg-[#0f1f38] text-white text-sm font-bold rounded-xl transition-all duration-150 shadow-lg shadow-slate-900/15 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2"
@@ -217,7 +213,7 @@ export default function ForgotPasswordPage() {
                                     ) : (
                                         <>Send Reset Link <ArrowLeft size={14} className="rotate-180" /></>
                                     )}
-                                </Button>
+                                </button>
                             </form>
 
                             <div className="mt-6 flex items-center justify-center">

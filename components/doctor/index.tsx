@@ -21,8 +21,6 @@ import { toHospitalISODate, resolvePatientName } from "@/lib/utils/appointment.u
 import { toast } from "sonner";
 import { fmtDate, fmtFull, fmtTime } from "@/lib/utils";
 import { AttendantPill } from "@/components/emr/care-team";
-import { Button } from "@/components/ui/button";
-
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -128,7 +126,7 @@ function TabBar({ tabs, active, onChange }: {
                 const Icon = tab.icon;
                 const isActive = active === tab.id;
                 return (
-                    <Button key={tab.id} onClick={() => onChange(tab.id)}
+                    <button key={tab.id} onClick={() => onChange(tab.id)}
                         className={`flex shrink-0 items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all duration-150 ${
                             isActive
                                 ? "bg-white text-red-700 border border-gray-200"
@@ -141,7 +139,7 @@ function TabBar({ tabs, active, onChange }: {
                                 isActive ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-500"
                             }`}>{tab.badge}</span>
                         )}
-                    </Button>
+                    </button>
                 );
             })}
         </div>
@@ -280,14 +278,14 @@ function ActiveConsultationRow({ consultation, onComplete, completing }: {
                 </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                <Button
+                <button
                     onClick={() => onComplete(consultation.id)}
                     disabled={completing}
                     title="Mark this consultation as completed"
                     className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-green-200 bg-green-50 text-green-700 text-[11px] font-bold hover:bg-green-100 transition-colors disabled:opacity-60">
                     {completing ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
                     Complete
-                </Button>
+                </button>
                 {consultation.patient_id && (
                     <Link href={`/doctor/patients/${consultation.patient_id}`}
                         className="flex items-center gap-1.5 px-3 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-xl transition-all">
@@ -554,12 +552,12 @@ export default function DoctorDashboard() {
                 tone="red"
                 actions={
                     <div className="flex items-center gap-2">
-                        <Button onClick={refreshAll} disabled={anyLoading}
+                        <button onClick={refreshAll} disabled={anyLoading}
                             title="Refresh all data"
                             className="inline-flex h-9 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-60">
                             <RefreshCcw size={13} className={anyLoading ? "animate-spin" : ""} />
                             <span className="hidden sm:inline">{anyLoading ? "Syncing…" : "Refresh"}</span>
-                        </Button>
+                        </button>
                         <Link href="/doctor/appointments" className="inline-flex h-9 items-center gap-2 rounded-xl bg-red-700 px-3 text-xs font-bold text-white transition-colors hover:bg-red-800">
                             <Calendar size={13} /> My schedule
                         </Link>

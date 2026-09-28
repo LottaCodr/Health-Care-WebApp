@@ -9,16 +9,11 @@ import Link from "next/link";
 import { UserRole } from "@/types/models";
 import {
     Search, X, Download, FileText, User, Calendar,
-    Droplets, Dna, Filter, RefreshCcw,
+    Droplets, Dna, Filter, ChevronDown, RefreshCcw,
     Loader2, AlertTriangle, ClipboardList, Phone,
     AlertCircle, Eye, Printer, SortAsc, SortDesc,
     Baby, Heart,
 } from "lucide-react";
-import { TableRow, TableCell, Table, TableHeader, TableHead, TableBody } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -135,8 +130,8 @@ function exportToCSV(patients: any[]) {
 function PatientRow({ patient }: { patient: any }) {
     const child = isChild(patient.birth_date);
     return (
-        <TableRow className="group hover:bg-gray-50/80 transition-colors">
-            <TableCell className="px-4 py-3.5">
+        <tr className="group hover:bg-gray-50/80 transition-colors">
+            <td className="px-4 py-3.5">
                 <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0
                         ${child ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}>
@@ -147,21 +142,21 @@ function PatientRow({ patient }: { patient: any }) {
                         <p className="text-[10px] text-gray-400 font-mono mt-0.5">{displayHospitalNumber(patient.hospital_number)}</p>
                     </div>
                 </div>
-            </TableCell>
-            <TableCell className="px-4 py-3.5">
+            </td>
+            <td className="px-4 py-3.5">
                 <p className="text-sm font-semibold text-gray-700">{calcAge(patient.birth_date)}</p>
                 <p className="text-[10px] text-gray-400">{fmtDate(patient.birth_date)}</p>
-            </TableCell>
-            <TableCell className="px-4 py-3.5 text-sm font-medium text-gray-600 capitalize">{patient.gender ?? "—"}</TableCell>
-            <TableCell className="px-4 py-3.5">
+            </td>
+            <td className="px-4 py-3.5 text-sm font-medium text-gray-600 capitalize">{patient.gender ?? "—"}</td>
+            <td className="px-4 py-3.5">
                 <div className="flex items-center gap-1.5">
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">
                         {patient.blood_group ?? "—"}
                     </span>
                     <span className="text-xs font-semibold text-gray-500">{patient.geno_type ?? "—"}</span>
                 </div>
-            </TableCell>
-            <TableCell className="px-4 py-3.5">
+            </td>
+            <td className="px-4 py-3.5">
                 {hasActualAllergy(patient.allergies) ? (
                     <div className="flex items-center gap-1.5">
                         <AlertCircle size={11} className="text-red-500 shrink-0" />
@@ -170,18 +165,18 @@ function PatientRow({ patient }: { patient: any }) {
                 ) : (
                     <p className="text-xs text-gray-300 italic">None recorded</p>
                 )}
-            </TableCell>
-            <TableCell className="px-4 py-3.5">
+            </td>
+            <td className="px-4 py-3.5">
                 <StatusBadge status={patient.status} />
-            </TableCell>
-            <TableCell className="px-4 py-3.5 text-xs font-medium text-gray-500">{fmtDate(patient.created_at)}</TableCell>
-            <TableCell className="px-4 py-3.5">
+            </td>
+            <td className="px-4 py-3.5 text-xs font-medium text-gray-500">{fmtDate(patient.created_at)}</td>
+            <td className="px-4 py-3.5">
                 <Link href={`/doctor/health-records/${patient.id}`}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-gray-200 hover:border-red-200 hover:bg-red-50 hover:text-red-700 text-xs font-bold text-gray-600 transition-all opacity-0 group-hover:opacity-100 shadow-sm">
                     <Eye size={12} /> View
                 </Link>
-            </TableCell>
-        </TableRow>
+            </td>
+        </tr>
     );
 }
 
@@ -237,6 +232,7 @@ export default function HealthRecordsComponent() {
 
     if (!authorized) return null;
 
+    const selectCls = "h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer";
 
     return (
         <div className="space-y-6">
@@ -250,14 +246,14 @@ export default function HealthRecordsComponent() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button onClick={() => exportToCSV(filtered)} disabled={!filtered.length}
+                    <button onClick={() => exportToCSV(filtered)} disabled={!filtered.length}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-600 shadow-sm transition-all disabled:opacity-40">
                         <Download size={13} /> Export CSV
-                    </Button>
-                    <Button onClick={() => exportToPDF(filtered)} disabled={!filtered.length}
+                    </button>
+                    <button onClick={() => exportToPDF(filtered)} disabled={!filtered.length}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold shadow-sm shadow-red-200 transition-all disabled:opacity-40">
                         <Printer size={13} /> Export PDF
-                    </Button>
+                    </button>
                 </div>
             </div>
 
@@ -269,70 +265,58 @@ export default function HealthRecordsComponent() {
                     {/* Search */}
                     <div className="relative flex-1 min-w-[200px]">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+                        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
                             placeholder="Search name, phone, email, ID..."
                             className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 focus:bg-white transition-all" />
-                        {search && <Button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></Button>}
+                        {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
                     </div>
 
                     {/* Gender */}
                     <div className="relative">
-                        <Select value={gender} onValueChange={v => { setGender(v); setPage(1); }}>
-                            <SelectTrigger className="h-9 w-[130px] rounded-xl border-gray-200 bg-white px-3 text-xs font-bold text-gray-700">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Genders</SelectItem>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <select value={gender} onChange={e => { setGender(e.target.value); setPage(1); }} className={selectCls}>
+                            <option value="all">All Genders</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                        <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
 
                     {/* Age group */}
                     <div className="relative">
-                        <Select value={ageGroup} onValueChange={v => { setAgeGroup(v); setPage(1); }}>
-                            <SelectTrigger className="h-9 w-[150px] rounded-xl border-gray-200 bg-white px-3 text-xs font-bold text-gray-700">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Ages</SelectItem>
-                                <SelectItem value="child">Paediatric (0–12)</SelectItem>
-                                <SelectItem value="adult">Adult (13+)</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <select value={ageGroup} onChange={e => { setAgeGroup(e.target.value); setPage(1); }} className={selectCls}>
+                            <option value="all">All Ages</option>
+                            <option value="child">Paediatric (0–12)</option>
+                            <option value="adult">Adult (13+)</option>
+                        </select>
+                        <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
 
                     {/* Status */}
                     <div className="relative">
-                        <Select value={status} onValueChange={v => { setStatus(v); setPage(1); }}>
-                            <SelectTrigger className="h-9 w-[170px] rounded-xl border-gray-200 bg-white px-3 text-xs font-bold text-gray-700">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="registered">Registered</SelectItem>
-                                <SelectItem value="awaiting-consultation">Awaiting Consultation</SelectItem>
-                                <SelectItem value="under-consultation">Under Consultation</SelectItem>
-                                <SelectItem value="sent-to-lab">Sent to Lab</SelectItem>
-                                <SelectItem value="sent-to-pharmacy">Sent to Pharmacy</SelectItem>
-                                <SelectItem value="awaiting-payment">Awaiting Payment</SelectItem>
-                                <SelectItem value="discharged">Discharged</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} className={selectCls}>
+                            <option value="all">All Status</option>
+                            <option value="registered">Registered</option>
+                            <option value="awaiting-consultation">Awaiting Consultation</option>
+                            <option value="under-consultation">Under Consultation</option>
+                            <option value="sent-to-lab">Sent to Lab</option>
+                            <option value="sent-to-pharmacy">Sent to Pharmacy</option>
+                            <option value="awaiting-payment">Awaiting Payment</option>
+                            <option value="discharged">Discharged</option>
+                        </select>
+                        <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
 
                     {hasFilters && (
-                        <Button onClick={clearFilters}
+                        <button onClick={clearFilters}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors">
                             <X size={11} /> Clear
-                        </Button>
+                        </button>
                     )}
 
-                    <Button onClick={() => refetch()}
+                    <button onClick={() => refetch()}
                         className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shrink-0">
                         <RefreshCcw size={13} />
-                    </Button>
+                    </button>
                 </div>
 
                 {/* Table */}
@@ -345,19 +329,19 @@ export default function HealthRecordsComponent() {
                     <div className="flex flex-col items-center justify-center py-20 gap-3">
                         <AlertTriangle size={20} className="text-red-500" />
                         <p className="text-sm font-semibold text-gray-600">Failed to load records</p>
-                        <Button onClick={() => refetch()} className="text-xs font-bold text-red-600 hover:underline">Retry</Button>
+                        <button onClick={() => refetch()} className="text-xs font-bold text-red-600 hover:underline">Retry</button>
                     </div>
                 ) : paged.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-3">
                         <ClipboardList size={20} className="text-gray-300" />
                         <p className="text-sm font-semibold text-gray-500">No records found</p>
-                        {hasFilters && <Button onClick={clearFilters} className="text-xs text-red-600 hover:underline">Clear filters</Button>}
+                        {hasFilters && <button onClick={clearFilters} className="text-xs text-red-600 hover:underline">Clear filters</button>}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <Table className="w-full">
-                            <TableHeader>
-                                <TableRow className="border-b border-gray-50 bg-gray-50/50">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-gray-50 bg-gray-50/50">
                                     {[
                                         { label: "Patient", sortKey: "name" as const },
                                         { label: "Age", sortKey: null },
@@ -368,9 +352,9 @@ export default function HealthRecordsComponent() {
                                         { label: "Registered", sortKey: "date" as const },
                                         { label: "", sortKey: null },
                                     ].map(({ label, sortKey }) => (
-                                        <TableHead key={label} className="px-4 py-3 text-left">
+                                        <th key={label} className="px-4 py-3 text-left">
                                             {sortKey ? (
-                                                <Button onClick={() => toggleSort(sortKey)}
+                                                <button onClick={() => toggleSort(sortKey)}
                                                     className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-700 transition-colors">
                                                     {label}
                                                     {sortField === sortKey
@@ -378,18 +362,18 @@ export default function HealthRecordsComponent() {
                                                             ? <SortAsc size={11} className="text-red-500" />
                                                             : <SortDesc size={11} className="text-red-500" />
                                                         : <SortAsc size={11} className="text-gray-200" />}
-                                                </Button>
+                                                </button>
                                             ) : (
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</p>
                                             )}
-                                        </TableHead>
+                                        </th>
                                     ))}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody className="divide-y divide-gray-50">
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
                                 {paged.map((p: any) => <PatientRow key={p.id} patient={p} />)}
-                            </TableBody>
-                        </Table>
+                            </tbody>
+                        </table>
                     </div>
                 )}
 
@@ -400,26 +384,26 @@ export default function HealthRecordsComponent() {
                             Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}
                         </p>
                         <div className="flex items-center gap-1.5">
-                            <Button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                                 className="w-8 h-8 rounded-xl border border-gray-200 bg-white text-gray-500 flex items-center justify-center text-xs font-bold hover:border-gray-300 disabled:opacity-40 transition-colors">
                                 ‹
-                            </Button>
+                            </button>
                             {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
                                 const n = i + 1;
                                 return (
-                                    <Button key={n} onClick={() => setPage(n)}
+                                    <button key={n} onClick={() => setPage(n)}
                                         className={`w-8 h-8 rounded-xl text-xs font-bold transition-all
                                             ${page === n
                                                 ? "bg-red-700 text-white border border-red-700 shadow-sm"
                                                 : "border border-gray-200 bg-white text-gray-600 hover:border-gray-300"}`}>
                                         {n}
-                                    </Button>
+                                    </button>
                                 );
                             })}
-                            <Button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
                                 className="w-8 h-8 rounded-xl border border-gray-200 bg-white text-gray-500 flex items-center justify-center text-xs font-bold hover:border-gray-300 disabled:opacity-40 transition-colors">
                                 ›
-                            </Button>
+                            </button>
                         </div>
                     </div>
                 )}

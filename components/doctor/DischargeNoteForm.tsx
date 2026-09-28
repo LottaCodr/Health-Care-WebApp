@@ -8,11 +8,6 @@ import { useCreateDischargeNote } from "@/hooks/emr/use-discharge";
 import { useUpdatePatientStatus } from "@/hooks/emr/use-emr";
 import { getAdmissionsByPatient, dischargeFromWard } from "@/lib/services/admission.service";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -38,9 +33,9 @@ interface FieldProps {
 function Field({ label, required, error, children }: FieldProps) {
     return (
         <div className="space-y-1">
-            <Label className={`text-xs font-medium uppercase tracking-wide ${error ? "text-red-500" : "text-slate-500"}`}>
+            <label className={`text-xs font-medium uppercase tracking-wide ${error ? "text-red-500" : "text-slate-500"}`}>
                 {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-            </Label>
+            </label>
             {children}
             {error && <p className="text-[11px] text-red-500 font-medium">Required</p>}
         </div>
@@ -151,7 +146,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
             {/* Discharge Type */}
             <div className="grid grid-cols-4 gap-2">
                 {DISCHARGE_TYPES.map((t) => (
-                    <Button key={t} type="button"
+                    <button key={t} type="button"
                         onClick={() => store.setField("dischargeType", t)}
                         className={`py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${
                             store.dischargeType === t
@@ -159,7 +154,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
                                 : "bg-white text-slate-600 border-slate-200 hover:border-teal-300"
                         }`}>
                         {t === "ama" ? "AMA" : t}
-                    </Button>
+                    </button>
                 ))}
             </div>
 
@@ -173,14 +168,14 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
                             and the patient's decision in the Hospital Course field below.
                         </p>
                     </div>
-                    <Label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" checked={amaAcknowledged}
                             onChange={e => setAmaAcknowledged(e.target.checked)}
                             className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-400" />
                         <span className="text-xs font-medium text-amber-800">
                             I confirm the patient was informed of risks and chose to leave AMA
                         </span>
-                    </Label>
+                    </label>
                     {touched && missingAmaAck && (
                         <p className="text-[11px] text-red-500 font-medium">This acknowledgement is required for AMA discharge.</p>
                     )}
@@ -197,14 +192,14 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
                             clinical workflows for this patient.
                         </p>
                     </div>
-                    <Label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" checked={deceasedConfirmed}
                             onChange={e => setDeceasedConfirmed(e.target.checked)}
                             className="w-4 h-4 rounded border-slate-400 text-slate-700 focus:ring-slate-400" />
                         <span className="text-xs font-medium text-slate-700">
                             I confirm this patient's death and that this record is accurate
                         </span>
-                    </Label>
+                    </label>
                     {touched && missingDeceasedAck && (
                         <p className="text-[11px] text-red-500 font-medium">This confirmation is required to proceed.</p>
                     )}
@@ -213,7 +208,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
 
             {isTransfer && (
                 <Field label="Transfer Destination" required error={touched && missingTransfer}>
-                    <Input
+                    <input
                         className={`${baseInput} ${touched && missingTransfer ? errBorder : okBorder}`}
                         value={store.transferredTo}
                         onChange={(e) => store.setField("transferredTo", e.target.value)}
@@ -226,7 +221,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
             <Field label="Condition on Discharge" required>
                 <div className="flex flex-wrap gap-2">
                     {CONDITIONS.map((c) => (
-                        <Button key={c} type="button"
+                        <button key={c} type="button"
                             onClick={() => store.setField("conditionOnDischarge", c)}
                             className={`px-3 py-1.5 rounded-full text-xs font-medium border capitalize transition-colors ${
                                 store.conditionOnDischarge === c
@@ -234,14 +229,14 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
                                     : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
                             }`}>
                             {c}
-                        </Button>
+                        </button>
                     ))}
                 </div>
             </Field>
 
             {/* Final Diagnosis */}
             <Field label="Final Diagnosis" required error={touched && missingDiagnosis}>
-                <Input
+                <input
                     className={`${baseInput} ${touched && missingDiagnosis ? errBorder : okBorder}`}
                     value={store.finalDiagnosis}
                     onChange={(e) => store.setField("finalDiagnosis", e.target.value)}
@@ -251,7 +246,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
 
             {/* Hospital Course */}
             <Field label="Hospital Course" required error={touched && missingCourse}>
-                <Textarea
+                <textarea
                     className={`${baseInput} resize-none ${touched && missingCourse ? errBorder : okBorder}`}
                     rows={4}
                     value={store.hospitalCourse}
@@ -262,7 +257,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
 
             {/* Medications */}
             <Field label="Medications on Discharge">
-                <Textarea
+                <textarea
                     className={`${baseInput} resize-none ${okBorder}`}
                     rows={3}
                     value={store.medicationsOnDischarge}
@@ -275,14 +270,14 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
             {!isDeceased && (
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Follow-up Date">
-                        <Input type="date"
+                        <input type="date"
                             className={`${baseInput} ${okBorder}`}
                             value={store.followUpDate}
                             onChange={(e) => store.setField("followUpDate", e.target.value)}
                         />
                     </Field>
                     <Field label="Follow-up Instructions">
-                        <Input
+                        <input
                             className={`${baseInput} ${okBorder}`}
                             value={store.followUpInstructions}
                             onChange={(e) => store.setField("followUpInstructions", e.target.value)}
@@ -296,7 +291,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
             {!isDeceased && (
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Activity Restrictions">
-                        <Textarea
+                        <textarea
                             className={`${baseInput} resize-none ${okBorder}`}
                             rows={2}
                             value={store.activityRestrictions}
@@ -305,7 +300,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
                         />
                     </Field>
                     <Field label="Diet Instructions">
-                        <Textarea
+                        <textarea
                             className={`${baseInput} resize-none ${okBorder}`}
                             rows={2}
                             value={store.dietInstructions}
@@ -319,7 +314,7 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
             {/* Emergency Return */}
             {!isDeceased && (
                 <Field label="Emergency Return Criteria">
-                    <Textarea
+                    <textarea
                         className={`${baseInput} resize-none ${okBorder}`}
                         rows={2}
                         value={store.emergencyReturnCriteria}
@@ -340,19 +335,19 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
             )}
             <div className="flex gap-3 ml-auto">
                 {!embedded && (
-                    <Button type="button" onClick={() => store.closeForm()}
+                    <button type="button" onClick={() => store.closeForm()}
                         className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800">
                         Cancel
-                    </Button>
+                    </button>
                 )}
-                <Button type="button" onClick={handleSubmit}
+                <button type="button" onClick={handleSubmit}
                     disabled={store.submitting}
                     className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-teal-600 hover:bg-teal-700 text-white rounded-lg disabled:opacity-50 transition-colors">
                     {store.submitting
                         ? "Saving…"
                         : <><CheckCircle2 size={14} /> Save Discharge Note</>
                     }
-                </Button>
+                </button>
             </div>
         </div>
     );
@@ -376,10 +371,10 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
                         <h2 className="text-base font-semibold text-slate-800">Discharge Summary</h2>
                         <p className="text-xs text-slate-400 mt-0.5">Hospital patient record</p>
                     </div>
-                    <Button onClick={() => store.closeForm()}
+                    <button onClick={() => store.closeForm()}
                         className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
                         ✕
-                    </Button>
+                    </button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">{body}</div>
                 <div className="px-6 py-4 border-t border-slate-100 shrink-0">{footer}</div>

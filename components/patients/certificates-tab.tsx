@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FileHeart, FileText, Printer, Plus } from "lucide-react";
 import {
@@ -106,18 +105,14 @@ export default function CertificatesTab({ patient, canEdit, role }: { patient: P
                             <Input type="date" value={dod} onChange={(e) => setDod(e.target.value)} />
                             <Input type="time" value={tod} onChange={(e) => setTod(e.target.value)} />
                             <Input placeholder="Place of death" value={place} onChange={(e) => setPlace(e.target.value)} />
-                            <Select value={manner} onValueChange={setManner}>
-                                <SelectTrigger className="h-10 w-full rounded-lg border-gray-200 bg-white px-3 text-sm">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="natural">Natural</SelectItem>
-                                    <SelectItem value="accident">Accident</SelectItem>
-                                    <SelectItem value="suicide">Suicide</SelectItem>
-                                    <SelectItem value="homicide">Homicide</SelectItem>
-                                    <SelectItem value="undetermined">Undetermined</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <select className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm" value={manner}
+                                onChange={(e) => setManner(e.target.value)}>
+                                <option value="natural">Natural</option>
+                                <option value="accident">Accident</option>
+                                <option value="suicide">Suicide</option>
+                                <option value="homicide">Homicide</option>
+                                <option value="undetermined">Undetermined</option>
+                            </select>
                             <Input placeholder="Immediate cause of death" value={immediate} onChange={(e) => setImmediate(e.target.value)} />
                             <Input list="icd10-list" placeholder="ICD-10 code (e.g. B54)" value={icd10} onChange={(e) => setIcd10(e.target.value)} />
                             <datalist id="icd10-list">
@@ -159,15 +154,11 @@ export default function CertificatesTab({ patient, canEdit, role }: { patient: P
                     <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
                         <div className="grid gap-2 sm:grid-cols-2">
                             <Input placeholder="Child's full name" value={childName} onChange={(e) => setChildName(e.target.value)} />
-                            <Select value={sex} onValueChange={setSex}>
-                                <SelectTrigger className="h-10 w-full rounded-lg border-gray-200 bg-white px-3 text-sm">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="male">Male</SelectItem>
-                                    <SelectItem value="female">Female</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <select className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm" value={sex}
+                                onChange={(e) => setSex(e.target.value)}>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
                             <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
                             <Input type="time" value={tob} onChange={(e) => setTob(e.target.value)} />
                             <Input type="number" step="0.01" placeholder="Birth weight (kg)" value={weight} onChange={(e) => setWeight(e.target.value)} />

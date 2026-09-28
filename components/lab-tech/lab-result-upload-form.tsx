@@ -1,7 +1,5 @@
 "use client";
 
-import { patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
-
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
@@ -14,13 +12,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLabStore } from "@/store/lab-store";
+import { patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
 import TestTemplateForm from "./TestTemplateForm";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { fmtDate } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -102,7 +97,7 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
 
             {/* ── Request header ── */}
-            <Button
+            <button
                 type="button"
                 onClick={() => toggleUploadExpanded(req.id)}
                 className="w-full flex items-center justify-between px-6 py-5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
@@ -130,7 +125,7 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
                     </span>
                     {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                 </div>
-            </Button>
+            </button>
 
             {/* Doctor notes */}
             {req.notes && (
@@ -190,7 +185,7 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
                             </div>
                         </div>
                         <div className="px-6 py-4">
-                            <Label htmlFor={`resultFile-${req.id}`}
+                            <label htmlFor={`resultFile-${req.id}`}
                                 className={`flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all
                                     ${resultFile ? "border-indigo-300 bg-indigo-50/40" : "border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30"}`}
                             >
@@ -215,8 +210,8 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
                                         </div>
                                     </>
                                 )}
-                            </Label>
-                            <Input id={`resultFile-${req.id}`} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            </label>
+                            <input id={`resultFile-${req.id}`} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                 onChange={handleFile} disabled={completing} className="hidden" />
                             {fileError && (
                                 <p className="flex items-center gap-1 text-[10px] text-red-500 font-semibold mt-2">
@@ -236,10 +231,10 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
 
                     {/* Cancel */}
                     <div className="flex items-center gap-3">
-                        <Button type="button" onClick={() => router.back()} disabled={completing}
+                        <button type="button" onClick={() => router.back()} disabled={completing}
                             className="px-5 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
                             Cancel
-                        </Button>
+                        </button>
                     </div>
                 </div>
             )}

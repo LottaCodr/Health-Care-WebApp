@@ -8,9 +8,6 @@ import { LoadingSkeleton, EmptyState, SuccessAlert } from "@/components/emr";
 import { Loader2, HeartPulse } from "lucide-react";
 import { toast } from "sonner";
 import { fmtFull } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 
 export default function QueueSuite() {
     const { authorized } = useRoleProtection([UserRole.FrontDesk, UserRole.Admin]);
@@ -49,13 +46,13 @@ export default function QueueSuite() {
         <div className="space-y-8">
             {successMessage && <SuccessAlert message={successMessage} />}
 
-            <Card className="rounded-3xl border-gray-100 bg-white p-6 shadow-sm">
-                <div className="mb-6 flex items-center justify-between">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-gray-800">Arrivals Lounge</h3>
                     {(unprocessed.length > 0 || withNurse.length > 0) && (
-                        <Badge variant="secondary" className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-500">
+                        <span className="text-xs font-bold text-gray-400">
                             {unprocessed.length + withNurse.length} arrival{unprocessed.length + withNurse.length !== 1 ? "s" : ""}
-                        </Badge>
+                        </span>
                     )}
                 </div>
 
@@ -69,13 +66,13 @@ export default function QueueSuite() {
                                 <p className="font-bold text-gray-900 truncate">{p.name}</p>
                                 <p className="text-sm text-gray-500">Arrived: {fmtFull(p.created_at ?? "")}</p>
                             </div>
-                            <Button
+                            <button
                                 onClick={() => handleMoveToQueue(p.id, p.name)}
                                 disabled={movingId === p.id}
-                                className="min-w-[140px] gap-2 rounded-xl bg-blue-600 px-6 py-2 font-semibold text-white shadow-md shadow-blue-100 hover:bg-blue-700">
+                                className="flex items-center justify-center gap-2 min-w-[140px] px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold shadow-md shadow-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                                 {movingId === p.id && <Loader2 size={14} className="animate-spin" />}
                                 {movingId === p.id ? "Moving…" : "Move to Queue"}
-                            </Button>
+                            </button>
                         </div>
                     ))}
 
@@ -86,9 +83,9 @@ export default function QueueSuite() {
                                 <p className="font-bold text-gray-900 truncate">{p.name}</p>
                                 <p className="text-xs text-gray-500">Arrived: {fmtFull(p.created_at ?? "")}</p>
                             </div>
-                            <Badge variant="outline" className="shrink-0 gap-1.5 rounded-full border-teal-100 bg-white px-3 py-1.5 text-xs font-bold text-teal-700 shadow-sm">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white text-teal-700 border border-teal-100 shadow-sm shrink-0">
                                 <HeartPulse size={12} /> With nurse — vitals
-                            </Badge>
+                            </span>
                         </div>
                     ))}
 
@@ -96,10 +93,10 @@ export default function QueueSuite() {
                         <EmptyState title="Lounge Empty" description="No new arrivals awaiting triage" icon="✓" />
                     )}
                 </div>
-            </Card>
+            </div>
 
-            <Card className="rounded-3xl border-gray-100 bg-white p-6 shadow-sm">
-                <h3 className="mb-6 text-xl font-bold text-gray-800">Doctor&apos;s Queue</h3>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">Doctor&apos;s Queue</h3>
                 {awaitingConsultationPatients.isLoading && <LoadingSkeleton rows={2} />}
                 <div className="space-y-3">
                     {awaitingConsultationPatients.data?.map((p, i) => (
@@ -109,14 +106,14 @@ export default function QueueSuite() {
                                 <p className="font-bold text-gray-900">{p.name}</p>
                                 <p className="text-xs text-gray-600">{p.phone}</p>
                             </div>
-                            <Badge variant="outline" className="rounded-full border-blue-100 bg-white px-3 py-1 text-sm font-semibold text-blue-700 shadow-sm">Waiting</Badge>
+                            <span className="text-sm font-semibold text-blue-700 px-3 py-1 bg-white rounded-full border border-blue-100 shadow-sm">Waiting</span>
                         </div>
                     ))}
                     {!awaitingConsultationPatients.isLoading && awaitingConsultationPatients.data?.length === 0 && (
                         <EmptyState title="Queue Empty" description="Consultation rooms are ready" icon="🥼" />
                     )}
                 </div>
-            </Card>
+            </div>
         </div>
     );
 }

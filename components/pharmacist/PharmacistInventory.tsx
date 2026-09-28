@@ -19,11 +19,6 @@ import {
 } from "@/hooks/emr/use-pharmacy";
 import { usePharmacyStore, Drug, ViewMode } from "@/store/pharmacy-store";
 import BulkUploadDialog from "@/components/BulkUpload";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,24 +87,24 @@ function DrugModal({ drug, onClose, onSaved }: {
                         </div>
                         <p className="text-sm font-bold text-gray-900">{isEdit ? "Edit Drug" : "Add Drug"}</p>
                     </div>
-                    <Button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                    <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                         <X size={14} />
-                    </Button>
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                     <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2 space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Drug Name <span className="text-red-500">*</span></p>
-                            <Input value={form.drug_name ?? ""} onChange={e => set("drug_name", e.target.value)} placeholder="e.g. Amoxicillin" className={iCls} />
+                            <input value={form.drug_name ?? ""} onChange={e => set("drug_name", e.target.value)} placeholder="e.g. Amoxicillin" className={iCls} />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Generic Name</p>
-                            <Input value={form.generic_name ?? ""} onChange={e => set("generic_name", e.target.value)} placeholder="e.g. Amoxicillin trihydrate" className={iCls} />
+                            <input value={form.generic_name ?? ""} onChange={e => set("generic_name", e.target.value)} placeholder="e.g. Amoxicillin trihydrate" className={iCls} />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Manufacturer</p>
-                            <Input value={form.manufacturer ?? ""} onChange={e => set("manufacturer", e.target.value)} placeholder="e.g. Pfizer" className={iCls} />
+                            <input value={form.manufacturer ?? ""} onChange={e => set("manufacturer", e.target.value)} placeholder="e.g. Pfizer" className={iCls} />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Category</p>
@@ -132,7 +127,7 @@ function DrugModal({ drug, onClose, onSaved }: {
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Strength</p>
-                            <Input value={form.strength ?? ""} onChange={e => set("strength", e.target.value)} placeholder="e.g. 500mg" className={iCls} />
+                            <input value={form.strength ?? ""} onChange={e => set("strength", e.target.value)} placeholder="e.g. 500mg" className={iCls} />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Unit</p>
@@ -145,42 +140,42 @@ function DrugModal({ drug, onClose, onSaved }: {
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Selling Price (₦) <span className="text-red-500">*</span></p>
-                            <Input type="number" min="0" step="0.01" value={form.price ?? 0} onChange={e => set("price", parseFloat(e.target.value) || 0)} className={iCls} />
+                            <input type="number" min="0" step="0.01" value={form.price ?? 0} onChange={e => set("price", parseFloat(e.target.value) || 0)} className={iCls} />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cost Price (₦)</p>
-                            <Input type="number" min="0" step="0.01" value={form.cost_price ?? 0} onChange={e => set("cost_price", parseFloat(e.target.value) || 0)} className={iCls} />
+                            <input type="number" min="0" step="0.01" value={form.cost_price ?? 0} onChange={e => set("cost_price", parseFloat(e.target.value) || 0)} className={iCls} />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Quantity in Stock</p>
-                            <Input type="number" min="0" value={form.quantity ?? 0} onChange={e => set("quantity", parseInt(e.target.value) || 0)} className={iCls} />
+                            <input type="number" min="0" value={form.quantity ?? 0} onChange={e => set("quantity", parseInt(e.target.value) || 0)} className={iCls} />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Reorder Level</p>
-                            <Input type="number" min="0" value={form.reorder_level ?? 10} onChange={e => set("reorder_level", parseInt(e.target.value) || 0)} className={iCls} />
+                            <input type="number" min="0" value={form.reorder_level ?? 10} onChange={e => set("reorder_level", parseInt(e.target.value) || 0)} className={iCls} />
                         </div>
                         <div className="col-span-2 space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Expiry Date</p>
-                            <Input type="date" value={form.expiry_date ?? ""} onChange={e => set("expiry_date", e.target.value)} className={iCls} />
+                            <input type="date" value={form.expiry_date ?? ""} onChange={e => set("expiry_date", e.target.value)} className={iCls} />
                         </div>
                     </div>
 
                     {/* Toggles */}
                     <div className="flex items-center gap-6">
-                        <Label className="flex items-center gap-3 cursor-pointer">
+                        <label className="flex items-center gap-3 cursor-pointer">
                             <div onClick={() => set("requires_prescription", !form.requires_prescription)}
                                 className={`w-10 h-6 rounded-full transition-colors relative ${form.requires_prescription ? "bg-amber-500" : "bg-gray-200"}`}>
                                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.requires_prescription ? "translate-x-4" : "translate-x-0.5"}`} />
                             </div>
                             <p className="text-xs font-bold text-gray-700">Prescription Required</p>
-                        </Label>
-                        <Label className="flex items-center gap-3 cursor-pointer ml-auto">
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer ml-auto">
                             <div onClick={() => set("is_active", !form.is_active)}
                                 className={`w-10 h-6 rounded-full transition-colors relative ${form.is_active ? "bg-green-500" : "bg-gray-200"}`}>
                                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.is_active ? "translate-x-4" : "translate-x-0.5"}`} />
                             </div>
                             <p className="text-xs font-bold text-gray-700">Active</p>
-                        </Label>
+                        </label>
                     </div>
 
                     {/* Margin preview */}
@@ -195,11 +190,11 @@ function DrugModal({ drug, onClose, onSaved }: {
                 </div>
 
                 <div className="px-6 pb-5 pt-4 border-t border-gray-50 flex gap-2 shrink-0">
-                    <Button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">Cancel</Button>
-                    <Button onClick={handleSave} disabled={loading}
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">Cancel</button>
+                    <button onClick={handleSave} disabled={loading}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold shadow-sm shadow-violet-200 transition-all disabled:opacity-60">
                         {loading ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : <><CheckCircle2 size={13} /> {isEdit ? "Save" : "Add Drug"}</>}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -240,9 +235,9 @@ function RestockModal({ drug, onClose, onSaved }: { drug: Drug; onClose: () => v
                         <p className="text-sm font-bold text-gray-900">Restock Drug</p>
                         <p className="text-xs text-gray-400">{drug.drug_name}</p>
                     </div>
-                    <Button onClick={onClose} className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+                    <button onClick={onClose} className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100">
                         <X size={14} />
-                    </Button>
+                    </button>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
                     <p className="text-xs text-gray-500 font-medium">Current stock</p>
@@ -250,7 +245,7 @@ function RestockModal({ drug, onClose, onSaved }: { drug: Drug; onClose: () => v
                 </div>
                 <div className="space-y-1.5">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Add Quantity ({drug.unit})</p>
-                    <Input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="e.g. 100"
+                    <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="e.g. 100"
                         className="w-full h-10 px-4 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400/25 focus:border-green-400 focus:bg-white transition-all" />
                 </div>
                 {qty && !isNaN(parseInt(qty)) && parseInt(qty) > 0 && (
@@ -259,11 +254,11 @@ function RestockModal({ drug, onClose, onSaved }: { drug: Drug; onClose: () => v
                     </div>
                 )}
                 <div className="flex gap-2 pt-1">
-                    <Button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">Cancel</Button>
-                    <Button onClick={handleRestock} disabled={saving}
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">Cancel</button>
+                    <button onClick={handleRestock} disabled={saving}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold shadow-sm shadow-green-200 transition-all disabled:opacity-60">
                         {saving ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : <><ArrowUpCircle size={13} /> Restock</>}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -292,11 +287,11 @@ function DeleteModal({ drug, onClose, onDeleted }: { drug: Drug; onClose: () => 
                     <p className="text-xs text-gray-500 mt-1"><span className="font-bold">{drug.drug_name}</span> will be removed from the catalog.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</Button>
-                    <Button onClick={handleDelete} disabled={loading}
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button onClick={handleDelete} disabled={loading}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold disabled:opacity-60 transition-colors">
                         {loading ? <><Loader2 size={13} className="animate-spin" /> Removing...</> : <><Trash2 size={13} /> Remove</>}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -364,28 +359,28 @@ export default function DrugManagementPage() {
                     {/* View toggle */}
                     <div className="flex items-center bg-gray-100 rounded-xl p-0.5">
                         {(["catalog", "inventory"] as ViewMode[]).map(v => (
-                            <Button key={v} onClick={() => setField("viewMode", v)}
+                            <button key={v} onClick={() => setField("viewMode", v)}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all
                                     ${viewMode === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
                                 {v}
-                            </Button>
+                            </button>
                         ))}
                     </div>
-                    <Button
+                    <button
                         onClick={() => setBulkImportOpen(true)}
                         className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 text-sm font-semibold transition-all"
                     >
                         <Upload size={14} /> Bulk Import
-                    </Button>
+                    </button>
                     <BulkUploadDialog
                         open={bulkImportOpen}
                         onOpenChange={setBulkImportOpen}
                         uploadType="drug_inventory"
                     />
-                    <Button onClick={() => setField("showAdd", true)}
+                    <button onClick={() => setField("showAdd", true)}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold shadow-sm shadow-violet-200 transition-all">
                         <Plus size={14} /> Add Drug
-                    </Button>
+                    </button>
                 </div>
             </div>
 
@@ -415,9 +410,9 @@ export default function DrugManagementPage() {
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-50 flex-wrap">
                     <div className="relative flex-1 min-w-[180px]">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <Input value={search} onChange={e => setField("search", e.target.value)} placeholder="Search drug name, generic, category..."
+                        <input value={search} onChange={e => setField("search", e.target.value)} placeholder="Search drug name, generic, category..."
                             className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400/20 focus:border-violet-400 focus:bg-white transition-all" />
-                        {search && <Button onClick={() => setField("search", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></Button>}
+                        {search && <button onClick={() => setField("search", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
                     </div>
                     <div className="relative">
                         <select value={category} onChange={e => setField("category", e.target.value)} className={selCls}>
@@ -438,14 +433,14 @@ export default function DrugManagementPage() {
                         <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
                     {(search || category !== "all" || stockFilter !== "all") && (
-                        <Button onClick={() => { setField("search", ""); setField("category", "all"); setField("stockFilter", "all"); }}
+                        <button onClick={() => { setField("search", ""); setField("category", "all"); setField("stockFilter", "all"); }}
                             className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold text-red-600 bg-red-50 border border-red-100">
                             <X size={11} /> Clear
-                        </Button>
+                        </button>
                     )}
-                    <Button onClick={() => refetch()} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shrink-0">
+                    <button onClick={() => refetch()} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shrink-0">
                         <RefreshCcw size={13} />
-                    </Button>
+                    </button>
                     <p className="text-xs text-gray-400 ml-auto">{filtered.length} results</p>
                 </div>
 
@@ -458,35 +453,35 @@ export default function DrugManagementPage() {
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                         <AlertTriangle size={20} className="text-red-500" />
                         <p className="text-sm font-semibold text-gray-600">Failed to load</p>
-                        <Button onClick={() => refetch()} className="text-xs text-red-600 hover:underline">Retry</Button>
+                        <button onClick={() => refetch()} className="text-xs text-red-600 hover:underline">Retry</button>
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                         <Pill size={22} className="text-gray-300" />
                         <p className="text-sm font-semibold text-gray-500">No drugs found</p>
-                        <Button onClick={() => setField("showAdd", true)} className="text-xs text-violet-600 font-bold hover:underline">Add first drug →</Button>
+                        <button onClick={() => setField("showAdd", true)} className="text-xs text-violet-600 font-bold hover:underline">Add first drug →</button>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <Table className="w-full">
-                            <TableHeader>
-                                <TableRow className="border-b border-gray-50 bg-gray-50/40">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-gray-50 bg-gray-50/40">
                                     {["Drug", "Category", "Form/Strength", "Stock",
                                         ...(viewMode === "catalog" ? ["Selling Price", "Cost Price"] : ["Unit Price"]),
                                         "Expiry", "Status", ""].map(h => (
-                                            <TableHead key={h} className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">{h}</TableHead>
+                                            <th key={h} className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">{h}</th>
                                         ))}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody className="divide-y divide-gray-50">
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
                                 {filtered.map((d: Drug) => {
                                     const expired = isExpired(d.expiry_date);
                                     const expiring = isExpiringSoon(d.expiry_date);
                                     const outStk = d.quantity === 0;
                                     const lowStk = d.quantity <= (d.reorder_level ?? 10) && !outStk;
                                     return (
-                                        <TableRow key={d.id} className={`group hover:bg-gray-50/80 transition-colors ${!d.is_active ? "opacity-50" : ""}`}>
-                                            <TableCell className="px-4 py-3.5">
+                                        <tr key={d.id} className={`group hover:bg-gray-50/80 transition-colors ${!d.is_active ? "opacity-50" : ""}`}>
+                                            <td className="px-4 py-3.5">
                                                 <p className="text-sm font-bold text-gray-900">{d.drug_name}</p>
                                                 {d.generic_name && <p className="text-[10px] text-gray-400 italic">{d.generic_name}</p>}
                                                 {d.requires_prescription && (
@@ -494,64 +489,64 @@ export default function DrugManagementPage() {
                                                         <ShieldAlert size={8} /> Rx
                                                     </span>
                                                 )}
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3.5 text-xs font-medium text-gray-600">{d.category ?? "—"}</TableCell>
-                                            <TableCell className="px-4 py-3.5">
+                                            </td>
+                                            <td className="px-4 py-3.5 text-xs font-medium text-gray-600">{d.category ?? "—"}</td>
+                                            <td className="px-4 py-3.5">
                                                 <p className="text-xs font-medium text-gray-700">{d.dosage_form ?? "—"}</p>
                                                 {d.strength && <p className="text-[10px] text-gray-400">{d.strength}</p>}
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3.5">
+                                            </td>
+                                            <td className="px-4 py-3.5">
                                                 <span className={`text-sm font-bold ${outStk ? "text-red-600" : lowStk ? "text-amber-600" : "text-gray-800"}`}>
                                                     {d.quantity} {d.unit}
                                                 </span>
                                                 {outStk && <p className="text-[10px] text-red-500 font-bold">Out of stock</p>}
                                                 {lowStk && <p className="text-[10px] text-amber-500 font-bold">Low stock</p>}
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3.5">
+                                            </td>
+                                            <td className="px-4 py-3.5">
                                                 <p className="text-sm font-bold text-gray-900">{fmtNaira(d.price)}</p>
                                                 <p className="text-[10px] text-gray-400">per {d.unit?.toLowerCase()}</p>
-                                            </TableCell>
+                                            </td>
                                             {viewMode === "catalog" && (
-                                                <TableCell className="px-4 py-3.5 text-xs font-medium text-gray-500">{fmtNaira(d.cost_price)}</TableCell>
+                                                <td className="px-4 py-3.5 text-xs font-medium text-gray-500">{fmtNaira(d.cost_price)}</td>
                                             )}
-                                            <TableCell className="px-4 py-3.5">
+                                            <td className="px-4 py-3.5">
                                                 <p className={`text-xs font-medium ${expired ? "text-red-600 font-bold" : expiring ? "text-amber-600 font-bold" : "text-gray-500"}`}>
                                                     {d.expiry_date ? fmtDate(d.expiry_date) : "—"}
                                                 </p>
                                                 {expired && <p className="text-[9px] text-red-500 font-black uppercase">Expired</p>}
                                                 {expiring && <p className="text-[9px] text-amber-500 font-black uppercase">Expiring</p>}
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3.5">
-                                                <Button onClick={() => handleToggle(d)} disabled={toggling === d.id} className="text-xs font-bold">
+                                            </td>
+                                            <td className="px-4 py-3.5">
+                                                <button onClick={() => handleToggle(d)} disabled={toggling === d.id} className="text-xs font-bold">
                                                     {toggling === d.id
                                                         ? <Loader2 size={13} className="animate-spin text-gray-400" />
                                                         : d.is_active
                                                             ? <span className="flex items-center gap-1 text-green-600"><ToggleRight size={15} /> Active</span>
                                                             : <span className="flex items-center gap-1 text-gray-400"><ToggleLeft size={15} /> Inactive</span>
                                                     }
-                                                </Button>
-                                            </TableCell>
-                                            <TableCell className="px-4 py-3.5">
+                                                </button>
+                                            </td>
+                                            <td className="px-4 py-3.5">
                                                 <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button onClick={() => setField("restockTarget", d)}
+                                                    <button onClick={() => setField("restockTarget", d)}
                                                         className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-green-600 hover:border-green-200 transition-colors">
                                                         <ArrowUpCircle size={12} />
-                                                    </Button>
-                                                    <Button onClick={() => setField("editTarget", d)}
+                                                    </button>
+                                                    <button onClick={() => setField("editTarget", d)}
                                                         className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-violet-600 hover:border-violet-200 transition-colors">
                                                         <Edit3 size={12} />
-                                                    </Button>
-                                                    <Button onClick={() => setField("deleteTarget", d)}
+                                                    </button>
+                                                    <button onClick={() => setField("deleteTarget", d)}
                                                         className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-200 transition-colors">
                                                         <Trash2 size={12} />
-                                                    </Button>
+                                                    </button>
                                                 </div>
-                                            </TableCell>
-                                        </TableRow>
+                                            </td>
+                                        </tr>
                                     );
                                 })}
-                            </TableBody>
-                        </Table>
+                            </tbody>
+                        </table>
                     </div>
                 )}
 
@@ -562,7 +557,7 @@ export default function DrugManagementPage() {
                         <p className="text-xs text-amber-700 font-medium flex-1">
                             <span className="font-bold">{lowStock} drug{lowStock !== 1 ? "s" : ""}</span> at or below reorder level.
                         </p>
-                        <Button onClick={() => setField("stockFilter", "low")} className="text-xs font-bold text-amber-700 hover:underline">View all</Button>
+                        <button onClick={() => setField("stockFilter", "low")} className="text-xs font-bold text-amber-700 hover:underline">View all</button>
                     </div>
                 )}
             </div>

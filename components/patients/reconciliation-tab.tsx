@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ListChecks, Plus, Trash2 } from "lucide-react";
 import { useCreateReconciliation, useReconciliations } from "@/hooks/emr/use-clinical-modules";
@@ -68,33 +67,25 @@ export default function ReconciliationTab({ patientId, canEdit }: { patientId: s
                         <ListChecks size={16} className="text-violet-600" /> New medication reconciliation
                     </p>
                     <div className="mb-3 flex items-center gap-3">
-                        <Select value={encounterType} onValueChange={setEncounterType}>
-                            <SelectTrigger className="h-10 w-full rounded-lg border-gray-200 bg-white px-3 text-sm">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="admission">On admission</SelectItem>
-                                <SelectItem value="transfer">On transfer</SelectItem>
-                                <SelectItem value="discharge">On discharge</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <select className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm" value={encounterType}
+                            onChange={(e) => setEncounterType(e.target.value)}>
+                            <option value="admission">On admission</option>
+                            <option value="transfer">On transfer</option>
+                            <option value="discharge">On discharge</option>
+                        </select>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-6">
                         <Input placeholder="Drug" value={drugName} onChange={(e) => setDrugName(e.target.value)} />
                         <Input placeholder="Dose" value={dosage} onChange={(e) => setDosage(e.target.value)} />
                         <Input placeholder="Frequency" value={frequency} onChange={(e) => setFrequency(e.target.value)} />
                         <Input placeholder="Route" value={route} onChange={(e) => setRoute(e.target.value)} />
-                        <Select value={action} onValueChange={v => setAction(v as any)}>
-                            <SelectTrigger className="h-10 w-full rounded-lg border-gray-200 bg-white px-3 text-sm">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="continue">Continue</SelectItem>
-                                <SelectItem value="change">Change</SelectItem>
-                                <SelectItem value="stop">Stop</SelectItem>
-                                <SelectItem value="start">Start</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <select className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm" value={action}
+                            onChange={(e) => setAction(e.target.value as any)}>
+                            <option value="continue">Continue</option>
+                            <option value="change">Change</option>
+                            <option value="stop">Stop</option>
+                            <option value="start">Start</option>
+                        </select>
                         <Button variant="outline" className="gap-2" onClick={addItem}><Plus size={14} /> Add</Button>
                     </div>
 
@@ -106,10 +97,10 @@ export default function ReconciliationTab({ patientId, canEdit }: { patientId: s
                                     <span className="text-gray-500">{item.dosage} · {item.frequency} · {item.route}</span>
                                     <div className="flex items-center gap-2">
                                         <Badge className={`border ${ACTION_STYLES[item.action]}`}>{item.action}</Badge>
-                                        <Button onClick={() => setItems((prev) => prev.filter((_, j) => j !== i))}
+                                        <button onClick={() => setItems((prev) => prev.filter((_, j) => j !== i))}
                                             className="text-gray-400 hover:text-red-500">
                                             <Trash2 size={13} />
-                                        </Button>
+                                        </button>
                                     </div>
                                 </div>
                             ))}

@@ -21,10 +21,6 @@ import {
 } from "@/hooks/emr/use-lab";
 import BulkUploadDialog from "@/components/BulkUpload";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-
 
 const CATEGORIES = [
     "Haematology", "Biochemistry", "Serology", "Microbiology",
@@ -59,12 +55,14 @@ const EMPTY_TEST: Partial<LabTest> = {
 
 function TestModal({
     test,
-    initial,
     onClose,
+    initial,
+
 }: {
     test?: LabTest | null;
-    initial?: Partial<LabTest> | null;
     onClose: () => void;
+    initial?: Partial<LabTest> | null;
+
 }) {
     const isEdit = !!test;
     const upsertMutation = useUpsertLabTest();
@@ -75,7 +73,7 @@ function TestModal({
         if (!form.test_name?.trim()) { toast.error("Test name is required."); return; }
         if (!form.category?.trim()) { toast.error("Category is required."); return; }
         if (form.price === undefined || form.price < 0) { toast.error("Price is required."); return; }
-        if (/h\s*\.?\s*pylori/i.test(form.test_name) && form.is_active && form.price <= 0) {
+        if (/h\s*\.?\s*pylori/i.test(form.test_name ?? "") && form.is_active && form.price <= 0) {
             toast.error("Set the correct price for this H. pylori test before making it active."); return;
         }
         try {
@@ -102,9 +100,9 @@ function TestModal({
                         </div>
                         <p className="text-sm font-bold text-gray-900">{isEdit ? "Edit Lab Test" : "Add Lab Test"}</p>
                     </div>
-                    <Button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                    <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                         <X size={14} />
-                    </Button>
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
@@ -112,12 +110,12 @@ function TestModal({
                     <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2 space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Test Name <span className="text-red-500">*</span></p>
-                            <Input value={form.test_name ?? ""} onChange={e => set("test_name", e.target.value)}
+                            <input value={form.test_name ?? ""} onChange={e => set("test_name", e.target.value)}
                                 placeholder="e.g. Full Blood Count" className={inputCls} />
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Test Code</p>
-                            <Input value={form.test_code ?? ""} onChange={e => set("test_code", e.target.value)}
+                            <input value={form.test_code ?? ""} onChange={e => set("test_code", e.target.value)}
                                 placeholder="e.g. FBC-001" className={inputCls} />
                         </div>
                         <div className="space-y-1.5">
@@ -157,7 +155,7 @@ function TestModal({
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Price (₦) <span className="text-red-500">*</span></p>
                         <div className="relative">
                             <DollarSign size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            <Input type="number" min="0" step="0.01" value={form.price ?? 0} onChange={e => set("price", parseFloat(e.target.value) || 0)}
+                            <input type="number" min="0" step="0.01" value={form.price ?? 0} onChange={e => set("price", parseFloat(e.target.value) || 0)}
                                 placeholder="0.00" className={`${inputCls} pl-8`} />
                         </div>
                     </div>
@@ -165,19 +163,19 @@ function TestModal({
                     {/* Instructions */}
                     <div className="space-y-1.5">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Patient Instructions / Preparation</p>
-                        <Textarea rows={2} value={form.instructions ?? ""} onChange={e => set("instructions", e.target.value)}
+                        <textarea rows={2} value={form.instructions ?? ""} onChange={e => set("instructions", e.target.value)}
                             placeholder="e.g. Fast for 8–10 hours before this test" className={taCls} />
                     </div>
 
                     {/* Normal range */}
                     <div className="space-y-1.5">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Normal Reference Range</p>
-                        <Textarea rows={2} value={form.normal_range ?? ""} onChange={e => set("normal_range", e.target.value)}
+                        <textarea rows={2} value={form.normal_range ?? ""} onChange={e => set("normal_range", e.target.value)}
                             placeholder="e.g. Hb: 12–18 g/dL, WBC: 4.5–11.0 ×10⁹/L..." className={taCls} />
                     </div>
 
                     {/* Active toggle */}
-                    <Label className="flex items-center gap-3 cursor-pointer">
+                    <label className="flex items-center gap-3 cursor-pointer">
                         <div onClick={() => set("is_active", !form.is_active)}
                             className={`w-10 h-6 rounded-full transition-colors relative ${form.is_active ? "bg-green-500" : "bg-gray-200"}`}>
                             <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.is_active ? "translate-x-4" : "translate-x-0.5"}`} />
@@ -186,15 +184,15 @@ function TestModal({
                             <p className="text-xs font-bold text-gray-700">Active — available for requesting</p>
                             <p className="text-[10px] text-gray-400">Inactive tests won't appear in doctor's request dropdown</p>
                         </div>
-                    </Label>
+                    </label>
                 </div>
 
                 <div className="px-6 pb-5 pt-4 border-t border-gray-50 flex gap-2 shrink-0">
-                    <Button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">Cancel</Button>
-                    <Button onClick={handleSave} disabled={upsertMutation.isPending}
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">Cancel</button>
+                    <button onClick={handleSave} disabled={upsertMutation.isPending}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm shadow-indigo-200 transition-all disabled:opacity-60">
                         {upsertMutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : <><CheckCircle2 size={13} /> {isEdit ? "Save Changes" : "Add Test"}</>}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -223,11 +221,11 @@ function DeleteModal({ test, onClose }: { test: LabTest; onClose: () => void; })
                     <p className="text-xs text-gray-500 mt-1"><span className="font-bold">{test.test_name}</span> will be removed from the catalog and won't appear in future requests.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</Button>
-                    <Button onClick={handleDelete} disabled={deleteMutation.isPending}
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button onClick={handleDelete} disabled={deleteMutation.isPending}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold disabled:opacity-60 transition-colors">
                         {deleteMutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Removing...</> : <><Trash2 size={13} /> Remove</>}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -259,9 +257,9 @@ function TestPreview({ test, onClose, onEdit }: { test: LabTest; onClose: () => 
                             <p className="text-xs text-gray-400">{test.test_name}</p>
                         </div>
                     </div>
-                    <Button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                    <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                         <X size={14} />
-                    </Button>
+                    </button>
                 </div>
 
                 {/* Content */}
@@ -276,13 +274,13 @@ function TestPreview({ test, onClose, onEdit }: { test: LabTest; onClose: () => 
                                         <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded">
                                             {test.test_code}
                                         </span>
-                                        <Button
+                                        <button
                                             onClick={() => copyToClipboard(test.test_code!)}
                                             className="text-gray-400 hover:text-indigo-600 transition-colors"
                                             title="Copy test code"
                                         >
                                             {copied ? <Check size={12} className="text-green-600" /> : <Copy size={12} />}
-                                        </Button>
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -354,19 +352,19 @@ function TestPreview({ test, onClose, onEdit }: { test: LabTest; onClose: () => 
 
                     {/* Quick Actions */}
                     <div className="flex gap-2 pt-2">
-                        <Button
+                        <button
                             onClick={() => { onClose(); onEdit(test); }}
                             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                         >
                             <Edit3 size={14} />
                             Edit Test
-                        </Button>
-                        <Button
+                        </button>
+                        <button
                             onClick={onClose}
                             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm shadow-indigo-200 transition-colors ml-auto"
                         >
                             Close
-                        </Button>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -402,9 +400,9 @@ function TemplatePreviewModal({ onClose, onDownload }: { onClose: () => void; on
                             <p className="text-xs text-gray-400">Lab Test Catalog import format</p>
                         </div>
                     </div>
-                    <Button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                    <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                         <X size={14} />
-                    </Button>
+                    </button>
                 </div>
 
                 {/* Content */}
@@ -449,13 +447,13 @@ function TemplatePreviewModal({ onClose, onDownload }: { onClose: () => void; on
                     <div>
                         <div className="flex items-center justify-between mb-3">
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Example CSV Content</p>
-                            <Button
+                            <button
                                 onClick={onDownload}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
                             >
                                 <Download size={12} />
                                 Download Template
-                            </Button>
+                            </button>
                         </div>
                         <div className="bg-gray-900 rounded-xl p-4 overflow-x-auto">
                             <pre className="text-xs text-green-400 font-mono leading-relaxed">
@@ -496,19 +494,19 @@ function TemplatePreviewModal({ onClose, onDownload }: { onClose: () => void; on
 
                     {/* Actions */}
                     <div className="flex gap-3 pt-2">
-                        <Button
+                        <button
                             onClick={onDownload}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm shadow-blue-200 transition-colors"
                         >
                             <Download size={14} />
                             Download Template CSV
-                        </Button>
-                        <Button
+                        </button>
+                        <button
                             onClick={onClose}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors ml-auto"
                         >
                             Close
-                        </Button>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -538,9 +536,9 @@ export default function LabTestCatalogPage() {
     } = useLabStore();
 
     const [bulkImportOpen, setBulkImportOpen] = useState(false);
+    const [newTestPreset, setNewTestPreset] = useState<Partial<LabTest> | null>(null);
     const [previewTarget, setPreviewTarget] = useState<LabTest | null>(null);
     const [templatePreviewOpen, setTemplatePreviewOpen] = useState(false);
-    const [newTestPreset, setNewTestPreset] = useState<Partial<LabTest> | null>(null);
 
     const handleMergeDuplicates = async () => {
         try {
@@ -625,7 +623,7 @@ export default function LabTestCatalogPage() {
                             View Template
                         </Button>
                     </div>
-                    <Button
+                    <button
                         onClick={handleMergeDuplicates}
                         disabled={mergeDuplicatesMutation.isPending}
                         className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-sm font-semibold transition-all disabled:opacity-60"
@@ -635,22 +633,22 @@ export default function LabTestCatalogPage() {
                             ? <Loader2 size={14} className="animate-spin" />
                             : <Copy size={14} />}
                         Merge Duplicates
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         onClick={() => setBulkImportOpen(true)}
                         className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 text-sm font-semibold transition-all"
                     >
                         <Upload size={14} /> Bulk Import
-                    </Button>
+                    </button>
                     <BulkUploadDialog
                         open={bulkImportOpen}
                         onOpenChange={setBulkImportOpen}
                         uploadType="lab_test_catalog"
                     />
-                    <Button onClick={() => { setNewTestPreset(null); setField("showAdd", true); }}
+                    <button onClick={() => { setNewTestPreset(null); setField("showAdd", true); }}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm shadow-indigo-200 transition-all">
                         <Plus size={14} /> Add Test
-                    </Button>
+                    </button>
                 </div>
             </div>
 
@@ -666,11 +664,16 @@ export default function LabTestCatalogPage() {
                             { test_name: "H. pylori antigen (stool)", category: "Microbiology", sample_type: "Stool" },
                         ] as const).map((item) => {
                             const existing = tests.find(t => t.test_name.toLowerCase() === item.test_name.toLowerCase());
-                            return existing ? <span key={item.test_name} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs text-blue-800">{item.test_name} · {existing.is_active ? "active" : "inactive"}</span> : (
-                                <Button key={item.test_name} type="button" variant="outline" className="border-blue-300 bg-white text-blue-800"
-                                    onClick={() => { setNewTestPreset({ ...item, price: 0, is_active: false }); setField("showAdd", true); }}>
+                            return existing ? (
+                                <span key={item.test_name} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs text-blue-800">
+                                    {item.test_name} · {existing.is_active ? "active" : "inactive"}
+                                </span>
+                            ) : (
+                                <button key={item.test_name} type="button"
+                                    onClick={() => { setNewTestPreset({ ...item, price: 0, is_active: false }); setField("showAdd", true); }}
+                                    className="flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 transition-colors">
                                     <Plus size={12} /> Configure {item.test_name}
-                                </Button>
+                                </button>
                             );
                         })}
                     </div>
@@ -701,10 +704,10 @@ export default function LabTestCatalogPage() {
             <div className="flex items-center gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
                     <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    <Input value={search} onChange={e => setField("catalogSearch", e.target.value)}
+                    <input value={search} onChange={e => setField("catalogSearch", e.target.value)}
                         placeholder="Search test name, code, category..."
                         className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-white text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/20 focus:border-indigo-400 transition-all shadow-sm" />
-                    {search && <Button onClick={() => setField("catalogSearch", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></Button>}
+                    {search && <button onClick={() => setField("catalogSearch", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={13} /></button>}
                 </div>
                 <div className="relative">
                     <select value={category} onChange={e => setField("catalogCategory", e.target.value)} className={selectCls}>
@@ -713,9 +716,9 @@ export default function LabTestCatalogPage() {
                     </select>
                     <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
-                <Button onClick={() => refetch()} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 shadow-sm transition-colors shrink-0">
+                <button onClick={() => refetch()} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 shadow-sm transition-colors shrink-0">
                     <RefreshCcw size={13} />
-                </Button>
+                </button>
                 <p className="text-xs text-gray-400 font-medium">{filtered.length} results</p>
             </div>
 
@@ -729,13 +732,13 @@ export default function LabTestCatalogPage() {
                 <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-3xl border border-gray-100">
                     <AlertTriangle size={20} className="text-red-500" />
                     <p className="text-sm font-semibold text-gray-600">Failed to load catalog</p>
-                    <Button onClick={() => refetch()} className="text-xs text-red-600 hover:underline">Retry</Button>
+                    <button onClick={() => refetch()} className="text-xs text-red-600 hover:underline">Retry</button>
                 </div>
             ) : grouped.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-3xl border border-gray-100 shadow-sm">
                     <FlaskConical size={22} className="text-gray-300" />
                     <p className="text-sm font-semibold text-gray-500">No tests found</p>
-                    <Button onClick={() => { setNewTestPreset(null); setField("showAdd", true); }} className="text-xs text-indigo-600 hover:underline font-bold">Add the first test →</Button>
+                    <button onClick={() => { setNewTestPreset(null); setField("showAdd", true); }} className="text-xs text-indigo-600 hover:underline font-bold">Add the first test →</button>
                 </div>
             ) : (
                 <div className="space-y-5">
@@ -790,13 +793,13 @@ export default function LabTestCatalogPage() {
 
                                         {/* Toggle + actions */}
                                         <div className="flex items-center gap-1.5 shrink-0">
-                                            <Button onClick={() => setPreviewTarget(t)}
+                                            <button onClick={() => setPreviewTarget(t)}
                                                 className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
                                                 title="Preview test details"
                                             >
                                                 <Eye size={12} />
-                                            </Button>
-                                            <Button onClick={() => handleToggle(t)} disabled={toggling === t.id}
+                                            </button>
+                                            <button onClick={() => handleToggle(t)} disabled={toggling === t.id}
                                                 className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
                                                 title={t.is_active ? "Deactivate test" : "Activate test"}
                                             >
@@ -806,16 +809,16 @@ export default function LabTestCatalogPage() {
                                                         ? <ToggleRight size={16} className="text-green-500" />
                                                         : <ToggleLeft size={16} className="text-gray-300" />
                                                 }
-                                            </Button>
+                                            </button>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button onClick={() => setField("editTarget", t)}
+                                                <button onClick={() => setField("editTarget", t)}
                                                     className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:border-indigo-200 transition-colors">
                                                     <Edit3 size={12} />
-                                                </Button>
-                                                <Button onClick={() => setField("deleteTarget", t)}
+                                                </button>
+                                                <button onClick={() => setField("deleteTarget", t)}
                                                     className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-200 transition-colors">
                                                     <Trash2 size={12} />
-                                                </Button>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>

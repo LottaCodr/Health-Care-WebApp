@@ -30,9 +30,6 @@ import PatientRecordDownload, { DownloadOptions } from "@/components/patients/pa
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import { toast } from "sonner";
 import { CareTeamAvatarStack } from "@/components/emr/care-team";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-
 
 // ─── Event Types & Interfaces ─────────────────────────────────────────────────
 
@@ -349,13 +346,13 @@ function EventCard({
                             <div className="mt-3 p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Clinical Data / Full Report</span>
-                                    <Button
+                                    <button
                                         type="button"
                                         onClick={() => handleCopyDetails(event.details?.fullText || "")}
                                         className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
                                     >
                                         {copied ? <><Check size={10} /> Copied</> : <><Copy size={10} /> Copy Details</>}
-                                    </Button>
+                                    </button>
                                 </div>
                                 <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed bg-white p-3 rounded-lg border border-gray-100 overflow-x-auto">
                                     {event.details.fullText}
@@ -379,7 +376,7 @@ function EventCard({
                             </div>
 
                             {hasExpandableContent && (
-                                <Button
+                                <button
                                     type="button"
                                     onClick={onToggleExpand}
                                     className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors ml-auto"
@@ -389,7 +386,7 @@ function EventCard({
                                     ) : (
                                         <>View full details <ChevronDown size={12} /></>
                                     )}
-                                </Button>
+                                </button>
                             )}
                         </div>
                     </div>
@@ -780,13 +777,13 @@ export default function PatientTimelinePage() {
                 </div>
                 <h2 className="text-lg font-bold text-gray-800">Patient Record Not Found</h2>
                 <p className="text-xs text-gray-500 mt-1 max-w-sm">The requested patient record does not exist or has been removed from the system.</p>
-                <Button
+                <button
                     type="button"
                     onClick={() => router.back()}
                     className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm shadow-blue-200"
                 >
                     <ArrowLeft size={14} /> Go Back
-                </Button>
+                </button>
             </div>
         );
     }
@@ -798,14 +795,14 @@ export default function PatientTimelinePage() {
                 {/* ── Top Bar & Breadcrumbs ── */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
                     <div className="flex items-center gap-3">
-                        <Button
+                        <button
                             type="button"
                             onClick={() => router.back()}
                             className="w-10 h-10 rounded-2xl bg-white border border-gray-200 shadow-xs flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-all shrink-0"
                             title="Go Back"
                         >
                             <ArrowLeft size={16} />
-                        </Button>
+                        </button>
                         <div>
                             <div className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold">
                                 <span>EMR</span>
@@ -822,20 +819,20 @@ export default function PatientTimelinePage() {
 
                     {/* Header Action Buttons */}
                     <div className="flex items-center gap-2 shrink-0">
-                        <Button
+                        <button
                             type="button"
                             onClick={handlePrintTimeline}
                             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-xs font-bold text-gray-700 shadow-xs transition-all"
                         >
                             <Printer size={14} /> Print Timeline
-                        </Button>
-                        <Button
+                        </button>
+                        <button
                             type="button"
                             onClick={() => setIsDownloadModalOpen(true)}
                             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm shadow-blue-200 transition-all"
                         >
                             <Download size={14} /> Export Record
-                        </Button>
+                        </button>
                     </div>
                 </div>
 
@@ -864,14 +861,14 @@ export default function PatientTimelinePage() {
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-gray-100 text-gray-700 font-mono text-[11px] font-bold">
                                         HN: {displayHospitalNumber(patient.hospital_number)}
-                                        <Button
+                                        <button
                                             type="button"
                                             onClick={handleCopyPatientId}
                                             className="text-gray-400 hover:text-blue-600 transition-colors ml-0.5"
                                             title="Copy hospital number"
                                         >
                                             {copiedId ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
-                                        </Button>
+                                        </button>
                                     </span>
                                     {patient.gender && (
                                         <span className="text-xs text-gray-500 font-semibold bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md capitalize">
@@ -974,7 +971,7 @@ export default function PatientTimelinePage() {
                         {/* Live Search */}
                         <div className="relative flex-1">
                             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <Input
+                            <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -982,18 +979,18 @@ export default function PatientTimelinePage() {
                                 className="w-full h-10 pl-9 pr-8 rounded-xl bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:bg-white transition-all"
                             />
                             {searchQuery && (
-                                <Button
+                                <button
                                     type="button"
                                     onClick={() => setSearchQuery("")}
                                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                                 >
                                     <X size={14} />
-                                </Button>
+                                </button>
                             )}
                         </div>
 
                         {/* Chronological Sort Toggle */}
-                        <Button
+                        <button
                             type="button"
                             onClick={() => setSortOrder(o => o === "desc" ? "asc" : "desc")}
                             className="flex items-center justify-center gap-1.5 px-3.5 h-10 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
@@ -1001,7 +998,7 @@ export default function PatientTimelinePage() {
                         >
                             <ArrowUpDown size={13} />
                             <span>{sortOrder === "desc" ? "Newest First" : "Oldest First"}</span>
-                        </Button>
+                        </button>
                     </div>
 
                     {/* Category Filter Chips */}
@@ -1016,7 +1013,7 @@ export default function PatientTimelinePage() {
                         ].map((chip) => {
                             const isActive = activeCategory === chip.id;
                             return (
-                                <Button
+                                <button
                                     key={chip.id}
                                     type="button"
                                     onClick={() => setActiveCategory(chip.id)}
@@ -1030,7 +1027,7 @@ export default function PatientTimelinePage() {
                                     <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${isActive ? "bg-blue-700 text-white" : "bg-white text-gray-600"}`}>
                                         {chip.count}
                                     </span>
-                                </Button>
+                                </button>
                             );
                         })}
                     </div>
@@ -1049,7 +1046,7 @@ export default function PatientTimelinePage() {
                                 : "Medical events will appear here as the patient journeys through consultation, tests, and care."}
                         </p>
                         {(searchQuery || activeCategory !== "all") && (
-                            <Button
+                            <button
                                 type="button"
                                 onClick={() => {
                                     setSearchQuery("");
@@ -1058,7 +1055,7 @@ export default function PatientTimelinePage() {
                                 className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition-colors mt-2"
                             >
                                 Reset all filters
-                            </Button>
+                            </button>
                         )}
                     </div>
                 ) : (

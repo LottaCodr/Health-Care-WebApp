@@ -7,8 +7,6 @@ import {
     AlertTriangle, FlaskConical, BookOpen, Activity,
     ShieldAlert, CheckCircle2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,18 +68,18 @@ export default function AIClinicalAssistant({ symptoms, diagnosis, patientAge, p
                 </div>
                 <div className="flex items-center gap-2">
                     {result && (
-                        <Button onClick={() => setExpanded(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                        <button onClick={() => setExpanded(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        </Button>
+                        </button>
                     )}
-                    <Button
+                    <button
                         onClick={analyse}
                         disabled={loading || !symptoms.trim()}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                         {loading ? "Analysing..." : result ? "Re-analyse" : "Analyse"}
-                    </Button>
+                    </button>
                 </div>
             </div>
 

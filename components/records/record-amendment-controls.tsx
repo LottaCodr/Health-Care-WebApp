@@ -21,8 +21,6 @@ import { AmendmentChip } from "./amendment-chip";
 import { AmendRecordDialog } from "./amend-record-dialog";
 import { RecordAddendumPanel } from "./addendum-panel";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-
 
 type QueryKey = readonly (string | number)[];
 
@@ -73,22 +71,22 @@ export function RecordAmendmentControls({
                 {!hideChip && <AmendmentChip type={type} row={row} actorId={me} authorName={authorName} compact={compact} />}
 
                 {state.editable && mayWrite && (
-                    <Button
+                    <button
                         type="button"
                         onClick={() => setAmendOpen(true)}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700 transition-colors hover:bg-blue-100"
                     >
                         <PencilLine size={11} /> Amend
-                    </Button>
+                    </button>
                 )}
 
-                <Button
+                <button
                     type="button"
                     onClick={() => setCorrectionsOpen(v => !v)}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-bold text-gray-500 transition-colors hover:text-gray-800"
                 >
                     <History size={11} /> Corrections
-                </Button>
+                </button>
 
                 {/* A frozen record with no way to annotate it would just push the
                     correction into the corridor — so this hint points at the one

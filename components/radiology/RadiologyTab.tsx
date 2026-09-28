@@ -16,10 +16,6 @@ import {
 import type { Patient } from "@/types/models";
 import { useRadiologyStore } from "@/store/radiology-store";
 import { RecordAmendmentControls } from "@/components/records";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -117,7 +113,7 @@ function InlineReportForm({
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
                     Findings <span className="text-red-500">*</span>
                 </p>
-                <Textarea rows={5} value={findings} onChange={e => setAdvancedFormField(request.id, "findings", e.target.value)}
+                <textarea rows={5} value={findings} onChange={e => setAdvancedFormField(request.id, "findings", e.target.value)}
                     placeholder={`Describe findings systematically:\n\nLungs: Clear. No consolidation or effusion.\nHeart: Normal size.\nBones: No acute osseous abnormality.`}
                     className={taCls} />
             </div>
@@ -126,20 +122,20 @@ function InlineReportForm({
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
                     Impression <span className="text-red-500">*</span>
                 </p>
-                <Textarea rows={3} value={impression} onChange={e => setAdvancedFormField(request.id, "impression", e.target.value)}
+                <textarea rows={3} value={impression} onChange={e => setAdvancedFormField(request.id, "impression", e.target.value)}
                     placeholder="1. No acute cardiopulmonary disease."
                     className={taCls} />
             </div>
 
             <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Recommendation</p>
-                <Textarea rows={2} value={recommendation} onChange={e => setAdvancedFormField(request.id, "recommendation", e.target.value)}
+                <textarea rows={2} value={recommendation} onChange={e => setAdvancedFormField(request.id, "recommendation", e.target.value)}
                     placeholder="e.g. No further imaging required."
                     className={taCls} />
             </div>
 
             {/* Critical flag */}
-            <Label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex items-center gap-3 cursor-pointer">
                 <div
                     onClick={() => setAdvancedFormField(request.id, "criticalFindings", !isCritical)}
                     className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors
@@ -148,25 +144,25 @@ function InlineReportForm({
                     {isCritical && <CheckCircle2 size={11} className="text-white" />}
                 </div>
                 <p className="text-xs font-bold text-red-600">⚠ Critical Finding</p>
-            </Label>
+            </label>
             {isCritical && (
-                <Textarea rows={2} value={criticalNoteState} onChange={e => setAdvancedFormField(request.id, "criticalNote", e.target.value)}
+                <textarea rows={2} value={criticalNoteState} onChange={e => setAdvancedFormField(request.id, "criticalNote", e.target.value)}
                     placeholder="Describe the critical finding..."
                     className="w-full px-3 py-2.5 rounded-xl border-2 border-red-200 bg-red-50 text-sm text-red-800 placeholder:text-red-300 focus:outline-none focus:border-red-400 resize-none" />
             )}
 
             <div className="flex gap-2">
-                <Button type="button" onClick={onClose}
+                <button type="button" onClick={onClose}
                     className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
                     Cancel
-                </Button>
-                <Button type="submit" disabled={saving}
+                </button>
+                <button type="submit" disabled={saving}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-sm shadow-cyan-200 transition-all disabled:opacity-60">
                     {saving
                         ? <><Loader2 size={12} className="animate-spin" /> Submitting...</>
                         : <><CheckCircle2 size={12} /> Submit Report</>
                     }
-                </Button>
+                </button>
             </div>
         </form>
     );
@@ -204,7 +200,7 @@ function PendingRow({
                 <div className="flex items-center gap-2 shrink-0">
                     <PriorityBadge priority={request.priority} />
                     {canReport && (
-                        <Button
+                        <button
                             onClick={() => toggleInlineExpanded(request.id)}
                             className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors
                                 ${open
@@ -214,7 +210,7 @@ function PendingRow({
                         >
                             <FileText size={11} />
                             {open ? "Cancel" : "Report"}
-                        </Button>
+                        </button>
                     )}
                 </div>
             </div>
@@ -237,7 +233,7 @@ function CompletedRow({ request }: { request: any }) {
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <Button
+            <button
                 type="button"
                 onClick={() => toggleInlineExpanded(request.id)}
                 className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-50/60 transition-colors"
@@ -253,7 +249,7 @@ function CompletedRow({ request }: { request: any }) {
                     size={14}
                     className={`text-gray-400 transition-transform shrink-0 ${expanded ? "rotate-180" : ""}`}
                 />
-            </Button>
+            </button>
 
             {expanded && request.result && (
                 <div className="px-5 pb-5 border-t border-gray-50 pt-4 space-y-3">
@@ -325,7 +321,7 @@ export function RadiologyTab({
         <div className="flex flex-col items-center justify-center py-16 gap-3">
             <AlertTriangle size={18} className="text-red-500" />
             <p className="text-sm text-gray-500">Failed to load radiology requests</p>
-            <Button onClick={() => refetch()} className="text-xs text-red-600 hover:underline">Retry</Button>
+            <button onClick={() => refetch()} className="text-xs text-red-600 hover:underline">Retry</button>
         </div>
     );
 

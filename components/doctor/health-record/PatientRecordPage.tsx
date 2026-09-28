@@ -27,9 +27,6 @@ import {
 } from "lucide-react";
 import { Patient } from "@/types/models";
 import { hasActualAllergy, fmtDate, fmtFull } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -118,17 +115,17 @@ export default function PatientRecordPage({ patient }: Props) {
                     <p className="text-xs text-gray-400 mt-0.5">Complete medical history for {patient.name}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button onClick={handlePrint}
+                    <button onClick={handlePrint}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 hover:border-gray-300 text-sm font-bold text-gray-700 shadow-sm transition-all">
                         <Printer size={14} /> Print
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         type="button"
                         onClick={() => setDownloadOpen(true)}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white text-sm font-bold shadow-sm shadow-red-200 transition-all"
                     >
                         <Download size={14} /> Export Record
-                    </Button>
+                    </button>
                 </div>
             </div>
 
@@ -285,30 +282,30 @@ export default function PatientRecordPage({ patient }: Props) {
                         <p className="text-xs text-gray-400 italic">No prescriptions recorded.</p>
                     ) : (
                         <div className="overflow-x-auto">
-                            <Table className="w-full text-xs">
-                                <TableHeader>
-                                    <TableRow className="border-b border-gray-100">
-                                        <TableHead className="text-left py-2 pr-4 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Drug</TableHead>
-                                        <TableHead className="text-left py-2 pr-4 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Dosage</TableHead>
-                                        <TableHead className="text-left py-2 pr-4 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Duration</TableHead>
-                                        <TableHead className="text-left py-2 pr-4 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Price</TableHead>
-                                        <TableHead className="text-left py-2 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Date</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody className="divide-y divide-gray-50">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="border-b border-gray-100">
+                                        <th className="text-left py-2 pr-4 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Drug</th>
+                                        <th className="text-left py-2 pr-4 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Dosage</th>
+                                        <th className="text-left py-2 pr-4 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Duration</th>
+                                        <th className="text-left py-2 pr-4 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Price</th>
+                                        <th className="text-left py-2 font-bold text-gray-500 uppercase tracking-widest text-[10px]">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
                                     {prescriptions.map((p: any) => (
-                                        <TableRow key={p.id}>
-                                            <TableCell className="py-2.5 pr-4 font-semibold text-gray-800">{p.drug_name}</TableCell>
-                                            <TableCell className="py-2.5 pr-4 text-gray-600">{p.dosage}</TableCell>
-                                            <TableCell className="py-2.5 pr-4 text-gray-600">{p.duration || "—"}</TableCell>
-                                            <TableCell className="py-2.5 pr-4 text-gray-800 font-bold">
+                                        <tr key={p.id}>
+                                            <td className="py-2.5 pr-4 font-semibold text-gray-800">{p.drug_name}</td>
+                                            <td className="py-2.5 pr-4 text-gray-600">{p.dosage}</td>
+                                            <td className="py-2.5 pr-4 text-gray-600">{p.duration || "—"}</td>
+                                            <td className="py-2.5 pr-4 text-gray-800 font-bold">
                                                 {p.price ? `₦${Number(p.price).toLocaleString("en-NG")}` : "—"}
-                                            </TableCell>
-                                            <TableCell className="py-2.5 text-gray-500">{fmtDate(p.created_at)}</TableCell>
-                                        </TableRow>
+                                            </td>
+                                            <td className="py-2.5 text-gray-500">{fmtDate(p.created_at)}</td>
+                                        </tr>
                                     ))}
-                                </TableBody>
-                            </Table>
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </Section>

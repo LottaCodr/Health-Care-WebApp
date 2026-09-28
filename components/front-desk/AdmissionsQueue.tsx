@@ -15,12 +15,6 @@ import {
     Clock, X, Loader2, ChevronRight, MapPin,
     User, LogOut, Info,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,60 +76,61 @@ function AssignWardForm({ admission, staffId, onDone }: AssignFormProps) {
                 <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
                     {isEditing ? "Update Ward Assignment" : "Assign Ward & Bed"}
                 </p>
-                <Button onClick={onDone} variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+                <button onClick={onDone} className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                     <X size={12} />
-                </Button>
+                </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <Label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
                         Ward / Unit <span className="text-red-400">*</span>
-                    </Label>
-                    <Input
+                    </label>
+                    <input
                         value={wardName}
                         onChange={e => setWardName(e.target.value)}
                         placeholder="e.g. Maternity Ward B"
                         autoFocus
-                        className="h-9 rounded-xl border-gray-200 bg-white px-3 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300"
+                        className="w-full h-9 px-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300 transition-all"
                     />
                 </div>
                 <div>
-                    <Label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
                         Bed Number
-                    </Label>
-                    <Input
+                    </label>
+                    <input
                         value={bedNumber}
                         onChange={e => setBedNumber(e.target.value)}
                         placeholder="e.g. Bed 4, 12A"
-                        className="h-9 rounded-xl border-gray-200 bg-white px-3 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300"
+                        className="w-full h-9 px-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300 transition-all"
                     />
                 </div>
                 <div className="col-span-2">
-                    <Label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
                         Special Instructions
-                    </Label>
-                    <Textarea
+                    </label>
+                    <textarea
                         rows={2}
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
                         placeholder="Isolation, dietary restrictions, monitoring frequency, nil by mouth…"
-                        className="rounded-xl border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-gray-300 transition-all"
                     />
                 </div>
             </div>
 
             <div className="flex gap-2 pt-1">
-                <Button onClick={onDone} variant="outline"
-                    className="rounded-xl border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-500 hover:border-gray-300 hover:text-gray-700">
+                <button onClick={onDone}
+                    className="px-4 py-2.5 text-xs font-semibold text-gray-500 border border-gray-200 rounded-xl bg-white hover:border-gray-300 hover:text-gray-700 transition-colors">
                     Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={assign.isPending || !wardName.trim()}
-                    className="flex-1 gap-2 rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700">
+                </button>
+                <button onClick={handleSave} disabled={assign.isPending || !wardName.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-colors shadow-sm shadow-indigo-200">
                     {assign.isPending
                         ? <><Loader2 size={13} className="animate-spin" /> Saving…</>
-                        : <><BedDouble size={13} /> {isEditing ? "Update Assignment" : "Confirm Ward Assignment"}</>}
-                </Button>
+                        : <><BedDouble size={13} /> {isEditing ? "Update Assignment" : "Confirm Ward Assignment"}</>
+                    }
+                </button>
             </div>
         </div>
     );
@@ -173,7 +168,7 @@ function AdmissionCard({ admission, staffId, index }: AdmissionCardProps) {
     }
 
     return (
-        <Card className={`overflow-hidden rounded-2xl bg-white transition-all duration-200 ${
+        <div className={`rounded-2xl border overflow-hidden bg-white transition-all duration-200 ${
             isEmergency
                 ? "border-red-200 shadow-sm shadow-red-100"
                 : showForm
@@ -207,13 +202,13 @@ function AdmissionCard({ admission, staffId, index }: AdmissionCardProps) {
                     {/* Name + badges */}
                     <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-bold text-gray-900 truncate">{patient?.name ?? "—"}</p>
-                        <Badge variant="outline" className={`gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${urgConfig.bg} ${urgConfig.color} ${urgConfig.border}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${urgConfig.dot}`} />
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${urgConfig.bg} ${urgConfig.color} ${urgConfig.border}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${urgConfig.dot}`} />
                             {urgConfig.label}
-                        </Badge>
-                        <Badge variant="outline" className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${typeConfig.bg} ${typeConfig.color} ${typeConfig.border}`}>
+                        </span>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeConfig.bg} ${typeConfig.color} ${typeConfig.border}`}>
                             {typeConfig.emoji} {typeConfig.label}
-                        </Badge>
+                        </span>
                     </div>
 
                     {/* Demographics */}
@@ -226,13 +221,13 @@ function AdmissionCard({ admission, staffId, index }: AdmissionCardProps) {
                     {/* Ward assignment status */}
                     <div className="flex items-center gap-1.5 flex-wrap">
                         {hasWard ? (
-                            <Badge variant="outline" className="gap-1 rounded-lg border-green-100 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+                            <span className="flex items-center gap-1 text-[11px] text-green-700 font-semibold bg-green-50 border border-green-100 px-2 py-0.5 rounded-lg">
                                 <MapPin size={10} /> {admission.ward_name}{admission.bed_number ? ` · ${admission.bed_number}` : ""}
-                            </Badge>
+                            </span>
                         ) : (
-                            <Badge variant="outline" className="gap-1 rounded-lg border-amber-100 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                            <span className="flex items-center gap-1 text-[11px] text-amber-700 font-semibold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-lg">
                                 <Clock size={10} /> Awaiting bed assignment
-                            </Badge>
+                            </span>
                         )}
                         <span className={`text-[10px] font-medium ${isEmergency ? "text-red-500" : "text-gray-400"}`}>
                             {elapsed}
@@ -249,27 +244,27 @@ function AdmissionCard({ admission, staffId, index }: AdmissionCardProps) {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-1.5 shrink-0">
-                    <Button onClick={() => setShowForm(v => !v)}
-                        className={`gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${
+                    <button onClick={() => setShowForm(v => !v)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
                             showForm
                                 ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                 : hasWard
-                                    ? "border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                                    : "bg-indigo-600 text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700"
+                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100"
+                                    : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200"
                         }`}>
                         <BedDouble size={12} />
                         {showForm ? "Cancel" : hasWard ? "Edit Ward" : "Assign Bed"}
-                    </Button>
+                    </button>
 
                     {hasWard && !showForm && (
-                        <Button onClick={handleDischarge} disabled={discharge.isPending}
-                            className="gap-1.5 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100">
+                        <button onClick={handleDischarge} disabled={discharge.isPending}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors disabled:opacity-50">
                             {discharge.isPending
                                 ? <Loader2 size={11} className="animate-spin" />
                                 : <LogOut size={11} />
                             }
                             Discharge
-                        </Button>
+                        </button>
                     )}
                 </div>
             </div>
@@ -282,7 +277,7 @@ function AdmissionCard({ admission, staffId, index }: AdmissionCardProps) {
                     onDone={() => setShowForm(false)}
                 />
             )}
-        </Card>
+        </div>
     );
 }
 
@@ -306,15 +301,15 @@ function StatsBar({ admissions }: { admissions: PatientAdmission[] }) {
             {stats.map(s => {
                 const Icon = s.icon;
                 return (
-                    <Card key={s.label} className={`flex items-center gap-3 rounded-2xl bg-white px-4 py-4 shadow-sm ${s.border}`}>
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${s.bg}`}>
+                    <div key={s.label} className={`bg-white rounded-2xl border ${s.border} shadow-sm px-4 py-4 flex items-center gap-3`}>
+                        <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
                             <Icon size={17} className={s.color} />
                         </div>
                         <div>
-                            <p className="text-2xl font-extrabold leading-none text-gray-900">{s.value}</p>
-                            <p className="mt-0.5 text-[10px] font-medium leading-tight text-gray-400">{s.label}</p>
+                            <p className="text-2xl font-extrabold text-gray-900 leading-none">{s.value}</p>
+                            <p className="text-[10px] text-gray-400 font-medium mt-0.5 leading-tight">{s.label}</p>
                         </div>
-                    </Card>
+                    </div>
                 );
             })}
         </div>
@@ -351,11 +346,10 @@ export default function AdmissionsQueue({ staffId }: AdmissionsQueueProps) {
                             : "Ward and bed assignment management"}
                     </p>
                 </div>
-                <Button onClick={() => refetch()} variant="outline" size="icon"
-                    className="h-9 w-9 rounded-xl border-gray-200 bg-white text-gray-400 shadow-sm hover:text-gray-700"
-                    aria-label="Refresh admissions">
+                <button onClick={() => refetch()} aria-label="Refresh admissions"
+                    className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors shadow-sm">
                     <RefreshCcw size={13} />
-                </Button>
+                </button>
             </div>
 
             {/* Stats */}
@@ -369,13 +363,11 @@ export default function AdmissionsQueue({ staffId }: AdmissionsQueueProps) {
                     ))}
                 </div>
             ) : isError ? (
-                <Card className="flex flex-col items-center justify-center gap-3 rounded-2xl border-red-100 bg-white py-16 shadow-sm">
+                <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-2xl border border-red-100 shadow-sm">
                     <AlertTriangle size={20} className="text-red-400" />
                     <p className="text-sm font-semibold text-gray-500">Failed to load admissions</p>
-                    <Button onClick={() => refetch()} variant="link" size="sm" className="h-auto p-0 text-xs font-semibold text-red-600">
-                        Retry
-                    </Button>
-                </Card>
+                    <button onClick={() => refetch()} className="text-xs text-red-600 hover:underline font-semibold">Retry</button>
+                </div>
             ) : sorted.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
                     <div className="w-14 h-14 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center">

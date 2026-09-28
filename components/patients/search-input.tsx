@@ -1,8 +1,6 @@
 'use client';
 import React from 'react';
 import { MdSearch } from 'react-icons/md';
-import { Input } from "@/components/ui/input";
-
 
 interface SearchInputProps {
     value: string;
@@ -19,7 +17,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
         <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-red-500">
             <MdSearch className="w-5 h-5" aria-hidden="true" />
         </span>
-        <Input
+        <input
             type="search"
             value={value}
             onChange={(e) => onChange(e.target.value)}

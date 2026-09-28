@@ -26,9 +26,6 @@ import {
     Activity, FileText, Zap, Radio, ChevronDown, AlertTriangle,
     Building2, Plus, Trash2, Search, X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-
 
 const AIClinicalAssistant = dynamic(
     () => import("@/components/ai/AIClinicalAssistant"),
@@ -167,7 +164,7 @@ function Section({ id, icon: Icon, title, badge, color = "text-red-600", bg = "b
     const [open, setOpen] = useState(defaultOpen);
     return (
         <div id={id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <Button type="button" onClick={() => setOpen(v => !v)}
+            <button type="button" onClick={() => setOpen(v => !v)}
                 className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50/60 transition-colors text-left">
                 <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                     <Icon size={15} className={color} />
@@ -177,7 +174,7 @@ function Section({ id, icon: Icon, title, badge, color = "text-red-600", bg = "b
                     {badge && <p className="text-[10px] text-gray-400 mt-0.5 font-bold uppercase tracking-widest">{badge}</p>}
                 </div>
                 {open ? <ChevronDown size={14} className="text-gray-400 shrink-0" /> : <ChevronRight size={14} className="text-gray-400 shrink-0" />}
-            </Button>
+            </button>
             {open && (
                 <div className="px-5 pb-5 space-y-4 border-t border-gray-50 pt-4">{children}</div>
             )}
@@ -206,7 +203,7 @@ function MultiSelect({ options, selected, onChange, placeholder, searchPlacehold
 
     return (
         <div className="relative w-full">
-            <Button type="button" onClick={() => open ? close() : setOpen(true)}
+            <button type="button" onClick={() => open ? close() : setOpen(true)}
                 className="w-full h-10 px-3 flex justify-between items-center rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 transition-all">
                 <span className={selected.length === 0 ? "text-gray-400" : "text-gray-900 truncate"}>
                     {selected.length === 0 ? placeholder : selected.join(", ")}
@@ -219,14 +216,14 @@ function MultiSelect({ options, selected, onChange, placeholder, searchPlacehold
                     )}
                     <ChevronDown size={16} className="text-gray-400" />
                 </span>
-            </Button>
+            </button>
             {open && (
                 <div className="absolute z-30 mt-1 left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
                     {/* Search box — pinned to the top of the dropdown */}
                     <div className="p-2 border-b border-gray-100 bg-white">
                         <div className="relative">
                             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            <Input
+                            <input
                                 autoFocus
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
@@ -240,11 +237,11 @@ function MultiSelect({ options, selected, onChange, placeholder, searchPlacehold
                                 className="w-full h-8 pl-8 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300"
                             />
                             {query && (
-                                <Button type="button" onClick={() => setQuery("")}
+                                <button type="button" onClick={() => setQuery("")}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                                     aria-label="Clear search">
                                     <X size={12} />
-                                </Button>
+                                </button>
                             )}
                         </div>
                     </div>
@@ -321,7 +318,7 @@ function AdmissionPanel({ store }: { store: ConsultationStore }) {
             {/* Target ward */}
             <div className="space-y-1.5">
                 <FieldLabel>Target Ward / Unit</FieldLabel>
-                <Input value={store.admissionWard} onChange={e => store.setField("admissionWard", e.target.value)}
+                <input value={store.admissionWard} onChange={e => store.setField("admissionWard", e.target.value)}
                     placeholder="e.g. Maternity Ward B, Paediatric Ward, Surgical Ward…" className={inputCls} />
             </div>
 
@@ -378,17 +375,17 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
                     <Pill size={13} className="text-pink-600" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-pink-600">Prescriptions</p>
                 </div>
-                <Button type="button" onClick={store.addPrescriptionItem}
+                <button type="button" onClick={store.addPrescriptionItem}
                     className="flex items-center gap-1 text-xs text-pink-600 font-semibold hover:underline">
                     <Plus size={12} /> Add drug
-                </Button>
+                </button>
             </div>
 
             {store.prescriptionItems.length === 0 && (
-                <Button type="button" onClick={store.addPrescriptionItem}
+                <button type="button" onClick={store.addPrescriptionItem}
                     className="w-full py-4 rounded-xl border-2 border-dashed border-pink-200 text-xs text-pink-400 font-semibold hover:border-pink-300 hover:bg-pink-50/50 transition-all flex items-center justify-center gap-2">
                     <Plus size={13} /> Add first prescription
-                </Button>
+                </button>
             )}
 
             {store.prescriptionItems.map((item, idx) => (
@@ -397,17 +394,17 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
                         <p className="text-[10px] font-black uppercase tracking-widest text-pink-500">
                             {item.drugName || `Drug ${idx + 1}`}
                         </p>
-                        <Button type="button" onClick={() => store.removePrescriptionItem(item.id)}
+                        <button type="button" onClick={() => store.removePrescriptionItem(item.id)}
                             className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
                             <Trash2 size={11} />
-                        </Button>
+                        </button>
                     </div>
 
                     {/* Drug name with autocomplete */}
                     <div className="relative">
                         <div className="relative">
                             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            <Input
+                            <input
                                 value={queries[item.id] ?? item.drugName}
                                 onChange={e => {
                                     setQueries(q => ({ ...q, [item.id]: e.target.value }));
@@ -428,7 +425,7 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
                         {openId === item.id && getFiltered(item.id).length > 0 && (
                             <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden max-h-48 overflow-y-auto">
                                 {getFiltered(item.id).map((drug: any) => (
-                                    <Button key={drug.id} type="button"
+                                    <button key={drug.id} type="button"
                                         onClick={() => {
                                             store.updatePrescriptionItem(item.id, "drugName", drug.drug_name);
                                             setQueries(q => ({ ...q, [item.id]: drug.drug_name }));
@@ -443,7 +440,7 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
                                             {drug.generic_name && <p className="text-[10px] text-gray-400 truncate">{drug.generic_name}</p>}
                                         </div>
                                         <span className="text-[10px] text-gray-400 shrink-0">{drug.quantity} left</span>
-                                    </Button>
+                                    </button>
                                 ))}
                             </div>
                         )}
@@ -453,26 +450,22 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
                     <div className="grid grid-cols-3 gap-2">
                         <div>
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Dosage</p>
-                            <Input value={item.dosage}
+                            <input value={item.dosage}
                                 onChange={e => store.updatePrescriptionItem(item.id, "dosage", e.target.value)}
                                 placeholder="e.g. 500mg"
                                 className="w-full h-8 px-2 rounded-lg border border-gray-200 bg-gray-50 text-xs focus:outline-none focus:ring-1 focus:ring-pink-300" />
                         </div>
                         <div>
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Frequency</p>
-                            <Select value={item.frequency}
-                                onValueChange={v => store.updatePrescriptionItem(item.id, "frequency", v)}>
-                                <SelectTrigger className="h-8 w-full rounded-lg border-gray-200 bg-white px-2 text-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {FREQUENCIES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <select value={item.frequency}
+                                onChange={e => store.updatePrescriptionItem(item.id, "frequency", e.target.value)}
+                                className="w-full h-8 px-2 rounded-lg border border-gray-200 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-pink-300">
+                                {FREQUENCIES.map(f => <option key={f}>{f}</option>)}
+                            </select>
                         </div>
                         <div>
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Duration</p>
-                            <Input value={item.duration}
+                            <input value={item.duration}
                                 onChange={e => store.updatePrescriptionItem(item.id, "duration", e.target.value)}
                                 placeholder="e.g. 5 days"
                                 className="w-full h-8 px-2 rounded-lg border border-gray-200 bg-gray-50 text-xs focus:outline-none focus:ring-1 focus:ring-pink-300" />
@@ -480,7 +473,7 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
                     </div>
 
                     {/* Notes */}
-                    <Input value={item.notes}
+                    <input value={item.notes}
                         onChange={e => store.updatePrescriptionItem(item.id, "notes", e.target.value)}
                         placeholder="Instructions (e.g. Take after meals, avoid alcohol)"
                         className="w-full h-8 px-3 rounded-lg border border-gray-200 bg-gray-50 text-xs focus:outline-none focus:ring-1 focus:ring-pink-300" />
@@ -902,7 +895,7 @@ export default function ConsultationForm({
                                 {/* IMP — manual text */}
                                 <div className="space-y-1.5">
                                     <FieldLabel>IMP (Impression)</FieldLabel>
-                                    <Input type="text" value={imp} onChange={e => setField("imp", e.target.value)}
+                                    <input type="text" value={imp} onChange={e => setField("imp", e.target.value)}
                                         placeholder="e.g. G3P2 at 32 weeks" className={inputCls} />
                                 </div>
 
@@ -912,7 +905,7 @@ export default function ConsultationForm({
                                         LMP (Last Menstrual Period)
                                         {isPregnant && <span className="text-pink-400 font-normal normal-case"> · drives EGA/EDD</span>}
                                     </FieldLabel>
-                                    <Input type="date" value={lmp} onChange={e => handleLmpChange(e.target.value)}
+                                    <input type="date" value={lmp} onChange={e => handleLmpChange(e.target.value)}
                                         className={inputCls} />
                                 </div>
 
@@ -924,7 +917,7 @@ export default function ConsultationForm({
                                             {isPregnant ? " · auto-calculated" : notPregnant ? " · not applicable" : ""}
                                         </span>
                                     </FieldLabel>
-                                    <Input type="text" value={ega} onChange={e => setField("ega", e.target.value)} disabled={notPregnant}
+                                    <input type="text" value={ega} onChange={e => setField("ega", e.target.value)} disabled={notPregnant}
                                         placeholder={notPregnant ? "N/A — not pregnant" : "Enter LMP to auto-calculate, or override here"}
                                         className={`${inputCls} ${notPregnant ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-pink-50/50"}`} />
                                 </div>
@@ -937,21 +930,21 @@ export default function ConsultationForm({
                                             {isPregnant ? " · auto-calculated" : notPregnant ? " · not applicable" : ""}
                                         </span>
                                     </FieldLabel>
-                                    <Input type="date" value={eod} onChange={e => setField("eod", e.target.value)} disabled={notPregnant}
+                                    <input type="date" value={eod} onChange={e => setField("eod", e.target.value)} disabled={notPregnant}
                                         className={`${inputCls} ${notPregnant ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-pink-50/50"}`} />
                                 </div>
 
                                 {/* Gravidity — manual */}
                                 <div className="space-y-1.5">
                                     <FieldLabel>Gravidity (G)</FieldLabel>
-                                    <Input type="number" value={gravidity} onChange={e => setField("gravidity", e.target.value)}
+                                    <input type="number" value={gravidity} onChange={e => setField("gravidity", e.target.value)}
                                         placeholder="Total pregnancies" className={inputCls} />
                                 </div>
 
                                 {/* Parity — manual */}
                                 <div className="space-y-1.5">
                                     <FieldLabel>Parity (P)</FieldLabel>
-                                    <Input type="text" value={parity} onChange={e => setField("parity", e.target.value)}
+                                    <input type="text" value={parity} onChange={e => setField("parity", e.target.value)}
                                         placeholder="e.g. P2+0" className={inputCls} />
                                 </div>
                             </div>
@@ -1048,7 +1041,7 @@ export default function ConsultationForm({
                             const Icon = opt.icon;
                             const isSelected = referrals.includes(opt.value);
                             return (
-                                <Button key={opt.value} type="button"
+                                <button key={opt.value} type="button"
                                     onClick={() => setField("referrals",
                                         isSelected ? referrals.filter(v => v !== opt.value) : [...referrals, opt.value]
                                     )}
@@ -1062,7 +1055,7 @@ export default function ConsultationForm({
                                         <p className={`text-xs font-bold ${isSelected ? "text-gray-900" : "text-gray-600"}`}>{opt.label}</p>
                                         <p className="text-[9px] text-gray-400 mt-0.5 leading-snug">{opt.desc}</p>
                                     </div>
-                                </Button>
+                                </button>
                             );
                         })}
                     </div>
@@ -1177,13 +1170,13 @@ export default function ConsultationForm({
                 </Section>
 
                 {/* Submit */}
-                <Button type="submit" disabled={loading}
-                    className="w-full flex items-center justify-center gap-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm rounded-2xl shadow-lg shadow-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed py-3.5">
+                <button type="submit" disabled={loading}
+                    className="w-full flex items-center justify-center gap-2.5 bg-red-700 hover:bg-red-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed py-3.5">
                     {loading
                         ? <><Loader2 size={16} className="animate-spin" /> Saving...</>
                         : <><CheckCircle2 size={16} /> Submit & Route Patient <ArrowRight size={15} /></>
                     }
-                </Button>
+                </button>
             </form>
 
             {/* Skip-anything confirmation — replaces the old hard "required"
@@ -1220,7 +1213,7 @@ export default function ConsultationForm({
                         <AlertDialogAction
                             onClick={() => { setConfirmOpen(false); doSubmit(); }}
                             disabled={loading}
-                            className="bg-primary hover:bg-primary/90 rounded-xl">
+                            className="bg-red-700 hover:bg-red-800 rounded-xl">
                             {loading ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : "Submit anyway"}
                         </AlertDialogAction>
                     </AlertDialogFooter>

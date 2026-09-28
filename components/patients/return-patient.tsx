@@ -14,10 +14,6 @@ import {
     Loader2, ClipboardList, ArrowRight, CheckCircle2,
     History, Calendar, FlaskConical, MapPin,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -293,7 +289,7 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
                             const Icon       = vt.icon;
                             const isSelected = visitType === vt.id;
                             return (
-                                <Button key={vt.id} type="button"
+                                <button key={vt.id} type="button"
                                     onClick={() => setVisitType(isSelected ? null : vt.id)}
                                     className={`relative flex items-start gap-3 p-3.5 rounded-2xl border-2 text-left transition-all duration-200 ${
                                         isSelected
@@ -316,7 +312,7 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
                                         </p>
                                         <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{vt.desc}</p>
                                     </div>
-                                </Button>
+                                </button>
                             );
                         })}
                     </div>
@@ -327,7 +323,7 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
                         Clinical Reason / Complaint <span className="text-red-400">*</span>
                     </p>
-                    <Textarea
+                    <textarea
                         rows={3}
                         value={reason}
                         onChange={e => setReason(e.target.value)}
@@ -346,7 +342,7 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Priority</p>
                     <div className="flex items-center gap-2">
                         {PRIORITIES.map(p => (
-                            <Button key={p.value} type="button"
+                            <button key={p.value} type="button"
                                 onClick={() => setPriority(p.value)}
                                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-semibold transition-all ${
                                     priority === p.value
@@ -355,7 +351,7 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
                                 }`}>
                                 <span className={`w-2 h-2 rounded-full ${priority === p.value ? "bg-white" : p.dot}`} />
                                 {p.label}
-                            </Button>
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -366,7 +362,7 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
                         Notes
                         <span className="text-gray-300 font-normal normal-case tracking-normal ml-1.5">optional</span>
                     </p>
-                    <Input
+                    <input
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
                         placeholder="Any additional context for the receiving clinician…"
@@ -389,12 +385,12 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
                 {/* ── Actions ── */}
                 <div className="flex gap-2.5 pt-1">
                     {onCancel && (
-                        <Button type="button" onClick={onCancel} disabled={loading}
+                        <button type="button" onClick={onCancel} disabled={loading}
                             className="px-5 py-3 text-sm text-gray-500 hover:text-gray-800 font-semibold rounded-xl border border-gray-200 hover:border-gray-300 bg-white disabled:opacity-50 transition-colors">
                             Cancel
-                        </Button>
+                        </button>
                     )}
-                    <Button type="submit" disabled={!canSubmit}
+                    <button type="submit" disabled={!canSubmit}
                         className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${
                             selected
                                 ? `${selected.activeBg} text-white hover:opacity-90`
@@ -404,7 +400,7 @@ export default function ReturnPatient({ patientId, patientName, staffId, onSucce
                             ? <><Loader2 size={15} className="animate-spin" /> Processing…</>
                             : <><ClipboardList size={15} /> Process Re-encounter</>
                         }
-                    </Button>
+                    </button>
                 </div>
             </form>
         </div>

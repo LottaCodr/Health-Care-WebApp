@@ -198,7 +198,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {FIELD_CONFIG.map((field) => (
                         <div className="space-y-2" key={field.key}>
-                            <Label
+                            <label
                                 className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider"
                                 htmlFor={field.key}
                             >
@@ -210,7 +210,7 @@ export default function VitalsCheckinAdvancedComponent(props: {
                                 {!field.disabled && (
                                     <span className="text-gray-300 font-normal normal-case text-[10px]">optional</span>
                                 )}
-                            </Label>
+                            </label>
                             <Input
                                 id={field.key}
                                 name={field.key}

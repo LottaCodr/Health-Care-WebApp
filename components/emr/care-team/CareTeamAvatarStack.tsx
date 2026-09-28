@@ -22,8 +22,6 @@ import {
 import { usePatientCareTeam } from "@/hooks/emr/use-care-team";
 import { StaffHoverCard } from "./StaffHoverCard";
 import { CareTeamDrawer } from "./CareTeamDrawer";
-import { Button } from "@/components/ui/button";
-
 
 const ICON_MAP: Record<string, React.ElementType> = {
     stethoscope: Stethoscope,
@@ -101,7 +99,7 @@ export function CareTeamAvatarStack({
                         const IconComponent = ICON_MAP[token.iconName] ?? User;
 
                         const avatarContent = (
-                            <Button
+                            <button
                                 key={`${member.staffId}-${idx}`}
                                 type="button"
                                 className={`relative rounded-full font-black flex items-center justify-center shrink-0 ring-2 transition-all duration-150 hover:scale-110 hover:z-20 cursor-pointer ${sizeClasses} ${
@@ -112,7 +110,7 @@ export function CareTeamAvatarStack({
                                 title={`${formatStaffName(member.name, member.role, "full")} (${token.label})`}
                             >
                                 <span className="leading-none">{member.initials}</span>
-                            </Button>
+                            </button>
                         );
 
                         return (
@@ -128,7 +126,7 @@ export function CareTeamAvatarStack({
                     })}
 
                     {overflowCount > 0 && (
-                        <Button
+                        <button
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -142,13 +140,13 @@ export function CareTeamAvatarStack({
                             title={`+${overflowCount} more care team members`}
                         >
                             +{overflowCount}
-                        </Button>
+                        </button>
                     )}
                 </div>
 
                 {/* Optional Micro-Label */}
                 {showLabel && (
-                    <Button
+                    <button
                         type="button"
                         onClick={(e) => {
                             if (interactive) {
@@ -164,7 +162,7 @@ export function CareTeamAvatarStack({
                     >
                         <span>{members.length} Attended</span>
                         <ChevronRight size={12} className={isHero ? "text-white/60" : "text-slate-400"} />
-                    </Button>
+                    </button>
                 )}
             </div>
 

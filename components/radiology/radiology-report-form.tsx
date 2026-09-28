@@ -13,10 +13,6 @@ import {
     Radio, CheckCircle2, Loader2, X, BadgeInfo,
 } from "lucide-react";
 import { useRadiologyStore } from "@/store/radiology-store";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -140,12 +136,12 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             </p>
                         </div>
                     </div>
-                    <Button
+                    <button
                         onClick={onClose}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                     >
                         <X size={14} />
-                    </Button>
+                    </button>
                 </div>
 
                 {/* Request summary banner */}
@@ -172,7 +168,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Technique / Protocol
                             <span className="ml-2 text-gray-300 normal-case font-normal">imaging method used</span>
                         </p>
-                        <Textarea rows={2} value={technique} onChange={e => setAdvancedFormField(req.id, "technique", e.target.value)}
+                        <textarea rows={2} value={technique} onChange={e => setAdvancedFormField(req.id, "technique", e.target.value)}
                             placeholder="e.g. PA and lateral chest radiographs obtained. / Contrast-enhanced CT abdomen performed..."
                             className={taClass} />
                     </div>
@@ -183,7 +179,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Comparison Studies
                             <span className="ml-2 text-gray-300 normal-case font-normal">prior imaging for reference</span>
                         </p>
-                        <Textarea rows={2} value={comparisonStudy} onChange={e => setAdvancedFormField(req.id, "comparisonStudy", e.target.value)}
+                        <textarea rows={2} value={comparisonStudy} onChange={e => setAdvancedFormField(req.id, "comparisonStudy", e.target.value)}
                             placeholder="e.g. None available. / Compared with chest X-ray dated [date]..."
                             className={taClass} />
                     </div>
@@ -194,7 +190,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Findings <span className="text-red-500">*</span>
                             <span className="ml-2 text-gray-300 normal-case font-normal">systematic organ-by-organ observations</span>
                         </p>
-                        <Textarea rows={8} value={findings} onChange={e => setAdvancedFormField(req.id, "findings", e.target.value)}
+                        <textarea rows={8} value={findings} onChange={e => setAdvancedFormField(req.id, "findings", e.target.value)}
                             placeholder={`Lungs: Clear. No consolidation, effusion or pneumothorax.\nHeart: Normal size and contour.\nMediastinum: Normal width.\nBones: No acute osseous abnormality.\nSoft tissues: Unremarkable.`}
                             className={taClass} />
                     </div>
@@ -205,7 +201,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Impression / Conclusion <span className="text-red-500">*</span>
                             <span className="ml-2 text-gray-300 normal-case font-normal">diagnostic conclusions</span>
                         </p>
-                        <Textarea rows={4} value={impression} onChange={e => setAdvancedFormField(req.id, "impression", e.target.value)}
+                        <textarea rows={4} value={impression} onChange={e => setAdvancedFormField(req.id, "impression", e.target.value)}
                             placeholder={`1. No acute cardiopulmonary disease.\n2. Mild cardiomegaly — clinical correlation recommended.\n3. No pleural effusion identified.`}
                             className={taClass} />
                     </div>
@@ -216,14 +212,14 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             Recommendation
                             <span className="ml-2 text-gray-300 normal-case font-normal">follow-up or clinical action</span>
                         </p>
-                        <Textarea rows={2} value={recommendation} onChange={e => setAdvancedFormField(req.id, "recommendation", e.target.value)}
+                        <textarea rows={2} value={recommendation} onChange={e => setAdvancedFormField(req.id, "recommendation", e.target.value)}
                             placeholder="e.g. Follow-up CT in 3 months. / No further imaging required."
                             className={taClass} />
                     </div>
 
                     {/* Critical finding flag */}
                     <div className="space-y-3">
-                        <Label className="flex items-center gap-3 cursor-pointer">
+                        <label className="flex items-center gap-3 cursor-pointer">
                             <div
                                 onClick={() => setAdvancedFormField(req.id, "criticalFindings", !criticalFindings)}
                                 className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors
@@ -237,9 +233,9 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                                     Check if this finding requires immediate clinical attention
                                 </p>
                             </div>
-                        </Label>
+                        </label>
                         {criticalFindings && (
-                            <Textarea
+                            <textarea
                                 rows={2}
                                 value={criticalNote}
                                 onChange={e => setAdvancedFormField(req.id, "criticalNote", e.target.value)}
@@ -252,14 +248,14 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-50 flex gap-2 shrink-0">
-                    <Button
+                    <button
                         type="button"
                         onClick={onClose}
                         className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors"
                     >
                         Cancel
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         type="button"
                         onClick={handleSubmit as any}
                         disabled={saving}
@@ -269,7 +265,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
                             ? <><Loader2 size={13} className="animate-spin" /> Submitting...</>
                             : <><CheckCircle2 size={13} /> Submit Report</>
                         }
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>

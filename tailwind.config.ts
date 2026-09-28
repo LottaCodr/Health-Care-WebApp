@@ -21,7 +21,7 @@ const config = {
 		},
 		extend: {
 			colors: {
-				primary: 'hsl(var(--primary))',
+				primary: '#E11D48',
 				border: 'hsl(var(--border))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',

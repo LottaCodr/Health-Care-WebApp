@@ -2,10 +2,6 @@
 
 import React, { useState } from "react";
 import { Download, Printer, Stamp, CalendarRange, LayoutList, Check, Layers, FileText, Activity } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,7 +67,7 @@ function SectionRow({
 }) {
     const meta = SECTION_META[section];
     return (
-        <Button
+        <button
             type="button"
             onClick={() => onChange(!checked)}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all ${
@@ -90,7 +86,7 @@ function SectionRow({
             }`}>
                 {checked && <Check size={11} className="text-white stroke-[3]" />}
             </span>
-        </Button>
+        </button>
     );
 }
 
@@ -153,7 +149,7 @@ export default function PatientRecordDownload({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     {(["pdf", "print"] as const).map((f) => (
-                        <Button
+                        <button
                             key={f}
                             type="button"
                             onClick={() => setOptions((o) => ({ ...o, format: f }))}
@@ -165,7 +161,7 @@ export default function PatientRecordDownload({
                         >
                             {f === "pdf" ? <Download size={14} /> : <Printer size={14} />}
                             {f === "pdf" ? "Export as PDF File" : "Print Document"}
-                        </Button>
+                        </button>
                     ))}
                 </div>
             </div>
@@ -177,7 +173,7 @@ export default function PatientRecordDownload({
                     <p className="text-[11px] font-black uppercase tracking-widest text-gray-500">Quick Presets</p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                    <Button
+                    <button
                         type="button"
                         onClick={() => applyPreset(ALL_SECTIONS)}
                         className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
@@ -187,28 +183,28 @@ export default function PatientRecordDownload({
                         }`}
                     >
                         Full Record ({ALL_SECTIONS.length})
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         type="button"
                         onClick={() => applyPreset(CLINICAL_SECTIONS)}
                         className="px-3 py-1 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                     >
                         Clinical Only ({CLINICAL_SECTIONS.length})
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         type="button"
                         onClick={() => applyPreset(BILLING_SECTIONS)}
                         className="px-3 py-1 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                     >
                         Billing Only
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         type="button"
                         onClick={() => applyPreset([])}
                         className="px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors ml-auto"
                     >
                         Clear all
-                    </Button>
+                    </button>
                 </div>
             </div>
 
@@ -242,8 +238,8 @@ export default function PatientRecordDownload({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     <div>
-                        <Label className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide block mb-1">From Date</Label>
-                        <Input
+                        <label className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide block mb-1">From Date</label>
+                        <input
                             type="date"
                             value={options.dateFrom}
                             max={options.dateTo || today}
@@ -252,8 +248,8 @@ export default function PatientRecordDownload({
                         />
                     </div>
                     <div>
-                        <Label className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide block mb-1">To Date</Label>
-                        <Input
+                        <label className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide block mb-1">To Date</label>
+                        <input
                             type="date"
                             value={options.dateTo}
                             max={today}
@@ -265,7 +261,7 @@ export default function PatientRecordDownload({
             </div>
 
             {/* ── Hospital stamp ───────────────────────────────────────────────── */}
-            <Button
+            <button
                 type="button"
                 onClick={() => setOptions((o) => ({ ...o, includeStamp: !o.includeStamp }))}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${
@@ -281,10 +277,10 @@ export default function PatientRecordDownload({
                 }`}>
                     {options.includeStamp && <Check size={11} className="text-white stroke-[3]" />}
                 </span>
-            </Button>
+            </button>
 
             {/* ── Generate button ──────────────────────────────────────────────── */}
-            <Button
+            <button
                 type="button"
                 onClick={handleDownload}
                 disabled={noneSelected || loading}
@@ -310,7 +306,7 @@ export default function PatientRecordDownload({
                         Generate {options.format.toUpperCase()} Record
                     </>
                 )}
-            </Button>
+            </button>
         </div>
     );
 }

@@ -25,9 +25,6 @@ import { hasActualAllergy } from "@/lib/utils";
 import { useAllergies } from "@/hooks/emr/use-clinical-modules";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
 
 function TabChunkSkeleton() {
   return (
@@ -105,7 +102,7 @@ const ROLE_FIRST_GROUP: Partial<Record<string, TabGroup>> = {
 
 const BASE_TABS: TabDef[] = [
   { value: "vitals", label: "Vitals", icon: Activity, accent: "text-blue-600", activeBar: "bg-blue-500", group: "nursing", keywords: ["bp", "blood pressure", "pulse", "temperature", "spo2", "observations"] },
-  { value: "consultations", label: "Consultations", icon: Stethoscope, accent: "text-teal-700", activeBar: "bg-teal-500", group: "doctor", keywords: ["notes", "assessment", "diagnosis", "complaint"] },
+  { value: "consultations", label: "Consultations", icon: Stethoscope, accent: "text-red-600", activeBar: "bg-red-500", group: "doctor", keywords: ["notes", "assessment", "diagnosis", "complaint"] },
   { value: "prescriptions", label: "Prescriptions", icon: Pill, accent: "text-violet-600", activeBar: "bg-violet-500", group: "general", keywords: ["medication", "drugs", "rx", "pharmacy"] },
   { value: "lab", label: "Lab Results", icon: FlaskConical, accent: "text-indigo-600", activeBar: "bg-indigo-500", group: "general", keywords: ["tests", "blood", "pathology", "investigations"] },
   { value: "radiology", label: "Radiology", icon: Radio, accent: "text-cyan-600", activeBar: "bg-cyan-500", group: "general", keywords: ["x-ray", "ultrasound", "scan", "imaging"] },
@@ -321,7 +318,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
       },
       {
         value: "surgery", label: "Surgery", icon: Scissors,
-        accent: "text-indigo-700", activeBar: "bg-indigo-500",
+        accent: "text-rose-600", activeBar: "bg-rose-500",
         group: "doctor" as TabGroup, keywords: ["operation", "theatre", "ot", "procedure"],
         show: true,
       },
@@ -545,7 +542,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[170px] flex-1 sm:w-72 sm:flex-none">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <Input
+            <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search sections — e.g. bp, notes, bill…"
@@ -553,34 +550,30 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-xs font-semibold text-gray-700 shadow-sm outline-none placeholder:font-medium placeholder:text-gray-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
             />
             {query && (
-              <Button
+              <button
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-md p-0 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
               >
                 <X size={13} />
-              </Button>
+              </button>
             )}
           </div>
 
           {/* Group jump pills (desktop) */}
           <div className="ml-auto hidden max-w-[360px] items-center gap-1.5 overflow-x-auto scrollbar-hide md:flex">
             {groupedTabs.map(({ group, tabs: gtabs }) => (
-              <Button
+              <button
                 key={group}
                 type="button"
                 onClick={() => jumpToGroup(group)}
                 title={`Jump to ${GROUP_LABELS[group]} sections`}
-                variant="outline"
-                size="sm"
-                className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-bold text-gray-500 shadow-sm transition-colors hover:border-gray-300 hover:text-gray-800"
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-bold text-gray-500 shadow-sm transition-colors hover:border-gray-300 hover:text-gray-800"
               >
                 {GROUP_LABELS[group]}
                 <span className="rounded-full bg-gray-100 px-1.5 py-px text-[9px] font-black text-gray-400">{gtabs.length}</span>
-              </Button>
+              </button>
             ))}
           </div>
         </div>
@@ -588,28 +581,24 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         {/* Tab strip with arrows + edge fades */}
         <div className="relative">
           {canLeft && (
-            <Button
+            <button
               type="button"
               aria-label="Scroll sections left"
-              variant="outline"
-              size="icon"
               onClick={() => scrollStrip("left")}
               className="absolute -left-0.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:text-gray-800"
             >
               <ChevronLeft size={15} />
-            </Button>
+            </button>
           )}
           {canRight && (
-            <Button
+            <button
               type="button"
               aria-label="Scroll sections right"
-              variant="outline"
-              size="icon"
               onClick={() => scrollStrip("right")}
               className="absolute -right-0.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:text-gray-800"
             >
               <ChevronRight size={15} />
-            </Button>
+            </button>
           )}
           <div aria-hidden="true"
             className={`pointer-events-none absolute inset-y-0 left-0 z-[5] w-6 bg-gradient-to-r from-slate-50 to-transparent transition-opacity ${canLeft ? "opacity-100" : "opacity-0"}`}
@@ -709,7 +698,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         {/* ── Consultations ── */}
         <TabsContent value="consultations" className="mt-0 min-w-0 animate-in fade-in-0 duration-150">
           <div className="space-y-5">
-            <SectionHeader icon={Stethoscope} color="text-teal-700" bg="bg-teal-50"
+            <SectionHeader icon={Stethoscope} color="text-red-600" bg="bg-red-50"
               title="Consultations" subtitle="Clinical findings and patient routing" />
             {(role === "Doctor" || role === "Admin") && patient?.id && (
               <Panel accent="bg-indigo-500" label="Quick Route — no consultation needed">
@@ -717,7 +706,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               </Panel>
             )}
             {role === "Doctor" && patient?.id && (
-              <Panel accent="bg-teal-500" label="New Consultation">
+              <Panel accent="bg-red-500" label="New Consultation">
                 <div ref={formRef}>
                   {formError && <AlertBanner type="error" message={formError} />}
                   {successMessage && <AlertBanner type="success" message={successMessage} />}
