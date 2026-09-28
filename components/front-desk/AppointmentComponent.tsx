@@ -632,7 +632,7 @@ function CancelModal({ id, onClose }: { id: string; onClose: () => void }) {
                 <Textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
                     placeholder="Reason (optional)" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-200 mb-4" />
                 <div className="flex justify-end gap-3">
-                    <Button type="button" onClick={onClose} disabled={updateStatus.isPending} className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Keep appointment</Button>
+                    <Button type="button" onClick={onClose} disabled={updateStatus.isPending} variant="outline" className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Keep appointment</Button>
                     <Button type="button" onClick={cancelAppointment}
                         disabled={updateStatus.isPending}
                         className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors">
@@ -678,7 +678,7 @@ function DeleteModal({ id, patientName, onClose }: { id: string; patientName: st
                 </p>
                 {error && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
                 <div className="flex justify-end gap-3">
-                    <Button type="button" onClick={onClose} disabled={del.isPending} className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Keep it</Button>
+                    <Button type="button" onClick={onClose} disabled={del.isPending} variant="outline" className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Keep it</Button>
                     <Button type="button" onClick={deleteAppointment} disabled={del.isPending}
                         className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors">
                         {del.isPending ? "Deleting…" : "Yes, delete"}

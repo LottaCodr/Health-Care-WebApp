@@ -8,12 +8,12 @@ export default function Loading() {
             {/* Header */}
             <header className="flex items-center justify-between space-x-4 mb-2">
                 <div className="flex items-center space-x-3">
-                    <div className="rounded-full bg-red-500/20 p-2">
-                        <Skeleton className="h-10 w-10 rounded-full bg-red-500/40" />
+                    <div className="rounded-full bg-slate-100 p-2">
+                        <Skeleton className="h-10 w-10 rounded-full bg-slate-200" />
                     </div>
-                    <Skeleton className="h-8 w-48 bg-red-500/30" />
+                    <Skeleton className="h-8 w-48 bg-slate-200" />
                 </div>
-                <Skeleton className="h-10 w-32 rounded-lg bg-red-500/30" />
+                <Skeleton className="h-10 w-32 rounded-lg bg-slate-200" />
             </header>
 
             {/* Stats cards */}
@@ -21,42 +21,42 @@ export default function Loading() {
                 {[...Array(4)].map((_, i) => (
                     <div
                         key={i}
-                        className="p-5 space-y-4 border-2 border-red-200 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
+                        className="p-5 space-y-4 border-2 border-slate-200 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
                     >
-                        <Skeleton className="h-6 w-24 bg-red-500/20" />
-                        <Skeleton className="h-10 w-full bg-red-500/10" />
+                        <Skeleton className="h-6 w-24 bg-slate-100" />
+                        <Skeleton className="h-10 w-full bg-slate-100" />
                         <div className="flex justify-end">
-                            <Skeleton className="h-4 w-8 rounded bg-red-500/30" />
+                            <Skeleton className="h-4 w-8 rounded bg-slate-200" />
                         </div>
                     </div>
                 ))}
             </section>
 
             {/* Chart */}
-            <section className="p-6 border-2 border-red-200 bg-white rounded-xl shadow-md">
+            <section className="p-6 border-2 border-slate-200 bg-white rounded-xl shadow-md">
                 <div className="flex items-center mb-4">
-                    <Skeleton className="h-6 w-32 bg-red-500/20 mr-4" />
-                    <Skeleton className="h-4 w-16 bg-red-500/10" />
+                    <Skeleton className="h-6 w-32 bg-slate-100 mr-4" />
+                    <Skeleton className="h-4 w-16 bg-slate-100" />
                 </div>
-                <Skeleton className="h-56 w-full rounded-lg bg-red-500/10" />
+                <Skeleton className="h-56 w-full rounded-lg bg-slate-100" />
             </section>
 
             {/* Table/List */}
-            <section className="p-6 border-2 border-red-200 bg-white rounded-xl shadow-md">
+            <section className="p-6 border-2 border-slate-200 bg-white rounded-xl shadow-md">
                 <div className="flex items-center justify-between mb-6">
-                    <Skeleton className="h-6 w-40 bg-red-500/20" />
-                    <Skeleton className="h-8 w-24 rounded bg-red-500/20" />
+                    <Skeleton className="h-6 w-40 bg-slate-100" />
+                    <Skeleton className="h-8 w-24 rounded bg-slate-100" />
                 </div>
                 <div className="space-y-4">
                     {[...Array(5)].map((_, i) => (
                         <div
                             key={i}
-                            className="flex items-center justify-between space-x-4 px-2 py-3 rounded-lg bg-red-50/60 hover:bg-red-100/60 transition-colors"
+                            className="flex items-center justify-between space-x-4 px-2 py-3 rounded-lg bg-slate-50/60 hover:bg-slate-100/60 transition-colors"
                         >
-                            <Skeleton className="h-5 w-1/3 bg-red-500/10" />
-                            <Skeleton className="h-5 w-1/6 bg-red-500/10" />
-                            <Skeleton className="h-5 w-1/6 bg-red-500/10" />
-                            <Skeleton className="h-5 w-1/6 bg-red-500/10" />
+                            <Skeleton className="h-5 w-1/3 bg-slate-100" />
+                            <Skeleton className="h-5 w-1/6 bg-slate-100" />
+                            <Skeleton className="h-5 w-1/6 bg-slate-100" />
+                            <Skeleton className="h-5 w-1/6 bg-slate-100" />
                         </div>
                     ))}
                 </div>

@@ -16,7 +16,8 @@ import { fmtDate, fmtFull, fmtTime } from "@/lib/utils";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { useLabStore } from "@/store/lab-store";
 import TestTemplateForm from "./TestTemplateForm";
-import { calculateAge } from "@/utils/export";
+import { patientAgeOn, patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
+import { RecordAmendmentControls } from "@/components/records";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { Button } from "@/components/ui/button";
@@ -223,7 +224,7 @@ export default function LabTechDashboard() {
                             const patientName   = patient?.name ?? req.patient_name ?? "Patient";
                             const patientPhone = patient?.phone;
                             const patientGender = patient?.gender;
-                            const patientAge = patient?.birth_date ? calculateAge(patient.birth_date) : null;
+                            const patientAge = patientAgeOn(patient?.birth_date);
                             const patientHospitalNumber = getPatientHospitalNumber(patient);
                             const patientBg = patient?.blood_group;
                             const requestedByName = req.requested_by_name ?? req.staffs?.name ?? null;
@@ -319,6 +320,8 @@ export default function LabTechDashboard() {
                                             </div>
                                             <TestTemplateForm
                                                 testType={req.test_type ?? ""}
+                                                patient={{ age: patientAgeYearsPrecise(patient?.birth_date), gender: patientGender, name: patientName }}
+                                                sampleId={req.visit_id ?? null}
                                                 submitting={submittingId === req.id}
                                                 onSubmit={async (resultString) => {
                                                     handleSubmitResult(req.id, resultString);
@@ -371,6 +374,15 @@ export default function LabTechDashboard() {
                                         <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
                                             {parseResultPreview(req.result)}
                                         </p>
+                                        <div className="mt-2">
+                                            <RecordAmendmentControls
+                                                type="lab_result" id={req.id} row={req}
+                                                patientId={req.visit_id ?? req.patient_id ?? null}
+                                                invalidateKeys={[["lab"]]}
+                                                contextLine={`${req.test_type ?? "Lab test"} · ${patientName}`}
+                                                compact
+                                            />
+                                        </div>
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="text-[10px] font-bold text-gray-500">{fmtDate(req.completed_at)}</p>

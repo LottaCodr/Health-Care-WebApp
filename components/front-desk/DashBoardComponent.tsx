@@ -443,12 +443,12 @@ export default function FrontDeskDashboard() {
                 {/* Billing queue */}
                 <Section
                     icon={Wallet}
-                    iconBg="bg-red-50"
-                    iconColor="text-red-600"
+                    iconBg="bg-amber-50"
+                    iconColor="text-amber-700"
                     title="Billing Queue"
                     subtitle="Patients awaiting checkout"
                     badge={Array.isArray(awaitingPayment.data) ? awaitingPayment.data.length : 0}
-                    badgeColor="bg-red-50 text-red-700 border-red-100"
+                    badgeColor="bg-amber-50 text-amber-800 border-amber-200"
                     href="/front-desk/payment"
                     hrefLabel="Process All"
                     loading={awaitingPayment.isLoading}
@@ -461,7 +461,7 @@ export default function FrontDeskDashboard() {
                         <Button
                             aria-label="Refresh billing queue"
                             type="button"
-                            className="flex items-center rounded-lg bg-red-50 p-1 text-red-600 transition-colors hover:bg-red-100"
+                            variant="ghost" className="flex items-center rounded-lg bg-amber-50 p-1 text-amber-700 transition-colors hover:bg-amber-100"
                             onClick={handleAwaitingPaymentRefresh}
                             disabled={awaitingPayment.isLoading}
                         >
@@ -471,7 +471,7 @@ export default function FrontDeskDashboard() {
                 >
                     {Array.isArray(awaitingPayment.data) && awaitingPayment.data.slice(0, 5).map(p => (
                         <PatientRow key={p.id} patient={p}
-                            action={{ label: "Checkout", href: `/front-desk/payment/${p.id}`, color: "bg-red-600 hover:bg-red-700" }}
+                            action={{ label: "Checkout", href: `/front-desk/payment/${p.id}`, color: "bg-primary hover:bg-primary/90" }}
                             secondaryAction={{ label: "Request Lab", href: `/front-desk/patient/${p.id}?tab=lab`, color: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" }} />
                     ))}
                 </Section>

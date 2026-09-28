@@ -1,3 +1,5 @@
+import { patientAgeOn } from "@/lib/clinical/patient-age";
+
 // export function exportToCSV(appointments: any[]): void {
 //     // Implement CSV export logic here
 //     console.log('Exporting to CSV', appointments);
@@ -36,18 +38,7 @@ export function getInitials(name?: string | null): string {
     return name.split(" ").map((n) => n[0]).join("");
 }
 
+/** Completed years on today's UTC calendar date. Invalid/future DOBs are unknown. */
 export function calculateAge(birthDate: string): number {
-    const today = new Date();
-    const userDob = new Date(birthDate);
-
-    let age = today.getFullYear() - userDob.getFullYear();
-    let month = today.getMonth() - userDob.getMonth();
-    let day = today.getDay() - userDob.getDay();
-
-    //if birthday has not happened this year 
-    if (month < 0 || (month === 0 && today.getDate() < userDob.getDate())) {
-        age--;
-    }
-
-    return age;
+    return patientAgeOn(birthDate) ?? Number.NaN;
 }

@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "check:lab-submit": "node scripts/repro-billing.cjs",
     "check:amendments": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-amendment-policy.ts",
+    "check:lab-identity": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-lab-identity.ts",
     "analyze": "cross-env ANALYZE=true next build --webpack"
   },
   "dependencies": {

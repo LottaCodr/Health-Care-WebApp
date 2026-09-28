@@ -143,7 +143,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
 export default function PaymentConfirmation() {
     const [settleTarget, setSettleTarget] = useState<any | null>(null);
     const [settleAllOpen, setSettleAllOpen] = useState(false);
-    const { data: payments, isLoading, isError, refetch } = usePendingPayments();
+    const { data: payments, isLoading, isError, isFetching, refetch } = usePendingPayments();
     const { user } = useAuth();
     const cashierId = user?.$id ?? user?.id ?? "";
 
@@ -215,12 +215,13 @@ export default function PaymentConfirmation() {
                     )}
                     <Button
                         onClick={() => refetch()}
-                        aria-label="Refresh"
+                        aria-label="Refresh pending payments"
+                        disabled={isFetching}
                         variant="outline"
                         size="icon"
                         className="h-8 w-8 rounded-xl"
                     >
-                        <RefreshCcw size={13} />
+                        <RefreshCcw size={13} className={isFetching ? "animate-spin" : ""} />
                     </Button>
                 </div>
             </div>
@@ -242,7 +243,7 @@ export default function PaymentConfirmation() {
 
             {/* ── Empty ─ */}
             {(!payments || payments.length === 0) && (
-                <div className="flex flex-col items-center justify-center gap-3 py-16">
+                <div role="status" className="flex flex-col items-center justify-center gap-3 px-4 py-16">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-green-100 bg-green-50">
                         <CheckCircle2 size={22} className="text-green-500" />
                     </div>

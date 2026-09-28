@@ -1,5 +1,7 @@
 "use client";
 
+import { patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
+
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
@@ -169,9 +171,7 @@ function RequestForm({ req, onSuccess, patient }: { req: any; onSuccess?: () => 
                         onSubmit={handleTemplateSubmit}
                         submitting={completing}
                         patient={{
-                            age: patient?.birth_date
-                                ? Math.max(0, (Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000))
-                                : null,
+                            age: patientAgeYearsPrecise(patient?.birth_date),
                             gender: patient?.gender ?? null,
                             name: patient?.name ?? null,
                         }}

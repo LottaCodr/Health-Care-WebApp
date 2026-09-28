@@ -22,7 +22,7 @@ import { AILabInterpretation } from "@/components/ai/AIComponents";
 import TestTemplateForm from "../TestTemplateForm";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { RecordAmendmentControls } from "@/components/records";
-import { calculateAge } from "@/utils/export";
+import { patientAgeOn, patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
 import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
 import { fmtDate, fmtFull } from "@/lib/utils";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -129,7 +129,7 @@ function StructuredResultDisplay({ result }: { result?: string }) {
 // ─── Completed result card ────────────────────────────────────────────────────
 
 function LabResultCard({ req, patient }: { req: any, patient: Patient }) {
-    const age = patient?.birth_date ? calculateAge(patient.birth_date) : undefined;
+    const age = patientAgeOn(patient?.birth_date, req.completed_at ?? req.created_at ?? new Date()) ?? undefined;
     const completedDate = req.completed_at ? fmtDate(req.completed_at) : "—";
     const completedTime = req.completed_at ? fmtFull(req.completed_at) : "";
     return (
@@ -351,9 +351,7 @@ function LabTechPendingRow({ req, patientId, patient, onSubmitted }: { req: any;
                         submitting={saving}
                         onSubmit={async (resultString) => handleSubmit(resultString)}
                         patient={{
-                            age: patient?.birth_date
-                                ? Math.max(0, (Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000))
-                                : null,
+                            age: patientAgeYearsPrecise(patient?.birth_date),
                             gender: patient?.gender ?? null,
                             name: patient?.name ?? null,
                         }}
@@ -681,7 +679,7 @@ export default function LabTab({ patient, userRole }: Props) {
                             <Hash size={10} /> {displayHospitalNumber(getPatientHospitalNumber(patient))}
                         </span>
                         {patient.gender && <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patient.gender}</span>}
-                        {patient.birth_date && <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{calculateAge(patient.birth_date)} yrs</span>}
+                        {patient.birth_date && <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patientAgeOn(patient.birth_date) ?? "—"} yrs</span>}
                         {patient.phone && <span className="text-xs text-gray-600 flex items-center gap-1"><Phone size={10} className="text-gray-400" /> {patient.phone}</span>}
                     </div>
                 </div>

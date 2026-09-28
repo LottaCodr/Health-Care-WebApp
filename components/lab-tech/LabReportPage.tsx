@@ -11,7 +11,8 @@ import {
     Phone, Hash, Droplets, Beaker,
 } from "lucide-react";
 import { useLabStore } from "@/store/lab-store";
-import { calculateAge } from "@/utils/export";
+import { patientAgeOn } from "@/lib/clinical/patient-age";
+import { RecordAmendmentControls } from "@/components/records";
 import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { fmtDate, fmtFull } from "@/lib/utils";
@@ -55,7 +56,7 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
     const patientName = patient?.name ?? null;
     const patientPhone = patient?.phone;
     const patientGender = patient?.gender;
-    const patientAge = patient?.birth_date ? calculateAge(patient.birth_date) : null;
+    const patientAge = patientAgeOn(patient?.birth_date, req.completed_at ?? req.created_at ?? new Date());
     const parsed = parseStructuredResult(req.result);
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -91,7 +92,8 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                                 <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white border border-indigo-100 text-indigo-700">
                                     <Hash size={10} /> {displayHospitalNumber(getPatientHospitalNumber(patient))}
                                 </span>
-                                {patientAge !== null && <span className="text-xs text-gray-600">{patientAge} yrs</span>}
+                                {patientAge !== null && <span className="text-xs text-gray-600">{patientAge} yrs at result</span>}
+                                <span className="text-xs text-gray-600">DOB: {patient.birth_date || "Not recorded — verify demographics"}</span>
                                 {patientGender && <span className="text-xs text-gray-600">• {patientGender}</span>}
                                 {patientPhone && <span className="text-xs text-gray-600 flex items-center gap-1">• <Phone size={10} /> {patientPhone}</span>}
                                 {patient?.blood_group && <span className="text-xs font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-100"><Droplets size={10} className="inline" /> {patient.blood_group}</span>}
@@ -179,6 +181,18 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                                 {req.result}
                             </pre>
                         )}
+                    </div>
+                )}
+                {req.result && (
+                    <div className="border-t border-gray-100 pt-4">
+                        <RecordAmendmentControls
+                            type="lab_result"
+                            id={req.id}
+                            row={req}
+                            patientId={req.visit_id ?? req.patient_id ?? null}
+                            invalidateKeys={[["lab"]]}
+                            contextLine={`${req.test_type ?? "Lab test"} · ${patientName ?? "Patient"}`}
+                        />
                     </div>
                 )}
             </div>
@@ -374,7 +388,7 @@ export default function LabReportsPage() {
                 {selected && (
                     <div className="space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">Result Details • Properly Arranged</p>
-                        <ResultPanel req={selected} onClose={() => setField("reportSelected", null)} />
+                        <ResultPanel req={results?.find((r: any) => r.id === selected.id) ?? selected} onClose={() => setField("reportSelected", null)} />
                     </div>
                 )}
             </div>

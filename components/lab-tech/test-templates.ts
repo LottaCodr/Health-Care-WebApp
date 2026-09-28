@@ -390,16 +390,22 @@ export const TEST_TEMPLATES: TestTemplate[] = [
     // ════════════════════════════════════════════════════════════════════════
 
     {
-        name: "Helicobacter Pylori (Antigen)",
-        category: "CHEMISTRY",
-        match: ["h-pylori", "helicobacter", "h. pylori", "hpylori"],
+        name: "H. pylori antibody (blood)",
+        category: "SEROLOGY",
+        match: [], // Dispatched explicitly by modality in findTemplate.
         fields: [
-            {
-                label: "H. Pylori Antigen", key: "hpylori", type: "select",
-                options: ["Positive", "Negative"],
-                required: true,
-            },
+            { label: "H. pylori antibody", key: "hpylori_antibody", type: "select", options: ["Positive", "Negative", "Indeterminate"], required: true },
         ],
+        note: "Blood antibody (serology) detects an immune response; it does not establish active infection. Do not report a stool antigen result on this form.",
+    },
+    {
+        name: "H. pylori antigen (stool)",
+        category: "MICROBIOLOGY",
+        match: [], // Dispatched explicitly by modality in findTemplate.
+        fields: [
+            { label: "H. pylori stool antigen", key: "hpylori_antigen", type: "select", options: ["Positive", "Negative", "Indeterminate"], required: true },
+        ],
+        note: "Stool antigen detects H. pylori antigen in faeces. Confirm specimen before releasing the result.",
     },
 
     // ════════════════════════════════════════════════════════════════════════
@@ -887,7 +893,7 @@ export const TEST_TEMPLATES: TestTemplate[] = [
     {
         name: "Urinalysis",
         category: "URINALYSIS",
-        match: ["urinalysis", "urine analysis", "urine r/m", "urine routine"],
+        match: ["urinalysis", "urine analysis", "urine r/m", "urine routine", "urinalisis", "urinalysys", "urinealysis", "urinanalysis"],
         fields: [
             { label: "Colour", key: "colour", type: "select", options: ["Amber", "Yellow", "Pale Yellow", "Dark Yellow", "Red", "Brown", "Orange"] },
             { label: "Appearance", key: "appearance", type: "select", options: ["Clear", "Slightly Turbid", "Turbid", "Cloudy"] },
@@ -912,12 +918,14 @@ export const TEST_TEMPLATES: TestTemplate[] = [
     {
         name: "Urine MCS",
         category: "MICROBIOLOGY AND PARASITOLOGY",
-        match: ["urine mcs", "urine culture", "urine c&s"],
+        match: ["urine mcs", "urine m/c/s", "urine culture", "urine c&s"],
         fields: [
-            { label: "Appearance", key: "appearance", type: "text", placeholder: "e.g. Amber & slightly turbid" },
+            { label: "Colour", key: "colour", type: "text", placeholder: "e.g. Amber" },
+            { label: "Appearance", key: "appearance", type: "text", placeholder: "e.g. Clear or slightly turbid" },
             { label: "Pus Cells", key: "pus_cells", type: "text", unit: "/hpf", placeholder: "e.g. 1-3" },
             { label: "Red Blood Cells", key: "rbc", type: "text", placeholder: "e.g. Nil" },
             { label: "Epithelial Cells", key: "epithelial", type: "text", unit: "/hpf", placeholder: "e.g. 0-1" },
+            { label: "Yeast Cells", key: "yeast", type: "text", placeholder: "e.g. Nil" },
             { label: "Others", key: "others", type: "text", placeholder: "e.g. Nil" },
             { label: "Culture Result", key: "culture", type: "text", placeholder: "e.g. Yielded no significant growth after 24h incubation at 37°C" },
             { label: "Sensitivity (if growth)", key: "sensitivity", type: "text", placeholder: "e.g. Ciprofloxacin-S, Gentamicin-S, Amoxil-R" },
@@ -1042,9 +1050,26 @@ export const TEST_TEMPLATES: TestTemplate[] = [
  * Find the best matching template for a given test_type string.
  * Returns `null` if no template matches (caller should fall back to free-text).
  */
+export function isPyloriOrder(testType: string | undefined | null): boolean {
+    const name = (testType ?? "").toLowerCase().replace(/[._-]+/g, " ").replace(/\s+/g, " ");
+    return /\b(?:h\s*pylori|helicobacter(?: pylori)?)\b/.test(name);
+}
+
 export function findTemplate(testType: string | undefined | null): TestTemplate | null {
     if (!testType) return null;
     const lower = testType.toLowerCase();
+    if (isPyloriOrder(testType)) {
+        const name = lower.replace(/[._-]+/g, " ").replace(/\s+/g, " ");
+        const antibody = /\b(?:antibod(?:y|ies)|serology|igg|igm|ab)\b/.test(name);
+        const antigen = /\b(?:antigen|ag)\b/.test(name);
+        const blood = /\b(?:blood|serum|plasma)\b/.test(name);
+        const stool = /\b(?:stool|faeces|feces|faecal|fecal)\b/.test(name);
+        // Generic or contradictory orders require an explicit choice. Neither
+        // a blood antibody nor a stool antigen can be inferred from "H. pylori".
+        if (antibody && !antigen && !stool) return TEST_TEMPLATES.find(t => t.name === "H. pylori antibody (blood)")!;
+        if (antigen && !antibody && !blood) return TEST_TEMPLATES.find(t => t.name === "H. pylori antigen (stool)")!;
+        return null;
+    }
 
     for (const tpl of TEST_TEMPLATES) {
         for (const pattern of tpl.match) {

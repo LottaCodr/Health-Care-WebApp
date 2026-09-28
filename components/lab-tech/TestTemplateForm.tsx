@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useId } from "react";
 import {
     FileText, CheckCircle, AlertCircle,
     Info, ChevronDown, ChevronUp, FlaskConical,
     ClipboardList, Activity, ArrowRight,
 } from "lucide-react";
 import {
-    findTemplate,
+    findTemplate, isPyloriOrder, TEST_TEMPLATES,
     buildResultString,
     type InterpretationTable,
     type TemplateField,
@@ -207,7 +207,14 @@ function InterpretationCard({ table }: { table: InterpretationTable }) {
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function TestTemplateForm({ testType, onSubmit, submitting, patient, sampleId }: TestTemplateFormProps) {
-    const template = useMemo(() => findTemplate(testType), [testType]);
+    const automaticTemplate = useMemo(() => findTemplate(testType), [testType]);
+    const [chosenTemplate, setChosenTemplate] = useState("");
+    const template = chosenTemplate
+        ? TEST_TEMPLATES.find((item) => item.name === chosenTemplate) ?? null
+        : automaticTemplate;
+    const needsSelection = !automaticTemplate || !!chosenTemplate;
+    const isAmbiguousPylori = !automaticTemplate && isPyloriOrder(testType);
+    const templatePickerId = useId();
     const [values, setValues] = useState<Record<string, string>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [extraNotes, setExtraNotes] = useState("");
@@ -252,19 +259,40 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
         await onSubmit(resultString);
     };
 
+    // Template choice never changes the original order or its billing code.
+    // A typo can be worked with while the order label is corrected separately.
+    const templatePicker = needsSelection ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2 text-sm text-amber-950">
+            <label htmlFor={templatePickerId} className="block font-semibold">Confirm result template and specimen</label>
+            <p>Ordered as: <strong>{testType || "Unspecified test"}</strong>. Select the actual test performed; this does not change the order or its bill.</p>
+            <select id={templatePickerId} value={chosenTemplate} onChange={(e) => {
+                setChosenTemplate(e.target.value);
+                setValues({}); setErrors({}); setExtraNotes("");
+            }} className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-gray-900">
+                <option value="">{isAmbiguousPylori ? "Choose antibody (blood) or antigen (stool)" : "Free-text result / choose a template"}</option>
+                {(isAmbiguousPylori ? TEST_TEMPLATES.filter((item) => item.name.startsWith("H. pylori ")) : TEST_TEMPLATES)
+                    .map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+            </select>
+            {chosenTemplate && <p>Reporting as <strong>{chosenTemplate}</strong>. Verify the specimen and ask the ordering clinician to correct a wrong order label.</p>}
+        </div>
+    ) : null;
+
     // ─── Age/sex-partitioned analyzer template (hematology) ───
     // Rendered after all hooks for rules-of-hooks compliance. The analyzer
     // form resolves the reference set from the patient's age & sex, computes
     // H/L flags live, auto-derives NLR/PLR, and emits the printout format.
     if (template?.kind === "hematology-analyzer") {
         return (
-            <HematologyAnalyzerForm
-                testType={testType}
-                onSubmit={onSubmit}
-                submitting={submitting}
-                patient={patient ?? null}
-                sampleId={sampleId ?? null}
-            />
+            <div className="space-y-4">
+                {templatePicker}
+                <HematologyAnalyzerForm
+                    testType={chosenTemplate || testType}
+                    onSubmit={onSubmit}
+                    submitting={submitting}
+                    patient={patient ?? null}
+                    sampleId={sampleId ?? null}
+                />
+            </div>
         );
     }
 
@@ -272,6 +300,7 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
     if (!template) {
         return (
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 space-y-6">
+                {templatePicker}
                 <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
                         <Info size={18} className="text-amber-600" />
@@ -281,7 +310,7 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
                             No structured template for &quot;{testType}&quot;
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                            Please enter results in free text below.
+                            {isAmbiguousPylori ? "Choose the blood antibody or stool antigen template before entering a result." : "Choose a matching template above, or enter a free-text result below."}
                         </p>
                     </div>
                 </div>
@@ -292,12 +321,13 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
                     rows={8}
                     className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
                     placeholder="Enter specimen findings, reference ranges, and conclusions..."
-                    required
+                    required={!isAmbiguousPylori}
+                    disabled={isAmbiguousPylori}
                 />
 
                 <Button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || isAmbiguousPylori}
                     className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-blue-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                     <CheckCircle size={18} />
@@ -313,6 +343,7 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
+            {templatePicker}
 
             {/* Template header card */}
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border border-indigo-100">

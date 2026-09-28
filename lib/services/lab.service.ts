@@ -7,6 +7,7 @@ import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
 import { dedupeLabTests, normalizeLabTestName } from "@/lib/utils/lab-catalog";
 import { assertRecordAmendable } from "./record-lock";
+import { findTemplate, isPyloriOrder } from "@/components/lab-tech/test-templates";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -29,6 +30,9 @@ export async function createLabRequest(
     input: CreateLabRequestInput
 ): Promise<LabRequest> {
     await requireStaff([UserRole.Doctor, UserRole.FrontDesk]);
+    if (isPyloriOrder(input.testType) && !findTemplate(input.testType)) {
+        throw new Error("Specify H. pylori antibody (blood) or H. pylori antigen (stool) before ordering. They are different tests; ask the lab to configure both catalog entries with their own prices.");
+    }
     const supabase = await createClient();
 
     // 1. Resolve test price (from input or catalog)
@@ -381,6 +385,7 @@ async function updateLabRequestOrThrow(
     const ctx = await assertRecordAmendable("lab_result", id, updates as Record<string, any>, {
         roles: false,
         actor,
+        rejectResubmission: updates.status === "completed" && updates.result !== undefined,
         // Radiology shares this table; classify by its test_type prefix so the
         // audit entry and the correction note name the right kind of record.
         resolveType: (row) =>

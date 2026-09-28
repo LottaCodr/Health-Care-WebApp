@@ -162,7 +162,7 @@ function AccessBanner({ level }: { level: AccessLevel }) {
 
 function LatestBadge() {
     return (
-        <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-sm">
+        <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-teal-700 text-white shadow-sm">
             <Sparkles size={9} /> Latest
         </span>
     );
@@ -196,10 +196,10 @@ function DoctorConsultationCard({
 
     return (
         <div className={`${fullWidth ? "w-full" : "min-w-[340px] max-w-[340px] flex-shrink-0 snap-start"} bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden ${
-            isLatest ? "border-red-200 ring-1 ring-red-100" : "border-gray-100 hover:border-red-100"
+            isLatest ? "border-teal-200 ring-1 ring-teal-100" : "border-gray-100 hover:border-teal-100"
         }`}>
             <div className="flex items-center gap-0 h-1">
-                <div className="flex-1 h-full bg-red-600" />
+                <div className="flex-1 h-full bg-teal-600" />
                 {isPaed && <div className="w-8 h-full bg-blue-500" />}
                 {isFem && <div className="w-8 h-full bg-pink-400" />}
             </div>
@@ -208,7 +208,7 @@ function DoctorConsultationCard({
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            <CalendarDays size={13} className="text-red-500 shrink-0" />
+                            <CalendarDays size={13} className="text-teal-600 shrink-0" />
                             <span className="text-sm font-bold text-gray-800">{fmt(date)}</span>
                             <CheckCircle2 size={13} className="text-green-500" />
                             {isLatest && <LatestBadge />}
@@ -240,8 +240,8 @@ function DoctorConsultationCard({
                 <div className="border-t border-gray-50" />
 
                 <div className="flex items-start gap-2.5">
-                    <div className="w-5 h-5 rounded-md bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
-                        <Stethoscope size={10} className="text-red-500" />
+                    <div className="w-5 h-5 rounded-md bg-teal-50 flex items-center justify-center shrink-0 mt-0.5">
+                        <Stethoscope size={10} className="text-teal-600" />
                     </div>
                     <div className="min-w-0">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Presenting Complaint</p>
@@ -282,7 +282,7 @@ function DoctorConsultationCard({
                 {expanded && (
                     <div className="space-y-3 pt-1 border-t border-gray-50">
                         {[
-                            { label: "History (A)", text: symptoms, icon: ClipboardList, color: "text-red-500", bg: "bg-red-50" },
+                            { label: "History (A)", text: symptoms, icon: ClipboardList, color: "text-teal-600", bg: "bg-teal-50" },
                             { label: "Examination (B+C)", text: diagnosis, icon: Activity, color: "text-blue-500", bg: "bg-blue-50" },
                             { label: "Assessment / Mgmt (E+F)", text: recommendations, icon: Brain, color: "text-amber-500", bg: "bg-amber-50" },
                             { label: "Treatment / Rx", text: prescriptions, icon: Pill, color: "text-violet-500", bg: "bg-violet-50" },
@@ -466,7 +466,7 @@ function ResultsTableView({
                                         onClick={expandable ? () => setOpenId(open ? null : id) : undefined}
                                         className={`align-top transition-colors ${
                                             expandable ? "cursor-pointer" : "cursor-default"
-                                        } ${open ? "bg-blue-50/50" : isLatest ? "bg-red-50/40 hover:bg-red-50/70" : expandable ? "hover:bg-gray-50" : ""}`}
+                                        } ${open ? "bg-blue-50/50" : isLatest ? "bg-teal-50/40 hover:bg-teal-50/70" : expandable ? "hover:bg-gray-50" : ""}`}
                                     >
                                         <TableCell className="px-3 py-3 font-black text-gray-300">#{String(idx + 1).padStart(2, "0")}</TableCell>
                                         <TableCell className="px-3 py-3">
@@ -541,7 +541,7 @@ function ResultsTableView({
                                                 {accessLevel === "full" ? (
                                                     <div className="grid gap-3 md:grid-cols-2">
                                                         {[
-                                                            { label: "History (A)", text: c.symptoms, icon: ClipboardList, color: "text-red-500", bg: "bg-red-50" },
+                                                            { label: "History (A)", text: c.symptoms, icon: ClipboardList, color: "text-teal-600", bg: "bg-teal-50" },
                                                             { label: "Examination (B+C)", text: c.diagnosis, icon: Activity, color: "text-blue-500", bg: "bg-blue-50" },
                                                             { label: "Assessment / Mgmt (E+F)", text: c.recommendations, icon: Brain, color: "text-amber-500", bg: "bg-amber-50" },
                                                             { label: "Treatment / Rx", text: c.prescriptions, icon: Pill, color: "text-violet-500", bg: "bg-violet-50" },
@@ -674,7 +674,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
 
     if (isPending) return (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 size={18} className="text-red-500 animate-spin" />
+            <Loader2 size={18} className="text-blue-600 animate-spin" />
             <p className="text-sm font-medium text-gray-500">Loading consultations...</p>
         </div>
     );
@@ -686,7 +686,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
             </div>
             <p className="text-sm font-semibold text-gray-600">Failed to load consultations</p>
             <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["consultations", patientId] })}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors">
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-colors">
                 <RefreshCcw size={13} /> Retry
             </Button>
         </div>
@@ -711,8 +711,8 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-                        <History size={16} className="text-red-600" />
+                    <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+                        <History size={16} className="text-teal-700" />
                     </div>
                     <div>
                         <p className="text-sm font-bold text-gray-900">Consultation History</p>
@@ -804,7 +804,7 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                         {data.map((c: any, idx: number) => (
                             <div key={getId(c)} className="relative">
                                 <div className={`absolute -left-6 top-5 w-3.5 h-3.5 rounded-full border-2 border-white shadow ${
-                                    idx === 0 ? "bg-red-500" : "bg-gray-300"
+                                    idx === 0 ? "bg-teal-600" : "bg-gray-300"
                                 }`} />
                                 {accessLevel === "full" ? (
                                     <DoctorConsultationCard

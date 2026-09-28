@@ -59,22 +59,25 @@ const EMPTY_TEST: Partial<LabTest> = {
 
 function TestModal({
     test,
+    initial,
     onClose,
-
 }: {
     test?: LabTest | null;
+    initial?: Partial<LabTest> | null;
     onClose: () => void;
-
 }) {
     const isEdit = !!test;
     const upsertMutation = useUpsertLabTest();
-    const [form, setForm] = useState<Partial<LabTest>>(test ? { ...test } : { ...EMPTY_TEST });
+    const [form, setForm] = useState<Partial<LabTest>>(test ? { ...test } : { ...EMPTY_TEST, ...initial });
     const set = (k: keyof LabTest, v: any) => setForm(p => ({ ...p, [k]: v }));
 
     const handleSave = async () => {
         if (!form.test_name?.trim()) { toast.error("Test name is required."); return; }
         if (!form.category?.trim()) { toast.error("Category is required."); return; }
         if (form.price === undefined || form.price < 0) { toast.error("Price is required."); return; }
+        if (/h\s*\.?\s*pylori/i.test(form.test_name) && form.is_active && form.price <= 0) {
+            toast.error("Set the correct price for this H. pylori test before making it active."); return;
+        }
         try {
             await upsertMutation.mutateAsync({
                 test: form,
@@ -537,6 +540,7 @@ export default function LabTestCatalogPage() {
     const [bulkImportOpen, setBulkImportOpen] = useState(false);
     const [previewTarget, setPreviewTarget] = useState<LabTest | null>(null);
     const [templatePreviewOpen, setTemplatePreviewOpen] = useState(false);
+    const [newTestPreset, setNewTestPreset] = useState<Partial<LabTest> | null>(null);
 
     const handleMergeDuplicates = async () => {
         try {
@@ -643,12 +647,36 @@ export default function LabTestCatalogPage() {
                         onOpenChange={setBulkImportOpen}
                         uploadType="lab_test_catalog"
                     />
-                    <Button onClick={() => setField("showAdd", true)}
+                    <Button onClick={() => { setNewTestPreset(null); setField("showAdd", true); }}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm shadow-indigo-200 transition-all">
                         <Plus size={14} /> Add Test
                     </Button>
                 </div>
             </div>
+
+            {/* Test identities and prices are separate: do not convert an existing
+                generic H. pylori catalog row or copy its price to both assays. */}
+            {!isLoading && !isError && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 space-y-2">
+                    <p className="text-sm font-bold text-blue-950">H. pylori tests: confirm both catalog entries</p>
+                    <p className="text-xs text-blue-800">Blood antibody and stool antigen require separate orders, specimens and prices. Generic H. pylori orders must be clarified before filing.</p>
+                    <div className="flex flex-wrap gap-2">
+                        {([
+                            { test_name: "H. pylori antibody (blood)", category: "Serology", sample_type: "Plain Blood" },
+                            { test_name: "H. pylori antigen (stool)", category: "Microbiology", sample_type: "Stool" },
+                        ] as const).map((item) => {
+                            const existing = tests.find(t => t.test_name.toLowerCase() === item.test_name.toLowerCase());
+                            return existing ? <span key={item.test_name} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs text-blue-800">{item.test_name} · {existing.is_active ? "active" : "inactive"}</span> : (
+                                <Button key={item.test_name} type="button" variant="outline" className="border-blue-300 bg-white text-blue-800"
+                                    onClick={() => { setNewTestPreset({ ...item, price: 0, is_active: false }); setField("showAdd", true); }}>
+                                    <Plus size={12} /> Configure {item.test_name}
+                                </Button>
+                            );
+                        })}
+                    </div>
+                    <p className="text-xs text-blue-800">Verify any old generic/incorrect catalog label manually; historical requests and bills are not renamed.</p>
+                </div>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
@@ -707,7 +735,7 @@ export default function LabTestCatalogPage() {
                 <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-3xl border border-gray-100 shadow-sm">
                     <FlaskConical size={22} className="text-gray-300" />
                     <p className="text-sm font-semibold text-gray-500">No tests found</p>
-                    <Button onClick={() => setField("showAdd", true)} className="text-xs text-indigo-600 hover:underline font-bold">Add the first test →</Button>
+                    <Button onClick={() => { setNewTestPreset(null); setField("showAdd", true); }} className="text-xs text-indigo-600 hover:underline font-bold">Add the first test →</Button>
                 </div>
             ) : (
                 <div className="space-y-5">
@@ -800,7 +828,8 @@ export default function LabTestCatalogPage() {
 
             {showAdd && (
                 <TestModal
-                    onClose={() => setField("showAdd", false)}
+                    initial={newTestPreset}
+                    onClose={() => { setNewTestPreset(null); setField("showAdd", false); }}
                 />
             )}
             {editTarget && (

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 const PatientDetailTabs = dynamic(() => import("./patient-detail-tabs"), {
@@ -152,7 +153,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 <p className="text-gray-600 font-semibold">Patient not found.</p>
                 <Button
                     onClick={handleBack}
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                    variant="outline" className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 font-medium transition-colors"
                 >
                     <ArrowLeft size={15} /> Go back
                 </Button>
@@ -357,7 +358,6 @@ function PatientProfile({
     };
 
     const statusClass  = statusColors[status] || "bg-gray-100 text-gray-600";
-    const activeFields = groups[activeGroup] ?? [];
     const router = useRouter();
     return (
         <section className="bg-white rounded-3xl border border-gray-200 overflow-hidden">
@@ -464,37 +464,33 @@ function PatientProfile({
                 </div>
             </div>
 
-            {/* ── Group tab nav ─────────────────────────────────────────────────── */}
-            <div className="flex border-b border-gray-100 px-2 overflow-x-auto scrollbar-hide">
-                {GROUPS.map((g) => {
-                    const Icon     = g.icon;
-                    const isActive = activeGroup === g.id;
-                    return (
-                        <Button
-                            key={g.id}
-                            type="button"
-                            onClick={() => setActiveGroup(g.id)}
-                            className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all duration-150 ${
-                                isActive
-                                    ? "border-blue-700 text-blue-700"
-                                    : "border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-200"
-                            }`}
-                        >
-                            <Icon size={15} />
-                            {g.label}
-                        </Button>
-                    );
-                })}
-            </div>
-
-            {/* ── Fields grid ───────────────────────────────────────────────────── */}
-            <div className="px-4 py-4 sm:px-6 sm:py-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {activeFields.map((field) => (
-                        <InfoItem key={field.label} label={field.label} icon={field.icon} value={field.value} />
-                    ))}
+            {/* Accessible, keyboard-navigable profile sections. Red is reserved for alerts. */}
+            <Tabs value={activeGroup} onValueChange={setActiveGroup}>
+                <div className="overflow-x-auto border-b border-gray-100 scrollbar-hide">
+                    <TabsList aria-label="Patient profile sections" className="grid h-auto w-full grid-cols-2 gap-1 rounded-none bg-white p-2 text-gray-600 sm:flex sm:min-w-max sm:justify-start">
+                        {GROUPS.map(({ id, label, icon: Icon }) => (
+                            <TabsTrigger
+                                key={id}
+                                value={id}
+                                className="min-h-10 gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-slate-50 hover:text-blue-800 sm:px-4 data-[state=active]:border-blue-200 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-800 data-[state=active]:shadow-none"
+                            >
+                                <Icon size={15} aria-hidden="true" />
+                                {label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
                 </div>
-            </div>
+
+                {GROUPS.map(({ id }) => (
+                    <TabsContent key={id} value={id} className="m-0 px-4 py-4 sm:px-6 sm:py-6">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {groups[id].map((field) => (
+                                <InfoItem key={field.label} label={field.label} icon={field.icon} value={field.value} />
+                            ))}
+                        </div>
+                    </TabsContent>
+                ))}
+            </Tabs>
         </section>
     );
 }
