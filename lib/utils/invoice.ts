@@ -1,3 +1,5 @@
+import { patientAgeOn } from "@/lib/clinical/patient-age";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type InvoiceStatus = "pending" | "paid" | "partial" | "waived" | "refunded";
@@ -66,15 +68,6 @@ function formatDate(value: string | null | undefined): string {
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function calculateAge(dob: string): number {
-    const birth = new Date(dob.includes("T") ? dob : `${dob}T00:00:00`);
-    if (isNaN(birth.getTime())) return 0;
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return Math.max(age, 0);
-}
 
 const CATEGORY_LABELS: Record<string, string> = {
     consultation: "Consultation",
@@ -228,7 +221,8 @@ export function buildInvoiceHtml({ patientId, patient, payments, logoUrl }: Expo
             : `<span class="acct-chip acct-clear">FULLY SETTLED</span>`;
 
     const patientName  = patient?.name?.trim() || "Patient";
-    const patientAge   = patient?.birth_date ? `${calculateAge(patient.birth_date)} yrs` : null;
+    const age = patientAgeOn(patient?.birth_date);
+    const patientAge = age !== null ? `${age} yrs` : null;
     const insurance    = patient?.hmo_name
         ? `${patient.hmo_name}${patient.policy_number ? ` (${patient.policy_number})` : ""}`
         : null;

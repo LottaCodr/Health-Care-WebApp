@@ -431,16 +431,15 @@ async function scenarioRlsBlocked() {
         result: "Positive",
         completed_at: "2099-01-01T00:00:00.000Z", // malicious/stale client value
     });
-    assert.equal(amended.ok, true);
-    assert.equal(
-        db.lab_requests[0].completed_at,
-        originalFiledAt,
-        "an amendment must not reset/extend the original 24-hour clock"
-    );
+    assert.equal(amended.ok, false, "a stale submission form must not overwrite a filed result");
+    assert.match(amended.message, /already filed/);
+    assert.equal(db.lab_requests[0].result, "Negative");
+    assert.equal(db.lab_requests[0].completed_at, originalFiledAt,
+        "a rejected resubmission must not reset the original 24-hour clock");
     console.log("-- recovered action:", JSON.stringify({
         ok: recovered.ok,
         status: recovered.request.status,
-        amendmentKeptOriginalClock: db.lab_requests[0].completed_at === originalFiledAt,
+        rejectedResubmissionKeptOriginalClock: db.lab_requests[0].completed_at === originalFiledAt,
     }));
 
     console.log("\n==== SCENARIO 3D - old schema has no lab_requests.price column");
@@ -520,11 +519,27 @@ async function scenarioSettleAllSimple() {
     console.log("-- statuses:", after.map(b => b.status));
 }
 
+async function scenarioPyloriIdentity() {
+    console.log("\n==== SCENARIO 6 - blood antibody and stool antigen are separate orders:");
+    const { labService } = await freshContext();
+    await assert.rejects(
+        () => labService.createLabRequest({ patientId: "patient-1", testType: "H. pylori", price: 1500 }),
+        /Specify H\. pylori antibody/,
+    );
+    assert.equal(db.lab_requests.length, 0, "ambiguous orders must not reach the chart or billing");
+    await labService.createLabRequest({ patientId: "patient-1", testType: "H. pylori antibody (blood)", price: 1800 });
+    await labService.createLabRequest({ patientId: "patient-1", testType: "H. pylori antigen (stool)", price: 2400 });
+    assert.deepEqual(db.lab_requests.map(r => r.test_type), ["H. pylori antibody (blood)", "H. pylori antigen (stool)"]);
+    assert.deepEqual(db.payments.map(p => p.amount), [1800, 2400]);
+    console.log("-- independent orders and bills confirmed");
+}
+
 async function main() {
     await scenarioHealthy();
     await scenarioRlsBlocked();
     await scenarioSettleAllWithDeposit();
     await scenarioSettleAllSimple();
+    await scenarioPyloriIdentity();
     console.log("\nDone.");
 }
 

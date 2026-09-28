@@ -11,6 +11,7 @@ import {
     ANALYZER_RESULT_FOOTER,
     type HematologyCategory,
 } from "@/lib/clinical/hematology-reference-ranges";
+import { patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
@@ -38,9 +39,7 @@ function fmtDateTime(iso?: string): string {
 export default function HematologyAnalyzerReport({ request, className }: HematologyAnalyzerReportProps) {
     const parsed = useMemo(() => parseLabResult(request?.result), [request?.result]);
     const patient = request?.patients ?? {};
-    const patientAge = patient?.birth_date
-        ? Math.max(0, (Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000))
-        : null;
+    const patientAge = patientAgeYearsPrecise(patient?.birth_date, request?.completed_at ?? request?.created_at ?? new Date());
 
     const resolved = useMemo(
         () => resolveHematologyCategory(patientAge, patient?.gender ?? null),

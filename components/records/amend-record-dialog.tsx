@@ -174,6 +174,13 @@ export function AmendRecordDialog({
                         </p>
                     )}
 
+                    {/* The stored result is a formatted report, not a simple
+                        number. Make the preservation rule clear before editing. */}
+                    {type === "lab_result" && (
+                        <p className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                            Correct only the mistaken values below; keep the test name, specimen, other results and table layout intact. This is an audited amendment to the filed result, not a new submission or a change to the doctor&apos;s order.
+                        </p>
+                    )}
                     {/* Fields */}
                     {def.fields.map(field => (
                         <div key={field.column}>
@@ -192,7 +199,7 @@ export function AmendRecordDialog({
                                     value={values[field.column] ?? ""}
                                     onChange={(e) => setValues(v => ({ ...v, [field.column]: e.target.value }))}
                                     disabled={!canEdit}
-                                    rows={6}
+                                    rows={type === "lab_result" ? 12 : 6}
                                     className="rounded-xl border-gray-200 bg-gray-50/60 text-sm font-medium leading-relaxed text-gray-800 focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 />
                             ) : (

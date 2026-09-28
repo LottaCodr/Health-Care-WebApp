@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useId, useRef, useEffect } from 'react';
+import React, { useId, useRef, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import {
   FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -76,7 +76,7 @@ interface CustomProps {
   dateFormat?: string;
   showTimeSelected?: boolean;
   children?: React.ReactNode;
-  renderSkeleton?: (field: any) => React.ReactNode;
+  renderSkeleton?: (field: any, inputId: string) => React.ReactNode;
   description?: string;
   autoFocus?: boolean;
   required?: boolean;
@@ -89,7 +89,10 @@ const renderField = (
   props: CustomProps,
   inputId: string,
   fieldState: any,
-  inputRef: any,
+  inputRef: React.RefObject<HTMLInputElement | null>,
+  onDateSelected: () => void,
+  dateOpen: boolean,
+  setDateOpen: (open: boolean) => void,
 ) => {
   const {
     fieldType, placeholder, iconSrc, disabled,
@@ -98,6 +101,11 @@ const renderField = (
   } = props;
 
   const hasError = !!fieldState?.error;
+  const descriptionId = props.description ? `${inputId}-desc` : undefined;
+  const setInputRef = (element: HTMLInputElement | null) => {
+    inputRef.current = element;
+    field.ref(element);
+  };
 
   switch (fieldType) {
 
@@ -109,11 +117,11 @@ const renderField = (
               {getIcon(iconSrc)}
             </span>
           )}
-          <FormControl>
+          <FormControl aria-describedby={descriptionId}>
             <Input
               {...field}
               id={inputId}
-              ref={inputRef}
+              ref={setInputRef}
               placeholder={placeholder}
               disabled={disabled}
               required={required}
@@ -132,15 +140,15 @@ const renderField = (
 
     case FormFieldType.PHONE_INPUT:
       return (
-        <FormControl>
-          <div className="relative flex items-center">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-              <MdPhone size={16} className="text-gray-400" />
-            </span>
+        <div className="relative flex items-center">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+            <MdPhone size={16} className="text-gray-400" />
+          </span>
+          <FormControl aria-describedby={descriptionId}>
             <Input
               {...field}
               id={inputId}
-              ref={inputRef}
+              ref={setInputRef}
               type="tel"
               placeholder={placeholder}
               disabled={disabled}
@@ -155,14 +163,14 @@ const renderField = (
                 hasError ? INPUT_ERROR : '',
               ].join(' ')}
             />
-          </div>
-        </FormControl>
+          </FormControl>
+        </div>
       );
 
     case FormFieldType.SELECT:
       return (
-        <FormControl>
-          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={disabled}>
+        <Select onValueChange={field.onChange} value={field.value ?? ""} disabled={disabled}>
+          <FormControl aria-describedby={descriptionId}>
             <SelectTrigger
               id={inputId}
               aria-invalid={hasError}
@@ -175,24 +183,25 @@ const renderField = (
             >
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl shadow-xl bg-white border border-gray-100 max-h-60 overflow-y-auto">
-              {children}
-            </SelectContent>
-          </Select>
-        </FormControl>
+          </FormControl>
+          <SelectContent className="max-h-60 rounded-2xl border border-gray-100 bg-white shadow-xl">
+            {children}
+          </SelectContent>
+        </Select>
       );
 
     case FormFieldType.TEXTAREA:
       return (
-        <FormControl>
+        <FormControl aria-describedby={descriptionId}>
           <Textarea
             {...field}
             id={inputId}
-            ref={inputRef}
+            ref={field.ref}
             placeholder={placeholder}
             disabled={disabled}
             required={required}
             autoComplete="off"
+            autoFocus={autoFocus}
             aria-invalid={hasError}
             aria-required={required}
             className={[
@@ -212,8 +221,8 @@ const renderField = (
 
     case FormFieldType.CHECKBOX:
       return (
-        <FormControl>
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
+          <FormControl aria-describedby={descriptionId}>
             <Checkbox
               id={inputId}
               checked={!!field.value}
@@ -227,20 +236,20 @@ const renderField = (
                 hasError ? 'border-red-400' : '',
               ].join(' ')}
             />
-            <Label htmlFor={inputId} className="text-sm font-semibold text-gray-700 cursor-pointer select-none leading-tight">
-              {props.label}
-              {required && <span className="ml-1 text-red-500">*</span>}
-            </Label>
-          </div>
-        </FormControl>
+          </FormControl>
+          <Label htmlFor={inputId} className="text-sm font-semibold text-gray-700 cursor-pointer select-none leading-tight">
+            {props.label}
+            {required && <span className="ml-1 text-red-500">*</span>}
+          </Label>
+        </div>
       );
 
     case FormFieldType.DATE_PICKER:
       return (
-        <Popover>
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
-            <FormControl>
-              <Button type="button" className={[
+            <FormControl aria-describedby={descriptionId}>
+              <Button type="button" disabled={disabled} aria-required={required} className={[
                 INPUT_BASE, 'px-4 flex items-center gap-3 text-left',
                 !field.value ? 'text-gray-300' : 'text-gray-800',
                 hasError ? INPUT_ERROR : '',
@@ -257,6 +266,7 @@ const renderField = (
               onSelect={(date) => {
                 if (date) {
                   field.onChange(date);
+                  onDateSelected();
                 }
               }}
               disabled={disabled}
@@ -270,7 +280,7 @@ const renderField = (
       );
 
     case FormFieldType.SKELETON:
-      return renderSkeleton ? renderSkeleton(field) : null;
+      return renderSkeleton ? renderSkeleton(field, inputId) : null;
 
     default:
       return null;
@@ -283,6 +293,7 @@ const CustomFormField: React.FC<CustomProps> = (props) => {
   const { control, name, label, fieldType, description, autoFocus, required, disabled } = props;
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [dateOpen, setDateOpen] = useState(false);
 
   useEffect(() => {
     if (autoFocus && inputRef.current && !disabled) {
@@ -301,7 +312,7 @@ const CustomFormField: React.FC<CustomProps> = (props) => {
 
             {/* Label — skip for checkbox (it renders its own) */}
             {fieldType !== FormFieldType.CHECKBOX && label && (
-              <FormLabel htmlFor={inputId} className={LABEL_BASE}>
+              <FormLabel id={`${inputId}-label`} htmlFor={inputId} className={LABEL_BASE}>
                 {label}
                 {required && <span className="text-red-500">*</span>}
                 {disabled && <span className="text-gray-300 normal-case font-normal tracking-normal">(disabled)</span>}
@@ -316,7 +327,7 @@ const CustomFormField: React.FC<CustomProps> = (props) => {
             )}
 
             {/* Input */}
-            {renderField(field, props, inputId, fieldState, inputRef)}
+            {renderField(field, props, inputId, fieldState, inputRef, () => setDateOpen(false), dateOpen, setDateOpen)}
 
             {/* Error */}
             {hasError && (

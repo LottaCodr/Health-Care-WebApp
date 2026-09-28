@@ -195,9 +195,14 @@ export async function assertRecordAmendable(
         actor?: StaffSession;
         /** Re-classify shared-table rows (radiology inside lab_requests). */
         resolveType?: (row: Record<string, any>) => AmendableRecordType | null;
+        /** Department submission forms may only file once; revisions use amendRecord. */
+        rejectResubmission?: boolean;
     }
 ): Promise<AmendmentContext | null> {
     const ctx = await inspectRecordAmendment({ type, id, updates, ...opts });
+    if (opts?.rejectResubmission && ctx && !ctx.firstFiling) {
+        throw new Error("This result was already filed. Open the completed report and use Amend within 24 hours, or attach a correction note afterward.");
+    }
     // `resubmission` distinguishes "the department form was submitted again"
     // from a deliberate amendment made through the audit-visible dialog.
     if (ctx) await logAmendment(ctx, "resubmission");

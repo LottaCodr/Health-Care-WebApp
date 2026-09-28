@@ -104,7 +104,7 @@ function PaymentTypeChips({ value, onChange, disabled }: {
     disabled?: boolean;
 }) {
     return (
-        <div className="grid grid-cols-3 gap-2">
+        <div role="group" aria-label="Payment type" className="grid grid-cols-3 gap-2">
             {(Object.keys(PAYMENT_TYPE_CONFIG) as PaymentType[]).map((type) => {
                 const cfg = PAYMENT_TYPE_CONFIG[type];
                 const active = value === type;
@@ -112,6 +112,7 @@ function PaymentTypeChips({ value, onChange, disabled }: {
                     <Button
                         key={type}
                         type="button"
+                        aria-pressed={active}
                         onClick={() => onChange(type)}
                         disabled={disabled}
                         className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-2xl border text-left transition-all ${
@@ -143,11 +144,11 @@ function MethodPicker({ value, onChange, disabled }: {
     disabled?: boolean;
 }) {
     return (
-        <div className="grid grid-cols-3 gap-2">
+        <div role="group" aria-label="Payment method" className="grid grid-cols-3 gap-2">
             {METHOD_OPTIONS.map(({ key, label, icon: Icon }) => {
                 const active = value === key;
                 return (
-                    <Button key={key} type="button" onClick={() => onChange(key)} disabled={disabled}
+                    <Button key={key} type="button" aria-pressed={active} onClick={() => onChange(key)} disabled={disabled}
                         className={`flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all ${
                             active ? "bg-teal-50 text-teal-700 border-teal-300" : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
                         }`}>
@@ -200,6 +201,7 @@ function ModalShell({ title, subtitle, icon, onClose, disabled, children, wide }
 
 function ModalActions({ onClose, disabled, pending, onConfirm, confirmLabel, confirmIcon }: {
     onClose: () => void;
+    /** Disable confirmation while invalid; cancellation remains available. */
     disabled?: boolean;
     pending?: boolean;
     onConfirm: () => void;
@@ -208,7 +210,7 @@ function ModalActions({ onClose, disabled, pending, onConfirm, confirmLabel, con
 }) {
     return (
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-1">
-            <Button type="button" variant="ghost" onClick={onClose} disabled={disabled}
+            <Button type="button" variant="ghost" onClick={onClose} disabled={pending}
                 className="text-slate-500 hover:text-slate-700 font-semibold">
                 Cancel
             </Button>
@@ -258,15 +260,16 @@ function NairaInput({ value, onChange, disabled, placeholder = "0.00", autoFocus
 }
 
 /** Payer dropdown (shadcn Select) shared by the settle modals. */
-function PayerSelect({ value, onChange, disabled, reference }: {
+function PayerSelect({ value, onChange, disabled, reference, id }: {
     value: PayerType;
     onChange: (v: PayerType) => void;
     disabled?: boolean;
     reference?: string;
+    id: string;
 }) {
     return (
         <Select value={value} onValueChange={(v) => onChange(v as PayerType)} disabled={disabled}>
-            <SelectTrigger className="w-full rounded-xl border-slate-200 focus:ring-teal-400">
+            <SelectTrigger id={id} className="w-full rounded-xl border-slate-200 focus:ring-teal-400">
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -467,7 +470,7 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
 
                 {/* Payer — auto-identified from registration */}
                 <div className="space-y-1.5">
-                    <FieldLabel hint="auto-identified from registration">Payer</FieldLabel>
+                    <FieldLabel htmlFor="settle-payer" hint="auto-identified from registration">Payer</FieldLabel>
                     <div className="flex items-center gap-2 flex-wrap">
                         <PayerBadge payer={resolvedPayer.type} reference={resolvedPayer.reference || null} />
                         {autoPayerChanged && (
@@ -476,7 +479,7 @@ export function SettleBillModal({ payment, patient, payerHint, initialTotal, cas
                             </Badge>
                         )}
                     </div>
-                    <PayerSelect value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
+                    <PayerSelect id="settle-payer" value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
                     {isHmoCompany && (
                         <Input
                             value={payerCode}
@@ -695,11 +698,11 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
 
                 {/* Payer */}
                 <div className="space-y-1.5">
-                    <FieldLabel hint="auto-identified from registration">Payer</FieldLabel>
+                    <FieldLabel htmlFor="patient-bills-payer" hint="auto-identified from registration">Payer</FieldLabel>
                     <div className="flex items-center gap-2">
                         <PayerBadge payer={resolvedPayer.type} reference={resolvedPayer.reference || null} />
                     </div>
-                    <PayerSelect value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
+                    <PayerSelect id="patient-bills-payer" value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
                     {isHmoCompany && (
                         <Input value={payerCode} onChange={(e) => setPayerCode(e.target.value)} disabled={isPending}
                             placeholder={payerType === "hmo" ? "HMO authorization / claim code (optional)" : "Company reference / LPO number (optional)"}
@@ -819,11 +822,11 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
                 </div>
 
                 <div className="space-y-1.5">
-                    <FieldLabel hint="auto-identified from registration">Payer</FieldLabel>
+                    <FieldLabel htmlFor="deposit-payer" hint="auto-identified from registration">Payer</FieldLabel>
                     <div className="flex items-center gap-2 mb-1">
                         <PayerBadge payer={resolvedPayer.type} reference={resolvedPayer.reference || null} />
                     </div>
-                    <PayerSelect value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
+                    <PayerSelect id="deposit-payer" value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
                     {payerType === "private" && (
                         <div className="pt-1">
                             <FieldLabel>Payment method</FieldLabel>
@@ -902,7 +905,7 @@ export function QueueSettleAllModal({ totalBills, totalKobo, cashierId, onClose 
                         {METHOD_OPTIONS.map(({ key, label, icon: Icon }) => {
                             const active = method === key;
                             return (
-                                <Button key={key} type="button" onClick={() => setMethod(key)} disabled={isPending}
+                                <Button key={key} type="button" aria-pressed={active} onClick={() => setMethod(key)} disabled={isPending}
                                     className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl border text-xs font-bold transition-all ${
                                         active ? "bg-teal-50 text-teal-700 border-teal-300" : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
                                     }`}>

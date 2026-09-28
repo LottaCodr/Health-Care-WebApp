@@ -109,7 +109,7 @@ export default function SurgeryTab({ patientId, staffId, canEdit }: { patientId:
                         <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
                         <Input placeholder="Pre-op diagnosis" value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} />
                     </div>
-                    <Button onClick={submit} disabled={!procedure.trim() || createSurgery.isPending} className="mt-3 gap-2 bg-rose-600 hover:bg-rose-700">
+                    <Button onClick={submit} disabled={!procedure.trim() || createSurgery.isPending} className="mt-3 gap-2 bg-primary hover:bg-primary/90">
                         <Plus size={14} /> Schedule
                     </Button>
                 </div>

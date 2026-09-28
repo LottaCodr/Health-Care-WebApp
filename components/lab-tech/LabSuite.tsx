@@ -12,7 +12,7 @@ import TestTemplateForm from "./TestTemplateForm";
 import { findTemplate } from "./test-templates";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { RecordAmendmentControls } from "@/components/records";
-import { calculateAge } from "@/utils/export";
+import { patientAgeOn, patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
 import { fmtDate } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
@@ -90,12 +90,10 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
     const template = findTemplate(request?.test_type);
     const patient: any = (request as any)?.patients ?? null;
     const patientName = patient?.name ?? null;
-    const patientAge = patient?.birth_date ? calculateAge(patient.birth_date) : null;
+    const patientAge = patientAgeOn(patient?.birth_date, request?.completed_at ?? new Date());
     // Precise age in years — required by the hematology analyzer template so
     // the newborn (0–28 days) vs child (28 days–17 yrs) boundary is exact.
-    const patientAgePrecise = patient?.birth_date
-        ? Math.max(0, (Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000))
-        : null;
+    const patientAgePrecise = patientAgeYearsPrecise(patient?.birth_date);
 
     return (
         <div className="space-y-6">
@@ -121,8 +119,9 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                                             <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patient.gender}</span>
                                         )}
                                         {patientAge !== null && (
-                                            <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patientAge} yrs</span>
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">{patientAge} yrs {request.completed_at ? "at result" : "today"}</span>
                                         )}
+                                        <span className="text-xs text-gray-500">DOB: {patient.birth_date || "Not recorded — verify demographics"}</span>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-600">
                                         {patient?.phone && <span className="flex items-center gap-1"><Phone size={11} className="text-gray-400" /> {patient.phone}</span>}
@@ -226,7 +225,7 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
             )}
 
             {/* Template-based form - properly arranged with patient context */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
+            {!request?.result && <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-50 flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
@@ -262,7 +261,7 @@ export default function LabSuite({ requestId, onComplete }: LabSuiteProps) {
                     patient={{ age: patientAgePrecise, gender: patient?.gender ?? null, name: patientName }}
                     sampleId={request?.visit_id ?? request?.patient_id ?? null}
                 />
-            </div>
+            </div>}
         </div>
     );
 }

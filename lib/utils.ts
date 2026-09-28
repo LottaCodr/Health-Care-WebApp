@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { Metadata } from "next";
 import { twMerge } from 'tailwind-merge';
 import { siteConfig } from "./config";
+import { patientAgeOn } from "./clinical/patient-age";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -96,32 +97,8 @@ export function getGreeting() {
 }
 
 export function calculateAge(dob: string | Date): number {
-  let birthDate: Date;
-
-  if (typeof dob === "string") {
-    // Support both 'YYYY-MM-DD' and ISO format strings
-    if (!dob.includes("T")) {
-      dob = `${dob}T00:00:00`;
-    }
-    birthDate = new Date(dob);
-  } else {
-    birthDate = dob;
-  }
-
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-
-  // Adjust age if birthday not reached yet this year
-  const thisYearBirthday = new Date(
-    today.getFullYear(),
-    birthDate.getMonth(),
-    birthDate.getDate()
-  );
-  if (today < thisYearBirthday) {
-    age--;
-  }
-
-  return age;
+  const date = dob instanceof Date ? (Number.isNaN(dob.getTime()) ? "" : dob.toISOString().slice(0, 10)) : dob;
+  return patientAgeOn(date) ?? Number.NaN;
 }
 
 export function fmtDate(iso?: string): string {

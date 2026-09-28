@@ -155,21 +155,24 @@ function MobileProgress({ currentStep }: { currentStep: number }) {
 
 // ─── Religion field — dropdown with "Other" free-text fallback ───────────────
 
-function ReligionField({ field }: { field: { value: string; onChange: (v: string) => void } }) {
+function ReligionField({ field, id }: { field: { value: string; onChange: (v: string) => void }; id: string }) {
   const isPreset = (RELIGION_OPTIONS as readonly string[]).includes(field.value);
   const [customMode, setCustomMode] = useState(!isPreset && !!field.value);
 
   if (customMode) {
     return (
       <div className="space-y-1.5">
-        <Input
-          autoFocus
-          value={field.value}
-          onChange={e => field.onChange(e.target.value)}
-          placeholder="Enter religion"
-          className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all"
-        />
-        <Button type="button"
+        <FormControl>
+          <Input
+            id={id}
+            autoFocus
+            value={field.value}
+            onChange={e => field.onChange(e.target.value)}
+            placeholder="Enter religion"
+            className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all"
+          />
+        </FormControl>
+        <Button type="button" variant="ghost"
           onClick={() => { setCustomMode(false); field.onChange(""); }}
           className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
           <ChevronLeft size={12} /> Choose from list instead
@@ -179,11 +182,11 @@ function ReligionField({ field }: { field: { value: string; onChange: (v: string
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div role="group" aria-labelledby={`${id}-label`} className="grid grid-cols-2 gap-2">
       {RELIGION_OPTIONS.map(opt => {
         const isSelected = field.value === opt && opt !== "Other";
         return (
-          <Button key={opt} type="button"
+          <Button key={opt} type="button" aria-pressed={opt === "Other" ? customMode : isSelected}
             onClick={() => {
               if (opt === "Other") { setCustomMode(true); field.onChange(""); }
               else field.onChange(opt);
@@ -503,11 +506,7 @@ export default function RegistrationSuite() {
 
                             {/* Religion — optional dropdown */}
                             <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="religion" label="Religion (optional)"
-                              renderSkeleton={field => (
-                                <FormControl>
-                                  <ReligionField field={field} />
-                                </FormControl>
-                              )} />
+                              renderSkeleton={(field, id) => <ReligionField field={field} id={id} />} />
 
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="email" label="Email Address (optional)" placeholder="patient@example.com" />
                             <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="phone" label="Phone Number" placeholder="+234 800 000 0000" required />
@@ -526,13 +525,13 @@ export default function RegistrationSuite() {
                             </div>
 
                             <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="gender" label="Gender" required
-                              renderSkeleton={field => (
+                              renderSkeleton={(field, id) => (
                                 <FormControl>
-                                  <RadioGroup className="flex flex-row gap-4 h-11 items-center" onValueChange={field.onChange} defaultValue={field.value}>
+                                  <RadioGroup className="flex flex-row gap-4 h-11 items-center" onValueChange={field.onChange} value={field.value ?? ""} aria-labelledby={`${id}-label`}>
                                     {GenderOptions.map(g => (
                                       <div key={g} className="flex items-center gap-2">
-                                        <RadioGroupItem value={g} id={g} />
-                                        <Label htmlFor={g} className="text-sm font-medium text-gray-700 cursor-pointer">{g}</Label>
+                                        <RadioGroupItem value={g} id={`${id}-${g}`} />
+                                        <Label htmlFor={`${id}-${g}`} className="text-sm font-medium text-gray-700 cursor-pointer">{g}</Label>
                                       </div>
                                     ))}
                                   </RadioGroup>
@@ -583,19 +582,19 @@ export default function RegistrationSuite() {
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactName" label="Contact Name (optional)" placeholder="Jane Doe" />
                             <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="emergencyContactNumber" label="Contact Phone (optional)" placeholder="+234 800 000 0000" />
                             <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="emergencyContactRelationship" label="Relationship (optional)"
-                              renderSkeleton={field => (
-                                <FormControl>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <SelectTrigger>
+                              renderSkeleton={(field, id) => (
+                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                  <FormControl>
+                                    <SelectTrigger id={id}>
                                       <SelectValue placeholder="Select relationship (optional)" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                      {RelationshipOptions.map(rel => (
+                                  </FormControl>
+                                  <SelectContent>
+                                    {RelationshipOptions.map(rel => (
                                         <SelectItem key={rel} value={rel}>{rel}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </FormControl>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               )} />
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactEmail" label="Contact Email (optional)" placeholder="contact@example.com" />
                             <div className="sm:col-span-2">
@@ -616,13 +615,13 @@ export default function RegistrationSuite() {
                               <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="longTermMedication" label="Long-Term Medications" placeholder="List ongoing medications and dosages..." />
                             </div>
                             <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="covidVaccinationOptions" label="COVID-19 Vaccination Status"
-                              renderSkeleton={field => (
+                              renderSkeleton={(field, id) => (
                                 <FormControl>
-                                  <RadioGroup className="flex flex-col gap-2.5" onValueChange={field.onChange} defaultValue={field.value}>
+                                  <RadioGroup className="flex flex-col gap-2.5" onValueChange={field.onChange} value={field.value ?? ""} aria-labelledby={`${id}-label`}>
                                     {CovidVaccinationOptions.map(opt => (
                                       <div key={opt} className="flex items-center gap-2">
-                                        <RadioGroupItem value={opt} id={opt} />
-                                        <Label htmlFor={opt} className="text-sm font-medium text-gray-700 cursor-pointer">{opt}</Label>
+                                        <RadioGroupItem value={opt} id={`${id}-${opt}`} />
+                                        <Label htmlFor={`${id}-${opt}`} className="text-sm font-medium text-gray-700 cursor-pointer">{opt}</Label>
                                       </div>
                                     ))}
                                   </RadioGroup>
@@ -630,34 +629,34 @@ export default function RegistrationSuite() {
                               )} />
                             <div className="space-y-5">
                               <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="bloodGroup" label="Blood Group"
-                                renderSkeleton={field => (
-                                  <FormControl>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <SelectTrigger>
+                                renderSkeleton={(field, id) => (
+                                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                    <FormControl>
+                                      <SelectTrigger id={id}>
                                         <SelectValue placeholder="Select blood group" />
                                       </SelectTrigger>
-                                      <SelectContent>
-                                        {BloodGroupOptions.map(bg => (
+                                    </FormControl>
+                                    <SelectContent>
+                                      {BloodGroupOptions.map(bg => (
                                           <SelectItem key={bg} value={bg}>{bg}</SelectItem>
                                         ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </FormControl>
+                                    </SelectContent>
+                                  </Select>
                                 )} />
                               <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="genoType" label="Genotype"
-                                renderSkeleton={field => (
-                                  <FormControl>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <SelectTrigger>
+                                renderSkeleton={(field, id) => (
+                                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                    <FormControl>
+                                      <SelectTrigger id={id}>
                                         <SelectValue placeholder="Select genotype" />
                                       </SelectTrigger>
-                                      <SelectContent>
-                                        {GenotypeOptions.map(gt => (
+                                    </FormControl>
+                                    <SelectContent>
+                                      {GenotypeOptions.map(gt => (
                                           <SelectItem key={gt} value={gt}>{gt}</SelectItem>
                                         ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </FormControl>
+                                    </SelectContent>
+                                  </Select>
                                 )} />
                             </div>
                           </div>

@@ -1178,7 +1178,7 @@ export default function ConsultationForm({
 
                 {/* Submit */}
                 <Button type="submit" disabled={loading}
-                    className="w-full flex items-center justify-center gap-2.5 bg-red-700 hover:bg-red-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed py-3.5">
+                    className="w-full flex items-center justify-center gap-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm rounded-2xl shadow-lg shadow-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed py-3.5">
                     {loading
                         ? <><Loader2 size={16} className="animate-spin" /> Saving...</>
                         : <><CheckCircle2 size={16} /> Submit & Route Patient <ArrowRight size={15} /></>
@@ -1220,7 +1220,7 @@ export default function ConsultationForm({
                         <AlertDialogAction
                             onClick={() => { setConfirmOpen(false); doSubmit(); }}
                             disabled={loading}
-                            className="bg-red-700 hover:bg-red-800 rounded-xl">
+                            className="bg-primary hover:bg-primary/90 rounded-xl">
                             {loading ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : "Submit anyway"}
                         </AlertDialogAction>
                     </AlertDialogFooter>

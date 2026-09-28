@@ -69,7 +69,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             className="!bg-[#0a1628] border-r border-white/10 text-white flex flex-col"
         >
             {/* ── Logo ── */}
-            <SidebarHeader className="px-4 pt-5 pb-2 shrink-0">
+            <SidebarHeader className="px-4 pr-12 pt-5 pb-2 shrink-0 md:pr-4">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton
