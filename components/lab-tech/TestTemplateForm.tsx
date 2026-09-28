@@ -13,6 +13,11 @@ import {
     type TemplateField,
 } from "./test-templates";
 import HematologyAnalyzerForm from "./HematologyAnalyzerForm";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -64,7 +69,7 @@ function TemplateFieldInput({
     if (field.type === "select" && field.options) {
         return (
             <div className="space-y-1.5">
-                <label className="flex items-center justify-between">
+                <Label className="flex items-center justify-between">
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                         {field.label}
                         {field.required && <span className="text-red-500 ml-0.5">*</span>}
@@ -74,7 +79,7 @@ function TemplateFieldInput({
                             Ref: {field.refRange}
                         </span>
                     )}
-                </label>
+                </Label>
                 <div className="relative">
                     <select
                         value={value}
@@ -100,7 +105,7 @@ function TemplateFieldInput({
     if (field.type === "numeric") {
         return (
             <div className="space-y-1.5">
-                <label className="flex items-center justify-between">
+                <Label className="flex items-center justify-between">
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                         {field.label}
                         {field.required && <span className="text-red-500 ml-0.5">*</span>}
@@ -110,9 +115,9 @@ function TemplateFieldInput({
                             Ref: {field.refRange}
                         </span>
                     )}
-                </label>
+                </Label>
                 <div className="relative">
-                    <input
+                    <Input
                         type="text"
                         inputMode="decimal"
                         value={value}
@@ -138,7 +143,7 @@ function TemplateFieldInput({
     // text
     return (
         <div className="space-y-1.5">
-            <label className="flex items-center justify-between">
+            <Label className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                     {field.label}
                     {field.required && <span className="text-red-500 ml-0.5">*</span>}
@@ -148,8 +153,8 @@ function TemplateFieldInput({
                         Ref: {field.refRange}
                     </span>
                 )}
-            </label>
-            <input
+            </Label>
+            <Input
                 type="text"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -172,7 +177,7 @@ function InterpretationCard({ table }: { table: InterpretationTable }) {
 
     return (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <button
+            <Button
                 type="button"
                 onClick={() => setExpanded(!expanded)}
                 className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/60 transition-colors"
@@ -181,7 +186,7 @@ function InterpretationCard({ table }: { table: InterpretationTable }) {
                     {table.title ?? "Interpretation Guide"}
                 </span>
                 {expanded ? <ChevronUp size={12} className="text-gray-400" /> : <ChevronDown size={12} className="text-gray-400" />}
-            </button>
+            </Button>
             {expanded && (
                 <div className="px-4 pb-3 space-y-1.5">
                     {table.rows.map((row, i) => (
@@ -281,7 +286,7 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
                     </div>
                 </div>
 
-                <textarea
+                <Textarea
                     value={extraNotes}
                     onChange={(e) => setExtraNotes(e.target.value)}
                     rows={8}
@@ -290,14 +295,14 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
                     required
                 />
 
-                <button
+                <Button
                     type="submit"
                     disabled={submitting}
                     className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-blue-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                     <CheckCircle size={18} />
                     {submitting ? "Processing Results..." : "Authorize & Release Results"}
-                </button>
+                </Button>
             </form>
         );
     }
@@ -395,11 +400,11 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
 
             {/* Extra notes */}
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-3">
-                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                <Label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
                     <FileText size={12} className="text-indigo-500" />
                     Additional Notes / Observations
-                </label>
-                <textarea
+                </Label>
+                <Textarea
                     value={extraNotes}
                     onChange={(e) => setExtraNotes(e.target.value)}
                     rows={3}
@@ -409,7 +414,7 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
             </div>
 
             {/* Submit */}
-            <button
+            <Button
                 type="submit"
                 disabled={submitting}
                 className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -426,7 +431,7 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
                         <ArrowRight size={16} />
                     </>
                 )}
-            </button>
+            </Button>
         </form>
     );
 }

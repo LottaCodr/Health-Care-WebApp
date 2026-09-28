@@ -25,6 +25,9 @@ import { hasActualAllergy } from "@/lib/utils";
 import { useAllergies } from "@/hooks/emr/use-clinical-modules";
 
 import VitalsRecordDisplay from "./VitalRecordingDisplay";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 
 function TabChunkSkeleton() {
   return (
@@ -542,7 +545,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[170px] flex-1 sm:w-72 sm:flex-none">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
+            <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search sections — e.g. bp, notes, bill…"
@@ -550,21 +553,21 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-xs font-semibold text-gray-700 shadow-sm outline-none placeholder:font-medium placeholder:text-gray-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
             />
             {query && (
-              <button
+              <Button
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
               >
                 <X size={13} />
-              </button>
+              </Button>
             )}
           </div>
 
           {/* Group jump pills (desktop) */}
           <div className="ml-auto hidden max-w-[360px] items-center gap-1.5 overflow-x-auto scrollbar-hide md:flex">
             {groupedTabs.map(({ group, tabs: gtabs }) => (
-              <button
+              <Button
                 key={group}
                 type="button"
                 onClick={() => jumpToGroup(group)}
@@ -573,7 +576,7 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
               >
                 {GROUP_LABELS[group]}
                 <span className="rounded-full bg-gray-100 px-1.5 py-px text-[9px] font-black text-gray-400">{gtabs.length}</span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -581,24 +584,24 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
         {/* Tab strip with arrows + edge fades */}
         <div className="relative">
           {canLeft && (
-            <button
+            <Button
               type="button"
               aria-label="Scroll sections left"
               onClick={() => scrollStrip("left")}
               className="absolute -left-0.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:text-gray-800"
             >
               <ChevronLeft size={15} />
-            </button>
+            </Button>
           )}
           {canRight && (
-            <button
+            <Button
               type="button"
               aria-label="Scroll sections right"
               onClick={() => scrollStrip("right")}
               className="absolute -right-0.5 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:text-gray-800"
             >
               <ChevronRight size={15} />
-            </button>
+            </Button>
           )}
           <div aria-hidden="true"
             className={`pointer-events-none absolute inset-y-0 left-0 z-[5] w-6 bg-gradient-to-r from-slate-50 to-transparent transition-opacity ${canLeft ? "opacity-100" : "opacity-0"}`}

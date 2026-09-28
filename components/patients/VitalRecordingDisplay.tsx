@@ -8,6 +8,8 @@ import {
     CheckCircle2, Loader2, AlertTriangle, FlaskConical,
 } from "lucide-react";
 import React from "react";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,10 +115,10 @@ export default function VitalsRecordDisplay({ patientId, onClose }: { patientId:
                 <p className="text-xs text-gray-400 mt-1">Vitals will appear here after a nurse records them</p>
             </div>
             {onClose && (
-                <button onClick={onClose}
+                <Button onClick={onClose}
                     className="mt-2 px-5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">
                     Dismiss
-                </button>
+                </Button>
             )}
         </div>
     );
@@ -209,10 +211,10 @@ export default function VitalsRecordDisplay({ patientId, onClose }: { patientId:
 
             {onClose && (
                 <div className="flex justify-end">
-                    <button onClick={onClose}
+                    <Button onClick={onClose}
                         className="px-5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">
                         Dismiss
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>

@@ -7,6 +7,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Ruler, Baby } from "lucide-react";
 import {
     growthZScore, growthReferenceCurve, GROWTH_PERCENTILES, interpretZScore,
@@ -86,13 +87,17 @@ export default function GrowthTab({ patient }: { patient: Patient }) {
                 <div className="grid gap-3 sm:grid-cols-4">
                     <Input type="number" placeholder="Weight (kg)" value={weight} onChange={(e) => setWeight(e.target.value)} />
                     <Input type="number" placeholder="Height (cm)" value={height} onChange={(e) => setHeight(e.target.value)} />
-                    <select
-                        className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm"
+                    <Select
                         value={measure}
-                        onChange={(e) => setMeasure(e.target.value as GrowthMeasure)}
+                        onValueChange={v => setMeasure(v as GrowthMeasure)}
                     >
-                        {MEASURES.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-                    </select>
+                        <SelectTrigger className="h-10 w-full rounded-lg border-gray-200 bg-white px-3 text-sm">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {MEASURES.map((m) => <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                         Age: <b>{Math.floor(months! / 12)}y {months! % 12}m</b> · {sex === "male" ? "Boy" : "Girl"}
                     </div>

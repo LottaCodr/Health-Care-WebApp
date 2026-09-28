@@ -6,7 +6,7 @@ import { UserRole } from "@/types/models";
 import { useCompletedLabRequests } from "@/hooks/emr/use-lab";
 import {
     FlaskConical, Search, RefreshCcw, CheckCircle2,
-    Clock, Calendar, User, X, ChevronDown,
+    Clock, Calendar, User, X,
     Microscope, Loader2, AlertTriangle, FileText,
     Phone, Hash, Droplets, Beaker,
 } from "lucide-react";
@@ -16,6 +16,11 @@ import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { fmtDate, fmtFull } from "@/lib/utils";
 import HematologyAnalyzerReport from "./HematologyAnalyzerReport";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,10 +73,10 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                         </p>
                     </div>
                 </div>
-                <button onClick={onClose}
+                <Button onClick={onClose}
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                     <X size={14} />
-                </button>
+                </Button>
             </div>
             <div className="px-5 py-4 space-y-4">
                 {/* Patient details - important */}
@@ -128,24 +133,24 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                                     </div>
                                 )}
                                 <div className="overflow-hidden rounded-xl border border-gray-200">
-                                    <table className="w-full text-xs">
-                                        <thead>
-                                            <tr className="bg-gray-50 border-b border-gray-200">
-                                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Test</th>
+                                    <Table className="w-full text-xs">
+                                        <TableHeader>
+                                            <TableRow className="bg-gray-50 border-b border-gray-200">
+                                                <TableHead className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Test</TableHead>
                                                 {parsed.rows.some((r) => r.flag) && (
-                                                    <th className="text-center px-2 py-2 font-black uppercase tracking-widest text-gray-500 w-10">Flag</th>
+                                                    <TableHead className="text-center px-2 py-2 font-black uppercase tracking-widest text-gray-500 w-10">Flag</TableHead>
                                                 )}
-                                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Result</th>
-                                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500 hidden sm:table-cell">Ref.</th>
-                                                <th className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Unit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 bg-white">
+                                                <TableHead className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Result</TableHead>
+                                                <TableHead className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500 hidden sm:table-cell">Ref.</TableHead>
+                                                <TableHead className="text-left px-3 py-2 font-black uppercase tracking-widest text-gray-500">Unit</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody className="divide-y divide-gray-100 bg-white">
                                             {parsed.rows.map((r, i) => (
-                                                <tr key={i} className="hover:bg-gray-50/50">
-                                                    <td className="px-3 py-2 font-semibold text-gray-800">{r.label}</td>
+                                                <TableRow key={i} className="hover:bg-gray-50/50">
+                                                    <TableCell className="px-3 py-2 font-semibold text-gray-800">{r.label}</TableCell>
                                                     {parsed.rows.some((rr) => rr.flag) && (
-                                                        <td className="px-2 py-2 text-center">
+                                                        <TableCell className="px-2 py-2 text-center">
                                                             {r.flag && (
                                                                 <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-black border ${
                                                                     r.flag === "H" ? "bg-red-50 text-red-700 border-red-200" : "bg-sky-50 text-sky-700 border-sky-200"
@@ -153,15 +158,15 @@ function ResultPanel({ req, onClose }: { req: any; onClose: () => void }) {
                                                                     {r.flag}
                                                                 </span>
                                                             )}
-                                                        </td>
+                                                        </TableCell>
                                                     )}
-                                                    <td className="px-3 py-2 font-bold text-indigo-700">{r.value || "—"}</td>
-                                                    <td className="px-3 py-2 text-gray-500 hidden sm:table-cell">{r.ref || "—"}</td>
-                                                    <td className="px-3 py-2 text-gray-500 font-mono text-[11px]">{r.unit || "—"}</td>
-                                                </tr>
+                                                    <TableCell className="px-3 py-2 font-bold text-indigo-700">{r.value || "—"}</TableCell>
+                                                    <TableCell className="px-3 py-2 text-gray-500 hidden sm:table-cell">{r.ref || "—"}</TableCell>
+                                                    <TableCell className="px-3 py-2 text-gray-500 font-mono text-[11px]">{r.unit || "—"}</TableCell>
+                                                </TableRow>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                                 {parsed.note && (
                                     <div className="px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
@@ -260,40 +265,46 @@ export default function LabReportsPage() {
                                 <p className="text-xs text-gray-400 mt-0.5">{filtered.length} of {statCount} results • patient details included</p>
                             </div>
                         </div>
-                        <button onClick={() => refetch()}
+                        <Button onClick={() => refetch()}
                             className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
                             <RefreshCcw size={13} />
-                        </button>
+                        </Button>
                     </div>
 
                     {/* Filters */}
                     <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-50 flex-wrap">
                         <div className="relative flex-1 min-w-[180px]">
                             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            <input value={search} onChange={(e) => setField("reportSearch", e.target.value)}
+                            <Input value={search} onChange={(e) => setField("reportSearch", e.target.value)}
                                 placeholder="Search test, patient, result..."
                                 className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 focus:bg-white transition-all" />
-                            {search && <button onClick={() => setField("reportSearch", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={13} /></button>}
+                            {search && <Button onClick={() => setField("reportSearch", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={13} /></Button>}
                         </div>
                         <div className="relative">
-                            <select value={priority} onChange={(e) => setField("reportPriority", e.target.value)}
-                                className="h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none appearance-none cursor-pointer">
-                                <option value="all">All Priority</option>
-                                <option value="routine">Routine</option>
-                                <option value="urgent">Urgent</option>
-                                <option value="stat">STAT</option>
-                            </select>
-                            <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <Select value={priority} onValueChange={v => setField("reportPriority", v)}>
+                                <SelectTrigger className="h-9 w-[140px] rounded-xl border-gray-200 bg-gray-50 px-3 text-sm font-medium text-gray-700">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Priority</SelectItem>
+                                    <SelectItem value="routine">Routine</SelectItem>
+                                    <SelectItem value="urgent">Urgent</SelectItem>
+                                    <SelectItem value="stat">STAT</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="relative">
-                            <select value={dateRange} onChange={(e) => setField("reportDateRange", e.target.value as any)}
-                                className="h-9 pl-3 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none appearance-none cursor-pointer">
-                                <option value="all">All Time</option>
-                                <option value="today">Today</option>
-                                <option value="week">This Week</option>
-                                <option value="month">This Month</option>
-                            </select>
-                            <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <Select value={dateRange} onValueChange={v => setField("reportDateRange", v as any)}>
+                                <SelectTrigger className="h-9 w-[140px] rounded-xl border-gray-200 bg-gray-50 px-3 text-sm font-medium text-gray-700">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Time</SelectItem>
+                                    <SelectItem value="today">Today</SelectItem>
+                                    <SelectItem value="week">This Week</SelectItem>
+                                    <SelectItem value="month">This Month</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
@@ -324,7 +335,7 @@ export default function LabReportsPage() {
                             const patientName = patient?.name ?? "Patient";
                             const patientHospitalNumber = getPatientHospitalNumber(patient);
                             return (
-                                <button key={req.id} onClick={() => setField("reportSelected", selected?.id === req.id ? null : req)}
+                                <Button key={req.id} onClick={() => setField("reportSelected", selected?.id === req.id ? null : req)}
                                     className={`w-full text-left p-4 rounded-2xl border transition-all
                                         ${selected?.id === req.id
                                             ? "border-indigo-200 bg-indigo-50/50"
@@ -353,7 +364,7 @@ export default function LabReportsPage() {
                                         </div>
                                         <FileText size={14} className={`shrink-0 mt-1 ${selected?.id === req.id ? "text-indigo-500" : "text-gray-300"}`} />
                                     </div>
-                                </button>
+                                </Button>
                             );
                         })}
                     </div>

@@ -315,6 +315,56 @@ export async function listPatientsByStatus(
     return allData;
 }
 
+/**
+ * Exact count of patients registered since a UTC timestamp.
+ *
+ * Backs the front-desk dashboard's "New Arrivals" stat with a single
+ * lightweight `count: exact` round-trip instead of loading the whole
+ * patients table into the browser and filtering it client-side.
+ * Throws a friendly error so the UI can show *why* the card is empty
+ * (RLS drift, missing table…) rather than silently reading zero.
+ */
+export async function countPatientsCreatedSince(sinceIso: string): Promise<number> {
+    await requireStaff();
+    const supabase = await createClient();
+    const { count, error } = await supabase
+        .from("patients")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", sinceIso);
+
+    if (error) {
+        throw new Error(formatFriendlyDbError(error, "Failed to load today's arrivals."));
+    }
+    return count ?? 0;
+}
+
+/**
+ * Patients registered since a UTC timestamp, newest first, capped at
+ * `limit` rows. Backs the front-desk dashboard's "Today's Arrivals"
+ * list (which shows at most a handful of rows).
+ */
+export async function listPatientsCreatedSince(
+    sinceIso: string,
+    limit = 50
+): Promise<Patient[]> {
+    await requireStaff();
+    const supabase = await createClient();
+    const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
+
+    const { data, error } = await supabase
+        .from("patients")
+        .select("*")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(safeLimit);
+
+    if (error) {
+        throw new Error(formatFriendlyDbError(error, "Failed to load today's arrivals."));
+    }
+    return (data ?? []) as Patient[];
+}
+
 export async function searchPatients(query: string): Promise<Patient[]> {
     await requireStaff();
     const supabase = await createClient();

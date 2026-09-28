@@ -47,6 +47,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+
 
 
 /** Extract a human-readable message from a server-action / mutation error. */
@@ -107,7 +109,7 @@ function PaymentTypeChips({ value, onChange, disabled }: {
                 const cfg = PAYMENT_TYPE_CONFIG[type];
                 const active = value === type;
                 return (
-                    <button
+                    <Button
                         key={type}
                         type="button"
                         onClick={() => onChange(type)}
@@ -122,7 +124,7 @@ function PaymentTypeChips({ value, onChange, disabled }: {
                         <span className={`text-[9px] leading-snug ${active ? "text-teal-600" : "text-slate-400"}`}>
                             {cfg.short === "Deposit" ? "Advance credit" : cfg.short}
                         </span>
-                    </button>
+                    </Button>
                 );
             })}
         </div>
@@ -145,12 +147,12 @@ function MethodPicker({ value, onChange, disabled }: {
             {METHOD_OPTIONS.map(({ key, label, icon: Icon }) => {
                 const active = value === key;
                 return (
-                    <button key={key} type="button" onClick={() => onChange(key)} disabled={disabled}
+                    <Button key={key} type="button" onClick={() => onChange(key)} disabled={disabled}
                         className={`flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all ${
                             active ? "bg-teal-50 text-teal-700 border-teal-300" : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
                         }`}>
                         <Icon size={16} /> {label}
-                    </button>
+                    </Button>
                 );
             })}
         </div>
@@ -641,13 +643,13 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
                     <FieldLabel>Payment type</FieldLabel>
                     <div className="grid grid-cols-2 gap-2">
                         {(["full", "partial"] as const).map((type) => (
-                            <button key={type} type="button" onClick={() => setPaymentType(type)} disabled={isPending}
+                            <Button key={type} type="button" onClick={() => setPaymentType(type)} disabled={isPending}
                                 className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-2xl border text-left transition-all ${
                                     paymentType === type ? "border-teal-300 bg-teal-50 text-teal-800 shadow-sm" : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
                                 }`}>
                                 <span className="text-xs font-bold">{PAYMENT_TYPE_CONFIG[type].label}</span>
                                 <span className="text-[9px] text-slate-400">{PAYMENT_TYPE_CONFIG[type].desc}</span>
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
@@ -832,7 +834,7 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
 
                 <div className="space-y-1.5">
                     <FieldLabel htmlFor="deposit-notes">Notes (optional)</FieldLabel>
-                    <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isPending}
+                    <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isPending}
                         id="deposit-notes"
                         placeholder="e.g. Admission deposit, theatre booking…"
                         className="w-full text-sm border border-slate-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none" />
@@ -900,12 +902,12 @@ export function QueueSettleAllModal({ totalBills, totalKobo, cashierId, onClose 
                         {METHOD_OPTIONS.map(({ key, label, icon: Icon }) => {
                             const active = method === key;
                             return (
-                                <button key={key} type="button" onClick={() => setMethod(key)} disabled={isPending}
+                                <Button key={key} type="button" onClick={() => setMethod(key)} disabled={isPending}
                                     className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl border text-xs font-bold transition-all ${
                                         active ? "bg-teal-50 text-teal-700 border-teal-300" : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
                                     }`}>
                                     <Icon size={16} /> {label}
-                                </button>
+                                </Button>
                             );
                         })}
                     </div>

@@ -7,6 +7,8 @@
 
 import React, { ReactNode } from "react";
 import { useErrorStore, useNotificationStore } from "@/store/store";
+import { Button } from "@/components/ui/button";
+
 
 interface ErrorBoundaryProps {
     children: ReactNode;
@@ -51,12 +53,12 @@ export class ErrorBoundary extends React.Component<
                             <p className="text-gray-600 mb-6">
                                 {this.state.error.message}
                             </p>
-                            <button
+                            <Button
                                 onClick={this.reset}
                                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                             >
                                 Try again
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 )

@@ -19,6 +19,12 @@ import {
     resolveHematologyCategory,
     type HematologyCategory,
 } from "@/lib/clinical/hematology-reference-ranges";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -57,9 +63,9 @@ function AnalyzerField({
     return (
         <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-1">
-                <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                <Label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
                     {label}
-                </label>
+                </Label>
                 {flag && (
                     <span className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-black border ${FLAG_CHIP[flag]}`}>
                         {flag}
@@ -67,7 +73,7 @@ function AnalyzerField({
                 )}
             </div>
             <div className="relative">
-                <input
+                <Input
                     type="text"
                     inputMode="decimal"
                     value={value}
@@ -180,38 +186,46 @@ export default function HematologyAnalyzerForm({
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">Reference Range Set</label>
-                        <select
+                        <Label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">Reference Range Set</Label>
+                        <Select
                             value={activeCategory}
-                            onChange={(e) => setCategory(e.target.value as HematologyCategory)}
-                            className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 cursor-pointer appearance-none"
+                            onValueChange={v => setCategory(v as HematologyCategory)}
                         >
-                            {HEMATOLOGY_CATEGORIES.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.label} ({c.population})
-                                </option>
-                            ))}
-                        </select>
+                            <SelectTrigger className="h-10 w-full rounded-xl border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-900">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {HEMATOLOGY_CATEGORIES.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                        {c.label} ({c.population})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <p className="text-[10px] font-medium text-gray-400">
                             {isManual ? "Selected manually by lab tech" : (resolved.note ?? "Age unknown — verify manually")}
                         </p>
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">Mode</label>
-                        <select
+                        <Label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">Mode</Label>
+                        <Select
                             value={mode}
-                            onChange={(e) => setMode(e.target.value)}
-                            className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 cursor-pointer appearance-none"
+                            onValueChange={setMode}
                         >
-                            {MODES.map((m) => <option key={m} value={m}>{m}</option>)}
-                        </select>
+                            <SelectTrigger className="h-10 w-full rounded-xl border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-900">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {MODES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                        <Label className="flex items-center gap-1 text-[11px] font-bold text-gray-700 uppercase tracking-wider">
                             <User size={10} /> Patient
-                        </label>
+                        </Label>
                         <div className="h-10 flex items-center px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-800 truncate">
                             {patient?.name ?? "—"}
                             {ageLabel && <span className="ml-2 text-[10px] font-bold text-gray-400 shrink-0">({ageLabel}, {patient?.gender ?? "?"})</span>}
@@ -219,9 +233,9 @@ export default function HematologyAnalyzerForm({
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                        <Label className="flex items-center gap-1 text-[11px] font-bold text-gray-700 uppercase tracking-wider">
                             <CalendarClock size={10} /> Sample ID / Time
-                        </label>
+                        </Label>
                         <div className="h-10 flex items-center px-3 rounded-xl border border-gray-200 bg-gray-50 text-xs font-mono font-bold text-gray-700 truncate">
                             {sampleId?.slice(-8).toUpperCase() ?? "—"}
                             <span className="ml-2 font-sans font-medium text-gray-400 shrink-0">
@@ -280,7 +294,7 @@ export default function HematologyAnalyzerForm({
                     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                                <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">NLR</label>
+                                <Label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">NLR</Label>
                                 <span className="text-[9px] font-bold text-indigo-500 bg-white border border-indigo-100 px-1.5 py-0.5 rounded-md">Gran# ÷ Lym#</span>
                             </div>
                             <div className="h-10 flex items-center px-3 rounded-xl border border-indigo-100 bg-white text-sm font-mono font-bold text-indigo-700">
@@ -289,7 +303,7 @@ export default function HematologyAnalyzerForm({
                         </div>
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                                <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">PLR</label>
+                                <Label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">PLR</Label>
                                 <span className="text-[9px] font-bold text-indigo-500 bg-white border border-indigo-100 px-1.5 py-0.5 rounded-md">PLT ÷ Lym#</span>
                             </div>
                             <div className="h-10 flex items-center px-3 rounded-xl border border-indigo-100 bg-white text-sm font-mono font-bold text-indigo-700">
@@ -308,11 +322,11 @@ export default function HematologyAnalyzerForm({
 
             {/* Extra notes */}
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-3">
-                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                <Label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
                     <FileText size={12} className="text-indigo-500" />
                     Additional Notes / Observations
-                </label>
-                <textarea
+                </Label>
+                <Textarea
                     value={extraNotes}
                     onChange={(e) => setExtraNotes(e.target.value)}
                     rows={3}
@@ -322,7 +336,7 @@ export default function HematologyAnalyzerForm({
             </div>
 
             {/* Submit */}
-            <button
+            <Button
                 type="submit"
                 disabled={submitting}
                 className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -339,7 +353,7 @@ export default function HematologyAnalyzerForm({
                         <ArrowRight size={16} />
                     </>
                 )}
-            </button>
+            </Button>
         </form>
     );
 }

@@ -36,6 +36,8 @@ import {
     normalizeRoleKey,
 } from "@/types/care-team";
 import { fmtFull } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+
 
 const ICON_MAP: Record<string, React.ElementType> = {
     stethoscope: Stethoscope,
@@ -142,7 +144,7 @@ export function CareTeamDrawer({
                     ].map((tab) => {
                         const active = filter === tab.id;
                         return (
-                            <button
+                            <Button
                                 key={tab.id}
                                 type="button"
                                 onClick={() => setFilter(tab.id)}
@@ -158,7 +160,7 @@ export function CareTeamDrawer({
                                 }`}>
                                     {tab.count}
                                 </span>
-                            </button>
+                            </Button>
                         );
                     })}
                 </div>

@@ -5,6 +5,7 @@ export const patientKeys = {
     all: () => ["patients"] as const,
     lists: () => ["patients", "list"] as const,
     byStatus: (s: string) => ["patients", "list", "status", s] as const,
+    arrivalsToday: () => ["patients", "arrivals", "today"] as const,
     search: (q: string) => ["patients", "search", q] as const,
     details: () => ["patients", "detail"] as const,
     detail: (id: string) => ["patients", "detail", id] as const,
@@ -98,6 +99,7 @@ export const paymentKeys = {
     pending: () => ["payments", "pending"] as const,
     byPatient: (id: string) => ["payments", "patient", id] as const,
     depositCredit: (id: string) => ["payments", "deposit-credit", id] as const,
+    recent: (limit?: number) => ["payments", "recent", limit] as const,
 };
 
 // ─── Pharmacy ─────────────────────────────────────────────────────────────────

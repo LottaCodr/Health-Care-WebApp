@@ -15,6 +15,10 @@ import {
 } from "lucide-react";
 import { deleteConsultation, listConsultationsByPatient } from "@/lib/services";
 import { RecordAmendmentControls } from "@/components/records";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+
 
 type AccessLevel = "full" | "nursing" | "lab" | "radiology" | "pharmacy" | "admin" | "minimal";
 type ViewMode = "results" | "cards" | "timeline";
@@ -270,10 +274,10 @@ function DoctorConsultationCard({
                     </div>
                 )}
 
-                <button type="button" onClick={() => setExpanded(v => !v)}
+                <Button type="button" onClick={() => setExpanded(v => !v)}
                     className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-500 transition-colors border border-gray-100">
                     {expanded ? <><EyeOff size={12} /> Hide Full Record</> : <><Eye size={12} /> View Full Record</>}
-                </button>
+                </Button>
 
                 {expanded && (
                     <div className="space-y-3 pt-1 border-t border-gray-50">
@@ -306,10 +310,10 @@ function DoctorConsultationCard({
 
                 {canDel && (
                     <div className="flex items-center gap-2 pt-1">
-                        <button onClick={onDelete} disabled={isDeleting}
+                        <Button onClick={onDelete} disabled={isDeleting}
                             className="flex items-center justify-center gap-1.5 h-8 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors disabled:opacity-50 border border-red-100">
                             {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                        </button>
+                        </Button>
                     </div>
                 )}
             </div>
@@ -392,7 +396,7 @@ function ResultsTableView({
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
                 <Search size={18} className="mx-auto text-gray-300" />
                 <p className="mt-2 text-sm font-semibold text-gray-600">No consultations match “{q}”</p>
-                <button onClick={() => setQ("")} className="mt-2 text-xs font-bold text-blue-600 hover:underline">Clear search</button>
+                <Button onClick={() => setQ("")} className="mt-2 text-xs font-bold text-blue-600 hover:underline">Clear search</Button>
             </div>
         );
     }
@@ -407,7 +411,7 @@ function ResultsTableView({
                 </p>
                 <div className="relative w-full sm:w-60">
                     <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
+                    <Input
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Search complaints, diagnosis…"
@@ -415,28 +419,28 @@ function ResultsTableView({
                         className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-7 text-xs font-medium text-gray-700 outline-none placeholder:text-gray-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                     />
                     {q && (
-                        <button onClick={() => setQ("")} aria-label="Clear search"
+                        <Button onClick={() => setQ("")} aria-label="Clear search"
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                             <X size={12} />
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
 
             <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-xs">
-                    <thead>
-                        <tr className="border-b border-gray-100 bg-gray-50/80 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">
-                            <th className="w-10 px-3 py-2.5">#</th>
-                            <th className="px-3 py-2.5">Date</th>
-                            <th className="px-3 py-2.5">Type</th>
-                            <th className="px-3 py-2.5">Complaint / Details</th>
-                            <th className="px-3 py-2.5">Assessment</th>
-                            <th className="px-3 py-2.5">Route</th>
-                            <th className="w-10 px-3 py-2.5" />
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
+                <Table className="w-full min-w-[760px] text-xs">
+                    <TableHeader>
+                        <TableRow className="border-b border-gray-100 bg-gray-50/80 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <TableHead className="w-10 px-3 py-2.5">#</TableHead>
+                            <TableHead className="px-3 py-2.5">Date</TableHead>
+                            <TableHead className="px-3 py-2.5">Type</TableHead>
+                            <TableHead className="px-3 py-2.5">Complaint / Details</TableHead>
+                            <TableHead className="px-3 py-2.5">Assessment</TableHead>
+                            <TableHead className="px-3 py-2.5">Route</TableHead>
+                            <TableHead className="w-10 px-3 py-2.5" />
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-gray-50">
                         {filtered.map((c: any, idx: number) => {
                             const id = getId(c);
                             const open = openId === id;
@@ -458,14 +462,14 @@ function ResultsTableView({
 
                             return (
                                 <Fragment key={id}>
-                                    <tr
+                                    <TableRow
                                         onClick={expandable ? () => setOpenId(open ? null : id) : undefined}
                                         className={`align-top transition-colors ${
                                             expandable ? "cursor-pointer" : "cursor-default"
                                         } ${open ? "bg-blue-50/50" : isLatest ? "bg-red-50/40 hover:bg-red-50/70" : expandable ? "hover:bg-gray-50" : ""}`}
                                     >
-                                        <td className="px-3 py-3 font-black text-gray-300">#{String(idx + 1).padStart(2, "0")}</td>
-                                        <td className="px-3 py-3">
+                                        <TableCell className="px-3 py-3 font-black text-gray-300">#{String(idx + 1).padStart(2, "0")}</TableCell>
+                                        <TableCell className="px-3 py-3">
                                             <p className="font-bold text-gray-800">{fmt(date)}</p>
                                             <p className="text-[10px] text-gray-400">{fmtTime(date)}{rel && <span> · {rel}</span>}</p>
                                             {doctor && accessLevel === "full" && (
@@ -473,8 +477,8 @@ function ResultsTableView({
                                                     <UserRound size={10} className="text-gray-400" /> Dr. {doctor}
                                                 </p>
                                             )}
-                                        </td>
-                                        <td className="px-3 py-3">
+                                        </TableCell>
+                                        <TableCell className="px-3 py-3">
                                             <div className="flex flex-col items-start gap-1">
                                                 {isLatest && <LatestBadge />}
                                                 {isPaed && (
@@ -489,8 +493,8 @@ function ResultsTableView({
                                                 )}
                                                 {!isLatest && !isPaed && !isFem && <span className="text-gray-300">—</span>}
                                             </div>
-                                        </td>
-                                        <td className="max-w-[280px] px-3 py-3">
+                                        </TableCell>
+                                        <TableCell className="max-w-[280px] px-3 py-3">
                                             {restricted ? (
                                                 <div className="space-y-0.5">
                                                     {restricted.map((f) => (
@@ -504,8 +508,8 @@ function ResultsTableView({
                                                     {complaint || <span className="italic text-gray-300">Not provided</span>}
                                                 </p>
                                             )}
-                                        </td>
-                                        <td className="max-w-[240px] px-3 py-3">
+                                        </TableCell>
+                                        <TableCell className="max-w-[240px] px-3 py-3">
                                             {restricted ? (
                                                 <span className="text-gray-300">—</span>
                                             ) : (
@@ -513,8 +517,8 @@ function ResultsTableView({
                                                     {assessment || <span className="italic text-gray-300">See full record</span>}
                                                 </p>
                                             )}
-                                        </td>
-                                        <td className="px-3 py-3">
+                                        </TableCell>
+                                        <TableCell className="px-3 py-3">
                                             {c.referred_to ? (
                                                 <span className="inline-flex items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-[10px] font-bold capitalize text-blue-700">
                                                     <ArrowRight size={10} /> {c.referred_to}
@@ -522,18 +526,18 @@ function ResultsTableView({
                                             ) : (
                                                 <span className="text-gray-300">—</span>
                                             )}
-                                        </td>
-                                        <td className="px-3 py-3">
+                                        </TableCell>
+                                        <TableCell className="px-3 py-3">
                                             {expandable && (
                                                 <ChevronDown size={15}
                                                     className={`text-gray-400 transition-transform duration-200 ${open ? "rotate-180 text-blue-600" : ""}`} />
                                             )}
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
 
                                     {open && (
-                                        <tr className="bg-blue-50/20">
-                                            <td colSpan={7} className="px-4 pb-4 pt-1">
+                                        <TableRow className="bg-blue-50/20">
+                                            <TableCell colSpan={7} className="px-4 pb-4 pt-1">
                                                 {accessLevel === "full" ? (
                                                     <div className="grid gap-3 md:grid-cols-2">
                                                         {[
@@ -576,24 +580,24 @@ function ResultsTableView({
                                                     )}
                                                     {amendSlot && amendSlot(c)}
                                                     {canDel && (
-                                                        <button
+                                                        <Button
                                                             onClick={() => onDelete(id)}
                                                             disabled={deletingId === id}
                                                             className="ml-auto flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50"
                                                         >
                                                             {deletingId === id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
                                                             Delete
-                                                        </button>
+                                                        </Button>
                                                     )}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     )}
                                 </Fragment>
                             );
                         })}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </div>
         </div>
     );
@@ -681,10 +685,10 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                 <AlertTriangle size={18} className="text-red-500" />
             </div>
             <p className="text-sm font-semibold text-gray-600">Failed to load consultations</p>
-            <button onClick={() => queryClient.invalidateQueries({ queryKey: ["consultations", patientId] })}
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["consultations", patientId] })}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors">
                 <RefreshCcw size={13} /> Retry
-            </button>
+            </Button>
         </div>
     );
 
@@ -723,37 +727,37 @@ export default function ConsultationHistoryTable({ patientId }: { patientId: str
                 <div className="flex items-center gap-1.5">
                     {/* View mode toggle */}
                     <div className="flex bg-gray-100 rounded-xl p-0.5 gap-0.5">
-                        <button onClick={() => setViewMode("results")}
+                        <Button onClick={() => setViewMode("results")}
                             title="Results — tabular list with expandable rows"
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                                 viewMode === "results" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
                             }`}>
                             <Table2 size={12} /> Results
-                        </button>
-                        <button onClick={() => setViewMode("cards")}
+                        </Button>
+                        <Button onClick={() => setViewMode("cards")}
                             title="Cards — swipeable card carousel"
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                                 viewMode === "cards" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
                             }`}>
                             <GalleryHorizontal size={12} /> Cards
-                        </button>
-                        <button onClick={() => setViewMode("timeline")}
+                        </Button>
+                        <Button onClick={() => setViewMode("timeline")}
                             title="Timeline — vertical chronological view"
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                                 viewMode === "timeline" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
                             }`}>
                             <LayoutGrid size={12} /> Timeline
-                        </button>
+                        </Button>
                     </div>
 
                     {viewMode === "cards" && data.length > 1 && (
                         <>
-                            <button onClick={() => scroll("left")} className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors shadow-sm">
+                            <Button onClick={() => scroll("left")} className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors shadow-sm">
                                 <ChevronLeft size={15} />
-                            </button>
-                            <button onClick={() => scroll("right")} className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors shadow-sm">
+                            </Button>
+                            <Button onClick={() => scroll("right")} className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors shadow-sm">
                                 <ChevronRight size={15} />
-                            </button>
+                            </Button>
                         </>
                     )}
                 </div>

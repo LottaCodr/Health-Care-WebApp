@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Shield,
     AlertTriangle,
@@ -291,27 +292,35 @@ export default function SecurityAudit() {
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <select
+                            <Select
                                 value={selectedSeverity}
-                                onChange={(e) => setSelectedSeverity(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onValueChange={setSelectedSeverity}
                             >
-                                <option value="all">All Severities</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="critical">Critical</option>
-                            </select>
-                            <select
+                                <SelectTrigger className="h-9 w-[150px] rounded-md border-gray-300 px-3 text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Severities</SelectItem>
+                                    <SelectItem value="low">Low</SelectItem>
+                                    <SelectItem value="medium">Medium</SelectItem>
+                                    <SelectItem value="high">High</SelectItem>
+                                    <SelectItem value="critical">Critical</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select
                                 value={selectedEvent}
-                                onChange={(e) => setSelectedEvent(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onValueChange={setSelectedEvent}
                             >
-                                <option value="all">All Events</option>
-                                {getEventTypes().map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
+                                <SelectTrigger className="h-9 w-[170px] rounded-md border-gray-300 px-3 text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Events</SelectItem>
+                                    {getEventTypes().map(type => (
+                                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                 </CardContent>

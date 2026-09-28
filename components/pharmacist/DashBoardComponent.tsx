@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -113,13 +115,13 @@ export default function PharmacistDashboard() {
                                 {active.length} pending
                             </span>
                         )}
-                        <button onClick={() => { void Promise.all([refetchPending(), refetchCompleted()]); }}
+                        <Button onClick={() => { void Promise.all([refetchPending(), refetchCompleted()]); }}
                             type="button"
                             aria-label="Refresh pharmacy queues"
                             disabled={loading || completedLoading}
                             className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors disabled:cursor-wait disabled:opacity-60">
                             <RefreshCcw size={13} className={loading || completedLoading ? "animate-spin" : ""} />
-                        </button>
+                        </Button>
                     </div>
                 </div>
 

@@ -38,6 +38,10 @@ import {
   INSURANCE_STEP,
   type PaymentType,
 } from "@/lib/utils/registration-form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // calcAge / getPaymentType / getStepFields / buildPatientPayload live in
@@ -158,18 +162,18 @@ function ReligionField({ field }: { field: { value: string; onChange: (v: string
   if (customMode) {
     return (
       <div className="space-y-1.5">
-        <input
+        <Input
           autoFocus
           value={field.value}
           onChange={e => field.onChange(e.target.value)}
           placeholder="Enter religion"
           className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all"
         />
-        <button type="button"
+        <Button type="button"
           onClick={() => { setCustomMode(false); field.onChange(""); }}
           className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
           <ChevronLeft size={12} /> Choose from list instead
-        </button>
+        </Button>
       </div>
     );
   }
@@ -179,7 +183,7 @@ function ReligionField({ field }: { field: { value: string; onChange: (v: string
       {RELIGION_OPTIONS.map(opt => {
         const isSelected = field.value === opt && opt !== "Other";
         return (
-          <button key={opt} type="button"
+          <Button key={opt} type="button"
             onClick={() => {
               if (opt === "Other") { setCustomMode(true); field.onChange(""); }
               else field.onChange(opt);
@@ -191,7 +195,7 @@ function ReligionField({ field }: { field: { value: string; onChange: (v: string
             }`}>
             {opt === "Other" && <Pencil size={11} />}
             {opt}
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -237,7 +241,7 @@ function PaymentTypeSelector({ form }: { form: any }) {
           const Icon       = opt.icon;
           const isSelected = current === opt.type;
           return (
-            <button key={opt.type} type="button"
+            <Button key={opt.type} type="button"
               onClick={() => select(opt.type)}
               className={`flex items-start gap-2.5 p-3.5 rounded-xl border-2 text-left transition-all ${
                 isSelected
@@ -253,7 +257,7 @@ function PaymentTypeSelector({ form }: { form: any }) {
                 <p className={`text-xs font-bold ${isSelected ? "text-gray-900" : "text-gray-600"}`}>{opt.label}</p>
                 <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{opt.desc}</p>
               </div>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -470,11 +474,11 @@ export default function RegistrationSuite() {
                         <Loader2 size={13} className="text-blue-500 animate-spin" />
                         <p className="text-xs text-blue-600 font-medium">Redirecting in 5 seconds...</p>
                       </div>
-                      <button type="button"
+                      <Button type="button"
                         onClick={() => { setSubmitted(false); setDriftWarnings([]); resetForm(); form.reset(); }}
                         className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors">
                         Register Another Patient
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <>
@@ -486,7 +490,7 @@ export default function RegistrationSuite() {
                             <p className="text-xs font-bold">Registration Failed</p>
                             <p className="text-xs mt-0.5 text-red-600">{submitError}</p>
                           </div>
-                          <button onClick={() => setSubmitError(null)} className="text-red-400 hover:text-red-600 text-lg leading-none">×</button>
+                          <Button onClick={() => setSubmitError(null)} className="text-red-400 hover:text-red-600 text-lg leading-none">×</Button>
                         </div>
                       )}
 
@@ -528,7 +532,7 @@ export default function RegistrationSuite() {
                                     {GenderOptions.map(g => (
                                       <div key={g} className="flex items-center gap-2">
                                         <RadioGroupItem value={g} id={g} />
-                                        <label htmlFor={g} className="text-sm font-medium text-gray-700 cursor-pointer">{g}</label>
+                                        <Label htmlFor={g} className="text-sm font-medium text-gray-700 cursor-pointer">{g}</Label>
                                       </div>
                                     ))}
                                   </RadioGroup>
@@ -552,17 +556,17 @@ export default function RegistrationSuite() {
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Class / School Year</p>
-                                  <input value={childClass} onChange={e => setField("childClass", e.target.value)}
+                                  <Input value={childClass} onChange={e => setField("childClass", e.target.value)}
                                     placeholder="e.g. Primary 3, JSS 1" className={inputCls} />
                                 </div>
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Parent / Guardian</p>
-                                  <input value={parentInfo} onChange={e => setField("parentInfo", e.target.value)}
+                                  <Input value={parentInfo} onChange={e => setField("parentInfo", e.target.value)}
                                     placeholder="Parent or guardian name" className={inputCls} />
                                 </div>
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Referral Source</p>
-                                  <input value={referralInfo} onChange={e => setField("referralInfo", e.target.value)}
+                                  <Input value={referralInfo} onChange={e => setField("referralInfo", e.target.value)}
                                     placeholder="Referred by / school / clinic" className={inputCls} />
                                 </div>
                               </div>
@@ -618,7 +622,7 @@ export default function RegistrationSuite() {
                                     {CovidVaccinationOptions.map(opt => (
                                       <div key={opt} className="flex items-center gap-2">
                                         <RadioGroupItem value={opt} id={opt} />
-                                        <label htmlFor={opt} className="text-sm font-medium text-gray-700 cursor-pointer">{opt}</label>
+                                        <Label htmlFor={opt} className="text-sm font-medium text-gray-700 cursor-pointer">{opt}</Label>
                                       </div>
                                     ))}
                                   </RadioGroup>
@@ -698,12 +702,12 @@ export default function RegistrationSuite() {
 
                       {/* Navigation */}
                       <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-100">
-                        <button type="button" onClick={handleBack}
+                        <Button type="button" onClick={handleBack}
                           disabled={currentStep === 0 || validatingStep}
                           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all
                                                         ${currentStep === 0 ? "invisible" : "bg-gray-100 hover:bg-gray-200 text-gray-700"}`}>
                           <ChevronLeft size={16} /> Back
-                        </button>
+                        </Button>
 
                         <div className="flex items-center gap-1.5">
                           {STEPS.map((_, idx) => (
@@ -713,20 +717,20 @@ export default function RegistrationSuite() {
                         </div>
 
                         {currentStep < STEPS.length - 1 ? (
-                          <button type="button" onClick={handleNext} disabled={validatingStep}
+                          <Button type="button" onClick={handleNext} disabled={validatingStep}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all disabled:opacity-60">
                             {validatingStep && <Loader2 size={14} className="animate-spin" />}
                             Next <ChevronRight size={16} />
-                          </button>
+                          </Button>
                         ) : (
-                          <button type="button" onClick={handleFinalSubmit}
+                          <Button type="button" onClick={handleFinalSubmit}
                             disabled={submitting || validatingStep}
                             className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                             {submitting
                               ? <><Loader2 size={14} className="animate-spin" /> Registering...</>
                               : <><CheckCircle2 size={15} /> Register Patient</>
                             }
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </>

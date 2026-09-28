@@ -1,6 +1,9 @@
 "use client";
 
 import React from "react";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+
 
 interface ToggleSwitchProps {
     id: string;
@@ -13,7 +16,7 @@ interface ToggleSwitchProps {
 export function ToggleSwitch({ id, checked, onChange, label, disabled = false }: ToggleSwitchProps) {
     return (
         <div className="flex items-center justify-between w-full">
-            <label
+            <Label
                 htmlFor={id}
                 className="text-gray-900 font-medium select-none"
                 style={{
@@ -22,9 +25,9 @@ export function ToggleSwitch({ id, checked, onChange, label, disabled = false }:
                 }}
             >
                 {label}
-            </label>
+            </Label>
 
-            <button
+            <Button
                 id={id}
                 aria-checked={checked}
                 role="switch"
@@ -66,7 +69,7 @@ export function ToggleSwitch({ id, checked, onChange, label, disabled = false }:
                 >
                     OFF
                 </span>
-            </button>
+            </Button>
         </div>
     );
 }

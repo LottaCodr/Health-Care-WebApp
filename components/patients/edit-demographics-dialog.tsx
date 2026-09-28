@@ -11,6 +11,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import {
     Loader2, Save, ShieldAlert, Pencil,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin-only demographics correction dialog.
@@ -140,7 +143,7 @@ export default function EditDemographicsDialog({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1.5 sm:col-span-2">
                             <FieldLabel>Full Name</FieldLabel>
-                            <input value={form.name} onChange={e => set("name", e.target.value)}
+                            <Input value={form.name} onChange={e => set("name", e.target.value)}
                                 placeholder="Patient's full name" className={inputCls} />
                         </div>
 
@@ -160,37 +163,37 @@ export default function EditDemographicsDialog({
 
                         <div className="space-y-1.5">
                             <FieldLabel>Date of Birth</FieldLabel>
-                            <input type="date" value={form.birth_date}
+                            <Input type="date" value={form.birth_date}
                                 onChange={e => set("birth_date", e.target.value)} className={inputCls} />
                         </div>
 
                         <div className="space-y-1.5">
                             <FieldLabel>Phone</FieldLabel>
-                            <input value={form.phone} onChange={e => set("phone", e.target.value)}
+                            <Input value={form.phone} onChange={e => set("phone", e.target.value)}
                                 placeholder="e.g. 0803 000 0000" className={inputCls} />
                         </div>
 
                         <div className="space-y-1.5">
                             <FieldLabel>Email</FieldLabel>
-                            <input value={form.email} onChange={e => set("email", e.target.value)}
+                            <Input value={form.email} onChange={e => set("email", e.target.value)}
                                 placeholder="name@example.com" className={inputCls} />
                         </div>
 
                         <div className="space-y-1.5 sm:col-span-2">
                             <FieldLabel>Address</FieldLabel>
-                            <input value={form.address} onChange={e => set("address", e.target.value)}
+                            <Input value={form.address} onChange={e => set("address", e.target.value)}
                                 placeholder="Residential address" className={inputCls} />
                         </div>
 
                         <div className="space-y-1.5">
                             <FieldLabel>Occupation</FieldLabel>
-                            <input value={form.occupation} onChange={e => set("occupation", e.target.value)}
+                            <Input value={form.occupation} onChange={e => set("occupation", e.target.value)}
                                 placeholder="e.g. Trader" className={inputCls} />
                         </div>
 
                         <div className="space-y-1.5">
                             <FieldLabel>Religion</FieldLabel>
-                            <input value={form.religion} onChange={e => set("religion", e.target.value)}
+                            <Input value={form.religion} onChange={e => set("religion", e.target.value)}
                                 placeholder="e.g. Christianity" className={inputCls} />
                         </div>
                     </div>
@@ -203,19 +206,19 @@ export default function EditDemographicsDialog({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <FieldLabel>Name</FieldLabel>
-                                <input value={form.emergency_contact_name}
+                                <Input value={form.emergency_contact_name}
                                     onChange={e => set("emergency_contact_name", e.target.value)}
                                     placeholder="Next of kin" className={inputCls} />
                             </div>
                             <div className="space-y-1.5">
                                 <FieldLabel>Phone</FieldLabel>
-                                <input value={form.emergency_contact_number}
+                                <Input value={form.emergency_contact_number}
                                     onChange={e => set("emergency_contact_number", e.target.value)}
                                     placeholder="e.g. 0803 000 0000" className={inputCls} />
                             </div>
                             <div className="space-y-1.5 sm:col-span-2">
                                 <FieldLabel>Relationship</FieldLabel>
-                                <input value={form.emergency_contact_relationship}
+                                <Input value={form.emergency_contact_relationship}
                                     onChange={e => set("emergency_contact_relationship", e.target.value)}
                                     placeholder="e.g. Spouse, Parent, Sibling" className={inputCls} />
                             </div>
@@ -224,16 +227,16 @@ export default function EditDemographicsDialog({
                 </div>
 
                 <div className="pt-1 flex items-center justify-end gap-2">
-                    <button type="button" onClick={() => onOpenChange(false)}
+                    <Button type="button" onClick={() => onOpenChange(false)}
                         className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                         Cancel
-                    </button>
-                    <button type="button" onClick={handleSave} disabled={isPending}
+                    </Button>
+                    <Button type="button" onClick={handleSave} disabled={isPending}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                         {isPending
                             ? <><Loader2 size={14} className="animate-spin" /> Saving…</>
                             : <><Save size={14} /> Save changes</>}
-                    </button>
+                    </Button>
                 </div>
             </DialogContent>
         </Dialog>

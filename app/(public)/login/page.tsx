@@ -11,6 +11,10 @@ import confetti from "canvas-confetti";
 import NetworkStatusBanner from "@/components/layout/NetworkStatusBanner";
 import { sanitizeNextPath } from "@/lib/security";
 import supabase from "@/utils/supabase/client";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 
 
 // ─── Features list ────────────────────────────────────────────────────────────
@@ -289,10 +293,10 @@ function LoginForm(props: {
 
                         {/* Email */}
                         <div className="space-y-1.5">
-                            <label htmlFor="email" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
+                            <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
                                 Work Email
-                            </label>
-                            <input
+                            </Label>
+                            <Input
                                 id="email"
                                 type="email"
                                 autoComplete="email"
@@ -308,15 +312,15 @@ function LoginForm(props: {
                         {/* Password */}
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                                <label htmlFor="password" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
+                                <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
                                     Password
-                                </label>
+                                </Label>
                                 <a href="/forgot-password" className="text-[10px] text-blue-500 hover:text-blue-700 font-bold transition-colors">
                                     Forgot?
                                 </a>
                             </div>
                             <div className="relative">
-                                <input
+                                <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
                                     autoComplete="current-password"
@@ -327,7 +331,7 @@ function LoginForm(props: {
                                     placeholder="••••••••"
                                     className="w-full h-11 px-4 pr-11 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 font-medium placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white hover:border-gray-300 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 />
-                                <button
+                                <Button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     tabIndex={-1}
@@ -335,12 +339,12 @@ function LoginForm(props: {
                                     className="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors"
                                 >
                                     {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                                </button>
+                                </Button>
                             </div>
                         </div>
 
                         {/* Submit */}
-                        <button
+                        <Button
                             type="submit"
                             disabled={loading}
                             className="w-full h-11 mt-1 flex items-center justify-center gap-2 bg-[#0a1628] hover:bg-[#0f1f38] text-white text-sm font-bold rounded-xl transition-all duration-150 shadow-lg shadow-slate-900/15 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2"
@@ -350,7 +354,7 @@ function LoginForm(props: {
                             ) : (
                                 <>Sign In <ArrowRight size={14} /></>
                             )}
-                        </button>
+                        </Button>
                     </form>
 
                     {/* Security note */}

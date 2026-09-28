@@ -90,14 +90,18 @@ export default function ConsentTab({ patient, canEdit }: { patient: Patient; can
                                 <SelectItem value="declined">Declined</SelectItem>
                             </SelectContent>
                         </Select>
-                        <select
-                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm"
+                        <Select
                             value={signedByPatient ? "patient" : "guardian"}
-                            onChange={(e) => setSignedByPatient(e.target.value === "patient")}
+                            onValueChange={v => setSignedByPatient(v === "patient")}
                         >
-                            <option value="patient">Signed by patient</option>
-                            <option value="guardian">Signed by guardian / next of kin</option>
-                        </select>
+                            <SelectTrigger className="h-10 w-full rounded-lg border-gray-200 bg-white px-3 text-sm">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="patient">Signed by patient</SelectItem>
+                                <SelectItem value="guardian">Signed by guardian / next of kin</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <Textarea placeholder="Notes (procedure details, risks discussed…)" rows={2} className="sm:col-span-3"
                             value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>

@@ -20,6 +20,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { fmtDate } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Icon map ─────────────────────────────────────────────────────────────────
 
@@ -224,10 +227,10 @@ const renderField = (
                 hasError ? 'border-red-400' : '',
               ].join(' ')}
             />
-            <label htmlFor={inputId} className="text-sm font-semibold text-gray-700 cursor-pointer select-none leading-tight">
+            <Label htmlFor={inputId} className="text-sm font-semibold text-gray-700 cursor-pointer select-none leading-tight">
               {props.label}
               {required && <span className="ml-1 text-red-500">*</span>}
-            </label>
+            </Label>
           </div>
         </FormControl>
       );
@@ -237,14 +240,14 @@ const renderField = (
         <Popover>
           <PopoverTrigger asChild>
             <FormControl>
-              <button type="button" className={[
+              <Button type="button" className={[
                 INPUT_BASE, 'px-4 flex items-center gap-3 text-left',
                 !field.value ? 'text-gray-300' : 'text-gray-800',
                 hasError ? INPUT_ERROR : '',
               ].join(' ')}>
                 <CalendarIcon size={15} className="text-gray-400 shrink-0" />
                 {field.value ? fmtDate(field.value) : <span>{placeholder ?? 'Pick a date'}</span>}
-              </button>
+              </Button>
             </FormControl>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl border border-gray-100" align="start">

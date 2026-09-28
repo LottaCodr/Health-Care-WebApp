@@ -9,6 +9,8 @@ import {
 import { toast } from "sonner";
 import { useConfirmPayment, usePendingPayments } from "@/hooks/emr/use-payment";
 import { useAuth } from "@/context/auth-provider";
+import { Button } from "@/components/ui/button";
+
 
 // ─── Method config ────────────────────────────────────────────────────────────
 
@@ -92,7 +94,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                             const Icon = cfg.icon;
                                             const isActive = selectedMethod === key;
                                             return (
-                                                <button
+                                                <Button
                                                     key={key}
                                                     type="button"
                                                     onClick={() => setMethodMap((p) => ({ ...p, [payment.id]: key }))}
@@ -104,7 +106,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                                         }`}
                                                 >
                                                     <Icon size={11} /> {cfg.label}
-                                                </button>
+                                                </Button>
                                             );
                                         })}
                                     </div>
@@ -124,7 +126,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                     </div>
                                 </div>
 
-                                <button
+                                <Button
                                     onClick={() => onConfirm(payment.id, amount, patientName, selectedMethod)}
                                     disabled={confirming}
                                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold shadow-sm shadow-green-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
@@ -133,7 +135,7 @@ const PaymentList: React.FC<PaymentListProps> = ({
                                         ? <><Loader2 size={12} className="animate-spin" /> Confirming...</>
                                         : <><CheckCircle2 size={13} /> Confirm Payment</>
                                     }
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -189,10 +191,10 @@ export default function PaymentConfirmation() {
                 <AlertTriangle size={20} className="text-red-500" />
             </div>
             <p className="text-sm font-semibold text-gray-600">Failed to load payments</p>
-            <button onClick={() => refetch()}
+            <Button onClick={() => refetch()}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors">
                 <RefreshCcw size={13} /> Retry
-            </button>
+            </Button>
         </div>
     );
 
@@ -224,10 +226,10 @@ export default function PaymentConfirmation() {
                             </span>
                         </>
                     )}
-                    <button onClick={() => refetch()} aria-label="Refresh"
+                    <Button onClick={() => refetch()} aria-label="Refresh"
                         className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors">
                         <RefreshCcw size={13} />
-                    </button>
+                    </Button>
                 </div>
             </div>
 

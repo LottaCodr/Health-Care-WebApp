@@ -26,6 +26,9 @@ import {
     useDeleteStaff,
     useUpdateStaff,
 } from "@/hooks/emr/use-staff";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -289,12 +292,12 @@ function StaffModal({
                         </p>
                     </div>
 
-                    <button
+                    <Button
                         onClick={onClose}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                     >
                         <X size={14} />
-                    </button>
+                    </Button>
                 </div>
 
                 <div className="px-6 py-5 space-y-4">
@@ -344,7 +347,7 @@ function StaffModal({
                                     {label}
                                 </p>
 
-                                <input
+                                <Input
                                     type={type}
                                     placeholder={placeholder}
                                     value={(form as any)[key]}
@@ -390,14 +393,14 @@ function StaffModal({
                 </div>
 
                 <div className="px-6 pb-5 flex gap-2">
-                    <button
+                    <Button
                         onClick={onClose}
                         className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors"
                     >
                         Cancel
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                         onClick={handleSave}
                         disabled={saving}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm shadow-blue-200 transition-all disabled:opacity-60"
@@ -418,7 +421,7 @@ function StaffModal({
                                     : "Add Staff"}
                             </>
                         )}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -478,14 +481,14 @@ function DeleteModal({
                     </div>
 
                     <div className="flex gap-2">
-                        <button
+                        <Button
                             onClick={onClose}
                             className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors"
                         >
                             Cancel
-                        </button>
+                        </Button>
 
-                        <button
+                        <Button
                             onClick={handleDelete}
                             disabled={deleting}
                             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-all disabled:opacity-60"
@@ -504,7 +507,7 @@ function DeleteModal({
                                     Remove
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -626,14 +629,14 @@ export default function AdminStaffPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button
+                        <Button
                             onClick={() => refetch()}
                             className="w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
                         >
                             <RefreshCcw size={13} />
-                        </button>
+                        </Button>
 
-                        <button
+                        <Button
                             onClick={() =>
                                 setShowAddModal(true)
                             }
@@ -641,7 +644,7 @@ export default function AdminStaffPage() {
                         >
                             <Plus size={13} />
                             Add Staff
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
@@ -653,7 +656,7 @@ export default function AdminStaffPage() {
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                         />
 
-                        <input
+                        <Input
                             value={search}
                             onChange={(e) =>
                                 setSearch(e.target.value)
@@ -663,12 +666,12 @@ export default function AdminStaffPage() {
                         />
 
                         {search && (
-                            <button
+                            <Button
                                 onClick={() => setSearch("")}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             >
                                 <X size={13} />
-                            </button>
+                            </Button>
                         )}
                     </div>
 
@@ -780,23 +783,23 @@ export default function AdminStaffPage() {
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
+                                    <Button
                                         onClick={() =>
                                             setEditTarget(s as any)
                                         }
                                         className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-colors"
                                     >
                                         <Edit3 size={13} />
-                                    </button>
+                                    </Button>
 
-                                    <button
+                                    <Button
                                         onClick={() =>
                                             setDeleteTarget(s as any)
                                         }
                                         className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-200 transition-colors"
                                     >
                                         <Trash2 size={13} />
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ))
