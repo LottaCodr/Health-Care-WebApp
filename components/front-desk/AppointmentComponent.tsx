@@ -30,12 +30,6 @@ import { toast } from "sonner";
 import {
     AlertCircle, CalendarDays, List, Loader2, Plus, RefreshCcw, X,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { TableRow, TableCell, Table, TableHeader, TableHead, TableBody } from "@/components/ui/table";
-
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -200,16 +194,16 @@ function PatientCombobox({ patientId, patientName, isExternal, onSelectPatient, 
 
     if (isExternal) return (
         <div className="space-y-1.5">
-            <Input value={patientName} onChange={e => onExternalName(e.target.value)} placeholder="Enter patient full name"
+            <input value={patientName} onChange={e => onExternalName(e.target.value)} placeholder="Enter patient full name"
                 className="w-full rounded-lg border border-amber-300 bg-amber-50/40 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
-            <Button type="button" onClick={() => { onToggleExternal(false); onSelectPatient("", ""); }}
-                className="text-xs text-blue-600 hover:underline">← Search registered patients instead</Button>
+            <button type="button" onClick={() => { onToggleExternal(false); onSelectPatient("", ""); }}
+                className="text-xs text-blue-600 hover:underline">← Search registered patients instead</button>
         </div>
     );
 
     return (
         <div ref={ref} className="relative">
-            <Input
+            <input
                 value={query}
                 onChange={event => {
                     setQuery(event.target.value);
@@ -233,7 +227,7 @@ function PatientCombobox({ patientId, patientName, isExternal, onSelectPatient, 
                     {filtered.length === 0
                         ? <p className="px-4 py-3 text-sm text-slate-400">No patients match "{query}"</p>
                         : filtered.map((p: any) => (
-                            <Button key={p.id} type="button" role="option" aria-selected={patientId === p.id} onClick={() => { onSelectPatient(p.id, p.name); setQuery(p.name); setOpen(false); }}
+                            <button key={p.id} type="button" role="option" aria-selected={patientId === p.id} onClick={() => { onSelectPatient(p.id, p.name); setQuery(p.name); setOpen(false); }}
                                 className={`w-full text-left flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 transition-colors ${patientId === p.id ? "bg-blue-50" : ""}`}>
                                 <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-xs font-bold text-blue-600">
                                     {(p.name ?? "?")[0].toUpperCase()}
@@ -243,14 +237,14 @@ function PatientCombobox({ patientId, patientName, isExternal, onSelectPatient, 
                                     <div className="text-xs text-slate-400">{p.phone ?? "No phone"}</div>
                                 </div>
                                 {patientId === p.id && <span className="text-blue-600 text-xs font-bold">✓</span>}
-                            </Button>
+                            </button>
                         ))
                     }
                     <div className="border-t border-slate-100">
-                        <Button type="button" onClick={() => { onToggleExternal(true); onSelectPatient("", query); setOpen(false); }}
+                        <button type="button" onClick={() => { onToggleExternal(true); onSelectPatient("", query); setOpen(false); }}
                             className="w-full text-left px-4 py-2.5 text-sm text-amber-700 bg-amber-50/50 hover:bg-amber-50 flex items-center gap-2">
                             <span>+</span><span>Walk-in / not registered — enter name manually</span>
-                        </Button>
+                        </button>
                     </div>
                 </div>
             )}
@@ -384,7 +378,7 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
                         <h2 id="appointment-form-title" className="text-base font-bold text-slate-900">{isEdit ? "Edit appointment" : "New appointment"}</h2>
                         <p className="mt-0.5 text-xs text-slate-500">Required fields are marked with an asterisk.</p>
                     </div>
-                    <Button type="button" onClick={onClose} disabled={isPending} aria-label="Close appointment form" className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 disabled:opacity-50"><X size={16} /></Button>
+                    <button type="button" onClick={onClose} disabled={isPending} aria-label="Close appointment form" className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 disabled:opacity-50"><X size={16} /></button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 space-y-4">
@@ -397,7 +391,7 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
 
                     {/* Patient */}
                     <div>
-                        <Label className="lbl">Patient *</Label>
+                        <label className="lbl">Patient *</label>
                         <PatientCombobox
                             patientId={store.patientId} patientName={store.patientName} isExternal={store.isExternalPatient}
                             onSelectPatient={(id, name) => { store.setFormField("patientId", id); store.setFormField("patientName", name); }}
@@ -409,7 +403,7 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
 
                     {/* Doctor */}
                     <div>
-                        <Label className="lbl">Doctor / Staff</Label>
+                        <label className="lbl">Doctor / Staff</label>
                         <StaffSelect doctorId={store.doctorId} onChange={(id, name) => { store.setFormField("doctorId", id); store.setFormField("doctorName", name); }} />
                     </div>
 
@@ -424,45 +418,45 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
                                         : `${conflictingAppointments.length} dates in this recurring series conflict with active appointments.`}
                                 </span>
                             </div>
-                            <Label className="flex cursor-pointer items-center gap-2 font-semibold">
+                            <label className="flex cursor-pointer items-center gap-2 font-semibold">
                                 <input type="checkbox" checked={allowConflict} onChange={event => setAllowConflict(event.target.checked)} className="h-4 w-4 rounded border-red-300 text-red-600" />
                                 Schedule anyway after reviewing the conflict
-                            </Label>
+                            </label>
                         </div>
                     )}
 
                     {/* Date + Time */}
                     <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
                         <div>
-                            <Label className="lbl">Date *</Label>
-                            <Input type="date" min={todayISO()} value={store.appointmentDate}
+                            <label className="lbl">Date *</label>
+                            <input type="date" min={todayISO()} value={store.appointmentDate}
                                 onChange={e => store.setFormField("appointmentDate", e.target.value)} aria-invalid={isPastDate} className="inp" />
                             {isPastDate && <p className="mt-1 text-xs font-medium text-red-600">Choose today or a future date.</p>}
                         </div>
                         <div>
-                            <Label className="lbl">Time *</Label>
-                            <Input type="time" value={store.appointmentTime}
+                            <label className="lbl">Time *</label>
+                            <input type="time" value={store.appointmentTime}
                                 onChange={e => store.setFormField("appointmentTime", e.target.value)} className="inp" />
                         </div>
                     </div>
 
                     {/* Reason */}
                     <div>
-                        <Label className="lbl">Reason *</Label>
-                        <Input value={store.reason} onChange={e => store.setFormField("reason", e.target.value)}
+                        <label className="lbl">Reason *</label>
+                        <input value={store.reason} onChange={e => store.setFormField("reason", e.target.value)}
                             placeholder="Reason for visit" className="inp" />
                     </div>
 
                     {/* Department + Priority */}
                     <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
                         <div>
-                            <Label className="lbl">Department</Label>
+                            <label className="lbl">Department</label>
                             <select value={store.department} onChange={e => store.setFormField("department", e.target.value as AppointmentDept)} className="inp bg-white">
                                 {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
                             </select>
                         </div>
                         <div>
-                            <Label className="lbl">Priority</Label>
+                            <label className="lbl">Priority</label>
                             <select value={store.priority} onChange={e => store.setFormField("priority", e.target.value as AppointmentPriority)} className="inp bg-white">
                                 {PRIORITIES.map(p => <option key={p} className="capitalize">{p}</option>)}
                             </select>
@@ -471,8 +465,8 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
 
                     {/* Notes */}
                     <div>
-                        <Label className="lbl">Notes</Label>
-                        <Textarea rows={2} value={store.notes} onChange={e => store.setFormField("notes", e.target.value)}
+                        <label className="lbl">Notes</label>
+                        <textarea rows={2} value={store.notes} onChange={e => store.setFormField("notes", e.target.value)}
                             placeholder="Additional notes…" className="inp resize-none" />
                     </div>
 
@@ -480,14 +474,14 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
                     {!isEdit && (
                         <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
                             <div className="flex items-center gap-2.5">
-                                <Button
+                                <button
                                     type="button"
                                     role="switch"
                                     aria-checked={store.isRecurring}
                                     onClick={() => store.setFormField("isRecurring", !store.isRecurring)}
                                     className={`w-9 h-5 rounded-full transition-colors relative ${store.isRecurring ? "bg-blue-600" : "bg-slate-300"}`}>
                                     <span className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all shadow ${store.isRecurring ? "left-4" : "left-0.5"}`} />
-                                </Button>
+                                </button>
                                 <span className="text-sm font-medium text-slate-700">Recurring appointment</span>
                             </div>
 
@@ -495,7 +489,7 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
                                 <div className="space-y-3 pt-1">
                                     <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
                                         <div>
-                                            <Label className="lbl">Repeat every</Label>
+                                            <label className="lbl">Repeat every</label>
                                             <select value={store.recurringFrequency} onChange={e => store.setFormField("recurringFrequency", e.target.value as RecurringFrequency)} className="inp bg-white">
                                                 <option value="weekly">1 week</option>
                                                 <option value="biweekly">2 weeks</option>
@@ -503,8 +497,8 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
                                             </select>
                                         </div>
                                         <div>
-                                            <Label className="lbl">Occurrences</Label>
-                                            <Input type="number" min={2} max={12} value={store.recurringCount}
+                                            <label className="lbl">Occurrences</label>
+                                            <input type="number" min={2} max={12} value={store.recurringCount}
                                                 onChange={e => store.setFormField("recurringCount", Number(e.target.value))} className="inp" />
                                         </div>
                                     </div>
@@ -528,12 +522,12 @@ function AppointmentFormModal({ staffId, allAppointments, onClose }: {
                 </div>
 
                 <div className="px-4 py-4 sm:px-6 border-t border-slate-100 shrink-0 flex flex-col-reverse min-[380px]:flex-row min-[380px]:justify-end gap-2 min-[380px]:gap-3">
-                    <Button type="button" onClick={onClose} disabled={isPending} className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 disabled:opacity-50">Cancel</Button>
-                    <Button type="submit" disabled={formInvalid || isPending}
+                    <button type="button" onClick={onClose} disabled={isPending} className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 disabled:opacity-50">Cancel</button>
+                    <button type="submit" disabled={formInvalid || isPending}
                         className="inline-flex min-h-10 items-center justify-center gap-2 px-5 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:cursor-not-allowed disabled:opacity-50 transition-colors">
                         {isPending && <Loader2 size={14} className="animate-spin" />}
                         {isPending ? "Saving…" : isEdit ? "Update appointment" : store.isRecurring ? `Schedule ${store.recurringCount} appointments` : "Schedule appointment"}
-                    </Button>
+                    </button>
                 </div>
             </form>
 
@@ -580,22 +574,22 @@ function RescheduleModal({ appt, allAppointments, onClose }: { appt: any; allApp
                 {conflict && <p role="alert" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">This staff member already has an active appointment at that time.</p>}
                 <div className="space-y-3">
                     <div>
-                        <Label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">New Date</Label>
-                        <Input type="date" min={todayISO()} value={date} onChange={e => setDate(e.target.value)}
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">New Date</label>
+                        <input type="date" min={todayISO()} value={date} onChange={e => setDate(e.target.value)}
                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                     </div>
                     <div>
-                        <Label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">New Time</Label>
-                        <Input type="time" value={time} onChange={e => setTime(e.target.value)}
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">New Time</label>
+                        <input type="time" value={time} onChange={e => setTime(e.target.value)}
                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                     </div>
                 </div>
                 <div className="flex justify-end gap-3 mt-5">
-                    <Button type="button" onClick={onClose} disabled={update.isPending} className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Cancel</Button>
-                    <Button type="button" onClick={handleReschedule} disabled={invalid || update.isPending}
+                    <button type="button" onClick={onClose} disabled={update.isPending} className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Cancel</button>
+                    <button type="button" onClick={handleReschedule} disabled={invalid || update.isPending}
                         className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors">
                         {update.isPending ? "Saving…" : "Confirm Reschedule"}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -629,15 +623,15 @@ function CancelModal({ id, onClose }: { id: string; onClose: () => void }) {
                 <h3 id="cancel-title" className="text-base font-bold text-slate-900 mb-1">Cancel appointment</h3>
                 <p className="text-xs text-slate-500 mb-4">Optionally record a reason for the audit trail.</p>
                 {error && <p role="alert" className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
-                <Textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
+                <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
                     placeholder="Reason (optional)" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-200 mb-4" />
                 <div className="flex justify-end gap-3">
-                    <Button type="button" onClick={onClose} disabled={updateStatus.isPending} variant="outline" className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Keep appointment</Button>
-                    <Button type="button" onClick={cancelAppointment}
+                    <button type="button" onClick={onClose} disabled={updateStatus.isPending} className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Keep appointment</button>
+                    <button type="button" onClick={cancelAppointment}
                         disabled={updateStatus.isPending}
                         className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors">
                         {updateStatus.isPending ? "Cancelling…" : "Cancel Appointment"}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -678,11 +672,11 @@ function DeleteModal({ id, patientName, onClose }: { id: string; patientName: st
                 </p>
                 {error && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
                 <div className="flex justify-end gap-3">
-                    <Button type="button" onClick={onClose} disabled={del.isPending} variant="outline" className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Keep it</Button>
-                    <Button type="button" onClick={deleteAppointment} disabled={del.isPending}
+                    <button type="button" onClick={onClose} disabled={del.isPending} className="px-4 py-2 text-sm text-slate-600 disabled:opacity-50">Keep it</button>
+                    <button type="button" onClick={deleteAppointment} disabled={del.isPending}
                         className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors">
                         {del.isPending ? "Deleting…" : "Yes, delete"}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>
@@ -773,13 +767,13 @@ function DayCalendarView({ appointments, canManage, onSlotClick, onAction }: {
                                 {/* Hover actions */}
                                 <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                                     {canManage && appt.status === "confirmed" && (
-                                        <Button type="button" onClick={e => { e.stopPropagation(); onAction("checkin", appt); }}
-                                            aria-label="Check patient in" title="Check In" className="w-6 h-6 rounded bg-green-500 text-white flex items-center justify-center text-[10px]">✓</Button>
+                                        <button type="button" onClick={e => { e.stopPropagation(); onAction("checkin", appt); }}
+                                            aria-label="Check patient in" title="Check In" className="w-6 h-6 rounded bg-green-500 text-white flex items-center justify-center text-[10px]">✓</button>
                                     )}
-                                    {canManage && <Button type="button" onClick={e => { e.stopPropagation(); onAction("reschedule", appt); }}
-                                        aria-label="Reschedule appointment" title="Reschedule" className="w-6 h-6 rounded bg-blue-500 text-white flex items-center justify-center text-[10px]">↻</Button>}
-                                    <Button type="button" onClick={e => { e.stopPropagation(); onAction("print", appt); }}
-                                        aria-label="Print appointment slip" title="Print Slip" className="w-6 h-6 rounded bg-slate-500 text-white flex items-center justify-center text-[10px]">⎙</Button>
+                                    {canManage && <button type="button" onClick={e => { e.stopPropagation(); onAction("reschedule", appt); }}
+                                        aria-label="Reschedule appointment" title="Reschedule" className="w-6 h-6 rounded bg-blue-500 text-white flex items-center justify-center text-[10px]">↻</button>}
+                                    <button type="button" onClick={e => { e.stopPropagation(); onAction("print", appt); }}
+                                        aria-label="Print appointment slip" title="Print Slip" className="w-6 h-6 rounded bg-slate-500 text-white flex items-center justify-center text-[10px]">⎙</button>
                                 </div>
                             </div>
                         );
@@ -803,28 +797,28 @@ function AppointmentRow({ appt, pendingIds, onAction, canManage }: {
     const isToday = appt.appointment_date === todayISO();
 
     return (
-        <TableRow className={`border-b border-slate-100 transition-colors text-sm
+        <tr className={`border-b border-slate-100 transition-colors text-sm
             ${PRIORITY_LEFT[appt.priority] ?? "border-l-4 border-l-transparent"}
             ${overdue ? "bg-orange-50/40" : "bg-white hover:bg-slate-50/60"}
         `}>
-            <TableCell className="px-4 py-3">
+            <td className="px-4 py-3">
                 <div className="font-medium text-slate-800">{resolvePatientName(appt)}</div>
                 {!appt.patient_id  && <div className="text-[10px] text-amber-600 font-semibold mt-0.5">WALK-IN</div>}
                 {appt.patients?.phone && <div className="text-xs text-slate-400">{appt.patients.phone}</div>}
-            </TableCell>
-            <TableCell className="px-4 py-3">
+            </td>
+            <td className="px-4 py-3">
                 <div className="text-slate-700">{appt.staffs?.name ?? <span className="text-slate-300 italic">Unassigned</span>}</div>
                 {appt.staffs?.role && <div className="text-xs text-slate-400">{appt.staffs.role}</div>}
-            </TableCell>
-            <TableCell className="px-4 py-3 whitespace-nowrap">
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap">
                 <div className="text-slate-700">{appt.appointment_date}</div>
                 <div className={`text-xs font-medium ${isToday ? "text-blue-600" : "text-slate-400"}`}>
                     {isToday ? relativeTime(appt.appointment_date, appt.appointment_time) : appt.appointment_time?.slice(0, 5)}
                 </div>
-            </TableCell>
-            <TableCell className="px-4 py-3 text-slate-600">{appt.department}</TableCell>
-            <TableCell className="px-4 py-3 text-slate-600 max-w-[160px] truncate">{appt.reason}</TableCell>
-            <TableCell className="px-4 py-3">
+            </td>
+            <td className="px-4 py-3 text-slate-600">{appt.department}</td>
+            <td className="px-4 py-3 text-slate-600 max-w-[160px] truncate">{appt.reason}</td>
+            <td className="px-4 py-3">
                 <span className={`inline-flex items-center gap-1.5 text-xs font-semibold capitalize ${
                     appt.priority === "emergency" ? "text-red-600" :
                     appt.priority === "urgent"    ? "text-orange-500" :
@@ -837,16 +831,16 @@ function AppointmentRow({ appt, pendingIds, onAction, canManage }: {
                     }`} />
                     {appt.priority}
                 </span>
-            </TableCell>
-            <TableCell className="px-4 py-3">
+            </td>
+            <td className="px-4 py-3">
                 <div className="flex flex-col gap-1">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full border w-fit capitalize ${STATUS_COLORS[appt.status] ?? "bg-slate-50 text-slate-500 border-slate-200"}`}>
                         {String(appt.status ?? "unknown").replace(/_/g, " ")}
                     </span>
                     {overdue && <span className="text-[10px] font-bold text-orange-600 uppercase">Overdue</span>}
                 </div>
-            </TableCell>
-            <TableCell className="px-4 py-3">
+            </td>
+            <td className="px-4 py-3">
                 {loading ? (
                     <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 ) : (
@@ -877,8 +871,8 @@ function AppointmentRow({ appt, pendingIds, onAction, canManage }: {
                         {canManage && <ActionBtn onClick={() => onAction("delete", appt)} color="red" title="Delete permanently">✕</ActionBtn>}
                     </div>
                 )}
-            </TableCell>
-        </TableRow>
+            </td>
+        </tr>
     );
 }
 
@@ -893,10 +887,10 @@ function ActionBtn({ onClick, color, title, children }: {
         slate:  "text-slate-500  hover:bg-slate-100",
     };
     return (
-        <Button type="button" onClick={onClick} title={title} aria-label={title}
+        <button type="button" onClick={onClick} title={title} aria-label={title}
             className={`min-h-7 text-xs font-semibold px-2 py-1 rounded-lg transition-colors ${colors[color] ?? colors.slate}`}>
             {children}
-        </Button>
+        </button>
     );
 }
 
@@ -999,20 +993,20 @@ function AppointmentTable({ rows, pendingIds, onAction, canManage, label, labelC
             </div>
 
             <div className="hidden overflow-x-auto md:block">
-                <Table className="w-full min-w-[960px] text-sm">
-                    <TableHeader>
-                        <TableRow className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide border-b border-slate-100">
-                            <TableHead className="px-4 py-3 text-left font-semibold">Patient</TableHead>
-                            <TableHead className="px-4 py-3 text-left font-semibold">Doctor</TableHead>
-                            <TableHead className="px-4 py-3 text-left font-semibold">Date & Time</TableHead>
-                            <TableHead className="px-4 py-3 text-left font-semibold">Dept</TableHead>
-                            <TableHead className="px-4 py-3 text-left font-semibold">Reason</TableHead>
-                            <TableHead className="px-4 py-3 text-left font-semibold">Priority</TableHead>
-                            <TableHead className="px-4 py-3 text-left font-semibold">Status</TableHead>
-                            <TableHead className="px-4 py-3 text-left font-semibold">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                <table className="w-full min-w-[960px] text-sm">
+                    <thead>
+                        <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide border-b border-slate-100">
+                            <th className="px-4 py-3 text-left font-semibold">Patient</th>
+                            <th className="px-4 py-3 text-left font-semibold">Doctor</th>
+                            <th className="px-4 py-3 text-left font-semibold">Date & Time</th>
+                            <th className="px-4 py-3 text-left font-semibold">Dept</th>
+                            <th className="px-4 py-3 text-left font-semibold">Reason</th>
+                            <th className="px-4 py-3 text-left font-semibold">Priority</th>
+                            <th className="px-4 py-3 text-left font-semibold">Status</th>
+                            <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         {rows.map(appt => (
                             <AppointmentRow
                                 key={appt.id}
@@ -1022,8 +1016,8 @@ function AppointmentTable({ rows, pendingIds, onAction, canManage, label, labelC
                                 canManage={canManage}
                             />
                         ))}
-                    </TableBody>
-                </Table>
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -1209,22 +1203,22 @@ export default function AppointmentComponent({
                     <div className="flex flex-wrap items-center gap-2">
                         {!inPatientContext && (
                             <div className="flex rounded-xl bg-slate-100 p-0.5" aria-label="Appointment view">
-                                <Button type="button" onClick={() => store.setUI("viewMode", "list")} aria-pressed={store.viewMode === "list"}
+                                <button type="button" onClick={() => store.setUI("viewMode", "list")} aria-pressed={store.viewMode === "list"}
                                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${store.viewMode === "list" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
                                     <List size={13} /> List
-                                </Button>
-                                <Button type="button" onClick={() => store.setUI("viewMode", "calendar")} aria-pressed={store.viewMode === "calendar"}
+                                </button>
+                                <button type="button" onClick={() => store.setUI("viewMode", "calendar")} aria-pressed={store.viewMode === "calendar"}
                                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${store.viewMode === "calendar" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
                                     <CalendarDays size={13} /> Day
-                                </Button>
+                                </button>
                             </div>
                         )}
 
                         {canManage && (
-                            <Button type="button" onClick={() => openNewForm()}
+                            <button type="button" onClick={() => openNewForm()}
                                 className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition-colors hover:bg-blue-700">
                                 <Plus size={15} /> New appointment
-                            </Button>
+                            </button>
                         )}
                     </div>
                 </div>
@@ -1235,22 +1229,22 @@ export default function AppointmentComponent({
                 <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm sm:px-5 space-y-3">
                     {/* Date navigation */}
                     <div className="flex items-center gap-2">
-                        <Button type="button" aria-label="Previous day" onClick={() => store.setUI("dateFilter", shiftLocalISODate(store.dateFilter || todayISO(), -1))}
+                        <button type="button" aria-label="Previous day" onClick={() => store.setUI("dateFilter", shiftLocalISODate(store.dateFilter || todayISO(), -1))}
                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors text-sm">
                             ‹
-                        </Button>
-                        <Input type="date" value={store.dateFilter}
+                        </button>
+                        <input type="date" value={store.dateFilter}
                             onChange={e => store.setUI("dateFilter", e.target.value)}
                             className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 text-center" />
-                        <Button type="button" aria-label="Next day" onClick={() => store.setUI("dateFilter", shiftLocalISODate(store.dateFilter || todayISO(), 1))}
+                        <button type="button" aria-label="Next day" onClick={() => store.setUI("dateFilter", shiftLocalISODate(store.dateFilter || todayISO(), 1))}
                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors text-sm">
                             ›
-                        </Button>
+                        </button>
                         {store.dateFilter !== todayISO() && (
-                            <Button type="button" onClick={() => store.setUI("dateFilter", todayISO())}
+                            <button type="button" onClick={() => store.setUI("dateFilter", todayISO())}
                                 className="text-xs text-blue-600 hover:underline font-semibold whitespace-nowrap">
                                 Today
-                            </Button>
+                            </button>
                         )}
                     </div>
 
@@ -1263,7 +1257,7 @@ export default function AppointmentComponent({
 
                         <div className="scrollbar-hide flex max-w-full items-center gap-1 overflow-x-auto pb-1">
                             {STATUSES.map(s => (
-                                <Button type="button" key={s} onClick={() => store.setUI("statusFilter", s)}
+                                <button type="button" key={s} onClick={() => store.setUI("statusFilter", s)}
                                     className={`shrink-0 whitespace-nowrap text-xs font-semibold px-2.5 py-1.5 rounded-xl border transition-colors capitalize ${
                                         store.statusFilter === s
                                             ? "bg-blue-600 text-white border-blue-600"
@@ -1275,11 +1269,11 @@ export default function AppointmentComponent({
                                             {counts[s]}
                                         </span>
                                     )}
-                                </Button>
+                                </button>
                             ))}
                         </div>
 
-                        <Input value={store.search} onChange={e => store.setUI("search", e.target.value)}
+                        <input value={store.search} onChange={e => store.setUI("search", e.target.value)}
                             placeholder="Search patient or reason…"
                             aria-label="Search appointments"
                             className="w-full sm:flex-1 sm:min-w-48 rounded-xl border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
@@ -1291,7 +1285,7 @@ export default function AppointmentComponent({
             {inPatientContext && (
                 <div className="scrollbar-hide flex items-center gap-1.5 overflow-x-auto pb-1">
                     {STATUSES.map(s => (
-                        <Button type="button" key={s} onClick={() => store.setUI("statusFilter", s)}
+                        <button type="button" key={s} onClick={() => store.setUI("statusFilter", s)}
                             className={`shrink-0 whitespace-nowrap text-xs font-semibold px-2.5 py-1.5 rounded-xl border transition-colors capitalize ${
                                 store.statusFilter === s
                                     ? "bg-blue-600 text-white border-blue-600"
@@ -1303,7 +1297,7 @@ export default function AppointmentComponent({
                                     {counts[s]}
                                 </span>
                             )}
-                        </Button>
+                        </button>
                     ))}
                 </div>
             )}
@@ -1316,9 +1310,9 @@ export default function AppointmentComponent({
                         <p className="text-sm font-semibold text-slate-700">Appointments could not be loaded</p>
                         <p className="mt-1 text-xs text-slate-500">Check your connection and try again.</p>
                     </div>
-                    <Button type="button" onClick={retryQueries} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                    <button type="button" onClick={retryQueries} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
                         <RefreshCcw size={13} /> Try again
-                    </Button>
+                    </button>
                 </div>
             ) : loading && allAppointments.length === 0 ? (
                 <div className="text-sm text-slate-400 py-12 text-center bg-white rounded-2xl border border-slate-100">
@@ -1337,10 +1331,10 @@ export default function AppointmentComponent({
                                 : "No matching appointments are available to view."}
                         </p>
                     </div>
-                    {canManage && <Button type="button" onClick={() => openNewForm()}
+                    {canManage && <button type="button" onClick={() => openNewForm()}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors">
                         <Plus size={14} /> Schedule appointment
-                    </Button>}
+                    </button>}
                 </div>
             ) : inPatientContext ? (
                 /* ── Patient context: upcoming then past ── */

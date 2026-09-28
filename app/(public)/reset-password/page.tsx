@@ -19,10 +19,6 @@ import {
 import Image from "next/image";
 import NetworkStatusBanner from "@/components/layout/NetworkStatusBanner";
 import supabase from "@/utils/supabase/client";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -276,12 +272,12 @@ export default function ResetPasswordPage() {
 
                             <form onSubmit={handleReset} className="mt-6 space-y-4">
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="rp-password" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
+                                    <label htmlFor="rp-password" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
                                         New Password
-                                    </Label>
+                                    </label>
                                     <div className="relative">
                                         <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-                                        <Input
+                                        <input
                                             id="rp-password"
                                             type={showPassword ? "text" : "password"}
                                             autoComplete="new-password"
@@ -292,7 +288,7 @@ export default function ResetPasswordPage() {
                                             placeholder="••••••••"
                                             className="w-full h-11 pl-10 pr-11 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 font-medium placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white hover:border-gray-300 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                         />
-                                        <Button
+                                        <button
                                             type="button"
                                             onClick={() => setShowPassword((v) => !v)}
                                             tabIndex={-1}
@@ -300,17 +296,17 @@ export default function ResetPasswordPage() {
                                             className="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors"
                                         >
                                             {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </Button>
+                                        </button>
                                     </div>
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="rp-confirm" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
+                                    <label htmlFor="rp-confirm" className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">
                                         Confirm Password
-                                    </Label>
+                                    </label>
                                     <div className="relative">
                                         <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-                                        <Input
+                                        <input
                                             id="rp-confirm"
                                             type={showPassword ? "text" : "password"}
                                             autoComplete="new-password"
@@ -327,7 +323,7 @@ export default function ResetPasswordPage() {
                                     )}
                                 </div>
 
-                                <Button
+                                <button
                                     type="submit"
                                     disabled={loading}
                                     className="w-full h-11 flex items-center justify-center gap-2 bg-[#0a1628] hover:bg-[#0f1f38] text-white text-sm font-bold rounded-xl transition-all duration-150 shadow-lg shadow-slate-900/15 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2"
@@ -337,7 +333,7 @@ export default function ResetPasswordPage() {
                                     ) : (
                                         <>Update Password</>
                                     )}
-                                </Button>
+                                </button>
                             </form>
 
                             <div className="mt-6 flex items-center justify-center">

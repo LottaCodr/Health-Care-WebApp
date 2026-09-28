@@ -19,8 +19,6 @@ import {
 import { useRoleProtection } from "@/lib/role-utils";
 import { Facility, FacilityType, UserRole } from "@/types/models";
 import { useCreateFacility, useFacilities, useUpdateFacility } from "@/hooks/emr/use-clinical-modules";
-import { Label } from "@/components/ui/label";
-
 
 const TYPE_OPTIONS: Array<{ value: FacilityType; label: string; description: string }> = [
     { value: "hospital", label: "Hospital / site", description: "A physical or legal operating location" },
@@ -168,7 +166,7 @@ export default function FacilitiesPage() {
 
                 <div className="grid gap-3 lg:grid-cols-4">
                     {TYPE_OPTIONS.map((option) => (
-                        <Button
+                        <button
                             key={option.value}
                             type="button"
                             onClick={() => setFacilityType(option.value)}
@@ -179,7 +177,7 @@ export default function FacilitiesPage() {
                             </div>
                             <p className="text-xs font-bold text-gray-900">{option.label}</p>
                             <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">{option.description}</p>
-                        </Button>
+                        </button>
                     ))}
                 </div>
 
@@ -242,7 +240,7 @@ export default function FacilitiesPage() {
 }
 
 function Field({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
-    return <Label className="block space-y-1.5"><span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-500">{label}{required && <span className="text-red-500">*</span>}{hint && <span className="font-normal normal-case tracking-normal text-gray-400">· {hint}</span>}</span>{children}</Label>;
+    return <label className="block space-y-1.5"><span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-500">{label}{required && <span className="text-red-500">*</span>}{hint && <span className="font-normal normal-case tracking-normal text-gray-400">· {hint}</span>}</span>{children}</label>;
 }
 
 function FacilityRow({ facility, onToggle, child = false }: { facility: Facility; onToggle: (id: string, current: boolean) => void; child?: boolean }) {

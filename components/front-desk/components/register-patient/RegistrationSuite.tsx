@@ -38,10 +38,6 @@ import {
   INSURANCE_STEP,
   type PaymentType,
 } from "@/lib/utils/registration-form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // calcAge / getPaymentType / getStepFields / buildPatientPayload live in
@@ -155,38 +151,35 @@ function MobileProgress({ currentStep }: { currentStep: number }) {
 
 // ─── Religion field — dropdown with "Other" free-text fallback ───────────────
 
-function ReligionField({ field, id }: { field: { value: string; onChange: (v: string) => void }; id: string }) {
+function ReligionField({ field }: { field: { value: string; onChange: (v: string) => void } }) {
   const isPreset = (RELIGION_OPTIONS as readonly string[]).includes(field.value);
   const [customMode, setCustomMode] = useState(!isPreset && !!field.value);
 
   if (customMode) {
     return (
       <div className="space-y-1.5">
-        <FormControl>
-          <Input
-            id={id}
-            autoFocus
-            value={field.value}
-            onChange={e => field.onChange(e.target.value)}
-            placeholder="Enter religion"
-            className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all"
-          />
-        </FormControl>
-        <Button type="button" variant="ghost"
+        <input
+          autoFocus
+          value={field.value}
+          onChange={e => field.onChange(e.target.value)}
+          placeholder="Enter religion"
+          className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all"
+        />
+        <button type="button"
           onClick={() => { setCustomMode(false); field.onChange(""); }}
           className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
           <ChevronLeft size={12} /> Choose from list instead
-        </Button>
+        </button>
       </div>
     );
   }
 
   return (
-    <div role="group" aria-labelledby={`${id}-label`} className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2">
       {RELIGION_OPTIONS.map(opt => {
         const isSelected = field.value === opt && opt !== "Other";
         return (
-          <Button key={opt} type="button" aria-pressed={opt === "Other" ? customMode : isSelected}
+          <button key={opt} type="button"
             onClick={() => {
               if (opt === "Other") { setCustomMode(true); field.onChange(""); }
               else field.onChange(opt);
@@ -198,7 +191,7 @@ function ReligionField({ field, id }: { field: { value: string; onChange: (v: st
             }`}>
             {opt === "Other" && <Pencil size={11} />}
             {opt}
-          </Button>
+          </button>
         );
       })}
     </div>
@@ -244,7 +237,7 @@ function PaymentTypeSelector({ form }: { form: any }) {
           const Icon       = opt.icon;
           const isSelected = current === opt.type;
           return (
-            <Button key={opt.type} type="button"
+            <button key={opt.type} type="button"
               onClick={() => select(opt.type)}
               className={`flex items-start gap-2.5 p-3.5 rounded-xl border-2 text-left transition-all ${
                 isSelected
@@ -260,7 +253,7 @@ function PaymentTypeSelector({ form }: { form: any }) {
                 <p className={`text-xs font-bold ${isSelected ? "text-gray-900" : "text-gray-600"}`}>{opt.label}</p>
                 <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{opt.desc}</p>
               </div>
-            </Button>
+            </button>
           );
         })}
       </div>
@@ -477,11 +470,11 @@ export default function RegistrationSuite() {
                         <Loader2 size={13} className="text-blue-500 animate-spin" />
                         <p className="text-xs text-blue-600 font-medium">Redirecting in 5 seconds...</p>
                       </div>
-                      <Button type="button"
+                      <button type="button"
                         onClick={() => { setSubmitted(false); setDriftWarnings([]); resetForm(); form.reset(); }}
                         className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors">
                         Register Another Patient
-                      </Button>
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -493,7 +486,7 @@ export default function RegistrationSuite() {
                             <p className="text-xs font-bold">Registration Failed</p>
                             <p className="text-xs mt-0.5 text-red-600">{submitError}</p>
                           </div>
-                          <Button onClick={() => setSubmitError(null)} className="text-red-400 hover:text-red-600 text-lg leading-none">×</Button>
+                          <button onClick={() => setSubmitError(null)} className="text-red-400 hover:text-red-600 text-lg leading-none">×</button>
                         </div>
                       )}
 
@@ -506,7 +499,11 @@ export default function RegistrationSuite() {
 
                             {/* Religion — optional dropdown */}
                             <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="religion" label="Religion (optional)"
-                              renderSkeleton={(field, id) => <ReligionField field={field} id={id} />} />
+                              renderSkeleton={field => (
+                                <FormControl>
+                                  <ReligionField field={field} />
+                                </FormControl>
+                              )} />
 
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="email" label="Email Address (optional)" placeholder="patient@example.com" />
                             <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="phone" label="Phone Number" placeholder="+234 800 000 0000" required />
@@ -525,13 +522,13 @@ export default function RegistrationSuite() {
                             </div>
 
                             <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="gender" label="Gender" required
-                              renderSkeleton={(field, id) => (
+                              renderSkeleton={field => (
                                 <FormControl>
-                                  <RadioGroup className="flex flex-row gap-4 h-11 items-center" onValueChange={field.onChange} value={field.value ?? ""} aria-labelledby={`${id}-label`}>
+                                  <RadioGroup className="flex flex-row gap-4 h-11 items-center" onValueChange={field.onChange} defaultValue={field.value}>
                                     {GenderOptions.map(g => (
                                       <div key={g} className="flex items-center gap-2">
-                                        <RadioGroupItem value={g} id={`${id}-${g}`} />
-                                        <Label htmlFor={`${id}-${g}`} className="text-sm font-medium text-gray-700 cursor-pointer">{g}</Label>
+                                        <RadioGroupItem value={g} id={g} />
+                                        <label htmlFor={g} className="text-sm font-medium text-gray-700 cursor-pointer">{g}</label>
                                       </div>
                                     ))}
                                   </RadioGroup>
@@ -555,17 +552,17 @@ export default function RegistrationSuite() {
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Class / School Year</p>
-                                  <Input value={childClass} onChange={e => setField("childClass", e.target.value)}
+                                  <input value={childClass} onChange={e => setField("childClass", e.target.value)}
                                     placeholder="e.g. Primary 3, JSS 1" className={inputCls} />
                                 </div>
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Parent / Guardian</p>
-                                  <Input value={parentInfo} onChange={e => setField("parentInfo", e.target.value)}
+                                  <input value={parentInfo} onChange={e => setField("parentInfo", e.target.value)}
                                     placeholder="Parent or guardian name" className={inputCls} />
                                 </div>
                                 <div className="space-y-1.5">
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Referral Source</p>
-                                  <Input value={referralInfo} onChange={e => setField("referralInfo", e.target.value)}
+                                  <input value={referralInfo} onChange={e => setField("referralInfo", e.target.value)}
                                     placeholder="Referred by / school / clinic" className={inputCls} />
                                 </div>
                               </div>
@@ -582,19 +579,19 @@ export default function RegistrationSuite() {
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactName" label="Contact Name (optional)" placeholder="Jane Doe" />
                             <CustomFormField fieldType={FormFieldType.PHONE_INPUT} control={form.control} name="emergencyContactNumber" label="Contact Phone (optional)" placeholder="+234 800 000 0000" />
                             <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="emergencyContactRelationship" label="Relationship (optional)"
-                              renderSkeleton={(field, id) => (
-                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                                  <FormControl>
-                                    <SelectTrigger id={id}>
+                              renderSkeleton={field => (
+                                <FormControl>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger>
                                       <SelectValue placeholder="Select relationship (optional)" />
                                     </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {RelationshipOptions.map(rel => (
+                                    <SelectContent>
+                                      {RelationshipOptions.map(rel => (
                                         <SelectItem key={rel} value={rel}>{rel}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
                               )} />
                             <CustomFormField fieldType={FormFieldType.INPUT} control={form.control} name="emergencyContactEmail" label="Contact Email (optional)" placeholder="contact@example.com" />
                             <div className="sm:col-span-2">
@@ -615,13 +612,13 @@ export default function RegistrationSuite() {
                               <CustomFormField fieldType={FormFieldType.TEXTAREA} control={form.control} name="longTermMedication" label="Long-Term Medications" placeholder="List ongoing medications and dosages..." />
                             </div>
                             <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="covidVaccinationOptions" label="COVID-19 Vaccination Status"
-                              renderSkeleton={(field, id) => (
+                              renderSkeleton={field => (
                                 <FormControl>
-                                  <RadioGroup className="flex flex-col gap-2.5" onValueChange={field.onChange} value={field.value ?? ""} aria-labelledby={`${id}-label`}>
+                                  <RadioGroup className="flex flex-col gap-2.5" onValueChange={field.onChange} defaultValue={field.value}>
                                     {CovidVaccinationOptions.map(opt => (
                                       <div key={opt} className="flex items-center gap-2">
-                                        <RadioGroupItem value={opt} id={`${id}-${opt}`} />
-                                        <Label htmlFor={`${id}-${opt}`} className="text-sm font-medium text-gray-700 cursor-pointer">{opt}</Label>
+                                        <RadioGroupItem value={opt} id={opt} />
+                                        <label htmlFor={opt} className="text-sm font-medium text-gray-700 cursor-pointer">{opt}</label>
                                       </div>
                                     ))}
                                   </RadioGroup>
@@ -629,34 +626,34 @@ export default function RegistrationSuite() {
                               )} />
                             <div className="space-y-5">
                               <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="bloodGroup" label="Blood Group"
-                                renderSkeleton={(field, id) => (
-                                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                                    <FormControl>
-                                      <SelectTrigger id={id}>
+                                renderSkeleton={field => (
+                                  <FormControl>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <SelectTrigger>
                                         <SelectValue placeholder="Select blood group" />
                                       </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {BloodGroupOptions.map(bg => (
+                                      <SelectContent>
+                                        {BloodGroupOptions.map(bg => (
                                           <SelectItem key={bg} value={bg}>{bg}</SelectItem>
                                         ))}
-                                    </SelectContent>
-                                  </Select>
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
                                 )} />
                               <CustomFormField fieldType={FormFieldType.SKELETON} control={form.control} name="genoType" label="Genotype"
-                                renderSkeleton={(field, id) => (
-                                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                                    <FormControl>
-                                      <SelectTrigger id={id}>
+                                renderSkeleton={field => (
+                                  <FormControl>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <SelectTrigger>
                                         <SelectValue placeholder="Select genotype" />
                                       </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {GenotypeOptions.map(gt => (
+                                      <SelectContent>
+                                        {GenotypeOptions.map(gt => (
                                           <SelectItem key={gt} value={gt}>{gt}</SelectItem>
                                         ))}
-                                    </SelectContent>
-                                  </Select>
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
                                 )} />
                             </div>
                           </div>
@@ -701,12 +698,12 @@ export default function RegistrationSuite() {
 
                       {/* Navigation */}
                       <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-100">
-                        <Button type="button" onClick={handleBack}
+                        <button type="button" onClick={handleBack}
                           disabled={currentStep === 0 || validatingStep}
                           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all
                                                         ${currentStep === 0 ? "invisible" : "bg-gray-100 hover:bg-gray-200 text-gray-700"}`}>
                           <ChevronLeft size={16} /> Back
-                        </Button>
+                        </button>
 
                         <div className="flex items-center gap-1.5">
                           {STEPS.map((_, idx) => (
@@ -716,20 +713,20 @@ export default function RegistrationSuite() {
                         </div>
 
                         {currentStep < STEPS.length - 1 ? (
-                          <Button type="button" onClick={handleNext} disabled={validatingStep}
+                          <button type="button" onClick={handleNext} disabled={validatingStep}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all disabled:opacity-60">
                             {validatingStep && <Loader2 size={14} className="animate-spin" />}
                             Next <ChevronRight size={16} />
-                          </Button>
+                          </button>
                         ) : (
-                          <Button type="button" onClick={handleFinalSubmit}
+                          <button type="button" onClick={handleFinalSubmit}
                             disabled={submitting || validatingStep}
                             className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                             {submitting
                               ? <><Loader2 size={14} className="animate-spin" /> Registering...</>
                               : <><CheckCircle2 size={15} /> Register Patient</>
                             }
-                          </Button>
+                          </button>
                         )}
                       </div>
                     </>

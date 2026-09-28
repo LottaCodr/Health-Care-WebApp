@@ -47,8 +47,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-
 
 
 /** Extract a human-readable message from a server-action / mutation error. */
@@ -109,7 +107,7 @@ function PaymentTypeChips({ value, onChange, disabled }: {
                 const cfg = PAYMENT_TYPE_CONFIG[type];
                 const active = value === type;
                 return (
-                    <Button
+                    <button
                         key={type}
                         type="button"
                         aria-pressed={active}
@@ -125,7 +123,7 @@ function PaymentTypeChips({ value, onChange, disabled }: {
                         <span className={`text-[9px] leading-snug ${active ? "text-teal-600" : "text-slate-400"}`}>
                             {cfg.short === "Deposit" ? "Advance credit" : cfg.short}
                         </span>
-                    </Button>
+                    </button>
                 );
             })}
         </div>
@@ -148,12 +146,12 @@ function MethodPicker({ value, onChange, disabled }: {
             {METHOD_OPTIONS.map(({ key, label, icon: Icon }) => {
                 const active = value === key;
                 return (
-                    <Button key={key} type="button" aria-pressed={active} onClick={() => onChange(key)} disabled={disabled}
+                    <button key={key} type="button" aria-pressed={active} onClick={() => onChange(key)} disabled={disabled}
                         className={`flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-2xl border text-xs font-bold transition-all ${
                             active ? "bg-teal-50 text-teal-700 border-teal-300" : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
                         }`}>
                         <Icon size={16} /> {label}
-                    </Button>
+                    </button>
                 );
             })}
         </div>
@@ -201,7 +199,6 @@ function ModalShell({ title, subtitle, icon, onClose, disabled, children, wide }
 
 function ModalActions({ onClose, disabled, pending, onConfirm, confirmLabel, confirmIcon }: {
     onClose: () => void;
-    /** Disable confirmation while invalid; cancellation remains available. */
     disabled?: boolean;
     pending?: boolean;
     onConfirm: () => void;
@@ -210,7 +207,7 @@ function ModalActions({ onClose, disabled, pending, onConfirm, confirmLabel, con
 }) {
     return (
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-1">
-            <Button type="button" variant="ghost" onClick={onClose} disabled={pending}
+            <Button type="button" variant="ghost" onClick={onClose} disabled={disabled}
                 className="text-slate-500 hover:text-slate-700 font-semibold">
                 Cancel
             </Button>
@@ -265,7 +262,7 @@ function PayerSelect({ value, onChange, disabled, reference, id }: {
     onChange: (v: PayerType) => void;
     disabled?: boolean;
     reference?: string;
-    id: string;
+    id?: string;
 }) {
     return (
         <Select value={value} onValueChange={(v) => onChange(v as PayerType)} disabled={disabled}>
@@ -646,13 +643,13 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
                     <FieldLabel>Payment type</FieldLabel>
                     <div className="grid grid-cols-2 gap-2">
                         {(["full", "partial"] as const).map((type) => (
-                            <Button key={type} type="button" onClick={() => setPaymentType(type)} disabled={isPending}
+                            <button key={type} type="button" onClick={() => setPaymentType(type)} disabled={isPending}
                                 className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-2xl border text-left transition-all ${
                                     paymentType === type ? "border-teal-300 bg-teal-50 text-teal-800 shadow-sm" : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
                                 }`}>
                                 <span className="text-xs font-bold">{PAYMENT_TYPE_CONFIG[type].label}</span>
                                 <span className="text-[9px] text-slate-400">{PAYMENT_TYPE_CONFIG[type].desc}</span>
-                            </Button>
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -698,11 +695,11 @@ export function SettleAllBillsModal({ payments, patientId, patient, payerHint, c
 
                 {/* Payer */}
                 <div className="space-y-1.5">
-                    <FieldLabel htmlFor="patient-bills-payer" hint="auto-identified from registration">Payer</FieldLabel>
+                    <FieldLabel hint="auto-identified from registration">Payer</FieldLabel>
                     <div className="flex items-center gap-2">
                         <PayerBadge payer={resolvedPayer.type} reference={resolvedPayer.reference || null} />
                     </div>
-                    <PayerSelect id="patient-bills-payer" value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
+                    <PayerSelect value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
                     {isHmoCompany && (
                         <Input value={payerCode} onChange={(e) => setPayerCode(e.target.value)} disabled={isPending}
                             placeholder={payerType === "hmo" ? "HMO authorization / claim code (optional)" : "Company reference / LPO number (optional)"}
@@ -822,11 +819,11 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
                 </div>
 
                 <div className="space-y-1.5">
-                    <FieldLabel htmlFor="deposit-payer" hint="auto-identified from registration">Payer</FieldLabel>
+                    <FieldLabel hint="auto-identified from registration">Payer</FieldLabel>
                     <div className="flex items-center gap-2 mb-1">
                         <PayerBadge payer={resolvedPayer.type} reference={resolvedPayer.reference || null} />
                     </div>
-                    <PayerSelect id="deposit-payer" value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
+                    <PayerSelect value={payerType} onChange={setPayerType} disabled={isPending} reference={resolvedPayer.reference} />
                     {payerType === "private" && (
                         <div className="pt-1">
                             <FieldLabel>Payment method</FieldLabel>
@@ -837,7 +834,7 @@ export function DepositModal({ patientId, patient, payerHint, cashierId, onClose
 
                 <div className="space-y-1.5">
                     <FieldLabel htmlFor="deposit-notes">Notes (optional)</FieldLabel>
-                    <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isPending}
+                    <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isPending}
                         id="deposit-notes"
                         placeholder="e.g. Admission deposit, theatre booking…"
                         className="w-full text-sm border border-slate-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none" />
@@ -905,12 +902,12 @@ export function QueueSettleAllModal({ totalBills, totalKobo, cashierId, onClose 
                         {METHOD_OPTIONS.map(({ key, label, icon: Icon }) => {
                             const active = method === key;
                             return (
-                                <Button key={key} type="button" aria-pressed={active} onClick={() => setMethod(key)} disabled={isPending}
+                                <button key={key} type="button" aria-pressed={active} onClick={() => setMethod(key)} disabled={isPending}
                                     className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl border text-xs font-bold transition-all ${
                                         active ? "bg-teal-50 text-teal-700 border-teal-300" : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
                                     }`}>
                                     <Icon size={16} /> {label}
-                                </Button>
+                                </button>
                             );
                         })}
                     </div>

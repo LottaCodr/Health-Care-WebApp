@@ -8,8 +8,6 @@ import { ArrowLeft, HeartPulse, LayoutDashboard } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/context/auth-provider";
 import { getDashboardRoute } from "@/lib/role-dashboard";
-import { Button } from "@/components/ui/button";
-
 
 /**
  * Custom 404 — "vitals not found".
@@ -113,14 +111,14 @@ export default function NotFoundPage() {
                             <LayoutDashboard size={15} />
                             {user ? "Back to my dashboard" : "Back to sign in"}
                         </Link>
-                        <Button
+                        <button
                             type="button"
                             onClick={() => router.back()}
                             className="w-full sm:w-auto h-11 px-6 flex items-center justify-center gap-2 text-sm font-bold text-white/60 hover:text-white border border-white/15 hover:border-white/30 rounded-xl transition-all duration-150"
                         >
                             <ArrowLeft size={15} />
                             Go back
-                        </Button>
+                        </button>
                     </div>
                 </motion.div>
 

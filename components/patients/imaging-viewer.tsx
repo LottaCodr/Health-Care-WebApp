@@ -34,7 +34,7 @@ export default function ImagingViewer({ patientId }: { patientId: string }) {
             ) : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                     {images.map((img) => (
-                        <Button key={img.id} onClick={() => { setActive(img); setZoom(1); }}
+                        <button key={img.id} onClick={() => { setActive(img); setZoom(1); }}
                             className="group overflow-hidden rounded-xl border border-gray-100 bg-white text-left shadow-sm transition hover:border-gray-300">
                             <div className="flex h-36 items-center justify-center overflow-hidden bg-black/90">
                                 <img src={img.signed_url ?? undefined} alt={img.file_name}
@@ -46,7 +46,7 @@ export default function ImagingViewer({ patientId }: { patientId: string }) {
                                     {img.document_type ?? "Image"} · {img.description ?? new Date(img.created_at ?? "").toLocaleDateString("en-GB")}
                                 </p>
                             </div>
-                        </Button>
+                        </button>
                     ))}
                 </div>
             )}

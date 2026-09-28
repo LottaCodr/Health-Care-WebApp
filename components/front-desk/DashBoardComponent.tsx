@@ -22,10 +22,6 @@ import { useAppointmentsByDate } from "@/hooks/emr/use-appointments";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
 import { fmtFull } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,10 +70,10 @@ function StatusChip({ status }: { status?: string }) {
         ? key.split("-").map(w => w[0]?.toUpperCase() + w.slice(1)).join(" ")
         : "No status";
     return (
-        <Badge variant="outline" className={`inline-flex gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold whitespace-nowrap ${STATUS_CHIP[key] ?? "bg-gray-50 text-gray-500 border-gray-100"}`}>
-            <span className="h-1 w-1 rounded-full bg-current opacity-60" />
+        <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${STATUS_CHIP[key] ?? "bg-gray-50 text-gray-500 border-gray-100"}`}>
+            <span className="w-1 h-1 rounded-full bg-current opacity-60" />
             {label}
-        </Badge>
+        </span>
     );
 }
 
@@ -106,19 +102,16 @@ function PatientRow({ patient, action, secondaryAction }: {
                 </p>
             </div>
             {secondaryAction && (
-                <Button asChild variant="outline" size="sm"
-                    className={`hidden sm:inline-flex h-8 rounded-xl px-3 text-xs font-bold ${secondaryAction.color}`}>
-                    <Link href={secondaryAction.href} title={secondaryAction.label}>
-                        {secondaryAction.label}
-                    </Link>
-                </Button>
-            )}
-            <Button asChild size="sm"
-                className={`h-8 shrink-0 rounded-xl px-3 text-xs font-bold text-white shadow-sm hover:opacity-90 ${action.color}`}>
-                <Link href={action.href}>
-                    {action.label} <ArrowRight size={11} />
+                <Link href={secondaryAction.href}
+                    title={secondaryAction.label}
+                    className={`shrink-0 hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${secondaryAction.color}`}>
+                    {secondaryAction.label}
                 </Link>
-            </Button>
+            )}
+            <Link href={action.href}
+                className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-bold transition-colors ${action.color}`}>
+                {action.label} <ArrowRight size={11} />
+            </Link>
         </div>
     );
 }
@@ -144,12 +137,10 @@ function ArrivalRow({ patient }: { patient: any }) {
                 </p>
             </div>
             <StatusChip status={patient.status} />
-            <Button asChild size="sm"
-                className="h-8 shrink-0 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white shadow-sm hover:bg-blue-700">
-                <Link href={`/front-desk/patient/${patient.id}`}>
-                    Open <ArrowRight size={11} />
-                </Link>
-            </Button>
+            <Link href={`/front-desk/patient/${patient.id}`}
+                className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-bold transition-colors bg-blue-600 hover:bg-blue-700">
+                Open <ArrowRight size={11} />
+            </Link>
         </div>
     );
 }
@@ -170,37 +161,37 @@ function Section({ icon: Icon, iconBg, iconColor, title, subtitle, badge, badgeC
     extraHeaderContent?: React.ReactNode;
 }) {
     return (
-        <Card className="overflow-hidden rounded-3xl border-gray-200 bg-white">
-            <div className="flex flex-col gap-3 border-b border-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
+        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden">
+            <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5 border-b border-gray-50">
                 <div className="flex items-center gap-3">
-                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+                    <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                         <Icon size={15} className={iconColor} />
                     </div>
                     <div>
-                        <p className="text-sm font-bold leading-tight text-gray-800">{title}</p>
-                        <p className="mt-0.5 text-xs text-gray-400">{subtitle}</p>
+                        <p className="text-sm font-bold text-gray-800 leading-tight">{title}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     {extraHeaderContent}
                     {typeof badge === "number" && badge > 0 && (
-                        <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-xs font-bold ${badgeColor}`}>
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${badgeColor}`}>
                             {badge}
-                        </Badge>
+                        </span>
                     )}
                     {href && hrefLabel && (
-                        <Link href={href} className="flex items-center gap-1 text-xs font-bold text-blue-600 transition-colors hover:text-blue-800">
+                        <Link href={href} className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">
                             {hrefLabel} <ChevronRight size={13} />
                         </Link>
                     )}
                 </div>
             </div>
-            <div className="space-y-2.5 px-4 py-4 sm:px-6">
+            <div className="px-4 py-4 sm:px-6 space-y-2.5">
                 {loading ? (
                     <LoadingSkeleton rows={3} />
                 ) : error ? (
                     <div className="flex flex-col items-center gap-3 rounded-2xl border border-red-100 bg-red-50/60 px-4 py-6 text-center">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100">
+                        <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-100">
                             <AlertTriangle size={16} className="text-red-600" />
                         </div>
                         <div>
@@ -208,10 +199,12 @@ function Section({ icon: Icon, iconBg, iconColor, title, subtitle, badge, badgeC
                             <p className="mt-1 text-xs text-red-600/80 break-words">{error}</p>
                         </div>
                         {onRetry && (
-                            <Button size="sm" variant="outline" onClick={onRetry}
-                                className="h-8 rounded-xl border-red-200 text-xs font-bold text-red-700 hover:bg-red-100">
+                            <button
+                                type="button"
+                                onClick={onRetry}
+                                className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-red-200 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors">
                                 <RefreshCcw size={13} /> Retry
-                            </Button>
+                            </button>
                         )}
                     </div>
                 ) : (
@@ -221,7 +214,7 @@ function Section({ icon: Icon, iconBg, iconColor, title, subtitle, badge, badgeC
                     </>
                 )}
             </div>
-        </Card>
+        </div>
     );
 }
 
@@ -237,8 +230,6 @@ export default function FrontDeskDashboard() {
     const activeAdmissions    = useActiveAdmissions();
     const todayAppointments   = useAppointmentsByDate(toHospitalISODate());
 
-    // "New arrivals" = every patient registered today, regardless of which
-    // stage of the journey they have reached (nurse triage, doctor, billing…).
     // Count and list both come from the database (start-of-hospital-day
     // boundary), so the card and the list always agree.
     const todaysArrivals = todaysArrivalsQuery.data?.patients ?? [];
@@ -261,12 +252,12 @@ export default function FrontDeskDashboard() {
     const admittedPatientsLength = admittedPatients.length;
 
     const stats = [
-        { label: "New Arrivals",     value: todaysArrivalsTotal,                                                    icon: Users,         color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100",   loading: todaysArrivalsQuery.isLoading },
-        { label: "In Queue",         value: Array.isArray(awaitingConsult.data) ? awaitingConsult.data.length : 0, icon: ClipboardList,  color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100",  loading: awaitingConsult.isLoading },
-        { label: "Admitted",         value: admittedPatientsLength                                     , icon: BedDouble,      color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", loading: activeAdmissions.isLoading },
-        { label: "Pending Payment",  value: Array.isArray(awaitingPayment.data) ? awaitingPayment.data.length : 0, icon: Wallet,         color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100",    loading: awaitingPayment.isLoading },
-        { label: "Discharged",       value: Array.isArray(discharged.data) ? discharged.data.length : 0, icon: LogOut,         color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100",  loading: discharged.isLoading },
-        { label: "Appointments Today", value: Array.isArray(todayAppointments.data) ? todayAppointments.data.length : 0, icon: CalendarDays, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100", loading: todayAppointments.isLoading },
+        { label: "New Arrivals",     value: todaysArrivalsTotal, icon: Users,         color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100"   },
+        { label: "In Queue",         value: Array.isArray(awaitingConsult.data) ? awaitingConsult.data.length : 0, icon: ClipboardList,  color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
+        { label: "Admitted",         value: admittedPatientsLength                                     , icon: BedDouble,      color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
+        { label: "Pending Payment",  value: Array.isArray(awaitingPayment.data) ? awaitingPayment.data.length : 0, icon: Wallet,         color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100"    },
+        { label: "Discharged",       value: Array.isArray(discharged.data) ? discharged.data.length : 0, icon: LogOut,         color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
+        { label: "Appointments Today", value: Array.isArray(todayAppointments.data) ? todayAppointments.data.length : 0, icon: CalendarDays, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100" },
     ];
 
     // True if any section is loading
@@ -283,21 +274,22 @@ export default function FrontDeskDashboard() {
     const handleArrivalsRefresh = () => {
         if (typeof todaysArrivalsQuery.refetch === "function") {
             void todaysArrivalsQuery.refetch();
+            void activeAdmissions.refetch();
         }
     };
     const handleActiveAdmissionsRefresh = () => {
         if (typeof activeAdmissions.refetch === "function") {
-            void activeAdmissions.refetch();
+            activeAdmissions.refetch();
         }
     };
     const handleAwaitingPaymentRefresh = () => {
         if (typeof awaitingPayment.refetch === "function") {
-            void awaitingPayment.refetch();
+            awaitingPayment.refetch();
         }
     };
     const handleDischargedRefresh = () => {
         if (typeof discharged.refetch === "function") {
-            void discharged.refetch();
+            discharged.refetch();
         }
     };
 
@@ -310,41 +302,33 @@ export default function FrontDeskDashboard() {
                 icon={ClipboardList}
                 tone="blue"
                 actions={
-                    <Button asChild size="sm" className="h-9 gap-2 rounded-xl bg-blue-600 text-xs font-bold hover:bg-blue-700">
-                        <Link href="/front-desk/patient/new">
-                            <Plus size={13} /> Register patient
-                        </Link>
-                    </Button>
+                    <Link href="/front-desk/patient/new" className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white transition-colors hover:bg-blue-700">
+                        <Plus size={13} /> Register patient
+                    </Link>
                 }
             />
 
             {/* ── Stats and Refresh ── */}
             <div className="space-y-3">
-                <div className="grid min-[420px]:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-3">
                     {stats.map(s => {
                         const Icon = s.icon;
                         return (
-                            <Card key={s.label} className={`flex items-center gap-3 rounded-2xl px-4 py-4 transition-colors hover:border-gray-300 ${s.border}`}>
-                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${s.bg}`}>
+                            <div key={s.label} className={`bg-white rounded-2xl border ${s.border} px-4 py-4 flex items-center gap-3 hover:border-gray-300 transition-colors`}>
+                                <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
                                     <Icon size={17} className={s.color} />
                                 </div>
                                 <div>
-                                    {s.loading ? (
-                                        <Skeleton className="mb-1 h-6 w-10" />
-                                    ) : (
-                                        <p className="text-xl font-extrabold leading-none text-gray-900">{s.value}</p>
-                                    )}
-                                    <p className="mt-0.5 text-[10px] font-medium leading-tight text-gray-400">{s.label}</p>
+                                    <p className="text-xl font-extrabold text-gray-900 leading-none">{s.value}</p>
+                                    <p className="text-[10px] text-gray-400 font-medium mt-0.5 leading-tight">{s.label}</p>
                                 </div>
-                            </Card>
+                            </div>
                         );
                     })}
                 </div>
-                <Button
+                <button
                     aria-label="Refresh dashboard"
-                    variant="outline"
-                    size="sm"
-                    className="ml-auto h-auto rounded-lg px-3 py-2 text-xs font-bold shadow-sm"
+                    className="ml-auto flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 shadow-sm text-xs font-bold text-gray-600 bg-white hover:bg-blue-50 hover:text-blue-700 transition-all"
                     onClick={handleRefresh}
                     disabled={anyLoading}
                     type="button"
@@ -352,11 +336,11 @@ export default function FrontDeskDashboard() {
                 >
                     <RefreshCcw size={16} className={anyLoading ? "animate-spin" : ""} />
                     <span className="hidden sm:inline">{anyLoading ? "Refreshing..." : "Refresh"}</span>
-                </Button>
+                </button>
             </div>
 
             {/* ── Row 1: New arrivals + Admitted patients ── */}
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
                 {/* Today's arrivals */}
                 <Section
@@ -373,29 +357,29 @@ export default function FrontDeskDashboard() {
                     error={todaysArrivalsQuery.error ? errorText(todaysArrivalsQuery.error) : null}
                     onRetry={handleArrivalsRefresh}
                     empty={todaysArrivals.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-gray-400">No patients registered yet today</p>
+                        <p className="text-sm text-gray-400 text-center py-8">No patients registered yet today</p>
                     ) : undefined}
                     extraHeaderContent={
-                        <Button
+                        <button
                             aria-label="Refresh new arrivals"
                             type="button"
-                            className="flex items-center rounded-lg bg-blue-50 p-1 text-blue-600 transition-colors hover:bg-blue-100"
+                            className="flex items-center text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors p-1 rounded-lg"
                             onClick={handleArrivalsRefresh}
                             disabled={todaysArrivalsQuery.isLoading}
                         >
                             <RefreshCcw size={14} className={todaysArrivalsQuery.isLoading ? "animate-spin" : ""} />
-                        </Button>
+                        </button>
                     }
                 >
                     {todaysArrivals.slice(0, 5).map(p => (
                         <ArrivalRow key={p.id} patient={p} />
                     ))}
-                    <Button asChild variant="ghost"
-                        className="mt-1 w-full gap-2 rounded-xl border-2 border-dashed border-gray-200 text-xs font-bold uppercase tracking-widest text-gray-400 hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-600">
-                        <Link href="/front-desk/patient/new">
+                    <Link href="/front-desk/patient/new" className="block mt-1">
+                        {/* Button should not be a child of Link in Next.js 13+; so use only <Link> as stylable element */}
+                        <span className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 text-gray-400 hover:text-blue-600 text-xs font-bold uppercase tracking-widest transition-all">
                             <Plus size={13} /> Register New Patient
-                        </Link>
-                    </Button>
+                        </span>
+                    </Link>
                 </Section>
 
                 {/* Admitted patients — doctor routed here (using useActiveAdmissions) */}
@@ -413,21 +397,21 @@ export default function FrontDeskDashboard() {
                     error={activeAdmissions.error ? errorText(activeAdmissions.error) : null}
                     onRetry={handleActiveAdmissionsRefresh}
                     empty={admittedPatientsLength === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-2 py-10">
+                        <div className="flex flex-col items-center justify-center py-10 gap-2">
                             <BedDouble size={20} className="text-gray-200" />
                             <p className="text-sm text-gray-400">No patients awaiting admission</p>
                         </div>
                     ) : undefined}
                     extraHeaderContent={
-                        <Button
+                        <button
                             aria-label="Refresh admitted patients"
                             type="button"
-                            className="flex items-center rounded-lg bg-indigo-50 p-1 text-indigo-600 transition-colors hover:bg-indigo-100"
+                            className="flex items-center text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors p-1 rounded-lg"
                             onClick={handleActiveAdmissionsRefresh}
                             disabled={activeAdmissions.isLoading}
                         >
                             <RefreshCcw size={14} className={activeAdmissions.isLoading ? "animate-spin" : ""} />
-                        </Button>
+                        </button>
                     }
                 >
                     {admittedPatients.slice(0, 5).map(p => (
@@ -438,41 +422,41 @@ export default function FrontDeskDashboard() {
             </div>
 
             {/* ── Row 2: Billing queue + Discharged (potential return visits) ── */}
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
                 {/* Billing queue */}
                 <Section
                     icon={Wallet}
-                    iconBg="bg-amber-50"
-                    iconColor="text-amber-700"
+                    iconBg="bg-red-50"
+                    iconColor="text-red-600"
                     title="Billing Queue"
                     subtitle="Patients awaiting checkout"
                     badge={Array.isArray(awaitingPayment.data) ? awaitingPayment.data.length : 0}
-                    badgeColor="bg-amber-50 text-amber-800 border-amber-200"
+                    badgeColor="bg-red-50 text-red-700 border-red-100"
                     href="/front-desk/payment"
                     hrefLabel="Process All"
                     loading={awaitingPayment.isLoading}
                     error={awaitingPayment.error ? errorText(awaitingPayment.error) : null}
                     onRetry={handleAwaitingPaymentRefresh}
                     empty={Array.isArray(awaitingPayment.data) && awaitingPayment.data.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-gray-400">Billing clear</p>
+                        <p className="text-sm text-gray-400 text-center py-8">Billing clear</p>
                     ) : undefined}
                     extraHeaderContent={
-                        <Button
+                        <button
                             aria-label="Refresh billing queue"
                             type="button"
-                            variant="ghost" className="flex items-center rounded-lg bg-amber-50 p-1 text-amber-700 transition-colors hover:bg-amber-100"
+                            className="flex items-center text-red-600 bg-red-50 hover:bg-red-100 transition-colors p-1 rounded-lg"
                             onClick={handleAwaitingPaymentRefresh}
                             disabled={awaitingPayment.isLoading}
                         >
                             <RefreshCcw size={14} className={awaitingPayment.isLoading ? "animate-spin" : ""} />
-                        </Button>
+                        </button>
                     }
                 >
                     {Array.isArray(awaitingPayment.data) && awaitingPayment.data.slice(0, 5).map(p => (
                         <PatientRow key={p.id} patient={p}
-                            action={{ label: "Checkout", href: `/front-desk/payment/${p.id}`, color: "bg-primary hover:bg-primary/90" }}
-                            secondaryAction={{ label: "Request Lab", href: `/front-desk/patient/${p.id}?tab=lab`, color: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" }} />
+                            action={{ label: "Checkout", href: `/front-desk/payment/${p.id}`, color: "bg-red-600 hover:bg-red-700" }}
+                            secondaryAction={{ label: "Request Lab", href: `/front-desk/patient/${p.id}?tab=lab`, color: "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100" }} />
                     ))}
                 </Section>
 
@@ -489,18 +473,18 @@ export default function FrontDeskDashboard() {
                     error={discharged.error ? errorText(discharged.error) : null}
                     onRetry={handleDischargedRefresh}
                     empty={Array.isArray(discharged.data) && discharged.data.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-gray-400">No recently discharged patients</p>
+                        <p className="text-sm text-gray-400 text-center py-8">No recently discharged patients</p>
                     ) : undefined}
                     extraHeaderContent={
-                        <Button
+                        <button
                             aria-label="Refresh recently discharged"
                             type="button"
-                            className="flex items-center rounded-lg bg-green-50 p-1 text-green-600 transition-colors hover:bg-green-100"
+                            className="flex items-center text-green-600 bg-green-50 hover:bg-green-100 transition-colors p-1 rounded-lg"
                             onClick={handleDischargedRefresh}
                             disabled={discharged.isLoading}
                         >
                             <RefreshCcw size={14} className={discharged.isLoading ? "animate-spin" : ""} />
-                        </Button>
+                        </button>
                     }
                 >
                     {Array.isArray(discharged.data) && discharged.data.slice(0, 5).map(p => (

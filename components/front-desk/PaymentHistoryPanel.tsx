@@ -6,14 +6,6 @@ import {
     AlertTriangle, BadgeDollarSign, ChevronRight, Clock, CreditCard,
     Loader2, RefreshCcw, Search, User,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { useSearchPatients } from "@/hooks/emr/use-patients";
 import {
     usePaymentsByPatient,
@@ -59,11 +51,13 @@ function errorText(err: unknown, fallback = "Something went wrong while loading.
     return clean;
 }
 
+const OUTLINE_BTN = "inline-flex items-center justify-center gap-1.5 h-8 shrink-0 rounded-xl border border-gray-200 bg-white px-3 text-xs font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-60";
+
 // ─── Patient picker row ───────────────────────────────────────────────────────
 
 function PatientOption({ patient, onSelect }: { patient: any; onSelect: (p: any) => void }) {
     return (
-        <Button
+        <button
             type="button"
             onClick={() => onSelect(patient)}
             className="flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/50"
@@ -81,7 +75,7 @@ function PatientOption({ patient, onSelect }: { patient: any; onSelect: (p: any)
                 </p>
             </div>
             <ChevronRight size={14} className="shrink-0 text-gray-300" />
-        </Button>
+        </button>
     );
 }
 
@@ -158,14 +152,15 @@ function PatientHistory({ patient, onBack }: { patient: any; onBack: () => void 
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={onBack} className="h-8 rounded-xl text-xs font-bold">
+                    <button type="button" onClick={onBack} className={OUTLINE_BTN}>
                         <Search size={13} /> Search another
-                    </Button>
-                    <Button asChild size="sm" className="h-8 rounded-xl bg-blue-600 text-xs font-bold text-white hover:bg-blue-700">
-                        <Link href={`/front-desk/patient/${patient.id}?tab=billing`}>
-                            Open full billing <ChevronRight size={13} />
-                        </Link>
-                    </Button>
+                    </button>
+                    <Link
+                        href={`/front-desk/patient/${patient.id}?tab=billing`}
+                        className="inline-flex items-center justify-center gap-1.5 h-8 shrink-0 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white transition-colors hover:bg-blue-700"
+                    >
+                        Open full billing <ChevronRight size={13} />
+                    </Link>
                 </div>
             </div>
 
@@ -178,117 +173,115 @@ function PatientHistory({ patient, onBack }: { patient: any; onBack: () => void 
             </div>
 
             {/* History table */}
-            <Card className="overflow-hidden rounded-3xl border-gray-200 bg-white">
-                <CardContent className="p-0">
-                    <div className="flex flex-col gap-2 border-b border-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                        <div>
-                            <p className="text-sm font-bold text-gray-800">Payment history</p>
-                            <p className="mt-0.5 text-xs text-gray-400">
-                                {payments.length} record{payments.length === 1 ? "" : "s"} · newest first
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {firstOutstanding && (
-                                <Button
-                                    size="sm"
-                                    onClick={() => setSettleTarget(firstOutstanding)}
-                                    className="h-8 rounded-xl bg-green-600 text-xs font-bold text-white shadow-sm hover:bg-green-700"
-                                >
-                                    <BadgeDollarSign size={13} />
-                                    Settle {summary.outstandingCount} open bill{summary.outstandingCount === 1 ? "" : "s"}
-                                </Button>
-                            )}
-                            <Button
-                                aria-label="Refresh payment history"
-                                type="button"
-                                onClick={() => { void paymentsQuery.refetch(); }}
-                                disabled={paymentsQuery.isFetching}
-                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-700"
-                            >
-                                <RefreshCcw size={13} className={paymentsQuery.isFetching ? "animate-spin" : ""} />
-                            </Button>
-                        </div>
+            <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white">
+                <div className="flex flex-col gap-2 border-b border-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <div>
+                        <p className="text-sm font-bold text-gray-800">Payment history</p>
+                        <p className="mt-0.5 text-xs text-gray-400">
+                            {payments.length} record{payments.length === 1 ? "" : "s"} · newest first
+                        </p>
                     </div>
+                    <div className="flex items-center gap-2">
+                        {firstOutstanding && (
+                            <button
+                                type="button"
+                                onClick={() => setSettleTarget(firstOutstanding)}
+                                className="inline-flex items-center justify-center gap-1.5 h-8 shrink-0 rounded-xl bg-green-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-green-700"
+                            >
+                                <BadgeDollarSign size={13} />
+                                Settle {summary.outstandingCount} open bill{summary.outstandingCount === 1 ? "" : "s"}
+                            </button>
+                        )}
+                        <button
+                            aria-label="Refresh payment history"
+                            type="button"
+                            onClick={() => { void paymentsQuery.refetch(); }}
+                            disabled={paymentsQuery.isFetching}
+                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
+                        >
+                            <RefreshCcw size={13} className={paymentsQuery.isFetching ? "animate-spin" : ""} />
+                        </button>
+                    </div>
+                </div>
 
-                    {paymentsQuery.isLoading ? (
-                        <div className="space-y-2 p-6">
-                            <Skeleton className="h-8 w-full" />
-                            <Skeleton className="h-8 w-full" />
-                            <Skeleton className="h-8 w-full" />
+                {paymentsQuery.isLoading ? (
+                    <div className="space-y-2 p-6">
+                        <div className="h-8 w-full animate-pulse rounded-md bg-gray-100" />
+                        <div className="h-8 w-full animate-pulse rounded-md bg-gray-100" />
+                        <div className="h-8 w-full animate-pulse rounded-md bg-gray-100" />
+                    </div>
+                ) : paymentsQuery.isError ? (
+                    <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50">
+                            <AlertTriangle size={18} className="text-red-500" />
                         </div>
-                    ) : paymentsQuery.isError ? (
-                        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50">
-                                <AlertTriangle size={18} className="text-red-500" />
-                            </div>
-                            <p className="text-sm font-semibold text-gray-600">Failed to load payment history</p>
-                            <p className="max-w-md text-xs text-gray-400 break-words">{errorText(paymentsQuery.error)}</p>
-                            <Button size="sm" variant="outline" onClick={() => void paymentsQuery.refetch()} className="h-8 rounded-xl text-xs font-bold">
-                                <RefreshCcw size={13} /> Retry
-                            </Button>
-                        </div>
-                    ) : payments.length === 0 ? (
-                        <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-                            <CreditCard size={22} className="text-gray-200" />
-                            <p className="text-sm font-semibold text-gray-500">No payments recorded for this patient yet</p>
-                            <p className="text-xs text-gray-400">Bills appear here as soon as they are created or settled.</p>
-                        </div>
-                    ) : (
-                        <div className="max-h-[420px] overflow-y-auto">
-                            <Table>
-                                <TableHeader className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur">
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest text-gray-400">Date</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">Description</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">Invoice</TableHead>
-                                        <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Amount</TableHead>
-                                        <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Paid</TableHead>
-                                        <TableHead className="pr-6 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {payments.map(p => {
-                                        const total = p.amount_kobo ?? 0;
-                                        const paid = p.amount_paid_kobo ?? 0;
-                                        return (
-                                            <TableRow key={p.id} className="hover:bg-gray-50/50">
-                                                <TableCell className="whitespace-nowrap py-3 pl-6 text-xs text-gray-500">
-                                                    {p.processed_date || p.created_at ? fmtFull(p.processed_date || p.created_at) : "—"}
-                                                </TableCell>
-                                                <TableCell className="max-w-[220px] py-3">
-                                                    <p className="truncate text-xs font-semibold text-gray-700">
-                                                        {p.description || p.category || "—"}
+                        <p className="text-sm font-semibold text-gray-600">Failed to load payment history</p>
+                        <p className="max-w-md text-xs text-gray-400 break-words">{errorText(paymentsQuery.error)}</p>
+                        <button type="button" onClick={() => void paymentsQuery.refetch()} className={OUTLINE_BTN}>
+                            <RefreshCcw size={13} /> Retry
+                        </button>
+                    </div>
+                ) : payments.length === 0 ? (
+                    <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+                        <CreditCard size={22} className="text-gray-200" />
+                        <p className="text-sm font-semibold text-gray-500">No payments recorded for this patient yet</p>
+                        <p className="text-xs text-gray-400">Bills appear here as soon as they are created or settled.</p>
+                    </div>
+                ) : (
+                    <div className="max-h-[420px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur">
+                                <tr className="border-b border-gray-100">
+                                    <th className="pl-6 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Date</th>
+                                    <th className="py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Description</th>
+                                    <th className="py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Invoice</th>
+                                    <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Amount</th>
+                                    <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Paid</th>
+                                    <th className="pr-6 py-3 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {payments.map(p => {
+                                    const total = p.amount_kobo ?? 0;
+                                    const paid = p.amount_paid_kobo ?? 0;
+                                    return (
+                                        <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                                            <td className="whitespace-nowrap py-3 pl-6 align-middle text-xs text-gray-500">
+                                                {p.processed_date || p.created_at ? fmtFull(p.processed_date || p.created_at) : "—"}
+                                            </td>
+                                            <td className="max-w-[220px] py-3 align-middle">
+                                                <p className="truncate text-xs font-semibold text-gray-700">
+                                                    {p.description || p.category || "—"}
+                                                </p>
+                                                {p.payment_type && (
+                                                    <p className="mt-0.5 text-[10px] font-black uppercase tracking-widest text-blue-500">
+                                                        {PAYMENT_TYPE_CONFIG[p.payment_type]?.short ?? p.payment_type}
+                                                        {isDepositRow(p) ? " · deposit" : ""}
                                                     </p>
-                                                    {p.payment_type && (
-                                                        <p className="mt-0.5 text-[10px] font-black uppercase tracking-widest text-blue-500">
-                                                            {PAYMENT_TYPE_CONFIG[p.payment_type]?.short ?? p.payment_type}
-                                                            {isDepositRow(p) ? " · deposit" : ""}
-                                                        </p>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap py-3 font-mono text-[11px] text-gray-400">
-                                                    {p.invoice_no ?? "—"}
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap py-3 text-right text-xs font-bold text-gray-800">
-                                                    {formatKobo(total)}
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap py-3 text-right text-xs font-medium text-gray-500">
-                                                    {formatKobo(paid)}
-                                                </TableCell>
-                                                <TableCell className="py-3 pr-6 text-right">
-                                                    <Badge variant="outline" className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", STATUS_STYLE[String(p.status ?? "pending").toLowerCase()] ?? "bg-gray-50 text-gray-500 border-gray-200")}>
-                                                        {p.status ?? "pending"}
-                                                    </Badge>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                                )}
+                                            </td>
+                                            <td className="whitespace-nowrap py-3 align-middle font-mono text-[11px] text-gray-400">
+                                                {p.invoice_no ?? "—"}
+                                            </td>
+                                            <td className="whitespace-nowrap py-3 align-middle text-right text-xs font-bold text-gray-800">
+                                                {formatKobo(total)}
+                                            </td>
+                                            <td className="whitespace-nowrap py-3 align-middle text-right text-xs font-medium text-gray-500">
+                                                {formatKobo(paid)}
+                                            </td>
+                                            <td className="py-3 pr-6 align-middle text-right">
+                                                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLE[String(p.status ?? "pending").toLowerCase()] ?? "bg-gray-50 text-gray-500 border-gray-200"}`}>
+                                                    {p.status ?? "pending"}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
 
             {/* Settle modal (shared with the patient billing tab) */}
             {settleTarget && (
@@ -341,8 +334,8 @@ export default function PaymentHistoryPanel() {
     const searching = search.isFetching && debounced.length >= 2;
 
     return (
-        <Card className="overflow-hidden rounded-3xl border-gray-200 bg-white">
-            <CardContent className="p-4 sm:p-6">
+        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white">
+            <div className="p-4 sm:p-6">
                 {selected ? (
                     <PatientHistory patient={selected} onBack={() => { setSelected(null); setQuery(""); }} />
                 ) : (
@@ -360,11 +353,11 @@ export default function PaymentHistoryPanel() {
                         {/* Search box */}
                         <div className="relative">
                             <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
-                            <Input
+                            <input
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                                 placeholder="Search by name, hospital number or phone…"
-                                className="h-11 rounded-2xl border-gray-200 pl-10 text-sm shadow-sm"
+                                className="h-11 w-full rounded-2xl border border-gray-200 bg-white pl-10 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                                 autoFocus
                             />
                             {searching && (
@@ -376,8 +369,8 @@ export default function PaymentHistoryPanel() {
                         <div className="min-h-[120px]">
                             {searching && (
                                 <div className="space-y-2">
-                                    <Skeleton className="h-14 w-full" />
-                                    <Skeleton className="h-14 w-full" />
+                                    <div className="h-14 w-full animate-pulse rounded-md bg-gray-100" />
+                                    <div className="h-14 w-full animate-pulse rounded-md bg-gray-100" />
                                 </div>
                             )}
 
@@ -386,9 +379,9 @@ export default function PaymentHistoryPanel() {
                                     <AlertTriangle size={18} className="text-red-500" />
                                     <p className="text-sm font-semibold text-red-700">Patient search failed</p>
                                     <p className="max-w-md text-xs text-red-600/80 break-words">{errorText(search.error)}</p>
-                                    <Button size="sm" variant="outline" onClick={() => void search.refetch()} className="h-8 rounded-xl text-xs font-bold">
+                                    <button type="button" onClick={() => void search.refetch()} className={OUTLINE_BTN}>
                                         <RefreshCcw size={13} /> Retry
-                                    </Button>
+                                    </button>
                                 </div>
                             )}
 
@@ -416,7 +409,7 @@ export default function PaymentHistoryPanel() {
                         </div>
                     </div>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

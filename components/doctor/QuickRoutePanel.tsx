@@ -12,11 +12,6 @@ import {
 import { Patient } from "@/types/models";
 import type { RouteDestination, RouteLabTest } from "@/lib/services/patient-routing.service";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 
 // ─── Destination config ───────────────────────────────────────────────────────
 
@@ -48,17 +43,17 @@ function MultiPicker({ options, selected, onChange, placeholder }: {
 
     return (
         <div className="relative w-full">
-            <Button type="button" onClick={() => setOpen((v) => !v)}
+            <button type="button" onClick={() => setOpen((v) => !v)}
                 className="w-full h-10 px-3 flex justify-between items-center rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/20">
                 <span className={selected.length === 0 ? "text-gray-400" : "text-gray-900 truncate"}>
                     {selected.length === 0 ? placeholder : `${selected.length} selected`}
                 </span>
                 <ChevronDown size={16} className="text-gray-400 ml-2 shrink-0" />
-            </Button>
+            </button>
             {open && (
                 <div className="absolute z-40 mt-1 left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-hidden flex flex-col">
                     <div className="p-2 border-b border-gray-100">
-                        <Input autoFocus value={term} onChange={(e) => setTerm(e.target.value)}
+                        <input autoFocus value={term} onChange={(e) => setTerm(e.target.value)}
                             placeholder="Search…"
                             className="w-full h-8 px-2.5 text-xs rounded-lg bg-gray-50 border border-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-300" />
                     </div>
@@ -232,7 +227,7 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                         const Icon = d.icon;
                         const active = destination === d.value;
                         return (
-                            <Button key={d.value} type="button"
+                            <button key={d.value} type="button"
                                 onClick={() => setDestination(active ? "" : d.value)}
                                 className={`flex flex-col items-start gap-1 p-2.5 rounded-xl border-2 text-left transition-all duration-150 ${
                                     active ? d.active : "border-gray-100 bg-white hover:border-gray-200"
@@ -240,7 +235,7 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                                 <Icon size={14} className={active ? "text-indigo-600" : "text-gray-400"} />
                                 <span className={`text-[11px] font-bold ${active ? "text-gray-900" : "text-gray-600"}`}>{d.label}</span>
                                 <span className="text-[9px] text-gray-400 leading-snug">{d.desc}</span>
-                            </Button>
+                            </button>
                         );
                     })}
                 </div>
@@ -253,21 +248,16 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <FieldLabel>Priority</FieldLabel>
-                                <Select value={priority} onValueChange={v => setPriority(v as any)}>
-                                    <SelectTrigger className={inputCls}>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="routine">Routine</SelectItem>
-                                        <SelectItem value="urgent">Urgent</SelectItem>
-                                        <SelectItem value="stat">STAT</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <select value={priority} onChange={(e) => setPriority(e.target.value as any)} className={inputCls}>
+                                    <option value="routine">Routine</option>
+                                    <option value="urgent">Urgent</option>
+                                    <option value="stat">STAT</option>
+                                </select>
                             </div>
                         </div>
                         <div>
                             <FieldLabel>Notes for lab</FieldLabel>
-                            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+                            <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
                                 placeholder="e.g. Fasting sample, clinical suspicion…"
                                 className={`${inputCls} h-auto py-2 resize-none`} />
                         </div>
@@ -282,21 +272,16 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <FieldLabel>Priority</FieldLabel>
-                                <Select value={priority} onValueChange={v => setPriority(v as any)}>
-                                    <SelectTrigger className={inputCls}>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="routine">Routine</SelectItem>
-                                        <SelectItem value="urgent">Urgent</SelectItem>
-                                        <SelectItem value="stat">STAT</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <select value={priority} onChange={(e) => setPriority(e.target.value as any)} className={inputCls}>
+                                    <option value="routine">Routine</option>
+                                    <option value="urgent">Urgent</option>
+                                    <option value="stat">STAT</option>
+                                </select>
                             </div>
                         </div>
                         <div>
                             <FieldLabel>Clinical indication</FieldLabel>
-                            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+                            <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
                                 placeholder="e.g. Suspected fracture — left wrist X-ray…"
                                 className={`${inputCls} h-auto py-2 resize-none`} />
                         </div>
@@ -315,16 +300,16 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <FieldLabel>Dosage</FieldLabel>
-                                <Input value={dosage} onChange={(e) => setDosage(e.target.value)} placeholder="e.g. 500mg BD" className={inputCls} />
+                                <input value={dosage} onChange={(e) => setDosage(e.target.value)} placeholder="e.g. 500mg BD" className={inputCls} />
                             </div>
                             <div>
                                 <FieldLabel>Duration</FieldLabel>
-                                <Input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 5 days" className={inputCls} />
+                                <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 5 days" className={inputCls} />
                             </div>
                         </div>
                         <div>
                             <FieldLabel>Instructions</FieldLabel>
-                            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+                            <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
                                 placeholder="e.g. Take after meals…"
                                 className={`${inputCls} h-auto py-2 resize-none`} />
                         </div>
@@ -335,14 +320,14 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                 {destination === "front-desk" && (
                     <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2.5">
                         <div className="grid grid-cols-2 gap-2">
-                            <Button type="button" onClick={() => setFrontDeskAction("billing")}
+                            <button type="button" onClick={() => setFrontDeskAction("billing")}
                                 className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all ${frontDeskAction === "billing" ? "border-slate-300 bg-slate-100 text-slate-800" : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"}`}>
                                 💳 Billing / Checkout
-                            </Button>
-                            <Button type="button" onClick={() => setFrontDeskAction("admission")}
+                            </button>
+                            <button type="button" onClick={() => setFrontDeskAction("admission")}
                                 className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all ${frontDeskAction === "admission" ? "border-slate-300 bg-slate-100 text-slate-800" : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"}`}>
                                 🛏 Admission
-                            </Button>
+                            </button>
                         </div>
 
                         {frontDeskAction === "admission" ? (
@@ -350,39 +335,29 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <FieldLabel>Admission type</FieldLabel>
-                                        <Select value={admissionType} onValueChange={setAdmissionType}>
-                                            <SelectTrigger className={inputCls}>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="ward">Ward</SelectItem>
-                                                <SelectItem value="surgical">Surgical</SelectItem>
-                                                <SelectItem value="icu">ICU / HDU</SelectItem>
-                                                <SelectItem value="maternity">Maternity</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <select value={admissionType} onChange={(e) => setAdmissionType(e.target.value)} className={inputCls}>
+                                            <option value="ward">Ward</option>
+                                            <option value="surgical">Surgical</option>
+                                            <option value="icu">ICU / HDU</option>
+                                            <option value="maternity">Maternity</option>
+                                        </select>
                                     </div>
                                     <div>
                                         <FieldLabel>Urgency</FieldLabel>
-                                        <Select value={admissionUrgency} onValueChange={setAdmissionUrgency}>
-                                            <SelectTrigger className={inputCls}>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="routine">Routine</SelectItem>
-                                                <SelectItem value="urgent">Urgent</SelectItem>
-                                                <SelectItem value="emergency">Emergency</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <select value={admissionUrgency} onChange={(e) => setAdmissionUrgency(e.target.value)} className={inputCls}>
+                                            <option value="routine">Routine</option>
+                                            <option value="urgent">Urgent</option>
+                                            <option value="emergency">Emergency</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div>
                                     <FieldLabel>Ward / unit (optional)</FieldLabel>
-                                    <Input value={ward} onChange={(e) => setWard(e.target.value)} placeholder="e.g. Maternity Ward B" className={inputCls} />
+                                    <input value={ward} onChange={(e) => setWard(e.target.value)} placeholder="e.g. Maternity Ward B" className={inputCls} />
                                 </div>
                                 <div>
                                     <FieldLabel>Clinical indication *</FieldLabel>
-                                    <Textarea rows={2} value={indication} onChange={(e) => setIndication(e.target.value)}
+                                    <textarea rows={2} value={indication} onChange={(e) => setIndication(e.target.value)}
                                         placeholder="Reason for admission…"
                                         className={`${inputCls} h-auto py-2 resize-none`} />
                                 </div>
@@ -395,7 +370,7 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
 
                         <div>
                             <FieldLabel>Notes for front desk</FieldLabel>
-                            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+                            <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Special instructions…"
                                 className={`${inputCls} h-auto py-2 resize-none`} />
                         </div>
@@ -406,18 +381,18 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                 {destination === "nurse" && (
                     <div className="rounded-xl border border-teal-200 bg-white p-3 space-y-2.5">
                         <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">Nursing instructions</p>
-                        <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+                        <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
                             placeholder="e.g. IV fluids, wound dressing, observations…"
                             className={`${inputCls} h-auto py-2 resize-none`} />
                     </div>
                 )}
 
                 {destination && (
-                    <Button type="submit" disabled={!canSubmit || isPending}
+                    <button type="submit" disabled={!canSubmit || isPending}
                         className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl py-3 transition-colors">
                         {isPending ? <><Loader2 size={14} className="animate-spin" /> Routing…</>
                             : <><Send size={13} /> Route Patient Now</>}
-                    </Button>
+                    </button>
                 )}
             </form>
         </div>

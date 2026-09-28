@@ -27,9 +27,6 @@ import { amendmentErrorMessage, isLockedError, useAmendRecord } from "@/hooks/em
 import { AlertTriangle, Check, History, Info, Loader2, Lock, ShieldAlert } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
 
 type QueryKey = readonly (string | number)[];
 
@@ -174,6 +171,7 @@ export function AmendRecordDialog({
                         </p>
                     )}
 
+                    {/* Fields */}
                     {/* The stored result is a formatted report, not a simple
                         number. Make the preservation rule clear before editing. */}
                     {type === "lab_result" && (
@@ -203,7 +201,7 @@ export function AmendRecordDialog({
                                     className="rounded-xl border-gray-200 bg-gray-50/60 text-sm font-medium leading-relaxed text-gray-800 focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 />
                             ) : (
-                                <Input
+                                <input
                                     type={field.numeric ? "number" : "text"}
                                     value={values[field.column] ?? ""}
                                     onChange={(e) => setValues(v => ({ ...v, [field.column]: e.target.value }))}
@@ -222,7 +220,7 @@ export function AmendRecordDialog({
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                             {AMENDMENT_REASONS.map(r => (
-                                <Button
+                                <button
                                     key={r.value}
                                     type="button"
                                     onClick={() => setReason(r.value)}
@@ -233,7 +231,7 @@ export function AmendRecordDialog({
                                     }`}
                                 >
                                     {r.label}
-                                </Button>
+                                </button>
                             ))}
                         </div>
                         <Textarea
@@ -248,14 +246,14 @@ export function AmendRecordDialog({
                 </div>
 
                 <DialogFooter className="mx-0 my-0 px-6 py-4 border-t border-gray-100 bg-gray-50/60 gap-2">
-                    <Button
+                    <button
                         type="button"
                         onClick={() => onOpenChange(false)}
                         className="h-9 px-4 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 transition-colors"
                     >
                         Cancel
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         type="button"
                         onClick={handleSave}
                         disabled={!canEdit || saving.isPending || !changedColumns.length}
@@ -265,7 +263,7 @@ export function AmendRecordDialog({
                             ? <Loader2 size={13} className="animate-spin" />
                             : <AlertTriangle size={13} />}
                         Save amendment
-                    </Button>
+                    </button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

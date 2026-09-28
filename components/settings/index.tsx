@@ -31,9 +31,6 @@ import {
     Shield, Mail, Phone, Eye, EyeOff, AlertTriangle,
     Smartphone, MonitorSmartphone,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -72,7 +69,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 
 function FieldInput({ error, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { error?: boolean }) {
     return (
-        <Input
+        <input
             {...props}
             className={`w-full h-10 px-4 rounded-xl border bg-gray-50 text-sm font-medium text-gray-900
                 placeholder:text-gray-300 transition-all
@@ -211,10 +208,10 @@ function AccountSettings() {
                     </div>
 
                     <div className="pt-2">
-                        <Button type="submit" disabled={isSubmitting}
+                        <button type="submit" disabled={isSubmitting}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm shadow-blue-200 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                             {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CheckCircle2 size={14} /> Save Changes</>}
-                        </Button>
+                        </button>
                     </div>
                 </form>
             </Form>
@@ -303,10 +300,10 @@ function SecuritySettings() {
                         <FieldInput type={showFields[name] ? "text" : "password"}
                             placeholder={placeholder} error={!!fieldState.error} {...field}
                             style={{ paddingRight: "2.5rem" }} />
-                        <Button type="button" onClick={() => toggle(name)}
+                        <button type="button" onClick={() => toggle(name)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                             {showFields[name] ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </Button>
+                        </button>
                     </div>
                 </FormControl>
                 <FormMessage className="text-[10px] text-red-500 font-semibold mt-1" />
@@ -366,10 +363,10 @@ function SecuritySettings() {
                     </div>
 
                     <div className="pt-2">
-                        <Button type="submit" disabled={loading}
+                        <button type="submit" disabled={loading}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-sm shadow-amber-200 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                             {loading ? <><Loader2 size={14} className="animate-spin" /> Changing...</> : <><Lock size={14} /> Change Password</>}
-                        </Button>
+                        </button>
                     </div>
                 </form>
             </Form>
@@ -391,14 +388,14 @@ const DEFAULT_PREFS: NotificationPrefs = { email: true, sms: false, push: true }
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
     return (
-        <Button type="button" role="switch" aria-checked={checked} disabled={disabled}
+        <button type="button" role="switch" aria-checked={checked} disabled={disabled}
             onClick={() => onChange(!checked)}
             className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0
                 ${checked ? "bg-blue-600" : "bg-gray-200"}
                 ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
             <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200
                 ${checked ? "translate-x-4" : "translate-x-0"}`} />
-        </Button>
+        </button>
     );
 }
 
@@ -484,10 +481,10 @@ function NotificationSettings() {
                 )}
 
                 <div className="pt-2">
-                    <Button onClick={handleSave} disabled={disabled}
+                    <button onClick={handleSave} disabled={disabled}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm shadow-blue-200 transition-all disabled:opacity-60">
                         {saving ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CheckCircle2 size={14} /> Save Preferences</>}
-                    </Button>
+                    </button>
                 </div>
             </div>
         </SectionCard>
@@ -549,20 +546,20 @@ function DangerZone() {
                 </div>
 
                 {!confirm ? (
-                    <Button onClick={() => setConfirm(true)}
+                    <button onClick={() => setConfirm(true)}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-bold transition-all">
                         <Trash2 size={14} /> Delete My Account
-                    </Button>
+                    </button>
                 ) : (
                     <div className="flex items-center gap-3 flex-wrap">
-                        <Button onClick={() => setConfirm(false)} disabled={deleting}
+                        <button onClick={() => setConfirm(false)} disabled={deleting}
                             className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-600 transition-colors disabled:opacity-50">
                             Cancel
-                        </Button>
-                        <Button onClick={handleDelete} disabled={deleting}
+                        </button>
+                        <button onClick={handleDelete} disabled={deleting}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-sm shadow-red-200 transition-all disabled:opacity-60">
                             {deleting ? <><Loader2 size={14} className="animate-spin" /> Deleting...</> : <><Trash2 size={14} /> Yes, Delete Account</>}
-                        </Button>
+                        </button>
                     </div>
                 )}
             </div>

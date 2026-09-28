@@ -12,9 +12,6 @@ import {
     type HematologyCategory,
 } from "@/lib/clinical/hematology-reference-ranges";
 import { patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
-import { Button } from "@/components/ui/button";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-
 
 interface HematologyAnalyzerReportProps {
     /** Lab request row with `patients` attached (as returned by the lab services). */
@@ -143,12 +140,12 @@ export default function HematologyAnalyzerReport({ request, className }: Hematol
                     <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 max-w-[220px] truncate">
                         Ref set: {referenceSet}
                     </span>
-                    <Button
+                    <button
                         onClick={printHtml}
                         className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl border border-gray-200 bg-white text-[11px] font-bold text-gray-700 hover:bg-gray-50 hover:border-indigo-200 transition-colors"
                     >
                         <Printer size={12} /> Print
-                    </Button>
+                    </button>
                 </div>
             </div>
 
@@ -170,21 +167,21 @@ export default function HematologyAnalyzerReport({ request, className }: Hematol
 
             {/* Results table */}
             <div className="overflow-x-auto">
-                <Table className="w-full text-xs">
-                    <TableHeader>
-                        <TableRow className="bg-gray-100 border-b border-gray-300">
-                            <TableHead className="text-left px-4 py-2 font-black uppercase tracking-widest text-gray-600">Para</TableHead>
-                            <TableHead className="text-center px-2 py-2 font-black uppercase tracking-widest text-gray-600 w-12">Flag</TableHead>
-                            <TableHead className="text-left px-4 py-2 font-black uppercase tracking-widest text-gray-600">Result</TableHead>
-                            <TableHead className="text-left px-4 py-2 font-black uppercase tracking-widest text-gray-600">Unit</TableHead>
-                            <TableHead className="text-left px-4 py-2 font-black uppercase tracking-widest text-gray-600">Ref. Range</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody className="divide-y divide-gray-100 bg-white font-mono">
+                <table className="w-full text-xs">
+                    <thead>
+                        <tr className="bg-gray-100 border-b border-gray-300">
+                            <th className="text-left px-4 py-2 font-black uppercase tracking-widest text-gray-600">Para</th>
+                            <th className="text-center px-2 py-2 font-black uppercase tracking-widest text-gray-600 w-12">Flag</th>
+                            <th className="text-left px-4 py-2 font-black uppercase tracking-widest text-gray-600">Result</th>
+                            <th className="text-left px-4 py-2 font-black uppercase tracking-widest text-gray-600">Unit</th>
+                            <th className="text-left px-4 py-2 font-black uppercase tracking-widest text-gray-600">Ref. Range</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white font-mono">
                         {rows.map((r, i) => (
-                            <TableRow key={i} className={r.flag ? "bg-red-50/40" : "hover:bg-gray-50/50"}>
-                                <TableCell className="px-4 py-1.5 font-sans font-bold text-gray-800">{r.label}</TableCell>
-                                <TableCell className="px-2 py-1.5 text-center">
+                            <tr key={i} className={r.flag ? "bg-red-50/40" : "hover:bg-gray-50/50"}>
+                                <td className="px-4 py-1.5 font-sans font-bold text-gray-800">{r.label}</td>
+                                <td className="px-2 py-1.5 text-center">
                                     {r.flag && (
                                         <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-black border ${
                                             r.flag === "H" ? "bg-red-50 text-red-700 border-red-200" : "bg-sky-50 text-sky-700 border-sky-200"
@@ -192,16 +189,16 @@ export default function HematologyAnalyzerReport({ request, className }: Hematol
                                             {r.flag}
                                         </span>
                                     )}
-                                </TableCell>
-                                <TableCell className={`px-4 py-1.5 font-bold ${r.flag === "H" ? "text-red-700" : r.flag === "L" ? "text-sky-700" : "text-gray-900"}`}>
+                                </td>
+                                <td className={`px-4 py-1.5 font-bold ${r.flag === "H" ? "text-red-700" : r.flag === "L" ? "text-sky-700" : "text-gray-900"}`}>
                                     {r.value || "—"}
-                                </TableCell>
-                                <TableCell className="px-4 py-1.5 font-sans text-gray-500">{r.unit}</TableCell>
-                                <TableCell className="px-4 py-1.5 font-sans text-gray-600">{r.ref}</TableCell>
-                            </TableRow>
+                                </td>
+                                <td className="px-4 py-1.5 font-sans text-gray-500">{r.unit}</td>
+                                <td className="px-4 py-1.5 font-sans text-gray-600">{r.ref}</td>
+                            </tr>
                         ))}
-                    </TableBody>
-                </Table>
+                    </tbody>
+                </table>
             </div>
 
             {/* Footer — must appear on every printed report */}

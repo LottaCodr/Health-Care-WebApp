@@ -14,7 +14,7 @@ export default function Loading({
     const spinner = (
         <span className="inline-flex flex-col items-center gap-2">
             <svg
-                className={`animate-spin text-primary drop-shadow ${className}`}
+                className={`animate-spin text-red-600 drop-shadow ${className}`}
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 40 40"

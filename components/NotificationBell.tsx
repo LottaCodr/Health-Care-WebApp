@@ -6,8 +6,6 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { Notification } from "@/types/models";
 import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle2, Zap, X, RefreshCcw } from "lucide-react";
 import { fmtDate } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-
 
 // ─── Type config ──────────────────────────────────────────────────────────────
 
@@ -62,7 +60,7 @@ export default function NotificationBell() {
         <div ref={ref} className="relative">
 
             {/* ── Bell button ── */}
-            <Button
+            <button
                 onClick={() => setOpen((o) => !o)}
                 className="relative w-9 h-9 rounded-xl border border-gray-100 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-200 transition-all shadow-sm"
                 aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
@@ -75,7 +73,7 @@ export default function NotificationBell() {
                         {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                 )}
-            </Button>
+            </button>
 
             {/* ── Dropdown ── */}
             {open && (
@@ -92,29 +90,29 @@ export default function NotificationBell() {
                             )}
                         </div>
                         <div className="flex items-center gap-1">
-                            <Button
+                            <button
                                 onClick={() => refetch()}
                                 aria-label="Refresh notifications"
                                 title="Refresh notifications"
                                 className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                             >
                                 <RefreshCcw size={11} />
-                            </Button>
+                            </button>
                             {unreadCount > 0 && (
-                                <Button
+                                <button
                                     onClick={markAllRead}
                                     className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
                                 >
                                     <CheckCheck size={11} /> Mark all read
-                                </Button>
+                                </button>
                             )}
-                            <Button
+                            <button
                                 onClick={() => setOpen(false)}
                                 aria-label="Close notifications"
                                 className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                             >
                                 <X size={12} />
-                            </Button>
+                            </button>
                         </div>
                     </div>
 
@@ -139,7 +137,7 @@ export default function NotificationBell() {
                                 const cfg  = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.info;
                                 const Icon = cfg.icon;
                                 return (
-                                    <Button
+                                    <button
                                         key={n.id}
                                         onClick={() => handleClick(n)}
                                         className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-gray-50/60 transition-colors ${!n.read ? "bg-blue-50/30" : ""}`}
@@ -159,7 +157,7 @@ export default function NotificationBell() {
                                         {!n.read && (
                                             <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
                                         )}
-                                    </Button>
+                                    </button>
                                 );
                             })
                         )}

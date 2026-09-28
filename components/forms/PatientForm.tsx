@@ -115,7 +115,7 @@ const PatientForm = () => {
 
         <SubmitButton
           isLoading={loading}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-xl shadow-sm shadow-blue-200 transition-colors"
+          className="w-full bg-red-700 hover:bg-red-800 text-white font-semibold py-3 rounded-xl shadow-sm shadow-red-200 transition-colors"
         >
           {loading
             ? <span className="flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> Creating...</span>

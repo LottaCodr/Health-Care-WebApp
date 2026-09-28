@@ -22,8 +22,6 @@ import {
 import { usePatientCareTeam } from "@/hooks/emr/use-care-team";
 import { StaffHoverCard } from "./StaffHoverCard";
 import { CareTeamDrawer } from "./CareTeamDrawer";
-import { Button } from "@/components/ui/button";
-
 
 const ICON_MAP: Record<string, React.ElementType> = {
     stethoscope: Stethoscope,
@@ -131,7 +129,7 @@ export function AttendantPill({
     const isMd = size === "md";
 
     const pillBody = (
-        <Button
+        <button
             type="button"
             onClick={handleClick}
             className={`group inline-flex items-center gap-1.5 rounded-full border transition-all duration-150 text-left font-medium outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
@@ -164,7 +162,7 @@ export function AttendantPill({
                     · {timeStr}
                 </span>
             )}
-        </Button>
+        </button>
     );
 
     return (

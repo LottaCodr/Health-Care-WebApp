@@ -8,8 +8,6 @@
 import { useEffect } from "react";
 // import { useNotificationStore } from "@/store/store";
 import { CheckCircle, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
 
 interface NotificationItemProps {
     id: string;
@@ -56,13 +54,13 @@ function NotificationItem({
             <div className="flex-1">
                 <p className="font-medium">{message}</p>
             </div>
-            <Button
+            <button
                 onClick={() => onClose(id)}
                 className="flex-shrink-0 ml-2 inline-flex text-current opacity-70 hover:opacity-100"
                 aria-label="Close notification"
             >
                 <X className="h-5 w-5" />
-            </Button>
+            </button>
         </div>
     );
 }

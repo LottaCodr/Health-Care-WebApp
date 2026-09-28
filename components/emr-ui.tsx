@@ -13,8 +13,6 @@ import {
   Stethoscope, ChevronRight, CheckCircle2, Clock,
   XCircle, BadgeDollarSign, CreditCard,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -312,10 +310,10 @@ export function ErrorAlert({ error, message, onDismiss }: {
         <p className="text-xs text-red-600 mt-0.5">{msg}</p>
       </div>
       {onDismiss && (
-        <Button onClick={onDismiss}
+        <button onClick={onDismiss}
           className="w-6 h-6 rounded-lg flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors shrink-0">
           ×
-        </Button>
+        </button>
       )}
     </div>
   );
@@ -338,10 +336,10 @@ export function SuccessAlert({ message, onDismiss }: {
         <p className="text-xs text-green-600 mt-0.5">{message}</p>
       </div>
       {onDismiss && (
-        <Button onClick={onDismiss}
+        <button onClick={onDismiss}
           className="w-6 h-6 rounded-lg flex items-center justify-center text-green-400 hover:text-green-600 hover:bg-green-100 transition-colors shrink-0">
           ×
-        </Button>
+        </button>
       )}
     </div>
   );

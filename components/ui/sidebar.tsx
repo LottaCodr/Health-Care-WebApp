@@ -205,7 +205,7 @@ const Sidebar = React.forwardRef<
             data-sidebar="sidebar"
             data-mobile="true"
             className={cn(
-              "w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:right-3 [&>button]:top-3 [&>button]:z-10 [&>button]:rounded-lg [&>button]:bg-white/10 [&>button]:p-2 [&>button]:text-white [&>button]:opacity-100 [&>button]:focus-visible:ring-2 [&>button]:focus-visible:ring-white",
+              "w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden",
               className
             )}
             style={
@@ -285,7 +285,6 @@ const SidebarTrigger = React.forwardRef<
     <Button
       ref={ref}
       data-sidebar="trigger"
-      type="button"
       variant="ghost"
       size="icon"
       className={cn("h-7 w-7", className)}

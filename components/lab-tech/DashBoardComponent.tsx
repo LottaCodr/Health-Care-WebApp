@@ -20,8 +20,6 @@ import { patientAgeOn, patientAgeYearsPrecise } from "@/lib/clinical/patient-age
 import { RecordAmendmentControls } from "@/components/records";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
-import { Button } from "@/components/ui/button";
-
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -194,13 +192,13 @@ export default function LabTechDashboard() {
                                 {pending.length} pending
                             </span>
                         )}
-                        <Button onClick={refetch}
+                        <button onClick={refetch}
                             type="button"
                             aria-label="Refresh laboratory queues"
                             disabled={pendingLoading || completedLoading}
                             className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors disabled:cursor-wait disabled:opacity-60">
                             <RefreshCcw size={13} className={pendingLoading || completedLoading ? "animate-spin" : ""} />
-                        </Button>
+                        </button>
                     </div>
                 </div>
 
@@ -294,20 +292,20 @@ export default function LabTechDashboard() {
                                             </div>
                                             <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
                                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{fmtDate(req.created_at)}</span>
-                                                <Button
+                                                <button
                                                     onClick={() => setField("dashboardActiveId", isExpanded ? null : req.id)}
                                                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm ${isExpanded ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"}`}>
                                                     {isExpanded ? <><ChevronUp size={12} /> Cancel</> : <><FileText size={12} /> Enter Result</>}
-                                                </Button>
+                                                </button>
                                             </div>
                                         </div>
                                         {/* Mobile action */}
                                         <div className="sm:hidden mt-3">
-                                            <Button
+                                            <button
                                                 onClick={() => setField("dashboardActiveId", isExpanded ? null : req.id)}
                                                 className={`w-full flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm ${isExpanded ? "bg-gray-100 hover:bg-gray-200 text-gray-600" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"}`}>
                                                 {isExpanded ? <><ChevronUp size={12} /> Cancel</> : <><FileText size={12} /> Enter Result for {patientName.split(" ")[0]}</>}
-                                            </Button>
+                                            </button>
                                         </div>
                                     </div>
 
@@ -328,10 +326,10 @@ export default function LabTechDashboard() {
                                                 }}
                                             />
                                             <div className="flex justify-end mt-3">
-                                                <Button onClick={() => setField("dashboardActiveId", null)}
+                                                <button onClick={() => setField("dashboardActiveId", null)}
                                                     className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-600 transition-colors">
                                                     Close
-                                                </Button>
+                                                </button>
                                             </div>
                                         </div>
                                     )}
