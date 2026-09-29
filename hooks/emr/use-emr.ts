@@ -8,6 +8,7 @@ export {
     useCreatePatient,
     useUpdatePatient,
     useUpdatePatientStatus,
+    useCloseConsultationQueue,
 } from "./use-patients";
 
 // Consultations

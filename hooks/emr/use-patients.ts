@@ -160,3 +160,23 @@ export function useUpdatePatientStatus() {
         },
     });
 }
+
+/**
+ * Admin bulk action — discharges patients from the consultation queue
+ * (`closeConsultationQueue`). One guarded server-side UPDATE, so no optimistic
+ * update here: the returned `closed`/`skipped` lists are the truth and the UI
+ * reports them. `patientKeys.lists()` is the prefix of every `byStatus` key, so
+ * one invalidation refreshes all queues and dashboards.
+ */
+export function useCloseConsultationQueue() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (input: Parameters<typeof PatientService.closeConsultationQueue>[0]) =>
+            PatientService.closeConsultationQueue(input),
+
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
+        },
+    });
+}
