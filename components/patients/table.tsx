@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw, ClipboardList, Loader2, Stethoscope } from "lucide-react";
+import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw, ClipboardList, Loader2, Stethoscope, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import ReturnPatient from "./return-patient";
 // import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
@@ -128,9 +128,12 @@ function Skeleton() {
 function PatientGrid({
     patients,
     role,
+    onDischarge,
 }: {
     patients: Patient[];
     role: string;
+    /** Admin-only queue close — renders a per-row "Discharge" action. */
+    onDischarge?: (patient: Patient) => void;
 }) {
     const router = useRouter();
     const qc = useQueryClient();
@@ -320,6 +323,24 @@ function PatientGrid({
                                             )}
                                         </div>
                                     )}
+
+                                    {/* Admin: close the queue for this patient without a consultation */}
+                                    {onDischarge && patient.status === "awaiting-consultation" && (
+                                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-50">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDischarge(patient);
+                                                }}
+                                                aria-label={`Discharge ${patient.name ?? "patient"} from the consultation queue`}
+                                                title="Close this visit without a consultation (admin)"
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors"
+                                            >
+                                                <LogOut size={11} /> Discharge
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>
@@ -349,10 +370,10 @@ function PatientGrid({
 
 // ─── All-patients view (Frontdesk + Admin) ────────────────────────────────────
 
-function AllPatientsView({ role }: { role: string }) {
+function AllPatientsView({ role, onDischarge }: { role: string; onDischarge?: (p: Patient) => void }) {
     const { data: patients = [], isPending } = useAllPatients();
     if (isPending) return <Skeleton />;
-    return <PatientGrid patients={patients as Patient[]} role={role} />;
+    return <PatientGrid patients={patients as Patient[]} role={role} onDischarge={onDischarge} />;
 }
 
 // ─── Role-filtered view ───────────────────────────────────────────────────────
@@ -363,20 +384,22 @@ function AllPatientsView({ role }: { role: string }) {
 function RoleFilteredView({
     statuses,
     role,
+    onDischarge,
 }: {
     statuses: string[];
     role: string;
+    onDischarge?: (p: Patient) => void;
 }) {
     return (
         <>
             {statuses.map(status => (
-                <StatusSection key={status} status={status} role={role} />
+                <StatusSection key={status} status={status} role={role} onDischarge={onDischarge} />
             ))}
         </>
     );
 }
 
-function StatusSection({ status, role }: { status: string; role: string }) {
+function StatusSection({ status, role, onDischarge }: { status: string; role: string; onDischarge?: (p: Patient) => void }) {
     const { data: patients = [], isPending } = usePatientsByStatus(status as any);
 
     if (isPending) return <Skeleton />;
@@ -397,7 +420,7 @@ function StatusSection({ status, role }: { status: string; role: string }) {
                     </span>
                 </div>
             ) : null}
-            <PatientGrid patients={patients as Patient[]} role={role} />
+            <PatientGrid patients={patients as Patient[]} role={role} onDischarge={onDischarge} />
         </div>
     );
 }
@@ -413,12 +436,18 @@ interface PatientsTableProps {
     currentPage?: number;
     /** Optional: override the detected user role */
     roleOverride?: string;
+    /**
+     * Optional: admin-only per-row queue close. When provided, cards for
+     * patients still awaiting consultation show a "Discharge" action.
+     */
+    onDischarge?: (patient: Patient) => void;
 }
 
 const PatientsTable: React.FC<PatientsTableProps> = ({ 
     patients: externalPatients, 
     isPending: externalIsPending,
     roleOverride,
+    onDischarge,
 }) => {
     const { user } = useAuth();
     const role = roleOverride ?? user?.role ?? "Frontdesk";
@@ -426,16 +455,16 @@ const PatientsTable: React.FC<PatientsTableProps> = ({
     // If patients are provided externally (e.g. from a search/filter component), use them directly
     if (externalPatients !== undefined) {
         if (externalIsPending) return <Skeleton />;
-        return <PatientGrid patients={externalPatients} role={role} />;
+        return <PatientGrid patients={externalPatients} role={role} onDischarge={onDischarge} />;
     }
 
     // Otherwise, use role-aware internal fetching
     const statuses = ROLE_STATUSES[role] ?? null;
 
     // Frontdesk and Admin see everything
-    if (statuses === null) return <AllPatientsView role={role} />;
+    if (statuses === null) return <AllPatientsView role={role} onDischarge={onDischarge} />;
 
-    return <RoleFilteredView statuses={statuses} role={role} />;
+    return <RoleFilteredView statuses={statuses} role={role} onDischarge={onDischarge} />;
 };
 
 // ─── Info row ─────────────────────────────────────────────────────────────────

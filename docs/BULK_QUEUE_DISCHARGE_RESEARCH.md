@@ -7,10 +7,11 @@
 better alternative?
 
 > **Status: implemented (v1).** `closeConsultationQueue` (server action),
-> `useCloseConsultationQueue` (hook), `components/admin/QueueClosePanel.tsx` (admin
-> dashboard panel with per-row / selected / queue-wide discharge + confirmation dialog),
-> and batched realtime toasts (`hooks/use-realtime.ts`). Phase 2 items below remain
-> recommendations.
+> `useCloseConsultationQueue` (hook), `components/patients/QueueCloseDialog.tsx` (shared
+> confirmation dialog), `components/admin/QueueClosePanel.tsx` (admin dashboard panel with
+> per-row / selected / queue-wide discharge), the patient list's "Awaiting Consultation"
+> tab (queue-wide button + per-card Discharge for admins), and batched realtime toasts
+> (`hooks/use-realtime.ts`). Phase 2 items below remain recommendations.
 
 **TL;DR — recommendation:**
 

@@ -7,12 +7,13 @@ import BulkUploadDialog from "@/components/BulkUpload";
 import { Button } from "@/components/ui/button";
 import {
     RefreshCcw, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
-    Users, Plus, Loader2, Search, UserX, Upload,
+    Users, Plus, Loader2, Search, UserX, Upload, LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-provider";
 import { useAllPatients } from "@/hooks/emr/use-emr";
+import QueueCloseDialog, { type QueueCloseTarget } from "./QueueCloseDialog";
 import type { Patient } from "@/types/models";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -151,6 +152,7 @@ export default function PatientsComponent() {
     const [activeTab,    setActiveTab]    = useState<PatientStatus>("all");
     const [currentPage,  setCurrentPage]  = useState(1);
     const [bulkOpen,     setBulkOpen]     = useState(false);
+    const [closeTarget,  setCloseTarget]  = useState<QueueCloseTarget | null>(null);
 
     // Always fetch all patients — tab filtering is done client-side.
     const { data: allPatients = [], isPending, isFetching, refetch } = useAllPatients();
@@ -198,6 +200,26 @@ export default function PatientsComponent() {
     const isFrontdesk = role === "Frontdesk" || role === "FrontDesk";
     const isAdmin     = role === "Admin";
     const pageTitle   = PAGE_TITLE[role] ?? "Patient Registry";
+
+    // ── Admin queue close (awaiting-consultation tab) ─────────────────────────
+    // Count from the unfiltered list so the label matches the dashboard's
+    // "Close queue (n)" — the search box narrows what's shown, not the queue.
+    const awaitingCount = countByStatus["awaiting-consultation"] ?? 0;
+    const onAwaitingTab = activeTab === "awaiting-consultation";
+    const isSearchingQueue = search.trim().length > 0;
+    const canCloseQueue =
+        isAdmin && onAwaitingTab && (isSearchingQueue ? searched.length > 0 : awaitingCount > 0);
+
+    const openQueueClose = () => {
+        // With a search active, only the visible (filtered) rows are closed so
+        // the action matches what the admin can see; otherwise the server
+        // sweeps the whole queue, including anyone who arrives before submit.
+        setCloseTarget(
+            isSearchingQueue
+                ? { mode: "selected", patients: searched as Patient[] }
+                : { mode: "all", count: awaitingCount, preview: tabFiltered as Patient[] }
+        );
+    };
 
     // Active tab meta (for empty state messaging)
     const activeTabMeta = ALL_TABS.find((t) => t.value === activeTab)!;
@@ -313,17 +335,42 @@ export default function PatientsComponent() {
 
                 {/* ── Status tabs ──────────────────────────────────────────────── */}
                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm px-5 py-3">
-                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
-                        {visibleTabs.map((tab) => (
-                            <TabPill
-                                key={tab.value}
-                                tab={tab}
-                                active={activeTab === tab.value}
-                                count={tab.value === "all" ? roleFilteredPatients.length : (countByStatus[tab.value] ?? 0)}
-                                onClick={() => setActiveTab(tab.value)}
-                            />
-                        ))}
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5 flex-1 min-w-0">
+                            {visibleTabs.map((tab) => (
+                                <TabPill
+                                    key={tab.value}
+                                    tab={tab}
+                                    active={activeTab === tab.value}
+                                    count={tab.value === "all" ? roleFilteredPatients.length : (countByStatus[tab.value] ?? 0)}
+                                    onClick={() => setActiveTab(tab.value)}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Admin: close the consultation queue without leaving this tab */}
+                        {canCloseQueue && (
+                            <button
+                                onClick={openQueueClose}
+                                title="Discharge everyone still awaiting consultation — closes the visit without a consultation"
+                                className="shrink-0 hidden sm:flex h-9 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-700 transition-all hover:bg-red-100"
+                            >
+                                <LogOut size={13} />
+                                {isSearchingQueue ? `Discharge shown (${searched.length})` : `Close queue (${awaitingCount})`}
+                            </button>
+                        )}
                     </div>
+
+                    {/* Narrow screens: keep the action reachable without crowding the pills */}
+                    {canCloseQueue && (
+                        <button
+                            onClick={openQueueClose}
+                            className="sm:hidden mt-2 w-full flex h-9 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-700"
+                        >
+                            <LogOut size={13} />
+                            {isSearchingQueue ? `Discharge shown (${searched.length})` : `Close queue (${awaitingCount})`}
+                        </button>
+                    )}
                 </div>
 
                 {/* Bulk import dialog is rendered inline above */}
@@ -378,6 +425,11 @@ export default function PatientsComponent() {
                             patients={paginated}
                             isPending={isPending}
                             currentPage={currentPage}
+                            onDischarge={
+                                isAdmin && onAwaitingTab
+                                    ? (patient: Patient) => setCloseTarget({ mode: "one", patient })
+                                    : undefined
+                            }
                         />
                     )}
                 </div>
@@ -405,6 +457,12 @@ export default function PatientsComponent() {
                         </div>
                     </div>
                 )}
+
+                {/* ── Queue-close confirmation (shared with the admin dashboard) ── */}
+                <QueueCloseDialog
+                    target={closeTarget}
+                    onOpenChange={(open) => !open && setCloseTarget(null)}
+                />
             </section>
         </Suspense>
     );
