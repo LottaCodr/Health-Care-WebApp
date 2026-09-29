@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import QueueClosePanel from "@/components/admin/QueueClosePanel";
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ export default function AdminDashboard() {
 
     const stats = [
         { label: "Total Patient Records", value: totalPatients, icon: Users, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", href: "/admin/patient" },
-        { label: "Awaiting Consultation", value: awaiting.data?.length ?? 0, icon: Stethoscope, color: "text-red-600", bg: "bg-red-50", border: "border-red-100", href: "/doctor/dashboard" },
+        { label: "Awaiting Consultation", value: awaiting.data?.length ?? 0, icon: Stethoscope, color: "text-red-600", bg: "bg-red-50", border: "border-red-100", href: "#consultation-queue" },
         { label: "Pending Lab Tests", value: pendingLab, icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", href: "/lab-tech/dashboard" },
         { label: "Active Prescriptions", value: activePx, icon: Pill, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100", href: "/pharmacist/dashboard" },
         { label: "Nursing Tasks", value: pendingTasks, icon: HeartPulse, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100", href: "/nurse/dashboard" },
@@ -141,6 +142,9 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                 {stats.map((s) => <StatCard key={s.label} {...s} />)}
             </div>
+
+            {/* ── Consultation queue — per-row / bulk discharge ("Close queue") ── */}
+            <QueueClosePanel />
 
             {/* ── Department activity ── */}
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">

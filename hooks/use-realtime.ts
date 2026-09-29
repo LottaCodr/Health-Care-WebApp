@@ -55,6 +55,52 @@ function shouldNotify(channel: NotificationChannel = "push"): boolean {
     return notificationPrefs[channel];
 }
 
+// ─── Batched status toasts ───────────────────────────────────────────────────
+// A bulk queue close (admin "Close queue") UPDATEs dozens of patient rows
+// within a second; without batching, every open screen stacks one toast per
+// row — a "toast storm". Buffer per-patient toasts for 2s and merge them:
+// a single event keeps its original wording, many events become
+// "N patients → …". (Supabase Realtime delivers one event per row, so the
+// batcher is the only place the flood can be collapsed.)
+
+const STATUS_TOAST_WINDOW_MS = 2000;
+
+interface StatusToastEntry {
+    names: string[];
+    single: (name: string) => string;
+    many: (count: number) => string;
+}
+
+const statusToastBuffer = new Map<string, StatusToastEntry>();
+let statusToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushStatusToasts() {
+    statusToastTimer = null;
+    for (const [, entry] of statusToastBuffer) {
+        const { names, single, many } = entry;
+        toast.info(names.length === 1 ? single(names[0]) : many(names.length));
+    }
+    statusToastBuffer.clear();
+}
+
+function enqueueStatusToast(opts: {
+    key: string;
+    name: string;
+    single: (name: string) => string;
+    many: (count: number) => string;
+}) {
+    const entry = statusToastBuffer.get(opts.key) ?? {
+        names: [],
+        single: opts.single,
+        many: opts.many,
+    };
+    entry.names.push(opts.name);
+    statusToastBuffer.set(opts.key, entry);
+    if (statusToastTimer === null) {
+        statusToastTimer = setTimeout(flushStatusToasts, STATUS_TOAST_WINDOW_MS);
+    }
+}
+
 /** (Re)load the current user's notification prefs into the cache. */
 export async function refreshNotificationPrefs(): Promise<void> {
     try {
@@ -182,9 +228,20 @@ export function useFrontDeskRealtime() {
                 queryClient.invalidateQueries({ queryKey: ["patients-by-status"] });
 
                 if (payload.eventType === "INSERT" && shouldNotify()) {
-                    toast.info(`New patient registered: ${payload.new?.name}`);
+                    enqueueStatusToast({
+                        key: "registered",
+                        name: payload.new?.name ?? "Patient",
+                        single: (n) => `New patient registered: ${n}`,
+                        many: (c) => `${c} new patients registered.`,
+                    });
                 } else if (payload.eventType === "UPDATE" && payload.new?.status !== payload.old?.status && shouldNotify()) {
-                    toast.info(`${payload.new?.name} → ${payload.new?.status?.replace(/-/g, " ")}`);
+                    const label = String(payload.new?.status ?? "").replace(/-/g, " ");
+                    enqueueStatusToast({
+                        key: `status:${payload.new?.status}`,
+                        name: payload.new?.name ?? "Patient",
+                        single: (n) => `${n} → ${label}`,
+                        many: (c) => `${c} patients → ${label}`,
+                    });
                 }
             })
             .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, (payload: any) => {
@@ -216,14 +273,26 @@ export function useDoctorRealtime() {
             .on("postgres_changes", { event: "INSERT", schema: "public", table: "patients" }, (payload: any) => {
                 queryClient.invalidateQueries({ queryKey: ["patients"] });
                 queryClient.invalidateQueries({ queryKey: ["patients-by-status"] });
-                if (shouldNotify()) toast.info(`New patient in queue: ${payload.new?.name}`);
+                if (shouldNotify()) {
+                    enqueueStatusToast({
+                        key: "doctor-new-queue",
+                        name: payload.new?.name ?? "Patient",
+                        single: (n) => `New patient in queue: ${n}`,
+                        many: (c) => `${c} new patients in queue.`,
+                    });
+                }
             })
             .on("postgres_changes", { event: "UPDATE", schema: "public", table: "patients" }, (payload: any) => {
                 queryClient.invalidateQueries({ queryKey: ["patients"] });
                 queryClient.invalidateQueries({ queryKey: ["patients-by-status"] });
 
                 if (payload.new?.status === "awaiting-consultation" && shouldNotify()) {
-                    toast.info(`${payload.new?.name} is awaiting consultation.`);
+                    enqueueStatusToast({
+                        key: "doctor-awaiting",
+                        name: payload.new?.name ?? "Patient",
+                        single: (n) => `${n} is awaiting consultation.`,
+                        many: (c) => `${c} patients are awaiting consultation.`,
+                    });
                 }
             })
             .on("postgres_changes", { event: "*", schema: "public", table: "consultations" }, () => {
@@ -252,7 +321,12 @@ export function useNurseRealtime() {
                 queryClient.invalidateQueries({ queryKey: ["patients-by-status"] });
 
                 if (payload.new?.status === "sent-to-nurse" && shouldNotify()) {
-                    toast.info(`${payload.new?.name} has been sent to nursing.`);
+                    enqueueStatusToast({
+                        key: "nurse-sent",
+                        name: payload.new?.name ?? "Patient",
+                        single: (n) => `${n} has been sent to nursing.`,
+                        many: (c) => `${c} patients sent to nursing.`,
+                    });
                 }
             })
             .on("postgres_changes", { event: "*", schema: "public", table: "nursing_actions" }, (payload: any) => {
@@ -462,7 +536,15 @@ export function useRoleRealtime(role?: string) {
                         Pharmacist:   ["sent-to-pharmacy"],
                     };
                     if (roleRoutes[role]?.includes(status) && shouldNotify()) {
-                        toast.info(`${name} → ${status.replace(/-/g, " ")}`);
+                        const label = String(status).replace(/-/g, " ");
+                        // Batched: a bulk queue close would otherwise fire one
+                        // toast per patient on every open screen.
+                        enqueueStatusToast({
+                            key: `status:${status}`,
+                            name,
+                            single: (n) => `${n} → ${label}`,
+                            many: (c) => `${c} patients → ${label}`,
+                        });
                     }
                 }
                 if (table === "lab_requests" && payload.eventType === "INSERT" && role === "LabTechnician") {

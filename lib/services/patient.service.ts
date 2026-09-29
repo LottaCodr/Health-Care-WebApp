@@ -285,6 +285,207 @@ export async function updatePatientStatus(
     return data as Patient;
 }
 
+// ─── Consultation-queue close (admin bulk action) ─────────────────────────────
+//
+// The admin "Close queue" action discharges patients who are still
+// `awaiting-consultation` (left without being seen, end-of-session sweep,
+// registered in error…). It is deliberately NOT the billing auto-discharge path
+// (`payment.service.ts`): it touches `patients.status` only — no bills, no
+// discharge notes — and the `reason` is recorded so an administrative
+// queue-close can be told apart from a real, billing-cleared discharge.
+//
+// `QueueCloseResult` is RETURNED (never thrown) for the same reason as
+// `PatientCreateResult` — see the comment above `createPatient`.
+
+export type QueueCloseReason =
+    | "left-without-being-seen"
+    | "queue-closed"
+    | "registered-in-error"
+    | "referred-elsewhere"
+    | "other";
+
+// Runtime list lives on the client (a "use server" file may only export async
+// functions); this private copy is what the guard below validates against.
+const QUEUE_CLOSE_REASONS: QueueCloseReason[] = [
+    "left-without-being-seen",
+    "queue-closed",
+    "registered-in-error",
+    "referred-elsewhere",
+    "other",
+];
+
+export type QueueCloseResult =
+    | {
+          ok: true;
+          closed: { id: string; hospital_number: string | null }[];
+          /** Requested patients that were NOT closed — status changed under us. */
+          skipped: { id: string; status: string }[];
+      }
+    | { ok: false; message: string; code?: string | null };
+
+export interface QueueCloseInput {
+    /** Omit ⇒ everyone currently `awaiting-consultation` ("close the queue"). */
+    patientIds?: string[];
+    reason: QueueCloseReason;
+    note?: string;
+}
+
+/**
+ * Discharge patients from the consultation queue in ONE guarded bulk update.
+ *
+ * The guard matters: the `.eq("status", "awaiting-consultation")` predicate is
+ * part of the UPDATE itself, so a doctor who starts a consultation while the
+ * admin's confirmation dialog is open is never clobbered — their row simply
+ * doesn't match and is reported back as `skipped`.
+ */
+export async function closeConsultationQueue(
+    input: QueueCloseInput
+): Promise<QueueCloseResult> {
+    try {
+        const actor = await requireStaff([UserRole.Admin]);
+
+        if (!input || !QUEUE_CLOSE_REASONS.includes(input.reason)) {
+            return {
+                ok: false,
+                code: "INVALID_REASON",
+                message: "Please choose why the queue is being closed.",
+            };
+        }
+        const note = typeof input.note === "string" ? input.note.trim() : "";
+        if (input.reason === "other" && note.length === 0) {
+            return {
+                ok: false,
+                code: "NOTE_REQUIRED",
+                message: 'Please add a short note when the reason is "Other".',
+            };
+        }
+
+        // Explicit ids: validate. Omitted: everyone currently awaiting.
+        let requestedIds: string[] | null = null;
+        if (input.patientIds !== undefined) {
+            if (!Array.isArray(input.patientIds)) {
+                return { ok: false, code: "BAD_INPUT", message: "Invalid patient selection." };
+            }
+            requestedIds = [...new Set(
+                input.patientIds.filter((id) => typeof id === "string" && id.trim().length > 0)
+            )];
+            if (requestedIds.length === 0) {
+                return { ok: false, code: "NOTHING_SELECTED", message: "No patients selected." };
+            }
+            if (requestedIds.length > 500) {
+                return {
+                    ok: false,
+                    code: "TOO_MANY",
+                    message: "Close at most 500 patients at a time.",
+                };
+            }
+        }
+
+        const supabase = await createClient();
+
+        // 1. Resolve targets NOW (and, for an explicit selection, capture who is
+        //    already ineligible so the caller learns what was skipped and why).
+        const skipped: { id: string; status: string }[] = [];
+        let targets: { id: string; hospital_number: string | null }[];
+
+        if (requestedIds) {
+            const { data: rows, error } = await supabase
+                .from("patients")
+                .select("id, hospital_number, status")
+                .in("id", requestedIds);
+            if (error) throw error;
+
+            const byId = new Map((rows ?? []).map((r: any) => [r.id, r]));
+            for (const id of requestedIds) {
+                const row = byId.get(id);
+                if (!row) skipped.push({ id, status: "not-found" });
+                else if (row.status !== "awaiting-consultation") {
+                    skipped.push({ id, status: row.status ?? "no-status" });
+                }
+            }
+            targets = (rows ?? [])
+                .filter((r: any) => r.status === "awaiting-consultation")
+                .map((r: any) => ({ id: r.id, hospital_number: r.hospital_number ?? null }));
+        } else {
+            const { data: rows, error } = await supabase
+                .from("patients")
+                .select("id, hospital_number")
+                .eq("status", "awaiting-consultation");
+            if (error) throw error;
+            targets = (rows ?? []).map((r: any) => ({
+                id: r.id,
+                hospital_number: r.hospital_number ?? null,
+            }));
+        }
+
+        // 2. One set-based UPDATE, guarded so only rows STILL awaiting move.
+        let closed: { id: string; hospital_number: string | null }[] = [];
+        if (targets.length > 0) {
+            const { data: updated, error } = await supabase
+                .from("patients")
+                .update({ status: "discharged", updated_at: new Date().toISOString() })
+                .in("id", targets.map((t) => t.id))
+                .eq("status", "awaiting-consultation")
+                .select("id, hospital_number");
+            if (error) throw error;
+            closed = (updated ?? []).map((r: any) => ({
+                id: r.id,
+                hospital_number: r.hospital_number ?? null,
+            }));
+
+            // Rows that raced away between 1 and 2 — report their new status.
+            const closedIds = new Set(closed.map((c) => c.id));
+            const raced = targets.filter((t) => !closedIds.has(t.id));
+            if (raced.length > 0) {
+                const { data: nowRows } = await supabase
+                    .from("patients")
+                    .select("id, status")
+                    .in("id", raced.map((t) => t.id));
+                const statusById = new Map((nowRows ?? []).map((r: any) => [r.id, r.status]));
+                for (const t of raced) {
+                    skipped.push({ id: t.id, status: statusById.get(t.id) ?? "changed" });
+                }
+            }
+        }
+
+        // 3. One batch audit entry: who closed the queue, why, and whom.
+        //    PHI minimisation — ids and hospital numbers only, no names.
+        await logAction("QUEUE_CLOSED", "patients", crypto.randomUUID(), {
+            from: "awaiting-consultation",
+            to: "discharged",
+            reason: input.reason,
+            note: note || null,
+            scope: requestedIds ? "selection" : "all",
+            closed_count: closed.length,
+            skipped_count: skipped.length,
+            patient_ids: closed.map((c) => c.id),
+            changed_by: actor.userId,
+        });
+
+        return { ok: true, closed, skipped };
+    } catch (error: any) {
+        const raw = String(error?.message ?? "");
+        // Auth-guard failures arrive as thrown errors with machine-readable
+        // prefixes — forward the friendly half instead of a stack trace.
+        if (raw.startsWith("UNAUTHORIZED") || raw.startsWith("FORBIDDEN")) {
+            return {
+                ok: false,
+                code: raw.split(":")[0],
+                message: raw.slice(raw.indexOf(":") + 1).trim(),
+            };
+        }
+        console.error("[patient] closeConsultationQueue:", error);
+        return {
+            ok: false,
+            code: error?.code ?? null,
+            message: formatFriendlyDbError(
+                error,
+                "Failed to close the consultation queue. Please try again."
+            ),
+        };
+    }
+}
+
 export async function listPatientsByStatus(
     status: PatientStatus
 ): Promise<Patient[]> {
