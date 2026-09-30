@@ -14,10 +14,11 @@ import {
     Clock, ClipboardList, CheckCircle2, Loader2,
     ChevronRight, Stethoscope, Activity, FileText,
     Calendar, BedDouble, Baby, RefreshCcw, Send,
-    CalendarClock, Search, Sparkles, ArrowRight,
+    CalendarClock, Search, Sparkles, ArrowRight, Check, Hash,
 } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { toHospitalISODate, resolvePatientName } from "@/lib/utils/appointment.utils";
+import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { toast } from "sonner";
 import { fmtDate, fmtFull, fmtTime } from "@/lib/utils";
 import { AttendantPill } from "@/components/emr/care-team";
@@ -85,12 +86,18 @@ function referralCfg(status?: string | null) {
 
 // ─── KPI stat card ────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, caption, icon: Icon, chip, ring, href }: {
+function StatCard({ label, value, caption, icon: Icon, chip, ring, href, onClick }: {
     label: string; value: number; caption: string; icon: React.ElementType;
-    chip: string; ring: string; href?: string;
+    chip: string; ring: string; href?: string; onClick?: () => void;
 }) {
+    const isInteractive = !!href || !!onClick;
     const body = (
-        <div className={`group relative overflow-hidden bg-white rounded-3xl border border-gray-200 px-5 py-5 transition-all duration-200 hover:border-gray-300 ring-1 ring-transparent ${ring}`}>
+        <div
+            onClick={onClick}
+            className={`group relative overflow-hidden bg-white rounded-3xl border border-gray-200 px-5 py-5 transition-all duration-200 hover:border-gray-300 ring-1 ring-transparent ${ring} ${
+                isInteractive ? "cursor-pointer hover:shadow-md" : ""
+            }`}
+        >
             <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                     <p className="text-3xl font-black text-gray-900 leading-none tabular-nums">
@@ -103,8 +110,8 @@ function StatCard({ label, value, caption, icon: Icon, chip, ring, href }: {
                     <Icon size={20} strokeWidth={2.2} />
                 </div>
             </div>
-            {href && (
-                <span className="absolute bottom-3 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300">
+            {isInteractive && (
+                <span className="absolute bottom-3 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400">
                     <ArrowRight size={14} />
                 </span>
             )}
@@ -291,6 +298,99 @@ function ActiveConsultationRow({ consultation, onComplete, completing }: {
                         className="flex items-center gap-1.5 px-3 py-2 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-xl transition-all">
                         <Stethoscope size={12} /> Continue
                     </Link>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Completed consultation row ──────────────────────────────────────────────
+
+function CompletedConsultationRow({ consultation, staffId }: { consultation: any; staffId: string }) {
+    const patient = consultation.patients ?? {};
+    const name = patient?.name ?? consultation.patient_name ?? consultation.patientName ?? "Unknown patient";
+    const hospitalNumber = patient?.hospital_number ?? consultation.hospital_number;
+    const gender = patient?.gender ?? consultation.patient_gender;
+    const dob = patient?.birth_date ?? consultation.patient_birth_date;
+    const age = calcAge(dob);
+    const completedAt = consultation.updated_at || consultation.created_at;
+
+    return (
+        <div className="flex flex-wrap items-start gap-3 p-3.5 sm:p-4 rounded-2xl border border-gray-200 bg-gray-50/40 hover:bg-white hover:border-green-300 transition-all duration-200">
+            <PatientAvatar name={name} gender={gender} />
+            <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold text-gray-800 truncate">{name}</p>
+                    {hospitalNumber && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">
+                            {displayHospitalNumber(hospitalNumber)}
+                        </span>
+                    )}
+                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
+                        <CheckCircle2 size={10} /> Completed
+                    </span>
+                </div>
+
+                {consultation.diagnosis && (
+                    <p className="text-xs text-gray-700">
+                        <span className="font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded text-[11px] mr-1">Dx</span>
+                        {consultation.diagnosis}
+                    </p>
+                )}
+
+                {consultation.symptoms && (
+                    <p className="text-xs text-gray-500 line-clamp-1">
+                        <span className="font-semibold text-gray-400">Symptoms:</span> {consultation.symptoms}
+                    </p>
+                )}
+
+                {consultation.prescriptions && (
+                    <p className="text-xs text-pink-700 line-clamp-1 bg-pink-50/60 px-2 py-0.5 rounded-lg border border-pink-100 w-fit">
+                        <span className="font-bold">Rx:</span> {consultation.prescriptions}
+                    </p>
+                )}
+
+                <p className="text-[11px] text-gray-400 flex items-center gap-1.5 flex-wrap pt-0.5">
+                    {gender && <span>{gender}</span>}
+                    {age && <span>· {age}</span>}
+                    <span className="inline-flex items-center gap-1">
+                        <Clock size={9} /> completed {fmtFull(completedAt)}
+                    </span>
+                    {consultation.referred_to && (
+                        <span className="text-indigo-600 font-medium">
+                            · Referred to: {consultation.referred_to}
+                        </span>
+                    )}
+                </p>
+
+                <div className="pt-1">
+                    <RecordAmendmentControls
+                        type="consultation"
+                        id={consultation.id}
+                        row={consultation}
+                        patientId={consultation.patient_id ?? null}
+                        invalidateKeys={[
+                            ["consultations", "by-doctor", staffId],
+                            ["consultations", consultation.id],
+                        ]}
+                        contextLine={`Consultation · ${name}`}
+                        compact
+                    />
+                </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                {consultation.patient_id && (
+                    <>
+                        <Link href={`/doctor/health-records/${consultation.patient_id}`} title="Open health record"
+                            className="w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors">
+                            <FileText size={13} />
+                        </Link>
+                        <Link href={`/doctor/patients/${consultation.patient_id}`}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all">
+                            <Stethoscope size={12} /> View Chart
+                        </Link>
+                    </>
                 )}
             </div>
         </div>
@@ -485,10 +585,30 @@ export default function DoctorDashboard() {
 
     const consultations = useMemo(() => (myConsultations.data ?? []) as any[], [myConsultations.data]);
 
+    const [completedScope, setCompletedScope]   = useState<"today" | "all">("today");
+    const [completedSearch, setCompletedSearch] = useState("");
+    const [queueSearch, setQueueSearch]         = useState("");
+
     const activeConsultations    = useMemo(() => consultations.filter(c => isActiveConsultation(c.status)), [consultations]);
     const referredConsultations  = useMemo(() => consultations.filter(c => isReferredConsultation(c.status)), [consultations]);
     const completedToday         = useMemo(() => consultations.filter(c => isCompletedConsultation(c.status) && isToday(c.updated_at ?? c.created_at)), [consultations]);
+    const allCompleted           = useMemo(() => consultations.filter(c => isCompletedConsultation(c.status)), [consultations]);
     const seenToday              = useMemo(() => consultations.filter(c => isToday(c.created_at)).length, [consultations]);
+
+    const displayedCompleted = useMemo(() => {
+        let list = completedScope === "today" ? completedToday : allCompleted;
+        if (completedSearch.trim()) {
+            const q = completedSearch.toLowerCase();
+            list = list.filter(c => {
+                const patient = c.patients ?? {};
+                const name = (patient.name ?? c.patient_name ?? c.patientName ?? "").toLowerCase();
+                const hn = String(patient.hospital_number ?? c.hospital_number ?? "").toLowerCase();
+                const dx = (c.diagnosis ?? "").toLowerCase();
+                return name.includes(q) || hn.includes(q) || dx.includes(q);
+            });
+        }
+        return list;
+    }, [completedScope, completedToday, allCompleted, completedSearch]);
 
     const myTodayAppointments = useMemo(
         () => (todayAppts.data ?? []).filter((appt: any) => appt.doctor_id === staffId),
@@ -505,6 +625,16 @@ export default function DoctorDashboard() {
             return (a.id || "").localeCompare(b.id || "");
         });
     }, [awaitingPatients.data]);
+
+    const displayedQueuePatients = useMemo(() => {
+        if (!queueSearch.trim()) return fifoQueuePatients;
+        const q = queueSearch.toLowerCase();
+        return fifoQueuePatients.filter(p => {
+            const name = (p.name ?? "").toLowerCase();
+            const hn = String(p.hospital_number ?? "").toLowerCase();
+            return name.includes(q) || hn.includes(q);
+        });
+    }, [fifoQueuePatients, queueSearch]);
 
     const fifoAdmittedPatients = useMemo(() => {
         const list = (admittedPatients.data ?? []) as any[];
@@ -530,17 +660,54 @@ export default function DoctorDashboard() {
     const anyLoading = awaitingPatients.isFetching || myConsultations.isFetching || admittedPatients.isFetching || todayAppts.isFetching;
 
     const stats = [
-        { label: "Waiting for you",        value: queueCount,                  caption: "consultation queue",  icon: Clock,         chip: "bg-amber-50 text-amber-600",   ring: "hover:ring-amber-100",  href: undefined },
-        { label: "Active consultations",   value: activeConsultations.length,  caption: "in the room now",     icon: Stethoscope,   chip: "bg-red-50 text-red-600",      ring: "hover:ring-red-100",    href: undefined },
-        { label: "Today's appointments",   value: myTodayAppointments.length,  caption: "assigned to you",     icon: Calendar,      chip: "bg-blue-50 text-blue-600",    ring: "hover:ring-blue-100",   href: "/doctor/appointments" },
-        { label: "Patients seen today",    value: seenToday,                   caption: `${completedToday.length} completed`, icon: CheckCircle2, chip: "bg-green-50 text-green-600", ring: "hover:ring-green-100", href: undefined },
+        {
+            label: "Waiting for you",
+            value: queueCount,
+            caption: "pending consultation queue",
+            icon: Clock,
+            chip: "bg-amber-50 text-amber-600",
+            ring: "hover:ring-amber-100",
+            href: undefined,
+            onClick: () => setActiveTab("queue"),
+        },
+        {
+            label: "Active consultations",
+            value: activeConsultations.length,
+            caption: "in the room now",
+            icon: Stethoscope,
+            chip: "bg-red-50 text-red-600",
+            ring: "hover:ring-red-100",
+            href: undefined,
+            onClick: () => setActiveTab("active"),
+        },
+        {
+            label: "Today's appointments",
+            value: myTodayAppointments.length,
+            caption: "assigned to you",
+            icon: Calendar,
+            chip: "bg-blue-50 text-blue-600",
+            ring: "hover:ring-blue-100",
+            href: "/doctor/appointments",
+            onClick: undefined,
+        },
+        {
+            label: "Patients seen today",
+            value: seenToday,
+            caption: `${completedToday.length} completed`,
+            icon: CheckCircle2,
+            chip: "bg-green-50 text-green-600",
+            ring: "hover:ring-green-100",
+            href: undefined,
+            onClick: () => setActiveTab("completed"),
+        },
     ];
 
     const tabs = [
-        { id: "queue",    label: "Queue",    icon: Clock,       badge: queueCount },
-        { id: "active",   label: "Active",   icon: Stethoscope, badge: activeConsultations.length },
-        { id: "referred", label: "Referred", icon: Send,        badge: referredConsultations.length },
-        { id: "admitted", label: "Admitted", icon: BedDouble,   badge: admittedCount },
+        { id: "queue",     label: "Queue (Pending)", icon: Clock,        badge: queueCount },
+        { id: "active",    label: "Active",          icon: Stethoscope,  badge: activeConsultations.length },
+        { id: "completed", label: "Completed",       icon: CheckCircle2, badge: completedScope === "today" ? completedToday.length : allCompleted.length },
+        { id: "referred",  label: "Referred",        icon: Send,         badge: referredConsultations.length },
+        { id: "admitted",  label: "Admitted",        icon: BedDouble,    badge: admittedCount },
     ];
 
     return (
@@ -601,15 +768,42 @@ export default function DoctorDashboard() {
                             {/* Consultation queue */}
                             {activeTab === "queue" && (
                                 <>
+                                    {fifoQueuePatients.length > 2 && (
+                                        <div className="pb-1">
+                                            <div className="relative sm:w-64">
+                                                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                <input
+                                                    type="text"
+                                                    value={queueSearch}
+                                                    onChange={(e) => setQueueSearch(e.target.value)}
+                                                    placeholder="Search waiting patients…"
+                                                    className="w-full h-8 pl-8 pr-3 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-red-400"
+                                                />
+                                                {queueSearch && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setQueueSearch("")}
+                                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 hover:text-gray-600"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                     {awaitingPatients.isLoading && <LoadingSkeleton rows={4} />}
                                     {awaitingPatients.error && !dismissedErrors.includes("queue") && (
                                         <ErrorAlert error={awaitingPatients.error}
                                             onDismiss={() => setDismissedErrors(p => [...p, "queue"])} />
                                     )}
-                                    {!awaitingPatients.isLoading && queueCount === 0 && (
-                                        <EmptyState title="Queue is clear" description="No patients are waiting for a consultation right now." icon="✓" />
+                                    {!awaitingPatients.isLoading && displayedQueuePatients.length === 0 && (
+                                        <EmptyState
+                                            title={queueSearch ? "No matching waiting patients" : "Queue is clear"}
+                                            description={queueSearch ? "Try adjusting your search criteria." : "No patients are waiting for a consultation right now."}
+                                            icon="✓"
+                                        />
                                     )}
-                                    {fifoQueuePatients.map((p, i) => (
+                                    {displayedQueuePatients.map((p, i) => (
                                         <QueueRow key={p.id} patient={p} index={i} />
                                     ))}
                                 </>
@@ -629,6 +823,71 @@ export default function DoctorDashboard() {
                                     {activeConsultations.map(c => (
                                         <ActiveConsultationRow key={c.id} consultation={c}
                                             onComplete={handleComplete} completing={completingId === c.id} />
+                                    ))}
+                                </>
+                            )}
+
+                            {/* Completed consultations */}
+                            {activeTab === "completed" && (
+                                <>
+                                    {/* Scope toggle & search */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2">
+                                        <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl w-fit">
+                                            <button
+                                                type="button"
+                                                onClick={() => setCompletedScope("today")}
+                                                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                                                    completedScope === "today"
+                                                        ? "bg-white text-green-700 shadow-sm"
+                                                        : "text-gray-500 hover:text-gray-800"
+                                                }`}
+                                            >
+                                                Today ({completedToday.length})
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setCompletedScope("all")}
+                                                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                                                    completedScope === "all"
+                                                        ? "bg-white text-green-700 shadow-sm"
+                                                        : "text-gray-500 hover:text-gray-800"
+                                                }`}
+                                            >
+                                                All time ({allCompleted.length})
+                                            </button>
+                                        </div>
+
+                                        <div className="relative sm:w-60">
+                                            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                            <input
+                                                type="text"
+                                                value={completedSearch}
+                                                onChange={(e) => setCompletedSearch(e.target.value)}
+                                                placeholder="Search patient, HN, Dx…"
+                                                className="w-full h-8 pl-8 pr-3 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-red-400"
+                                            />
+                                            {completedSearch && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCompletedSearch("")}
+                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 hover:text-gray-600"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {myConsultations.isLoading && <LoadingSkeleton rows={4} />}
+                                    {!myConsultations.isLoading && displayedCompleted.length === 0 && (
+                                        <EmptyState
+                                            title={completedSearch ? "No matching completed consultations" : completedScope === "today" ? "No completed consultations today" : "No completed consultations yet"}
+                                            description={completedSearch ? "Try searching for a different patient name or diagnosis." : "Consultations marked complete will appear here with full notes and amendment controls."}
+                                            icon="✓"
+                                        />
+                                    )}
+                                    {displayedCompleted.map(c => (
+                                        <CompletedConsultationRow key={c.id} consultation={c} staffId={staffId} />
                                     ))}
                                 </>
                             )}

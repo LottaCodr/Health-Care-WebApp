@@ -148,7 +148,7 @@ export const TEST_TEMPLATES: TestTemplate[] = [
     {
         name: "Clotting Profile",
         category: "HEMATOLOGY",
-        match: ["clotting profile", "coagulation", "pt/inr", "aptt"],
+        match: ["clotting profile", "coagulation", "pt/inr", "aptt", "prothrombin"],
         fields: [
             { label: "Clotting Time", key: "ct", type: "text", unit: "mins", refRange: "8–15 mins" },
             { label: "Bleeding Time", key: "bt", type: "text", unit: "mins", refRange: "2–7 mins" },
@@ -859,6 +859,42 @@ export const TEST_TEMPLATES: TestTemplate[] = [
         ],
     },
 
+    {
+        name: "Pregnancy Test (PT)",
+        category: "SEROLOGY",
+        match: [
+            "pregnancy test",
+            "pregnancy",
+            "urine pregnancy test",
+            "urine pregnancy",
+            "serum pregnancy test",
+            "serum pregnancy",
+            "upt",
+            "pt test",
+            "gravindex",
+            "hcg pregnancy",
+            "hcg strip",
+            "hcg test",
+            "beta-hcg qualitative",
+            "beta hcg qualitative",
+            "qualitative hcg",
+            "urine pt",
+            "serum pt",
+            "pregnancy serology",
+        ],
+        fields: [
+            {
+                label: "Pregnancy Test Result",
+                key: "pregnancy_result",
+                type: "select",
+                options: ["Positive", "Negative"],
+                refRange: "Negative",
+                required: true,
+            },
+        ],
+        note: "Qualitative detection of human chorionic gonadotropin (hCG). Result is either Positive or Negative.",
+    },
+
     // ════════════════════════════════════════════════════════════════════════
     //  PARASITOLOGY
     // ════════════════════════════════════════════════════════════════════════
@@ -1069,6 +1105,19 @@ export function findTemplate(testType: string | undefined | null): TestTemplate 
         if (antibody && !antigen && !stool) return TEST_TEMPLATES.find(t => t.name === "H. pylori antibody (blood)")!;
         if (antigen && !antibody && !blood) return TEST_TEMPLATES.find(t => t.name === "H. pylori antigen (stool)")!;
         return null;
+    }
+
+    // Pregnancy test: handle abbreviations like "pt", "upt", "hcg" without conflicting with "pt/inr", "prothrombin", etc.
+    const trimmed = lower.trim();
+    if (
+        trimmed === "pt" ||
+        /\b(?:pt|upt)\b/.test(lower) ||
+        /\bhcg\b/.test(lower)
+    ) {
+        if (!/\b(?:inr|ptt|aptt|clotting|coagulation|prothrombin)\b/.test(lower)) {
+            const ptTemplate = TEST_TEMPLATES.find(t => t.name.startsWith("Pregnancy Test"));
+            if (ptTemplate) return ptTemplate;
+        }
     }
 
     for (const tpl of TEST_TEMPLATES) {
