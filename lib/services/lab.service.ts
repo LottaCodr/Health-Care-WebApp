@@ -241,7 +241,7 @@ export async function listPendingLabRequests(): Promise<LabRequest[]> {
         .select("*")
         .eq("status", "pending")
         .not("test_type", "like", "[RADIOLOGY]%")
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false });
 
     if (error) { console.error("[lab] listPending:", error); return []; }
     if (!data || data.length === 0) return [];

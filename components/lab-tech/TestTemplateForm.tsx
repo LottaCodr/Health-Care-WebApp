@@ -75,6 +75,35 @@ function TemplateFieldInput({
                         </span>
                     )}
                 </label>
+                {field.options.length <= 4 && (
+                    <div className="flex flex-wrap gap-2 pt-0.5 pb-1">
+                        {field.options.map((opt) => {
+                            const isSelected = value === opt;
+                            const isPos = opt.toLowerCase() === "positive";
+                            const isNeg = opt.toLowerCase() === "negative";
+                            const activeCls = isPos
+                                ? "bg-rose-600 text-white border-rose-600 shadow-sm shadow-rose-200"
+                                : isNeg
+                                ? "bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-200"
+                                : "bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-200";
+
+                            return (
+                                <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => onChange(opt)}
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                                        isSelected
+                                            ? activeCls
+                                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                                    }`}
+                                >
+                                    {opt}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
                 <div className="relative">
                     <select
                         value={value}
