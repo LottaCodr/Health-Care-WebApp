@@ -907,9 +907,33 @@ export const TEST_TEMPLATES: TestTemplate[] = [
             {
                 label: "Malaria Parasite", key: "malaria", type: "select",
                 options: ["Not seen", "Seen (P. falciparum)", "Seen (P. vivax)", "Seen (P. malariae)", "Seen (P. ovale)", "Seen (Mixed)"],
+                refRange: "Not seen",
                 required: true,
             },
+            {
+                label: "Degree of Parasitaemia", key: "parasite_density", type: "select",
+                options: ["Nil", "+ (1+)", "++ (2+)", "+++ (3+)", "++++ (4+)"],
+                refRange: "Nil",
+                placeholder: "Select degree (+, ++, +++)",
+            },
+            {
+                label: "Parasite Density", key: "parasite_count", type: "text",
+                unit: "/µL",
+                placeholder: "e.g. 5,000 /µL or 1-10 parasites/100 fields",
+            },
         ],
+        interpretations: [
+            {
+                title: "Plus (+) System / Degree of Parasitaemia (WHO)",
+                rows: [
+                    { range: "+ (1+)", remark: "1–10 parasites per 100 thick film fields (Mild)", color: "yellow" },
+                    { range: "++ (2+)", remark: "11–100 parasites per 100 thick film fields (Moderate)", color: "yellow" },
+                    { range: "+++ (3+)", remark: "1–10 parasites per single thick film field (Severe)", color: "red" },
+                    { range: "++++ (4+)", remark: "> 10 parasites per single thick film field (Very severe)", color: "red" },
+                ],
+            },
+        ],
+        note: "Degree of parasitic infection assessed via thick and thin blood films. 'Not seen' indicates no malaria parasites observed in 100 oil-immersion thick film fields.",
     },
 
     {
