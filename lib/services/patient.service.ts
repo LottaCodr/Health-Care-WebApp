@@ -581,6 +581,68 @@ export async function searchPatients(query: string): Promise<Patient[]> {
     return data as Patient[];
 }
 
+/**
+ * Every value the `status` column can hold (mirrors `PatientStatus`, kept as
+ * plain strings here so this file doesn't need the enum import order to
+ * matter). Drives `getPatientStatusCounts` below.
+ */
+const ALL_PATIENT_STATUSES: string[] = [
+    "registered",
+    "sent-to-nurse",
+    "awaiting-consultation",
+    "under-consultation",
+    "under-observation",
+    "admitted",
+    "sent-to-pharmacy",
+    "sent-to-lab",
+    "sent-to-radiology",
+    "awaiting-payment",
+    "discharged",
+    "no-status",
+];
+
+/**
+ * Per-status patient counts for the queue tab badges — WITHOUT downloading a
+ * single patient row. Each status is a `count: exact, head: true` request
+ * (index-only, no body), fired in parallel, so this stays fast no matter how
+ * many patients the hospital has on file.
+ *
+ * This replaces counting client-side over the result of `getAllPatients()`,
+ * which pulled the ENTIRE `patients` table into the browser just to render
+ * the little numbers on the status pills — the same full-table fetch the
+ * queue page used to drive its "All"/"Sent to Nurse"/etc. tabs, and the
+ * reason those queues got slower every week as the table grew.
+ */
+export async function getPatientStatusCounts(): Promise<{
+    total: number;
+    byStatus: Record<string, number>;
+}> {
+    await requireStaff();
+    const supabase = await createClient();
+
+    const results = await Promise.all(
+        ALL_PATIENT_STATUSES.map(async (status) => {
+            const { count, error } = await supabase
+                .from("patients")
+                .select("id", { count: "exact", head: true })
+                .eq("status", status);
+            if (error) {
+                console.error(`[patient] getPatientStatusCounts(${status}):`, error);
+                return [status, 0] as const;
+            }
+            return [status, count ?? 0] as const;
+        })
+    );
+
+    const byStatus: Record<string, number> = {};
+    let total = 0;
+    for (const [status, count] of results) {
+        byStatus[status] = count;
+        total += count;
+    }
+    return { total, byStatus };
+}
+
 export async function getAllPatients(
     page = 0,
     limit?: number

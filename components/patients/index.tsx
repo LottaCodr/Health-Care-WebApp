@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-provider";
-import { useAllPatients } from "@/hooks/emr/use-emr";
+import { useAllPatients, usePatientsByStatus, usePatientStatusCounts } from "@/hooks/emr/use-emr";
 import QueueCloseDialog, { type QueueCloseTarget } from "./QueueCloseDialog";
 import type { Patient } from "@/types/models";
 
@@ -85,6 +85,24 @@ const PAGE_TITLE: Record<string, string> = {
     Radiologist:   "Radiology Queue",
 };
 
+// ─── Default landing tab per role ──────────────────────────────────────────────
+//
+// The queue used to always open on "All Patients", which fetched (and
+// filtered client-side over) EVERY patient ever registered — regardless of
+// which tab a role actually cares about. A nurse opening their queue to see
+// who front desk just forwarded had to wait for the whole hospital's patient
+// history to download before "Sent to Nurse" could even be selected, and it
+// only got slower as the patients table grew. Landing each clinical role
+// directly on the tab that matters to them means that tab's own (server-side
+// filtered, indexed) query is the ONLY one that runs on page load.
+const DEFAULT_TAB_BY_ROLE: Record<string, PatientStatus> = {
+    Nurse:         "sent-to-nurse",
+    Doctor:        "awaiting-consultation",
+    LabTechnician: "sent-to-lab",
+    Pharmacist:    "sent-to-pharmacy",
+    Radiologist:   "sent-to-radiology",
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface TabPillProps {
@@ -154,25 +172,54 @@ export default function PatientsComponent() {
     const [bulkOpen,     setBulkOpen]     = useState(false);
     const [closeTarget,  setCloseTarget]  = useState<QueueCloseTarget | null>(null);
 
-    // Always fetch all patients — tab filtering is done client-side.
-    const { data: allPatients = [], isPending, isFetching, refetch } = useAllPatients();
+    // Land clinical roles on their own tab the first time their role becomes
+    // known (auth resolves asynchronously, so this can't be a useState
+    // initializer). Runs once — after that the staff member's own tab clicks
+    // are never overridden.
+    const tabDefaulted = React.useRef(false);
+    React.useEffect(() => {
+        if (tabDefaulted.current || !user?.role) return;
+        tabDefaulted.current = true;
+        const defaultTab = DEFAULT_TAB_BY_ROLE[user.role];
+        if (defaultTab) setActiveTab(defaultTab);
+    }, [user?.role]);
 
-    const roleFilteredPatients = allPatients;
+    // ── Data fetching ───────────────────────────────────────────────────────
+    // "All Patients" is the one tab that legitimately needs the whole table,
+    // so it's the only one that fetches it. Every other tab asks the server
+    // for just that status (indexed, a handful of rows for a live queue)
+    // instead of downloading every patient ever registered and filtering in
+    // the browser — the pattern that made queues like the nurse's "Sent to
+    // Nurse" tab get slower every week as the patients table grew, because
+    // opening it always meant loading EVERYONE first.
+    const wantsAll = activeTab === "all";
+    const allPatientsQuery = useAllPatients({ enabled: wantsAll });
+    const tabPatientsQuery = usePatientsByStatus(
+        (wantsAll ? "registered" : activeTab) as any,
+        { enabled: !wantsAll }
+    );
 
-    // Count per status for badge numbers
-    const countByStatus = useMemo(() => {
-        const map: Record<string, number> = {};
-        for (const p of roleFilteredPatients) {
-            map[p.status] = (map[p.status] ?? 0) + 1;
-        }
-        return map;
-    }, [roleFilteredPatients]);
+    const allPatients = wantsAll ? (allPatientsQuery.data ?? []) : [];
+    const tabPatients = wantsAll ? [] : (tabPatientsQuery.data ?? []);
 
-    // Active tab filter
-    const tabFiltered = useMemo(() => {
-        if (activeTab === "all") return roleFilteredPatients;
-        return roleFilteredPatients.filter((p) => p.status === activeTab);
-    }, [roleFilteredPatients, activeTab]);
+    const isPending  = wantsAll ? allPatientsQuery.isPending  : tabPatientsQuery.isPending;
+    const isFetching = wantsAll ? allPatientsQuery.isFetching : tabPatientsQuery.isFetching;
+    const refetch     = wantsAll ? allPatientsQuery.refetch    : tabPatientsQuery.refetch;
+
+    // Lightweight per-status counts for the tab badges — never requires the
+    // full patient list to be loaded (see `getPatientStatusCounts`).
+    const { data: statusCounts } = usePatientStatusCounts();
+
+    const roleFilteredPatients = wantsAll ? allPatients : tabPatients;
+
+    // Count per status for badge numbers — from the cheap server-side
+    // aggregate, not from whatever happens to be loaded client-side.
+    const countByStatus: Record<string, number> = statusCounts?.byStatus ?? {};
+    const totalPatientCount = wantsAll ? roleFilteredPatients.length : (statusCounts?.total ?? 0);
+
+    // The active tab's data IS already server-filtered, so no client-side
+    // status filtering is needed here anymore.
+    const tabFiltered = roleFilteredPatients;
 
     // Search filter
     const searched = useMemo(() => {
@@ -278,7 +325,7 @@ export default function PatientsComponent() {
                                     )}
                                 </h2>
                                 <p className="text-xs text-gray-400 mt-0.5">
-                                    {roleFilteredPatients.length} patient{roleFilteredPatients.length !== 1 ? "s" : ""}
+                                    {totalPatientCount} patient{totalPatientCount !== 1 ? "s" : ""}
                                     {activeTab !== "all" && (
                                         <> · <span className="font-medium text-gray-500">{searched.length} in this tab</span></>
                                     )}
@@ -342,7 +389,7 @@ export default function PatientsComponent() {
                                     key={tab.value}
                                     tab={tab}
                                     active={activeTab === tab.value}
-                                    count={tab.value === "all" ? roleFilteredPatients.length : (countByStatus[tab.value] ?? 0)}
+                                    count={tab.value === "all" ? totalPatientCount : (countByStatus[tab.value] ?? 0)}
                                     onClick={() => setActiveTab(tab.value)}
                                 />
                             ))}

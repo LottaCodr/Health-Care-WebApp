@@ -26,10 +26,11 @@ export function usePatient(id: string, opts?: { enabled?: boolean }) {
     });
 }
 
-export function usePatientsByStatus(status: PatientStatus) {
+export function usePatientsByStatus(status: PatientStatus, opts?: { enabled?: boolean }) {
     return useQuery({
         queryKey: patientKeys.byStatus(status),
         queryFn: () => PatientService.listPatientsByStatus(status),
+        enabled: opts?.enabled !== false,
         staleTime: LIST_STALE,
         gcTime: GC_TIME,
         refetchOnWindowFocus: false,
@@ -50,10 +51,29 @@ export function useSearchPatients(query: string) {
     });
 }
 
-export function useAllPatients() {
+export function useAllPatients(opts?: { enabled?: boolean }) {
     return useQuery({
         queryKey: patientKeys.lists(),
         queryFn: () => PatientService.getAllPatients(),
+        enabled: opts?.enabled !== false,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+/**
+ * Lightweight per-status counts for the queue tab badges — a handful of
+ * `count: exact, head: true` requests, never the patient rows themselves.
+ * Used so the tab pills (and the "N patients" header) stay accurate even
+ * when the active tab only loaded its own slice of the table (see
+ * `usePatientsByStatus`), instead of requiring the whole table to be in
+ * memory just to count it.
+ */
+export function usePatientStatusCounts() {
+    return useQuery({
+        queryKey: patientKeys.statusCounts(),
+        queryFn: () => PatientService.getPatientStatusCounts(),
         staleTime: LIST_STALE,
         gcTime: GC_TIME,
         refetchOnWindowFocus: false,

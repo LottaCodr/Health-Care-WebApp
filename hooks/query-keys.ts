@@ -5,6 +5,7 @@ export const patientKeys = {
     all: () => ["patients"] as const,
     lists: () => ["patients", "list"] as const,
     byStatus: (s: string) => ["patients", "list", "status", s] as const,
+    statusCounts: () => ["patients", "list", "status-counts"] as const,
     arrivalsToday: () => ["patients", "arrivals", "today"] as const,
     search: (q: string) => ["patients", "search", q] as const,
     details: () => ["patients", "detail"] as const,

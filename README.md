@@ -64,6 +64,10 @@ counters simply stay absent, and correction notes report
 
 The billing workflow uses extra columns on `payments` (`payment_type`, `discount_kobo`, `discount_percent`, `discount_amount_kobo`, `payer`, `payer_reference`, `payer_code`, `applied_kobo`). The app degrades gracefully when they are missing, but run the idempotent migration in `supabase/migrations/20260813_billing_payment_types_discount_payer_deposit.sql` to fully track payment types, discounts, payer identity and deposit-credit accounting.
 
+### Queue performance (2026-09-30)
+
+Every queue page (front desk, nurse, doctor, lab, pharmacy, radiology) used to fetch the *entire* `patients` table and filter/count by status in the browser, so a nurse opening "Sent to Nurse" waited on the whole hospital's patient history and only got slower as it grew. The queue now asks the server for just the active tab's status (`usePatientsByStatus`) plus a handful of lightweight `count: exact` requests for the tab badges (`getPatientStatusCounts`), and each clinical role lands directly on the tab that matters to them (nurse → "Sent to Nurse", doctor → "Awaiting Consultation", etc.) instead of "All Patients". Apply `supabase/migrations/20260930_patients_queue_performance_indexes.sql` (`supabase db push`) so those per-status queries are index lookups instead of full-table scans.
+
 ---
 
 ## Technology stack
