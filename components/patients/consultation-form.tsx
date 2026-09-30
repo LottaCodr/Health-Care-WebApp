@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { createAdmission } from "@/lib/services/admission.service";
+import { findTemplate, isPyloriOrder } from "@/components/lab-tech/test-templates";
 import {
     Stethoscope, ClipboardList, Pill, ArrowRight, Loader2, CheckCircle2, Check,
     ChevronRight, FlaskConical, UserCog, Baby, User, Heart, Brain,
@@ -520,8 +521,15 @@ export default function ConsultationForm({
         return Object.values(labCatalog).flat()
             .filter(t => !["radiology","x-ray","ct","mri","ultrasound"].some(k =>
                 t.category?.toLowerCase().includes(k) || t.test_name?.toLowerCase().includes(k)))
+            // A generic H. pylori catalog row is unsafe to order: antibody
+            // serology and stool antigen are different tests/specimens.
+            .filter(t => !isPyloriOrder(t.test_name) || !!findTemplate(t.test_name))
             .map(t => t.test_name);
     }, [labCatalog]);
+    const hasAmbiguousPyloriCatalogEntry = useMemo(() =>
+        !!labCatalog && Object.values(labCatalog).flat().some(t =>
+            isPyloriOrder(t.test_name) && !findTemplate(t.test_name)),
+    [labCatalog]);
 
     const RADIOLOGY_TESTS: string[] = useMemo(() => {
         if (!labCatalog) return [];
@@ -680,6 +688,17 @@ export default function ConsultationForm({
     };
 
     const doSubmit = async () => {
+        const ambiguousPyloriOrder = hasReferral("lab-tech")
+            ? labTestType.find(test => isPyloriOrder(test) && !findTemplate(test))
+            : undefined;
+        if (ambiguousPyloriOrder) {
+            toast.error(
+                "H. pylori must be ordered as a specific test: antibody (blood) or antigen (stool). Ask the lab to add these as separate catalog tests, then select the correct one.",
+                { duration: 8000 }
+            );
+            return;
+        }
+
         const doctorId = user?.id ?? user?.$id ?? "";
 
         // Front Desk — BLOCKING, and done FIRST: if the admission record can't
@@ -730,18 +749,23 @@ export default function ConsultationForm({
                     // and there was no way to mark individual tests complete
                     // independently of the others.
                     if (hasReferral("lab-tech")) {
-                        Promise.all(
-                            labTestType.map(test =>
-                                createLabRequestAsync({
-                                    patientId,
-                                    requestedBy: doctorId,
-                                    testType: test,
-                                    priority: labPriority,
-                                    notes: labNotes || undefined,
-                                    status: "pending",
-                                })
-                            )
-                        ).catch((err: any) => console.error("Lab request error:", err));
+                        try {
+                            await Promise.all(
+                                labTestType.map(test =>
+                                    createLabRequestAsync({
+                                        patientId,
+                                        requestedBy: doctorId,
+                                        testType: test,
+                                        priority: labPriority,
+                                        notes: labNotes || undefined,
+                                        status: "pending",
+                                    })
+                                )
+                            );
+                        } catch (err: any) {
+                            console.error("Lab request error:", err);
+                            toast.error(err?.message ?? "Consultation saved, but the lab request could not be sent.", { duration: 8000 });
+                        }
                     }
                     // Radiology request — same fix, same reasoning.
                     if (hasReferral("radiology")) {
@@ -1071,6 +1095,11 @@ export default function ConsultationForm({
                                 <FlaskConical size={13} className="text-indigo-600" />
                                 <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Lab Request Details</p>
                             </div>
+                            {hasAmbiguousPyloriCatalogEntry && (
+                                <p className="text-xs leading-relaxed text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                    H. pylori orders must specify <strong>antibody (blood)</strong> or <strong>antigen (stool)</strong>. A generic catalog entry is hidden; ask the lab to configure each test separately with its own price.
+                                </p>
+                            )}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel>Test Type</FieldLabel>

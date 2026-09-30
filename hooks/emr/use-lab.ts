@@ -63,7 +63,11 @@ export function useCreateLabRequest() {
     const qc = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: LS.CreateLabRequestInput) => LS.createLabRequest(data),
+        mutationFn: async (data: LS.CreateLabRequestInput) => {
+            const result = await LS.createLabRequestWithResult(data);
+            if (!result.ok) throw new Error(result.message);
+            return result.request;
+        },
 
         onSuccess: (request) => {
             qc.setQueryData(labKeys.detail(request.id), request);

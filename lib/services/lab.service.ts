@@ -131,6 +131,33 @@ export async function createLabRequest(
     return data as unknown as LabRequest;
 }
 
+/**
+ * Safe Server Action boundary for browser mutations. Next.js redacts thrown
+ * Server Action errors in production, so return expected failures as data and
+ * let the client mutation create a local Error with the actionable message.
+ */
+export type CreateLabRequestResult =
+    | { ok: true; request: LabRequest }
+    | { ok: false; message: string };
+
+export async function createLabRequestWithResult(
+    input: CreateLabRequestInput
+): Promise<CreateLabRequestResult> {
+    try {
+        return { ok: true, request: await createLabRequest(input) };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        if (message.startsWith("Specify H. pylori antibody (blood) or H. pylori antigen (stool)")) {
+            return { ok: false, message };
+        }
+        console.error("[lab] create request failed:", error);
+        return {
+            ok: false,
+            message: "Unable to send the lab request. Please check the test details and try again.",
+        };
+    }
+}
+
 export async function getLabRequestById(id: string): Promise<LabRequest | null> {
     await requireStaff();
     const supabase = await createClient();
