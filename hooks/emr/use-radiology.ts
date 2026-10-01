@@ -1,13 +1,42 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { radiologyKeys, patientKeys } from "../query-keys";
+import { radiologyKeys, patientKeys, carePackageKeys } from "../query-keys";
 import * as RS from "@/lib/services/radiology.service";
 
 const LIST_STALE = 30_000;
 const GC_TIME = 10 * 60_000;
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
+
+/** The scans the unit performs, with their prices — for the order form. */
+export function useRadiologyScans(opts?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: radiologyKeys.catalog(),
+        queryFn: RS.listRadiologyScans,
+        enabled: opts?.enabled !== false,
+        // Prices change rarely; a deploy-free reprice still lands within a day.
+        staleTime: 10 * 60_000,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+/**
+ * Would this scan be paid for by the patient's care package?
+ * Powers the "Covered by the Antenatal Package — no bill" banner on the order
+ * form. The server re-checks on create, so this is a preview only.
+ */
+export function useRadiologyCoverage(patientId: string, scanName: string) {
+    return useQuery({
+        queryKey: radiologyKeys.coverage(patientId, scanName),
+        queryFn: () => RS.getRadiologyCoverage(patientId, scanName),
+        enabled: !!patientId && !!scanName,
+        staleTime: 15_000,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
 
 /** All pending radiology requests — for the Radiologist dashboard queue */
 export function usePendingRadiologyRequests() {
@@ -61,21 +90,35 @@ export function useRadiologyRequest(id: string) {
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-/** Doctor creates a radiology request for a patient */
+/** Doctor / front desk / radiologist requests a scan (and it is billed or covered). */
 export function useCreateRadiologyRequest() {
     const qc = useQueryClient();
 
     return useMutation({
-        mutationFn: (input: RS.CreateRadiologyRequestInput) =>
-            RS.createRadiologyRequest(input),
+        mutationFn: async (input: RS.CreateRadiologyRequestInput) => {
+            // Expected failures (unknown scan, no permission) are RETURNED by
+            // the Server Action and re-thrown here, in the browser, where the
+            // caller's toast can show the real reason. A Server Action that
+            // throws arrives in production as Next.js's redacted digest text.
+            const result = await RS.createRadiologyRequestWithResult(input);
+            if (!result.ok) throw new Error(result.message);
+            return result;
+        },
 
-        onSuccess: (request) => {
+        onSuccess: (result) => {
+            const request = result.request;
             qc.setQueryData(radiologyKeys.detail(request.id), request);
             // Bust the patient's radiology list and the pending queue
             qc.invalidateQueries({ queryKey: radiologyKeys.byPatient(request.visit_id) });
             qc.invalidateQueries({ queryKey: radiologyKeys.pending() });
             // Patient status likely changed (sent-to-radiology)
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            // A billed scan raised a payment; a covered one drew down a package
+            // allowance. Both caches must refresh so the desk sees the truth.
+            qc.invalidateQueries({ queryKey: ["payments"] });
+            qc.invalidateQueries({ queryKey: ["pending-payments"] });
+            qc.invalidateQueries({ queryKey: ["payments", request.visit_id] });
+            qc.invalidateQueries({ queryKey: carePackageKeys.byPatient(request.visit_id) });
         },
     });
 }

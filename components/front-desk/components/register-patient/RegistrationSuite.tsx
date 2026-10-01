@@ -38,6 +38,9 @@ import {
   INSURANCE_STEP,
   type PaymentType,
 } from "@/lib/utils/registration-form";
+import { useCarePackages } from "@/hooks/emr/use-emr";
+import { enrolPatientInPackage } from "@/lib/services/care-packages.service";
+import { describeAllowance } from "@/lib/utils/care-packages";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // calcAge / getPaymentType / getStepFields / buildPatientPayload live in
@@ -305,6 +308,17 @@ export default function RegistrationSuite() {
   // (database missing a migration) — rendered on the success screen.
   const [driftWarnings, setDriftWarnings] = useState<string[]>([]);
 
+  // ── Prepaid care package (antenatal) ──────────────────────────────────────
+  // Kept in LOCAL state, not in the react-hook-form values: a package lives in
+  // its own tables, so it must never reach `buildPatientPayload` (every key
+  // there has to be a real `patients` column — see lib/utils/registration-form).
+  // Most antenatal patients are registered ON the package, and their scans are
+  // then covered by it instead of being billed again at the front desk.
+  const { data: carePackages = [] } = useCarePackages();
+  const [carePackageId, setCarePackageId] = useState("");
+  const [carePackageAmount, setCarePackageAmount] = useState("");
+  const selectedPackage = (carePackages as any[]).find(p => p.id === carePackageId) ?? null;
+
   const validateStep = async () => {
     setValidatingStep(true);
     const fields = getStepFields(currentStep, form.getValues());
@@ -384,9 +398,44 @@ export default function RegistrationSuite() {
       // (typically the HMO/company insurance fields on a database that hasn't
       // received a migration) were NOT saved. Must be visible on the success
       // screen — a toast disappears before the desk is back from the counter.
-      if (result.warnings?.length) {
-        setDriftWarnings(result.warnings);
-        toast.warning(result.warnings.join(" "));
+      const warnings = [...(result.warnings ?? [])];
+
+      // ── Activate the prepaid care package, if one was chosen ──────────────
+      // The patient is already registered at this point, so a package failure
+      // must NEVER look like a failed registration: it becomes a warning, and
+      // the desk can activate it from the patient's Billing tab in two clicks.
+      // Without it, the antenatal patient's scans would be billed again.
+      if (carePackageId && result.patient?.id) {
+        try {
+          const enrolment = await withTimeout(
+            enrolPatientInPackage({
+              patientId: result.patient.id,
+              packageId: carePackageId,
+              amountPaid:
+                carePackageAmount.trim() === "" ? undefined : Number(carePackageAmount),
+            }),
+            20_000,
+            "Activating the care package is taking too long. Please check your connection."
+          );
+          if (enrolment && enrolment.ok) {
+            toast.success(`${selectedPackage?.name ?? "Care package"} activated — scans are covered by it.`);
+          } else {
+            warnings.push(
+              `The patient is registered, but ${selectedPackage?.name ?? "the care package"} could not be activated` +
+              `${enrolment?.message ? ` (${enrolment.message})` : ""}. Activate it from the patient's Billing tab so their scans are not billed.`
+            );
+          }
+        } catch (pkgErr: any) {
+          warnings.push(
+            `The patient is registered, but ${selectedPackage?.name ?? "the care package"} could not be activated. ` +
+            `Activate it from the patient's Billing tab so their scans are not billed.`
+          );
+        }
+      }
+
+      if (warnings.length) {
+        setDriftWarnings(warnings);
+        toast.warning(warnings.join(" "));
       }
       setSubmitted(true);
     } catch (err: any) {
@@ -403,6 +452,7 @@ export default function RegistrationSuite() {
     if (!submitted) return;
     const t = setTimeout(() => {
       form.reset(); setSubmitted(false); setDriftWarnings([]); resetForm();
+      setCarePackageId(""); setCarePackageAmount("");
       router.push("/front-desk/patient");
     }, 5000);
     return () => clearTimeout(t);
@@ -691,6 +741,104 @@ export default function RegistrationSuite() {
                               <p className="text-xs text-green-700 font-medium">
                                 No insurance details needed — patient will pay directly at checkout.
                               </p>
+                            </div>
+                          )}
+
+                          {/* ── Prepaid care package (antenatal) ───────────────────
+                              Registering an antenatal patient on the package is what
+                              stops their scans from being billed later: a scan
+                              requested under an active enrolment is covered by the
+                              package and never reaches the bill. */}
+                          {(carePackages as any[]).length > 0 && (
+                            <div className="pt-2 border-t border-gray-100">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Baby size={14} className="text-pink-500" />
+                                <div>
+                                  <p className="text-sm font-bold text-gray-800">Prepaid Care Package</p>
+                                  <p className="text-[11px] text-gray-400">
+                                    Optional — services included in the package are not billed again
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <button
+                                  type="button"
+                                  onClick={() => { setCarePackageId(""); setCarePackageAmount(""); }}
+                                  className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                                    !carePackageId
+                                      ? "border-blue-500 bg-blue-50/60"
+                                      : "border-gray-200 bg-white hover:border-gray-300"
+                                  }`}
+                                >
+                                  <p className="text-xs font-bold text-gray-800">No package</p>
+                                  <p className="text-[11px] text-gray-500 mt-0.5">
+                                    Every service is billed as it is ordered.
+                                  </p>
+                                </button>
+
+                                {(carePackages as any[]).map(pkg => {
+                                  const isSelected = carePackageId === pkg.id;
+                                  const scanItem = (pkg.items ?? []).find((i: any) => i.item_kind === "radiology_scan");
+                                  return (
+                                    <button
+                                      key={pkg.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setCarePackageId(isSelected ? "" : pkg.id);
+                                        if (!isSelected && typeof pkg.price === "number") {
+                                          setCarePackageAmount(String(pkg.price));
+                                        }
+                                      }}
+                                      className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                                        isSelected
+                                          ? "border-pink-500 bg-pink-50/60"
+                                          : "border-gray-200 bg-white hover:border-pink-200"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-xs font-bold text-gray-900">{pkg.name}</p>
+                                        {typeof pkg.price === "number" && (
+                                          <span className="text-[10px] font-mono font-bold text-gray-500">
+                                            ₦{pkg.price.toLocaleString("en-NG")}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {pkg.description && (
+                                        <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{pkg.description}</p>
+                                      )}
+                                      <p className="text-[11px] font-semibold text-pink-700 mt-1">
+                                        {scanItem
+                                          ? `Includes ${describeAllowance(scanItem.included_quantity, 0, "scan").toLowerCase()}`
+                                          : "No scans included"}
+                                      </p>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {selectedPackage && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+                                  <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
+                                      Amount prepaid (₦)
+                                    </label>
+                                    <input
+                                      type="number" min="0" step="1"
+                                      value={carePackageAmount}
+                                      onChange={e => setCarePackageAmount(e.target.value)}
+                                      placeholder="Enter what the patient paid for the package"
+                                      className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-bold text-gray-900 placeholder:text-gray-300 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-pink-400/25 focus:border-pink-400 focus:bg-white transition-all"
+                                    />
+                                  </div>
+                                  <div className="flex items-end">
+                                    <p className="text-[11px] text-pink-700 bg-pink-50 border border-pink-100 rounded-xl px-3 py-2 leading-relaxed">
+                                      Scans requested during the package are covered by it and will not
+                                      appear in the patient&apos;s billing.
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </section>
