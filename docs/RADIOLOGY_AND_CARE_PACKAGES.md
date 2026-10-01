@@ -51,9 +51,9 @@ ultrasound before 24 weeks for routine ANC
 (<https://www.ncbi.nlm.nih.gov/books/NBK579606/>); ACOG's minimum is a
 first-trimester dating scan plus an 18–22 week anatomy scan; private antenatal
 packages conventionally bundle three to four (dating/viability, anomaly, growth,
-and often a final pre-delivery scan). **Three** was chosen as the seeded default
-— enough for dating, anomaly and growth — and it is a single editable number, not
-a code change (see below).
+and often a final pre-delivery scan). **Four** is the seeded allowance — dating,
+anomaly, growth and a final pre-delivery scan — and it is a single editable
+number, not a code change (see below).
 
 **Where the value goes.** A covered service still has a cost to the hospital, so
 it is recorded in an append-only ledger with the value it *would* have carried.
@@ -186,9 +186,9 @@ findings.
 
 `npm run check:radiology` loads the **real** service modules against an in-memory
 fake Supabase (the same harness style as `scripts/repro-billing.cjs`) and asserts
-73 outcomes, including: a scan bills ₦23,000 in the `radiology` category and
+75 outcomes, including: a scan bills ₦23,000 in the `radiology` category and
 shows in the outstanding queue; an antenatal patient's scan raises **zero**
-payment rows while writing a ₦23,000 ledger entry; the 4th scan on a 3-scan
+payment rows while writing a ₦23,000 ledger entry; the 5th scan on a 4-scan
 package is billed; expired and cancelled packages cover nothing; an unknown
 service is refused; Doctor and Front Desk may file a report while a Nurse may
 not; a filed report cannot be overwritten by someone else; and an unmigrated

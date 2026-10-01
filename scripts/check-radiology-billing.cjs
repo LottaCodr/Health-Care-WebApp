@@ -11,7 +11,7 @@
 //   • a scan request raises a pending "radiology" bill at the catalog price
 //   • a scan under an active antenatal package raises NO bill at all, draws
 //     down the allowance, and is recorded in the package_usage ledger
-//   • the allowance is enforced (4th scan on a 3-scan package is billed)
+//   • the allowance is enforced (5th scan on a 4-scan package is billed)
 //   • an expired / cancelled package does not cover anything
 //   • an unknown service is refused instead of being inserted unpriced
 //   • Doctor and Front Desk may file the observations; a Nurse may not
@@ -280,7 +280,7 @@ function seed({ withPackageFor = null, expired = false, cancelled = false } = {}
     });
     db.care_package_items.push({
         id: "item-scans", package_id: "pkg-antenatal", item_kind: "radiology_scan",
-        item_name: null, included_quantity: 3, price_included: null,
+        item_name: null, included_quantity: 4, price_included: null,
     });
 
     if (withPackageFor) {
@@ -411,7 +411,7 @@ async function main() {
         const preview = await radiology.getRadiologyCoverage("patient-2", "Pelvic Scan");
         check("the coverage preview says covered", preview.covered === true, JSON.stringify(preview.reason));
         check("and names the package", preview.packageName === "Antenatal Care Package", preview.packageName);
-        check("with 2 scans left after this one", preview.remainingQuantity === 2, String(preview.remainingQuantity));
+        check("with 3 scans left after this one", preview.remainingQuantity === 3, String(preview.remainingQuantity));
 
         const result = await radiology.createRadiologyRequestWithResult({
             patientId: "patient-2", requestedBy: "staff-doctor-1", testType: "Pelvic Scan",
@@ -442,29 +442,33 @@ async function main() {
     }
 
     // ── 4. The allowance is enforced ─────────────────────────────────────────
-    console.log("\n4 · A 3-scan package covers 3 scans, then bills the 4th");
+    console.log("\n4 · A 4-scan package covers 4 scans, then bills the 5th");
     {
         const { radiology } = freshContext(
             { id: "staff-doctor-1", email: "d@h.test" },
             { withPackageFor: "patient-2" }
         );
 
-        for (const scan of ["Pelvic Scan", "Transvaginal Scan (TVS)", "pelvic ultrasound"]) {
+        for (const scan of ["Pelvic Scan", "Transvaginal Scan (TVS)", "pelvic ultrasound", "TVS"]) {
             await radiology.createRadiologyRequestWithResult({
                 patientId: "patient-2", requestedBy: "staff-doctor-1", testType: scan,
             });
         }
-        check("three scans were ordered", radiologyRows().length === 3);
-        check("all three are covered", radiologyRows().every((r) => r.billing_status === "covered"));
+        check("four scans were ordered", radiologyRows().length === 4, String(radiologyRows().length));
+        check("all four are covered", radiologyRows().every((r) => r.billing_status === "covered"));
         check("nothing was billed", billsFor("patient-2").length === 0);
+        check("the ledger holds all four at ₦23,000",
+            db.package_usage.length === 4 && db.package_usage.every((u) => u.value_kobo === 2300000),
+            JSON.stringify(db.package_usage.map((u) => u.value_kobo)));
 
-        const fourth = await radiology.createRadiologyRequestWithResult({
+        const fifth = await radiology.createRadiologyRequestWithResult({
             patientId: "patient-2", requestedBy: "staff-doctor-1", testType: "Pelvic Scan",
         });
-        check("the 4th scan is billed",
-            fourth.ok && fourth.billing.status === "billed", JSON.stringify(fourth.ok && fourth.billing));
+        check("the 5th scan is billed",
+            fifth.ok && fifth.billing.status === "billed", JSON.stringify(fifth.ok && fifth.billing));
         check("at ₦23,000", billsFor("patient-2").length === 1 && billsFor("patient-2")[0].amount === 23000);
-        check("and marked billed on the request", radiologyRows()[3].billing_status === "billed");
+        check("and marked billed on the request", radiologyRows()[4].billing_status === "billed");
+        check("and draws down no further allowance", db.package_usage.length === 4);
     }
 
     // ── 5. Expiry, cancellation and the override ─────────────────────────────
@@ -588,8 +592,9 @@ async function main() {
 
         const list = await packages.listCarePackages();
         check("the antenatal package is offered", list.some((p) => p.code === "ANTENATAL"));
-        check("with its scan entitlement attached",
-            (list[0]?.items ?? []).some((i) => i.item_kind === "radiology_scan" && i.included_quantity === 3));
+        check("with its 4-scan entitlement attached",
+            (list[0]?.items ?? []).some((i) => i.item_kind === "radiology_scan" && i.included_quantity === 4),
+            JSON.stringify((list[0]?.items ?? []).map((i) => i.included_quantity)));
 
         const enrolment = await packages.enrolPatientInPackage({
             patientId: "patient-1", packageId: "pkg-antenatal", amountPaid: 150000, receiptNo: "R-77",

@@ -134,10 +134,11 @@ create index if not exists care_package_items_package_idx
     on public.care_package_items (package_id);
 
 -- The antenatal package. Price is left NULL on purpose: the desk records what
--- each patient actually prepaid. Three scans are included — the WHO minimum is
--- one ultrasound before 24 weeks, and private antenatal packages conventionally
--- cover dating/viability, anomaly and growth scans. Edit included_quantity
--- here (or in the Admin UI) to change the allowance; no deploy needed.
+-- each patient actually prepaid. FOUR scans are included — WHO's minimum is one
+-- ultrasound before 24 weeks, ACOG's is a dating scan plus an 18–22 week anatomy
+-- scan, and private antenatal packages conventionally cover dating/viability,
+-- anomaly, growth and a final pre-delivery scan. Edit included_quantity here (or
+-- in the Admin UI) to change the allowance; no deploy needed.
 insert into public.care_packages (code, name, description, department, price, validity_days, sort_order)
 values (
     'ANTENATAL',
@@ -151,7 +152,7 @@ values (
 on conflict (code) do nothing;
 
 insert into public.care_package_items (package_id, item_kind, item_name, included_quantity, price_included, notes)
-select p.id, 'radiology_scan', null, 3, null,
+select p.id, 'radiology_scan', null, 4, null,
        'Any ultrasound scan (Pelvic Scan or TVS) while the enrolment is active.'
 from public.care_packages p
 where p.code = 'ANTENATAL'
@@ -159,6 +160,18 @@ where p.code = 'ANTENATAL'
       select 1 from public.care_package_items i
       where i.package_id = p.id and i.item_kind = 'radiology_scan'
   );
+
+-- If this migration was already applied with the earlier 3-scan seed, raise the
+-- allowance to four. Scoped to exactly 3 so it only lifts the original seed and
+-- leaves any other number alone — but note it is NOT safe to re-run this file
+-- after an Admin has deliberately set the allowance back to 3.
+update public.care_package_items i
+set included_quantity = 4
+from public.care_packages p
+where p.id = i.package_id
+  and p.code = 'ANTENATAL'
+  and i.item_kind = 'radiology_scan'
+  and i.included_quantity = 3;
 
 -- ── 3. Enrolments ───────────────────────────────────────────────────────────
 create table if not exists public.patient_package_enrolments (
