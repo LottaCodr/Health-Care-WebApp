@@ -27,6 +27,12 @@ import { amendmentErrorMessage, isLockedError, useAmendRecord } from "@/hooks/em
 import { AlertTriangle, Check, History, Info, Loader2, Lock, ShieldAlert } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { toast } from "sonner";
+import dynamic from "next/dynamic";
+import { patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
+
+const TestTemplateForm = dynamic(() => import("@/components/lab-tech/TestTemplateForm"), {
+    loading: () => <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 text-sm text-gray-500">Loading result template…</div>,
+});
 
 type QueryKey = readonly (string | number)[];
 
@@ -97,6 +103,10 @@ export function AmendRecordDialog({
             toast("Nothing changed yet — edit a field first.");
             return;
         }
+        if (type === "lab_result" && !values.result?.trim()) {
+            toast.error("A laboratory result cannot be blank.");
+            return;
+        }
         if (reason === "other" && note.trim().length < 3) {
             toast.error("Add a one-line explanation — 'Other' needs a reason.");
             return;
@@ -121,7 +131,7 @@ export function AmendRecordDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl rounded-3xl border-gray-100 p-0 gap-0 overflow-hidden">
+            <DialogContent className="max-h-[92vh] max-w-5xl rounded-3xl border-gray-100 p-0 gap-0 overflow-hidden">
                 <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-100 text-left">
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
@@ -171,16 +181,40 @@ export function AmendRecordDialog({
                         </p>
                     )}
 
-                    {/* Fields */}
-                    {/* The stored result is a formatted report, not a simple
-                        number. Make the preservation rule clear before editing. */}
-                    {type === "lab_result" && (
-                        <p className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
-                            Correct only the mistaken values below; keep the test name, specimen, other results and table layout intact. This is an audited amendment to the filed result, not a new submission or a change to the doctor&apos;s order.
-                        </p>
-                    )}
-                    {/* Fields */}
-                    {def.fields.map(field => (
+                    {type === "lab_result" ? (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                    Restore the filed result template
+                                </p>
+                                {changedColumns.includes("result") && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-amber-700">
+                                        changed
+                                    </span>
+                                )}
+                            </div>
+                            <p className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                                The result template is prefilled from the filed report. Correct only what is needed; the test name, sample details, other results and report layout are preserved. This is an audited amendment, not a new submission or a change to the doctor&apos;s order.
+                            </p>
+                            <TestTemplateForm
+                                testType={String(row?.test_type ?? "")}
+                                initialResult={initial.result ?? ""}
+                                onSubmit={() => undefined}
+                                onResultChange={(result) => setValues((current) => ({ ...current, result }))}
+                                hideSubmit
+                                disabled={!canEdit}
+                                patient={{
+                                    age: patientAgeYearsPrecise(
+                                        row?.patients?.birth_date,
+                                        row?.completed_at ?? row?.created_at ?? new Date(),
+                                    ),
+                                    gender: row?.patients?.gender ?? null,
+                                    name: row?.patients?.name ?? null,
+                                }}
+                                sampleId={row?.visit_id ?? row?.patient_id ?? null}
+                            />
+                        </div>
+                    ) : def.fields.map(field => (
                         <div key={field.column}>
                             <div className="flex items-center justify-between gap-2 mb-1.5">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -197,7 +231,7 @@ export function AmendRecordDialog({
                                     value={values[field.column] ?? ""}
                                     onChange={(e) => setValues(v => ({ ...v, [field.column]: e.target.value }))}
                                     disabled={!canEdit}
-                                    rows={type === "lab_result" ? 12 : 6}
+                                    rows={6}
                                     className="rounded-xl border-gray-200 bg-gray-50/60 text-sm font-medium leading-relaxed text-gray-800 focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 />
                             ) : (
@@ -256,7 +290,7 @@ export function AmendRecordDialog({
                     <button
                         type="button"
                         onClick={handleSave}
-                        disabled={!canEdit || saving.isPending || !changedColumns.length}
+                        disabled={!canEdit || saving.isPending || !changedColumns.length || (type === "lab_result" && !values.result?.trim())}
                         className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
                     >
                         {saving.isPending

@@ -1152,6 +1152,97 @@ export function findTemplate(testType: string | undefined | null): TestTemplate 
     return null;
 }
 
+export interface ParsedTemplateResult {
+    /** The template encoded in the filed report, when it can be identified. */
+    template: TestTemplate | null;
+    /** Field values recovered from the report's tab-separated result rows. */
+    values: Record<string, string>;
+    /** Free-text observations entered below the template. */
+    extraNotes: string;
+    /** False for free-text or older formats that cannot be safely mapped. */
+    structured: boolean;
+}
+
+/**
+ * Restore a generic structured lab report to its entry-template fields.
+ *
+ * The template name stored in the report takes precedence over `testType`:
+ * some orders are intentionally ambiguous (for example, H. pylori antibody
+ * versus antigen), and the filed report records which one the scientist used.
+ * Unrecognised / free-text reports are returned intact instead of being
+ * guessed into a template and silently losing their original text.
+ */
+export function parseTemplateResult(
+    testType: string | undefined | null,
+    result: string | undefined | null,
+): ParsedTemplateResult {
+    const original = result ?? "";
+    const lines = original.split(/\r?\n/);
+    const namedTemplate = TEST_TEMPLATES.find((item) =>
+        lines.some((line) => line.trim().toLocaleLowerCase() === item.name.toLocaleLowerCase())
+    ) ?? null;
+    const template = namedTemplate ?? findTemplate(testType);
+
+    const headerIndex = lines.findIndex((line) => {
+        const columns = line.split("\t").map((column) => column.trim().toLocaleLowerCase());
+        return columns[0] === "test name" && columns[1] === "result" && columns[2] === "reference range";
+    });
+
+    // The analyzer has its own 5-column format and parser. Its header does
+    // not match the generic 4-column header below, so it and free-text/unknown
+    // legacy reports remain untouched here. Older FBC reports using the
+    // generic four-column format can still be restored to the legacy fields.
+    if (!template || headerIndex < 0) {
+        return {
+            template,
+            values: {},
+            extraNotes: original,
+            structured: false,
+        };
+    }
+
+    const values: Record<string, string> = {};
+    let matchedFields = 0;
+    let hasUnmappedResultRow = false;
+    for (let i = headerIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        if (!trimmed || /^─+$/.test(trimmed)) continue;
+        if (/^note:/i.test(trimmed) || /^additional notes:?/i.test(trimmed)) break;
+
+        const columns = line.split("\t");
+        if (columns.length < 2) continue;
+        const label = columns[0].trim().toLocaleLowerCase();
+        const field = template.fields.find((candidate) => candidate.label.trim().toLocaleLowerCase() === label);
+        if (!field) {
+            if (label && columns.length >= 2) hasUnmappedResultRow = true;
+            continue;
+        }
+
+        values[field.key] = (columns[1] ?? "").trim();
+        matchedFields++;
+    }
+
+    const hasTemplateHeading = namedTemplate?.name === template.name;
+    // If a future/legacy template has extra report rows we do not understand,
+    // keep the entire filed result in free text instead of silently dropping
+    // those observations when it is saved again.
+    const structured = !hasUnmappedResultRow && (hasTemplateHeading || matchedFields > 0);
+    if (!structured) {
+        return { template, values: {}, extraNotes: original, structured: false };
+    }
+
+    const additionalNotesLine = lines.findIndex((line) => /^\s*additional notes:?/i.test(line));
+    let extraNotes = "";
+    if (additionalNotesLine >= 0) {
+        const noteLine = lines[additionalNotesLine].trim().replace(/^additional notes:?/i, "").trim();
+        const notesBody = lines.slice(additionalNotesLine + 1).join("\n");
+        extraNotes = [noteLine, notesBody].filter((part) => part !== "").join("\n").trim();
+    }
+
+    return { template, values, extraNotes, structured: true };
+}
+
 /**
  * Build a structured result string from template form data.
  */

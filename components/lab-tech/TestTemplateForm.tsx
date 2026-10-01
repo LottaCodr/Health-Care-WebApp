@@ -9,9 +9,11 @@ import {
 import {
     findTemplate, isPyloriOrder, TEST_TEMPLATES,
     buildResultString,
+    parseTemplateResult,
     type InterpretationTable,
     type TemplateField,
 } from "./test-templates";
+import { parseLabResult } from "@/lib/clinical/hematology-reference-ranges";
 import HematologyAnalyzerForm from "./HematologyAnalyzerForm";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
@@ -33,6 +35,14 @@ interface TestTemplateFormProps {
     patient?: PatientContext | null;
     /** Sample / visit id shown on analyzer printouts. */
     sampleId?: string | null;
+    /** Previously filed report to restore when this form is used for an amendment. */
+    initialResult?: string | null;
+    /** Keeps the enclosing amendment dialog's result field in sync with edits. */
+    onResultChange?: (resultString: string) => void;
+    /** The enclosing amendment dialog owns the audited save button. */
+    hideSubmit?: boolean;
+    /** Disable all entry fields when the amendment window expires while open. */
+    disabled?: boolean;
 }
 
 // ─── Colour helpers ─────────────────────────────────────────────────────────
@@ -52,11 +62,13 @@ function TemplateFieldInput({
     value,
     onChange,
     error,
+    disabled,
 }: {
     field: TemplateField;
     value: string;
     onChange: (val: string) => void;
     error?: string;
+    disabled?: boolean;
 }) {
     const baseInput =
         "w-full h-10 px-3 rounded-xl border bg-gray-50 text-sm font-semibold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 focus:bg-white transition-all";
@@ -92,7 +104,8 @@ function TemplateFieldInput({
                                     key={opt}
                                     type="button"
                                     onClick={() => onChange(opt)}
-                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                                    disabled={disabled}
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
                                         isSelected
                                             ? activeCls
                                             : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
@@ -108,7 +121,8 @@ function TemplateFieldInput({
                     <select
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        className={`${baseInput} appearance-none cursor-pointer ${error ? "border-red-300 ring-1 ring-red-200" : "border-gray-200"}`}
+                        disabled={disabled}
+                        className={`${baseInput} appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${error ? "border-red-300 ring-1 ring-red-200" : "border-gray-200"}`}
                     >
                         <option value="">Select…</option>
                         {field.options.map((o) => (
@@ -146,8 +160,9 @@ function TemplateFieldInput({
                         inputMode="decimal"
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
+                        disabled={disabled}
                         placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`}
-                        className={`${baseInput} ${field.unit ? "pr-14" : ""} ${error ? "border-red-300 ring-1 ring-red-200" : "border-gray-200"}`}
+                        className={`${baseInput} disabled:cursor-not-allowed disabled:opacity-60 ${field.unit ? "pr-14" : ""} ${error ? "border-red-300 ring-1 ring-red-200" : "border-gray-200"}`}
                     />
                     {field.unit && (
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md pointer-events-none">
@@ -182,8 +197,9 @@ function TemplateFieldInput({
                 type="text"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                disabled={disabled}
                 placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`}
-                className={`${baseInput} ${field.unit ? "pr-14" : ""} ${error ? "border-red-300 ring-1 ring-red-200" : "border-gray-200"}`}
+                className={`${baseInput} disabled:cursor-not-allowed disabled:opacity-60 ${field.unit ? "pr-14" : ""} ${error ? "border-red-300 ring-1 ring-red-200" : "border-gray-200"}`}
             />
             {error && (
                 <p className="flex items-center gap-1 text-[10px] text-red-500 font-semibold">
@@ -230,27 +246,69 @@ function InterpretationCard({ table }: { table: InterpretationTable }) {
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function TestTemplateForm({ testType, onSubmit, submitting, patient, sampleId }: TestTemplateFormProps) {
+export default function TestTemplateForm({
+    testType,
+    onSubmit,
+    submitting,
+    patient,
+    sampleId,
+    initialResult,
+    onResultChange,
+    hideSubmit,
+    disabled,
+}: TestTemplateFormProps) {
     const automaticTemplate = useMemo(() => findTemplate(testType), [testType]);
-    const [chosenTemplate, setChosenTemplate] = useState("");
+    const parsedInitialResult = useMemo(
+        () => parseTemplateResult(testType, initialResult),
+        [testType, initialResult],
+    );
+    const parsedLabResult = useMemo(() => parseLabResult(initialResult), [initialResult]);
+    const isStoredAnalyzerResult = parsedLabResult?.kind === "hematology-analyzer";
+    const storedTemplate = initialResult != null ? parsedInitialResult.template : null;
+    const [chosenTemplate, setChosenTemplate] = useState(() =>
+        storedTemplate && (!automaticTemplate || storedTemplate.name !== automaticTemplate.name)
+            ? storedTemplate.name
+            : ""
+    );
     const template = chosenTemplate
         ? TEST_TEMPLATES.find((item) => item.name === chosenTemplate) ?? null
         : automaticTemplate;
     const needsSelection = !automaticTemplate || !!chosenTemplate;
     const isAmbiguousPylori = !automaticTemplate && isPyloriOrder(testType);
     const templatePickerId = useId();
-    const [values, setValues] = useState<Record<string, string>>({});
+    const [values, setValues] = useState<Record<string, string>>(() =>
+        parsedInitialResult.structured ? parsedInitialResult.values : {}
+    );
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [extraNotes, setExtraNotes] = useState("");
+    const [extraNotes, setExtraNotes] = useState(() => {
+        if (initialResult == null) return "";
+        return parsedInitialResult.structured && !isStoredAnalyzerResult
+            ? parsedInitialResult.extraNotes
+            : initialResult;
+    });
+    const isLegacyFreeText = initialResult != null && !isStoredAnalyzerResult && !parsedInitialResult.structured;
 
-    const handleChange = useCallback((key: string, val: string) => {
-        setValues((prev) => ({ ...prev, [key]: val }));
+    const buildStructuredResult = (
+        targetTemplate: typeof template,
+        targetValues: Record<string, string>,
+        targetNotes: string,
+    ) => {
+        if (!targetTemplate) return targetNotes.trim() || "No results entered";
+        let resultString = buildResultString(targetTemplate, targetValues);
+        if (targetNotes.trim()) resultString += `\n\nAdditional Notes:\n${targetNotes.trim()}`;
+        return resultString;
+    };
+
+    const handleChange = (key: string, val: string) => {
+        const nextValues = { ...values, [key]: val };
+        setValues(nextValues);
         setErrors((prev) => {
             const next = { ...prev };
             delete next[key];
             return next;
         });
-    }, []);
+        if (template) onResultChange?.(buildStructuredResult(template, nextValues, extraNotes));
+    };
 
     const validate = useCallback((): boolean => {
         if (!template) return true; // free-text fallback
@@ -268,18 +326,8 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
         e.preventDefault();
         if (!validate()) return;
 
-        let resultString: string;
-
-        if (template) {
-            resultString = buildResultString(template, values);
-            if (extraNotes.trim()) {
-                resultString += `\n\nAdditional Notes:\n${extraNotes.trim()}`;
-            }
-        } else {
-            // Fallback: just the notes
-            resultString = extraNotes.trim() || "No results entered";
-        }
-
+        const resultString = buildStructuredResult(template, values, extraNotes);
+        onResultChange?.(resultString);
         await onSubmit(resultString);
     };
 
@@ -292,7 +340,7 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
             <select id={templatePickerId} value={chosenTemplate} onChange={(e) => {
                 setChosenTemplate(e.target.value);
                 setValues({}); setErrors({}); setExtraNotes("");
-            }} className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-gray-900">
+            }} disabled={disabled || initialResult != null} className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-gray-900 disabled:cursor-not-allowed disabled:opacity-70">
                 <option value="">{isAmbiguousPylori ? "Choose antibody (blood) or antigen (stool)" : "Free-text result / choose a template"}</option>
                 {(isAmbiguousPylori ? TEST_TEMPLATES.filter((item) => item.name.startsWith("H. pylori ")) : TEST_TEMPLATES)
                     .map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
@@ -305,7 +353,9 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
     // Rendered after all hooks for rules-of-hooks compliance. The analyzer
     // form resolves the reference set from the patient's age & sex, computes
     // H/L flags live, auto-derives NLR/PLR, and emits the printout format.
-    if (template?.kind === "hematology-analyzer") {
+    const useAnalyzerForm = template?.kind === "hematology-analyzer"
+        && (initialResult == null || isStoredAnalyzerResult);
+    if (useAnalyzerForm) {
         return (
             <div className="space-y-4">
                 {templatePicker}
@@ -315,6 +365,36 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
                     submitting={submitting}
                     patient={patient ?? null}
                     sampleId={sampleId ?? null}
+                    initialResult={initialResult}
+                    onResultChange={onResultChange}
+                    hideSubmit={hideSubmit}
+                    disabled={disabled}
+                />
+            </div>
+        );
+    }
+
+    // A free-text or unrecognised result must stay intact. Do not guess a
+    // template from the order label and replace the filed report with blanks.
+    if (isLegacyFreeText) {
+        return (
+            <div className="space-y-4">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-xs font-bold text-amber-900">Existing free-text result</p>
+                    <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                        This result does not match a saved template layout, so its original text has been loaded as-is. Edit the text below without losing its contents.
+                    </p>
+                </div>
+                <textarea
+                    value={extraNotes}
+                    onChange={(e) => {
+                        const nextResult = e.target.value;
+                        setExtraNotes(nextResult);
+                        onResultChange?.(nextResult);
+                    }}
+                    rows={12}
+                    disabled={disabled}
+                    className="w-full p-4 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm disabled:cursor-not-allowed disabled:opacity-60"
                 />
             </div>
         );
@@ -341,22 +421,28 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
 
                 <textarea
                     value={extraNotes}
-                    onChange={(e) => setExtraNotes(e.target.value)}
+                    onChange={(e) => {
+                        const nextNotes = e.target.value;
+                        setExtraNotes(nextNotes);
+                        onResultChange?.(nextNotes);
+                    }}
                     rows={8}
-                    className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
+                    className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm disabled:cursor-not-allowed disabled:opacity-60"
                     placeholder="Enter specimen findings, reference ranges, and conclusions..."
                     required={!isAmbiguousPylori}
-                    disabled={isAmbiguousPylori}
+                    disabled={disabled || isAmbiguousPylori}
                 />
 
-                <button
-                    type="submit"
-                    disabled={submitting || isAmbiguousPylori}
-                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-blue-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                >
-                    <CheckCircle size={18} />
-                    {submitting ? "Processing Results..." : "Authorize & Release Results"}
-                </button>
+                {!hideSubmit && (
+                    <button
+                        type="submit"
+                        disabled={submitting || disabled || isAmbiguousPylori}
+                        className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-blue-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                    >
+                        <CheckCircle size={18} />
+                        {submitting ? "Processing Results..." : "Authorize & Release Results"}
+                    </button>
+                )}
             </form>
         );
     }
@@ -412,6 +498,7 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
                             value={values[field.key] ?? ""}
                             onChange={(val) => handleChange(field.key, val)}
                             error={errors[field.key]}
+                            disabled={disabled}
                         />
                     ))}
                 </div>
@@ -461,32 +548,38 @@ export default function TestTemplateForm({ testType, onSubmit, submitting, patie
                 </label>
                 <textarea
                     value={extraNotes}
-                    onChange={(e) => setExtraNotes(e.target.value)}
+                    onChange={(e) => {
+                        const nextNotes = e.target.value;
+                        setExtraNotes(nextNotes);
+                        onResultChange?.(buildStructuredResult(template, values, nextNotes));
+                    }}
+                    disabled={disabled}
                     rows={3}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 text-sm placeholder:text-gray-300 transition-all resize-none"
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 text-sm placeholder:text-gray-300 transition-all resize-none disabled:cursor-not-allowed disabled:opacity-60"
                     placeholder="Any additional clinical observations, specimen comments, etc."
                 />
             </div>
 
-            {/* Submit */}
-            <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {submitting ? (
-                    <>
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Processing Results...
-                    </>
-                ) : (
-                    <>
-                        <CheckCircle size={18} />
-                        Authorize & Release Results
-                        <ArrowRight size={16} />
-                    </>
-                )}
-            </button>
+            {!hideSubmit && (
+                <button
+                    type="submit"
+                    disabled={submitting || disabled}
+                    className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {submitting ? (
+                        <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Processing Results...
+                        </>
+                    ) : (
+                        <>
+                            <CheckCircle size={18} />
+                            Authorize & Release Results
+                            <ArrowRight size={16} />
+                        </>
+                    )}
+                </button>
+            )}
         </form>
     );
 }
