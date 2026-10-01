@@ -104,7 +104,7 @@ utils/supabase/         # Browser and server Supabase clients
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 24.x (pinned in `package.json` and `.nvmrc`)
 - npm
 - Supabase project (URL + anon key)
 
@@ -113,7 +113,13 @@ utils/supabase/         # Browser and server Supabase clients
 ```bash
 git clone <your-repo-url>
 cd nilevalleyhospital
-npm install
+```
+
+If you use nvm, run `nvm install` and `nvm use` in the project root to select
+Node.js 24 from `.nvmrc`. Otherwise, install Node.js 24.x before continuing.
+
+```bash
+npm ci
 ```
 
 ### Environment variables
@@ -143,6 +149,16 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run start` | Start production server |
 | `npm run lint` | ESLint |
 | `npm run analyze` | Bundle analysis build |
+
+### Deployment (Vercel)
+
+In **Project Settings → Build and Deployment → Node.js Version**, select
+**24.x**, save the setting, and redeploy. Existing deployments keep their
+previous runtime until a new deployment is created.
+
+The `engines.node` setting in `package.json` also explicitly selects Node.js
+`24.x` for Vercel builds and functions, overriding the project default. Keep
+this setting and `.nvmrc` aligned when upgrading the runtime.
 
 ---
 
