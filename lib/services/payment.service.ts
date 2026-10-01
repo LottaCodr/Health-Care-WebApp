@@ -340,11 +340,14 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
     // Bills may be auto-created by doctors (pharmacy dispense / lab orders) in
     // addition to front desk. Only Front Desk may set a payment to "paid" —
     // auto-generated bills are always "pending" until the desk confirms them.
+    // Radiologist is here because a scan ordered at the imaging unit raises its
+    // own bill (unless a care package covers it, in which case no bill exists).
     const actor = await requireStaff([
         UserRole.FrontDesk,
         UserRole.Doctor,
         UserRole.Pharmacist,
         UserRole.LabTechnician,
+        UserRole.Radiologist,
     ]);
 
     if (!input.patient_id) throw new Error("patient_id is required to create a payment.");

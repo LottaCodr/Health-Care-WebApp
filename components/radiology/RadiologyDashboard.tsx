@@ -18,6 +18,29 @@ import {
 import { useRadiologyStore } from "@/store/radiology-store";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import Link from "next/link";
+import RequestScanDialog from "./RequestScanDialog";
+import { formatNaira, templatesForScan } from "@/lib/utils/radiology-catalog";
+import { Package, Plus, Sparkles } from "lucide-react";
+
+// ─── Billing chip ─────────────────────────────────────────────────────────────
+// Shows how the scan is settled: billed at its price, or covered by a prepaid
+// care package (an antenatal patient's scan is already paid for).
+
+function BillingChip({ request }: { request: any }) {
+    if (request.billing_status === "covered") {
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Package size={9} /> Covered by package
+            </span>
+        );
+    }
+    if (typeof request.price !== "number") return null;
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            {request.price > 0 ? formatNaira(request.price) : "₦0 — price at desk"}
+        </span>
+    );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -93,6 +116,7 @@ function RequestCard({ request }: { request: any }) {
                     <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-bold text-gray-800">{stripRadiologyPrefix(request.test_type)}</p>
                         <PriorityBadge priority={request.priority} />
+                        <BillingChip request={request} />
                     </div>
                     <div className="flex items-center gap-3 text-[11px] text-gray-400 flex-wrap">
                         {patientName && (
@@ -100,7 +124,9 @@ function RequestCard({ request }: { request: any }) {
                                 <User size={10} /> {patientName}
                             </span>
                         )}
-                        {doctorName && <span>Requested by Dr. {doctorName}</span>}
+                        {(doctorName || request.requested_by_name) && (
+                            <span>Requested by {doctorName ?? request.requested_by_name}</span>
+                        )}
                         {elapsed && <span className="text-gray-300">· {elapsed}</span>}
                     </div>
                     {request.notes && (
@@ -119,11 +145,30 @@ function RequestCard({ request }: { request: any }) {
             {open && (
                 <div className="px-5 pb-5 pt-2 space-y-3 border-t border-cyan-100 bg-cyan-50/20">
                     <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600">Radiology Report / Findings</p>
+                    {/* One free-text field: the clinician types the observations.
+                        Templates only pre-fill it. */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <Sparkles size={11} className="text-cyan-500" />
+                        {templatesForScan(stripRadiologyPrefix(request.test_type)).map((t) => (
+                            <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => setInlineFormField(
+                                    request.id,
+                                    "resultText",
+                                    form.resultText.trim() ? `${form.resultText.trim()}\n\n${t.text}` : t.text
+                                )}
+                                className="px-2 py-1 rounded-lg bg-white border border-cyan-100 text-[10px] font-bold text-cyan-700 hover:bg-cyan-50 transition-colors"
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
                     <textarea
-                        value={form.resultText} rows={6}
+                        value={form.resultText} rows={8}
                         onChange={e => setInlineFormField(request.id, "resultText", e.target.value)}
-                        placeholder={`Describe findings systematically:\n\nLungs: Clear. No consolidation or effusion.\nHeart: Normal size and contour.\n\nImpression:\n1. No acute cardiopulmonary disease.`}
-                        className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 placeholder:text-gray-300 transition-all"
+                        placeholder={`Type the observations…\n\nUterus: Normal in size and echotexture.\nEndometrium: Central, regular.\nOvaries: Both unremarkable.\n\nIMPRESSION:\nNormal pelvic ultrasound.`}
+                        className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-4 py-3 resize-y focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 placeholder:text-gray-300 transition-all leading-relaxed"
                     />
                     <label className="flex items-center gap-3 cursor-pointer">
                         <div onClick={() => setInlineFormField(request.id, "isCritical", !form.isCritical)}
@@ -203,6 +248,9 @@ export default function RadiologyDashboard() {
 
     const { data: pending = [], isPending: loadingPending, isError: pendingError, refetch } = usePendingRadiologyRequests();
     const { data: completed = [], isPending: loadingCompleted } = useCompletedRadiologyRequests();
+    // The unit can raise a request itself (a walk-in at the imaging door), which
+    // is the entry point the radiologist asked for.
+    const [ordering, setOrdering] = useState(false);
 
     if (protectionLoading) {
         return <div className="h-64 animate-pulse rounded-3xl border border-gray-100 bg-white" />;
@@ -219,11 +267,18 @@ export default function RadiologyDashboard() {
         <div className="space-y-6">
             <DashboardHeader
                 title="Radiology workspace"
-                description="Prioritize imaging requests, report critical findings, and review filed investigations."
+                description="Request scans, prioritize imaging requests, report findings, and review filed investigations."
                 icon={Radio}
                 tone="cyan"
                 actions={
                     <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setOrdering(true)}
+                            className="inline-flex h-9 items-center gap-2 rounded-xl bg-cyan-600 px-3 text-xs font-bold text-white shadow-sm shadow-cyan-200 transition-colors hover:bg-cyan-700"
+                        >
+                            <Plus size={13} /> Request Scan
+                        </button>
                         <Link href="/radiology/reports" className="inline-flex h-9 items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3 text-xs font-bold text-cyan-700 transition-colors hover:bg-cyan-100">
                             <FileText size={13} /> Reports
                         </Link>
@@ -319,6 +374,14 @@ export default function RadiologyDashboard() {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Order entry — opened without a patient, so it starts with a search */}
+            {ordering && (
+                <RequestScanDialog
+                    onClose={() => setOrdering(false)}
+                    onSent={() => setTimeout(() => refetch(), 0)}
+                />
             )}
         </div>
     );

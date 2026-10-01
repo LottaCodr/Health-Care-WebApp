@@ -82,6 +82,23 @@ export const radiologyKeys = {
     completed: () => ["radiology", "completed"] as const,
     byPatient: (id: string) => ["radiology", "patient", id] as const,
     detail: (id: string) => ["radiology", "detail", id] as const,
+    /** The scan catalog (names + prices) behind the order form. */
+    catalog: () => ["radiology", "catalog"] as const,
+    /** "Is this scan covered by the patient's care package?" preview. */
+    coverage: (patientId: string, scan: string) =>
+        ["radiology", "coverage", patientId, scan] as const,
+};
+
+// ─── Prepaid care packages (antenatal etc.) ───────────────────────────────────
+// Separate namespace: a package enrolment is NOT a payment, and invalidating
+// it must never disturb the billing caches (and vice versa).
+
+export const carePackageKeys = {
+    all: () => ["care-packages"] as const,
+    catalog: () => ["care-packages", "catalog"] as const,
+    byPatient: (id: string) => ["care-packages", "patient", id] as const,
+    summary: (id: string) => ["care-packages", "summary", id] as const,
+    usage: (enrolmentId: string) => ["care-packages", "usage", enrolmentId] as const,
 };
 
 // ─── Nursing ──────────────────────────────────────────────────────────────────

@@ -129,7 +129,11 @@ export const AMENDMENT_REGISTRY = {
         fields: [
             { column: "result", label: "Findings / impression", multiline: true },
         ],
-        editorRoles: ["Radiologist"] as unknown as UserRole[],
+        // Whoever files the observations owns them. The scan may be written up
+        // by the radiologist, by the doctor who performed it, or transcribed by
+        // the front desk from a paper report — so all three may file, and the
+        // 24-hour window then restricts edits to the one who did.
+        editorRoles: ["Radiologist", "Doctor", "FrontDesk"] as unknown as UserRole[],
     },
     nursing_action: {
         type: "nursing_action",

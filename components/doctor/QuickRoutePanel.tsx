@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-provider";
 import { useRoutePatient } from "@/hooks/emr/use-route-patient";
-import { useLabTestCatalog, useDrugInventory, useConsultationsByPatient } from "@/hooks/emr/use-emr";
+import { useLabTestCatalog, useDrugInventory, useConsultationsByPatient, useRadiologyScans } from "@/hooks/emr/use-emr";
 import {
     FlaskConical, Radio, Pill, Building2, UserCog, Send,
     Loader2, ChevronDown, Check, Route,
@@ -95,6 +95,10 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
     const { data: catalog = [] } = useLabTestCatalog();
     const { data: inventory = [] } = useDrugInventory();
     const { data: consultations } = useConsultationsByPatient(patient.id ?? "");
+    // The scans the unit actually performs. Routing to radiology used to offer
+    // only whatever lab-catalog rows contained the word "scan" — usually none,
+    // which is why there was nowhere to request a scan from.
+    const { data: scans = [] } = useRadiologyScans();
 
     const [destination, setDestination] = useState<RouteDestination | "">("");
     const [labTests, setLabTests] = useState<string[]>([]);
@@ -118,13 +122,16 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
         [catalog]
     );
 
-    const radOptions = useMemo(
-        () => (catalog as any[])
+    const radOptions = useMemo(() => {
+        // Real catalog first (priced, so the order is billed correctly), then any
+        // legacy lab-catalog rows that look like imaging.
+        const fromCatalog = (catalog as any[])
             .filter((t) => RADIOLOGY_KEYWORDS.some((k) =>
                 (t.category ?? "").toLowerCase().includes(k) || (t.test_name ?? "").toLowerCase().includes(k)))
-            .map((t) => t.test_name),
-        [catalog]
-    );
+            .map((t) => t.test_name);
+        const names = (scans as any[]).map((s) => s.name);
+        return [...names, ...fromCatalog.filter((n) => !names.includes(n))].filter(Boolean);
+    }, [catalog, scans]);
 
     const drugOptions = useMemo(
         () => (inventory as any[]).map((d) => d.drug_name).filter(Boolean),

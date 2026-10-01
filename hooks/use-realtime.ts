@@ -477,12 +477,16 @@ export function useRoleRealtime(role?: string) {
                 { table: "patients",     keys: [["patients"]] },
                 { table: "payments",     keys: [["payments"]] },
                 { table: "appointments", keys: [["appointments"]] },
+                // A package enrolment changes what will (and will not) be billed.
+                { table: "patient_package_enrolments", keys: [["care-packages"]] },
+                { table: "package_usage",              keys: [["care-packages"], ["radiology"]] },
             ],
             Doctor: [
                 { table: "patients",      keys: [["patients"]] },
                 { table: "consultations", keys: [["consultations"]] },
                 { table: "lab_requests",  keys: [["lab"], ["radiology"]] },
                 { table: "appointments",  keys: [["appointments"]] },
+                { table: "patient_package_enrolments", keys: [["care-packages"]] },
             ],
             Nurse: [
                 { table: "patients",        keys: [["patients"]] },
@@ -507,6 +511,8 @@ export function useRoleRealtime(role?: string) {
                 { table: "nursing_actions", keys: [["nursing"]] },
                 { table: "drug_inventory",  keys: [["pharmacy", "inventory"]] },
                 { table: "appointments",    keys: [["appointments"]] },
+                { table: "patient_package_enrolments", keys: [["care-packages"]] },
+                { table: "package_usage",              keys: [["care-packages"]] },
             ],
         };
 

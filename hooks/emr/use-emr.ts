@@ -45,7 +45,18 @@ export {
     useCompletedRadiologyRequests,
     useCreateRadiologyRequest,
     useSubmitRadiologyReport,
+    useRadiologyScans,
+    useRadiologyCoverage,
 } from "./use-radiology";
+
+// Prepaid care packages (antenatal etc.) — entitlements, not payments
+export {
+    useCarePackages,
+    usePatientPackages,
+    usePatientEnrolments,
+    useEnrolPatientInPackage,
+    useUpdateEnrolment,
+} from "./use-care-packages";
 
 // Nursing
 export {

@@ -51,6 +51,9 @@ const DischargeNoteAmendmentCard = dynamic(
   { loading: () => <TabChunkSkeleton /> }
 );
 const PaymentHistory = dynamic(() => import("./payment-history"), { loading: () => <TabChunkSkeleton /> });
+// Prepaid care packages (antenatal): entitlements and what they covered. Kept
+// OUT of the bill on purpose — a package-covered service has no payment row.
+const CarePackagesPanel = dynamic(() => import("./care-packages-panel"), { loading: () => <TabChunkSkeleton /> });
 const AppointmentComponent = dynamic(() => import("../front-desk/AppointmentComponent"), { loading: () => <TabChunkSkeleton /> });
 const PatientDocumentsTab = dynamic(() => import("./patient-documents-tab"), { loading: () => <TabChunkSkeleton /> });
 const QuickRoutePanel = dynamic(() => import("../doctor/QuickRoutePanel"), { loading: () => <TabChunkSkeleton /> });
@@ -786,6 +789,10 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                     <a href="/front-desk/payment" className="underline font-semibold">checkout queue</a>.
                   </div>
                 )}
+                {/* Prepaid packages first: what the patient already paid for
+                    explains the bills (and the absence of some) below it. */}
+                <CarePackagesPanel patientId={patient.id} canManage={canManageBilling} />
+
                 <PaymentHistory
                   patientId={patient.id}
                   patient={patient}
