@@ -378,6 +378,7 @@ export interface ParsedLabResult {
     referenceSet?: string;
     sampleId?: string;
     mode?: string;
+    testTime?: string;
     rows: ParsedResultRow[];
     note?: string | null;
 }
@@ -412,6 +413,7 @@ export function parseLabResult(result?: string | null): ParsedLabResult | null {
     const referenceSet = pick("Reference set:");
     const sampleId = pick("Sample ID:");
     const mode = pick("Mode:");
+    const testTime = pick("Test Time:");
 
     const rows: ParsedResultRow[] = [];
     let note: string | null = null;
@@ -442,8 +444,64 @@ export function parseLabResult(result?: string | null): ParsedLabResult | null {
         referenceSet,
         sampleId,
         mode,
+        testTime,
         rows,
         note,
+    };
+}
+
+export interface ParsedHematologyFormResult {
+    category: HematologyCategory | null;
+    categoryNote: string;
+    mode: string;
+    sampleId: string;
+    testTime: string;
+    values: Record<string, string>;
+    extraNotes: string;
+}
+
+/** Recover the analyzer entry fields from the stored, printable report. */
+export function parseHematologyResultForForm(
+    result?: string | null,
+): ParsedHematologyFormResult | null {
+    if (!result) return null;
+    const parsed = parseLabResult(result);
+    if (!parsed || parsed.kind !== "hematology-analyzer") return null;
+
+    const referenceSet = parsed.referenceSet ?? "";
+    const category = HEMATOLOGY_CATEGORIES.find((item) =>
+        referenceSet.toLocaleLowerCase().startsWith(`${item.label.toLocaleLowerCase()} (`)
+    )?.id ?? null;
+    const separator = referenceSet.indexOf(" · ");
+    const categoryNote = separator >= 0 ? referenceSet.slice(separator + 3).trim() : "";
+
+    const values: Record<string, string> = {};
+    for (const row of parsed.rows) {
+        const parameter = HEMATOLOGY_PARAMETERS.find((item) =>
+            item.label.toLocaleLowerCase() === row.label.toLocaleLowerCase()
+        );
+        if (!parameter || parameter.derived) continue;
+        const value = row.value.trim();
+        values[parameter.key] = value === "—" || value === "-" ? "" : value;
+    }
+
+    const lines = result.split(/\r?\n/);
+    const notesLine = lines.findIndex((line) => /^\s*additional notes:?/i.test(line));
+    let extraNotes = "";
+    if (notesLine >= 0) {
+        const firstLine = lines[notesLine].trim().replace(/^additional notes:?/i, "").trim();
+        const notesBody = lines.slice(notesLine + 1).join("\n");
+        extraNotes = [firstLine, notesBody].filter((part) => part !== "").join("\n").trim();
+    }
+
+    return {
+        category,
+        categoryNote,
+        mode: parsed.mode ?? "Whole Blood",
+        sampleId: parsed.sampleId ?? "",
+        testTime: parsed.testTime ?? "",
+        values,
+        extraNotes,
     };
 }
 

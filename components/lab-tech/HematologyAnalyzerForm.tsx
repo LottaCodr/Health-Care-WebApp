@@ -17,6 +17,7 @@ import {
     formatAgeLabel,
     rangeFor,
     resolveHematologyCategory,
+    parseHematologyResultForForm,
     type HematologyCategory,
 } from "@/lib/clinical/hematology-reference-ranges";
 
@@ -28,6 +29,11 @@ interface HematologyAnalyzerFormProps {
     submitting?: boolean;
     patient?: { age?: number | null; gender?: string | null; name?: string | null } | null;
     sampleId?: string | null;
+    /** Existing filed report, used to prefill the analyzer fields for an amendment. */
+    initialResult?: string | null;
+    onResultChange?: (resultString: string) => void;
+    hideSubmit?: boolean;
+    disabled?: boolean;
 }
 
 const MODES = ["Whole Blood", "Capillary", "Prediluted"];
@@ -46,6 +52,7 @@ function AnalyzerField({
     refRange,
     flag,
     onChange,
+    disabled,
 }: {
     label: string;
     value: string;
@@ -53,6 +60,7 @@ function AnalyzerField({
     refRange: string;
     flag: "" | "L" | "H";
     onChange: (v: string) => void;
+    disabled?: boolean;
 }) {
     return (
         <div className="space-y-1.5">
@@ -72,6 +80,7 @@ function AnalyzerField({
                     inputMode="decimal"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
+                    disabled={disabled}
                     placeholder="—"
                     className={`w-full h-10 px-3 rounded-xl border bg-gray-50 text-sm font-mono font-semibold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 focus:bg-white transition-all ${unit ? "pr-12" : ""}`}
                 />
@@ -96,11 +105,17 @@ export default function HematologyAnalyzerForm({
     submitting,
     patient,
     sampleId,
+    initialResult,
+    onResultChange,
+    hideSubmit,
+    disabled,
 }: HematologyAnalyzerFormProps) {
-    const [values, setValues] = useState<Record<string, string>>({});
-    const [category, setCategory] = useState<HematologyCategory | null>(null);
-    const [mode, setMode] = useState(MODES[0]);
-    const [extraNotes, setExtraNotes] = useState("");
+    const initialForm = useMemo(() => parseHematologyResultForForm(initialResult), [initialResult]);
+    const [values, setValues] = useState<Record<string, string>>(() => initialForm?.values ?? {});
+    const [category, setCategory] = useState<HematologyCategory | null>(() => initialForm?.category ?? null);
+    const [categoryTouched, setCategoryTouched] = useState(false);
+    const [mode, setMode] = useState(() => initialForm?.mode ?? MODES[0]);
+    const [extraNotes, setExtraNotes] = useState(() => initialForm?.extraNotes ?? "");
     const [touched, setTouched] = useState(false);
 
     // Auto-resolve the reference partition from the patient (age + sex).
@@ -110,36 +125,68 @@ export default function HematologyAnalyzerForm({
     );
 
     const activeCategory: HematologyCategory = category ?? resolved.category ?? DEFAULT_HEMATOLOGY_CATEGORY;
-    const isManual = category !== null && category !== (resolved.category ?? null);
+    const isManual = categoryTouched
+        ? activeCategory !== resolved.category
+        : category !== null && resolved.category !== null && category !== resolved.category;
     const warn = resolved.note?.includes("unknown") || resolved.note?.includes("confirm");
 
     const derived = useMemo(() => computeDerivedValues(values), [values]);
     const inputCount = HEMATOLOGY_INPUT_KEYS.length;
     const filledCount = HEMATOLOGY_INPUT_KEYS.filter((k) => values[k]?.trim()).length;
 
+    const buildCurrentResult = (overrides: {
+        values?: Record<string, string>;
+        category?: HematologyCategory;
+        categoryTouched?: boolean;
+        mode?: string;
+        extraNotes?: string;
+    } = {}) => {
+        const nextCategory = overrides.category ?? activeCategory;
+        const nextCategoryTouched = overrides.categoryTouched ?? categoryTouched;
+        const categoryNote = nextCategoryTouched
+            ? (nextCategory !== resolved.category ? "Selected manually" : resolved.note ?? undefined)
+            : initialForm
+                ? (initialForm.categoryNote || undefined)
+                : (isManual ? "Selected manually" : resolved.note ?? undefined);
+
+        return buildHematologyResultString({
+            category: nextCategory,
+            categoryNote,
+            mode: overrides.mode ?? mode,
+            sampleId: initialForm ? (initialForm.sampleId || null) : (sampleId ?? null),
+            testTime: initialForm ? (initialForm.testTime || null) : new Date().toISOString(),
+            values: overrides.values ?? values,
+            extraNotes: overrides.extraNotes ?? extraNotes,
+        });
+    };
+
     const handleChange = (key: string, val: string) => {
-        setValues((prev) => ({ ...prev, [key]: val }));
+        const nextValues = { ...values, [key]: val };
+        setValues(nextValues);
         setTouched(true);
+        onResultChange?.(buildCurrentResult({ values: nextValues }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const resultString = buildHematologyResultString({
-            category: activeCategory,
-            categoryNote: isManual ? "Selected manually" : (resolved.note ?? undefined),
-            mode,
-            sampleId: sampleId ?? null,
-            testTime: new Date().toISOString(),
-            values,
-            extraNotes,
-        });
-        await onSubmit(resultString);
+        await onSubmit(buildCurrentResult());
     };
 
     const ageLabel =
         patient?.age !== null && patient?.age !== undefined
             ? formatAgeLabel(patient.age)
             : null;
+    const displayedSampleId = initialForm ? (initialForm.sampleId || null) : sampleId;
+    const displayedTime = initialForm
+        ? initialForm.testTime
+            ? (() => {
+                const parsedTime = new Date(initialForm.testTime);
+                return Number.isNaN(parsedTime.getTime())
+                    ? initialForm.testTime
+                    : parsedTime.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+            })()
+            : "—"
+        : new Date().toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -183,8 +230,14 @@ export default function HematologyAnalyzerForm({
                         <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">Reference Range Set</label>
                         <select
                             value={activeCategory}
-                            onChange={(e) => setCategory(e.target.value as HematologyCategory)}
-                            className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 cursor-pointer appearance-none"
+                            onChange={(e) => {
+                                const nextCategory = e.target.value as HematologyCategory;
+                                setCategory(nextCategory);
+                                setCategoryTouched(true);
+                                onResultChange?.(buildCurrentResult({ category: nextCategory, categoryTouched: true }));
+                            }}
+                            disabled={disabled}
+                            className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 cursor-pointer appearance-none disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {HEMATOLOGY_CATEGORIES.map((c) => (
                                 <option key={c.id} value={c.id}>
@@ -201,8 +254,13 @@ export default function HematologyAnalyzerForm({
                         <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">Mode</label>
                         <select
                             value={mode}
-                            onChange={(e) => setMode(e.target.value)}
-                            className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 cursor-pointer appearance-none"
+                            onChange={(e) => {
+                                const nextMode = e.target.value;
+                                setMode(nextMode);
+                                onResultChange?.(buildCurrentResult({ mode: nextMode }));
+                            }}
+                            disabled={disabled}
+                            className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 cursor-pointer appearance-none disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {MODES.map((m) => <option key={m} value={m}>{m}</option>)}
                         </select>
@@ -223,10 +281,8 @@ export default function HematologyAnalyzerForm({
                             <CalendarClock size={10} /> Sample ID / Time
                         </label>
                         <div className="h-10 flex items-center px-3 rounded-xl border border-gray-200 bg-gray-50 text-xs font-mono font-bold text-gray-700 truncate">
-                            {sampleId?.slice(-8).toUpperCase() ?? "—"}
-                            <span className="ml-2 font-sans font-medium text-gray-400 shrink-0">
-                                {new Date().toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                            </span>
+                            {displayedSampleId?.slice(-8).toUpperCase() ?? "—"}
+                            <span className="ml-2 font-sans font-medium text-gray-400 shrink-0">{displayedTime}</span>
                         </div>
                     </div>
                 </div>
@@ -267,6 +323,7 @@ export default function HematologyAnalyzerForm({
                                 refRange={ref}
                                 flag={flag}
                                 onChange={(v) => handleChange(p.key, v)}
+                                disabled={disabled}
                             />
                         );
                     })}
@@ -314,32 +371,39 @@ export default function HematologyAnalyzerForm({
                 </label>
                 <textarea
                     value={extraNotes}
-                    onChange={(e) => setExtraNotes(e.target.value)}
+                    onChange={(e) => {
+                        const nextNotes = e.target.value;
+                        setExtraNotes(nextNotes);
+                        onResultChange?.(buildCurrentResult({ extraNotes: nextNotes }));
+                    }}
+                    disabled={disabled}
                     rows={3}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 text-sm placeholder:text-gray-300 transition-all resize-none"
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/25 focus:border-indigo-400 text-sm placeholder:text-gray-300 transition-all resize-none disabled:cursor-not-allowed disabled:opacity-60"
                     placeholder="Smear comments, sample quality, flags requiring manual review…"
                 />
             </div>
 
-            {/* Submit */}
-            <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {submitting ? (
-                    <>
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Processing Results...
-                    </>
-                ) : (
-                    <>
-                        <Printer size={18} />
-                        Authorize &amp; Release Analyzer Report
-                        <ArrowRight size={16} />
-                    </>
-                )}
-            </button>
+            {/* The amendment dialog provides the audited save action in its footer. */}
+            {!hideSubmit && (
+                <button
+                    type="submit"
+                    disabled={submitting || disabled}
+                    className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {submitting ? (
+                        <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Processing Results...
+                        </>
+                    ) : (
+                        <>
+                            <Printer size={18} />
+                            Authorize &amp; Release Analyzer Report
+                            <ArrowRight size={16} />
+                        </>
+                    )}
+                </button>
+            )}
         </form>
     );
 }

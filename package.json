@@ -11,6 +11,7 @@
     "check:lab-submit": "node scripts/repro-billing.cjs",
     "check:amendments": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-amendment-policy.ts",
     "check:lab-identity": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-lab-identity.ts",
+    "check:lab-amendments": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-lab-result-amendments.ts",
     "analyze": "cross-env ANALYZE=true next build --webpack"
   },
   "dependencies": {
