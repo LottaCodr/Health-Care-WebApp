@@ -7,6 +7,7 @@ import { Toaster as SonnerToaster } from "sonner";
 // import { NotificationContainer } from "@/components/notification-container";
 import { Providers } from "@/context/provider";
 import { cn } from "@/utils/utils";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Nile Valley Mother & Child Hospital",
@@ -32,6 +33,7 @@ export default function RootLayout({
             <SonnerToaster position="top-right" richColors closeButton />
           </ThemeProvider>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
