@@ -69,7 +69,9 @@ console.log(`hostile search input ("name.eq.…,(extra).%_") → ${hostile.total
 
 // ── The old full-table fetch, for comparison ─────────────────────────────────
 mock.requests.length = 0;
-const everything = await svc.getAllPatients();
+const everythingResult = await svc.getAllPatients();
+assert.ok(everythingResult.ok);
+const everything = everythingResult.data;
 assert.equal(everything.length, REGISTRY_SIZE);
 console.log(
     `\ngetAllPatients() (the old "All Patients" tab): ${mock.restCalls()} sequential REST calls, ` +

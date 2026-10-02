@@ -20,7 +20,7 @@ import {
     useUpdatePatientStatus,
     patientKeys,
 } from "@/hooks/emr/use-emr";
-import { getPatientById } from "@/lib/services/patient.service";
+import { fetchPatient } from "@/hooks/emr/use-patients";
 import { calculateAge, formatDate } from "@/lib/utils";
 import { PatientStatus, type Patient } from "@/types/models";
 import { AttendantPill } from "@/components/emr/care-team";
@@ -179,7 +179,7 @@ function PatientGrid({
     const prefetch = (id: string) => {
         qc.prefetchQuery({
             queryKey: patientKeys.detail(id),
-            queryFn: () => getPatientById(id),
+            queryFn: () => fetchPatient(id),
             staleTime: 60_000,
         });
     };

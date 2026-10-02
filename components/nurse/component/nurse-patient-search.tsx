@@ -22,7 +22,7 @@ interface NursePatientSearchProps {
 
 export default function NursePatientSearch({ basePath = "/nurse/queue/patient" }: NursePatientSearchProps) {
     const [query, setQuery] = useState("");
-    const { data: results = [], isLoading } = useSearchPatients(query);
+    const { data: results = [], isLoading, error: searchError } = useSearchPatients(query);
 
     const showDropdown = query.trim().length > 0;
 
@@ -50,6 +50,12 @@ export default function NursePatientSearch({ basePath = "/nurse/queue/patient" }
                         <div className="flex items-center gap-2 px-4 py-5 justify-center">
                             <Loader2 size={14} className="text-teal-500 animate-spin" />
                             <p className="text-sm text-gray-400">Searching…</p>
+                        </div>
+                    ) : searchError ? (
+                        <div className="flex flex-col items-center justify-center py-8 gap-2 px-4 text-center" role="alert">
+                            <User size={18} className="text-amber-400" />
+                            <p className="text-sm font-semibold text-gray-600">Search could not be completed</p>
+                            <p className="text-xs text-gray-400 break-words">{(searchError as Error).message}</p>
                         </div>
                     ) : results.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 gap-2">

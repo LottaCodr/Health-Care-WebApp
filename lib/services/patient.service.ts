@@ -5,6 +5,7 @@ import { Patient, PatientStatus, UserRole } from "@/types/models";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
+import type { ServiceResult } from "@/lib/utils/service-result";
 
 /**
  * Roles that may advance a patient through the workflow state machine
@@ -207,37 +208,75 @@ async function insertPatient(
 }
 
 /**
- * One patient, by id.
- *
- * Returns `null` ONLY when there is genuinely no such patient. Every other
- * failure (RLS/policy drift, a revoked grant, schema drift, PostgREST/5xx,
- * a dropped connection) is THROWN with a human-readable reason.
- *
- * That distinction is not cosmetic. This action backs every role's patient
- * page, and each of them renders "Patient not found." for a falsy result — so
- * collapsing a *refused read* into the same `null` as a *missing row* told
- * nurses (and the desk, and the doctors) that a patient who is sitting in the
- * database did not exist, with nothing on screen to explain why and no way to
- * retry. `maybeSingle()` makes "no row" a clean `null` with no error object to
- * confuse the two cases, and `formatFriendlyDbError` keeps the real reason on
- * the screen — the same rule `createPatient` follows (see its comment).
+ * A failed read, as words. Friendly sentence first, then the raw code/message
+ * so a screenshot of the screen is diagnosable (the guard prefixes
+ * `UNAUTHORIZED:` / `STAFF_LOOKUP_FAILED:` already carry their own detail).
  */
-export async function getPatientById(id: string): Promise<Patient | null> {
-    await requireStaff();
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from("patients")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
+function describeReadFailure(error: any, fallback: string): { message: string; code: string | null } {
+    const code = error?.code ? String(error.code) : null;
+    const friendly = formatFriendlyDbError(error, fallback);
+    const raw = String(error?.message ?? "").trim();
+    const alreadyShown =
+        !raw ||
+        friendly.includes(raw) ||
+        /^(unauthorized|forbidden|staff_lookup_failed):/i.test(raw);
+    const technical = alreadyShown ? "" : ` [${code ? `${code}: ` : ""}${raw}]`;
+    return { message: `${friendly}${technical}`, code };
+}
 
-    if (error) {
-        console.error("[patient] getPatientById:", error);
-        throw new Error(
-            formatFriendlyDbError(error, "Could not load this patient's record. Please try again.")
-        );
+/**
+ * One patient, by id — returned as a RESULT, never thrown.
+ *
+ * `{ ok: true, data: null }` means the database was asked and there is
+ * genuinely no such patient. `{ ok: false }` means the read FAILED (no/expired
+ * session, staff-profile lookup failed, RLS/policy drift, PostgREST/5xx, a
+ * dropped connection) and carries the reason in plain words.
+ *
+ * Why not throw? This is a Server Action. Next.js redacts the message of any
+ * error an action throws before it reaches the browser in production, so the
+ * previous "throw a friendly reason" design reached every department as
+ * "This record could not be opened … An error occurred in the Server
+ * Components render. The specific message is omitted…" — no reason, nothing a
+ * desk could screenshot, nothing an admin could act on. Returning the message
+ * is the only way it survives the wire (same rule as `createPatient`).
+ * Client callers go through `fetchPatient` in `hooks/emr/use-patients.ts`,
+ * which re-throws CLIENT-side so React Query's error state keeps working.
+ */
+export async function lookupPatient(id: string): Promise<ServiceResult<Patient | null>> {
+    try {
+        const patientId = typeof id === "string" ? id.trim() : "";
+        // A route param that never resolved ("undefined"/"null") cannot match
+        // anything — and sending it to a uuid column is a 22P02 error that
+        // used to be reported as a broken record.
+        if (!patientId || patientId === "undefined" || patientId === "null") {
+            return { ok: true, data: null };
+        }
+
+        await requireStaff();
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("patients")
+            .select("*")
+            .eq("id", patientId)
+            .maybeSingle();
+
+        if (error) {
+            // A malformed id is "no such patient", not a failed read.
+            if (error.code === "22P02") return { ok: true, data: null };
+            console.error("[patient] lookupPatient:", error);
+            return {
+                ok: false,
+                ...describeReadFailure(error, "Could not load this patient's record. Please try again."),
+            };
+        }
+        return { ok: true, data: (data ?? null) as unknown as Patient | null };
+    } catch (error: any) {
+        console.error("[patient] lookupPatient failed:", error);
+        return {
+            ok: false,
+            ...describeReadFailure(error, "Could not load this patient's record. Please try again."),
+        };
     }
-    return (data ?? null) as unknown as Patient | null;
 }
 
 export async function updatePatient(
@@ -590,19 +629,41 @@ export async function listPatientsCreatedSince(
     return (data ?? []) as Patient[];
 }
 
-export async function searchPatients(query: string): Promise<Patient[]> {
-    await requireStaff();
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from("patients")
-        .select("*")
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,hospital_number.ilike.%${query}%`)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .limit(100);
+/**
+ * Free-text patient search (name / email / phone / hospital number).
+ *
+ * Returned as a RESULT: a failed search used to come back as `[]`, which the
+ * admin's "find a patient to edit demographics" screen rendered as "No
+ * patients match" — an unreadable registry looked exactly like an empty one.
+ */
+export async function searchPatients(query: string): Promise<ServiceResult<Patient[]>> {
+    try {
+        await requireStaff();
+        const supabase = await createClient();
 
-    if (error) { console.error("[patient] searchPatients:", error); return []; }
-    return data as Patient[];
+        // Neutralise the characters PostgREST parses as `or=` structure so a
+        // name like "Doe, John" or "O'Brien (jr)" is matched literally instead
+        // of breaking the filter (which also used to surface as "no results").
+        const term = String(query ?? "").replace(/[%,()"\\*]/g, " ").replace(/\s+/g, " ").trim();
+        if (!term) return { ok: true, data: [] };
+
+        const { data, error } = await supabase
+            .from("patients")
+            .select("*")
+            .or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,hospital_number.ilike.%${term}%`)
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
+            .limit(100);
+
+        if (error) {
+            console.error("[patient] searchPatients:", error);
+            return { ok: false, ...describeReadFailure(error, "Patient search failed. Please try again.") };
+        }
+        return { ok: true, data: (data ?? []) as Patient[] };
+    } catch (error: any) {
+        console.error("[patient] searchPatients failed:", error);
+        return { ok: false, ...describeReadFailure(error, "Patient search failed. Please try again.") };
+    }
 }
 
 /**
@@ -747,44 +808,57 @@ export async function listPatientsPage(input: {
 export async function getAllPatients(
     page = 0,
     limit?: number
-): Promise<Patient[]> {
-    await requireStaff();
-    const supabase = await createClient();
+): Promise<ServiceResult<Patient[]>> {
+    try {
+        await requireStaff();
+        const supabase = await createClient();
 
-    if (limit && limit <= 500) {
-        const { data, error } = await supabase
-            .from("patients")
-            .select("*")
-            // FIFO: earliest arrivals first (see listPatientsByStatus).
-            .order("created_at", { ascending: true })
-            .order("id", { ascending: true })
-            .range(page * limit, (page + 1) * limit - 1);
+        if (limit && limit <= 500) {
+            const { data, error } = await supabase
+                .from("patients")
+                .select("*")
+                // FIFO: earliest arrivals first (see listPatientsByStatus).
+                .order("created_at", { ascending: true })
+                .order("id", { ascending: true })
+                .range(page * limit, (page + 1) * limit - 1);
 
-        if (error) { console.error("[patient] getAllPatients:", error); return []; }
-        return data as Patient[];
+            if (error) {
+                console.error("[patient] getAllPatients:", error);
+                return { ok: false, ...describeReadFailure(error, "Failed to load patients. Please try again.") };
+            }
+            return { ok: true, data: (data ?? []) as Patient[] };
+        }
+
+        const allData: Patient[] = [];
+        let from = page * (limit ?? 0);
+        const batchSize = 1000;
+
+        while (true) {
+            const { data, error } = await supabase
+                .from("patients")
+                .select("*")
+                // FIFO: earliest arrivals first (see listPatientsByStatus).
+                .order("created_at", { ascending: true })
+                .order("id", { ascending: true })
+                .range(from, from + batchSize - 1);
+
+            if (error) {
+                // A partial registry shown as if it were complete is worse
+                // than an error — report the failure.
+                console.error("[patient] getAllPatients:", error);
+                return { ok: false, ...describeReadFailure(error, "Failed to load patients. Please try again.") };
+            }
+            if (!data || data.length === 0) break;
+            allData.push(...(data as Patient[]));
+            // See listPatientsByStatus: a short batch IS the last batch.
+            if (data.length < batchSize) break;
+            from += data.length;
+            if (limit && allData.length >= limit) break;
+        }
+
+        return { ok: true, data: allData };
+    } catch (error: any) {
+        console.error("[patient] getAllPatients failed:", error);
+        return { ok: false, ...describeReadFailure(error, "Failed to load patients. Please try again.") };
     }
-
-    const allData: Patient[] = [];
-    let from = page * (limit ?? 0);
-    const batchSize = 1000;
-
-    while (true) {
-        const { data, error } = await supabase
-            .from("patients")
-            .select("*")
-            // FIFO: earliest arrivals first (see listPatientsByStatus).
-            .order("created_at", { ascending: true })
-            .order("id", { ascending: true })
-            .range(from, from + batchSize - 1);
-
-        if (error) { console.error("[patient] getAllPatients:", error); break; }
-        if (!data || data.length === 0) break;
-        allData.push(...(data as Patient[]));
-        // See listPatientsByStatus: a short batch IS the last batch.
-        if (data.length < batchSize) break;
-        from += data.length;
-        if (limit && allData.length >= limit) break;
-    }
-
-    return allData;
 }
