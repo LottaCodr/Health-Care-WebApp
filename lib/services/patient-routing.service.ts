@@ -16,6 +16,7 @@ export type RouteDestination = "lab" | "radiology" | "pharmacist" | "front-desk"
 export interface RouteLabTest {
     testType: string;
     priority?: "routine" | "urgent" | "stat";
+    followUpAfterDischarge?: boolean;
 }
 
 export interface RoutePrescription {
@@ -49,7 +50,7 @@ export interface RoutePatientInput {
     radiologyTests?: RouteLabTest[];
     radiologyNotes?: string;
     prescription?: RoutePrescription;
-    /** For front-desk destination: admission (creates an admission record) or billing. */
+    /** For front-desk destination: admission (creates an admission record) or outpatient closeout. */
     frontDeskAction?: "admission" | "billing";
     admission?: RouteAdmissionDetails;
     note?: string;
@@ -70,7 +71,7 @@ const DESTINATION_STATUS: Record<RouteDestination, string> = {
     lab: "sent-to-lab",
     radiology: "sent-to-radiology",
     pharmacist: "sent-to-pharmacy",
-    "front-desk": "awaiting-payment", // overridden to "admitted" for admissions
+    "front-desk": "awaiting-front-desk", // overridden to "admitted" for admissions
     nurse: "sent-to-nurse",
 };
 
@@ -93,7 +94,7 @@ const DESTINATION_LABEL: Record<RouteDestination, string> = {
 /**
  * Route a patient to another department WITHOUT creating a consultation.
  * Doctors use this to send a patient straight to the lab, pharmacy,
- * radiology, nursing or front desk (admission/billing), either before any
+ * radiology, nursing or Front Desk (admission/closeout), either before any
  * consultation exists or on top of an already existing one.
  */
 export async function routePatientWithoutConsultation(
@@ -141,6 +142,7 @@ export async function routePatientWithoutConsultation(
                 priority: test.priority ?? "routine",
                 notes: input.labNotes?.trim() || input.note?.trim() || undefined,
                 status: "pending",
+                followUpAfterDischarge: test.followUpAfterDischarge === true,
             });
             labRequestsCreated++;
         }
@@ -209,7 +211,9 @@ export async function routePatientWithoutConsultation(
         try {
             await updateConsultation(input.consultationId, {
                 referred_to: input.destination,
-                status: finalStatus,
+                // Consultation clinical completion is separate from the
+                // patient's department/closeout status.
+                status: "completed",
             } as any);
             consultationUpdated = true;
         } catch (err) {

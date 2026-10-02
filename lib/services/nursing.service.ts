@@ -35,7 +35,12 @@ export interface UpdateNursingActionInput {
 }
 
 export async function createNursingAction(input: CreateNursingActionInput){
-    await requireStaff([UserRole.Nurse]);
+    const actor = await requireStaff([UserRole.Nurse, UserRole.Doctor]);
+    // Doctors may request post-consultation care, but cannot mark their own
+    // nursing work complete; completion remains a nursing responsibility.
+    if (actor.role === UserRole.Doctor && input.status !== "Pending") {
+        throw new Error("Doctors may create pending nursing requests but cannot complete nursing tasks.");
+    }
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("nursing_actions")

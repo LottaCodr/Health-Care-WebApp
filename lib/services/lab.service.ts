@@ -24,12 +24,27 @@ export interface CreateLabRequestInput {
     notes?: string;
     status?: string;
     price?: number;
+    /** Clinician-approved delayed result; Front Desk still requires a linked collected specimen before discharge. */
+    followUpAfterDischarge?: boolean;
 }
 
 export async function createLabRequest(
     input: CreateLabRequestInput
 ): Promise<LabRequest> {
-    await requireStaff([UserRole.Doctor, UserRole.FrontDesk]);
+    const actor = await requireStaff([UserRole.Doctor, UserRole.FrontDesk]);
+    if (
+        input.followUpAfterDischarge === true &&
+        actor.role !== UserRole.Doctor &&
+        actor.role !== UserRole.Admin
+    ) {
+        throw new Error("Only a clinician may approve a laboratory result for follow-up after discharge.");
+    }
+    if (
+        input.followUpAfterDischarge === true &&
+        ["urgent", "stat"].includes(String(input.priority ?? "routine").trim().toLowerCase())
+    ) {
+        throw new Error("Urgent and STAT laboratory requests cannot be deferred until after discharge.");
+    }
     if (isPyloriOrder(input.testType) && !findTemplate(input.testType)) {
         throw new Error("Specify H. pylori antibody (blood) or H. pylori antigen (stool) before ordering. They are different tests; ask the lab to configure both catalog entries with their own prices.");
     }
@@ -70,6 +85,7 @@ export async function createLabRequest(
             priority: input.priority ?? "routine",
             notes: input.notes ?? null,
             status: input.status ?? "pending",
+            follow_up_after_discharge: input.followUpAfterDischarge === true,
         }])
         .select()
         .single();
@@ -108,7 +124,7 @@ export async function createLabRequest(
             .eq("id", input.patientId)
             .maybeSingle();
 
-        const KEEP_STATUS = new Set(["admitted", "discharged"]);
+        const KEEP_STATUS = new Set(["admitted", "discharged", "awaiting-front-desk", "awaiting-payment"]);
 
         if (currentPatient && !KEEP_STATUS.has(String(currentPatient.status).toLowerCase())) {
             await supabase
@@ -562,6 +578,28 @@ async function updateLabRequestOrThrow(
         } catch (notifyError) {
             console.error("[lab] result notification failed after save:", notifyError);
         }
+
+        if (data.follow_up_after_discharge === true && ctx?.firstFiling) {
+            try {
+                await trackDeferredLabResultDelivery(supabase, data, actor.userId);
+            } catch (followupError) {
+                // The clinical result has already been committed. Never report
+                // the result write as failed because this secondary follow-up
+                // notification/tracking path had a problem.
+                console.error("[lab] deferred-result patient follow-up failed after save:", followupError);
+                try {
+                    await createNotification({
+                        role: "LabTechnician",
+                        title: "Deferred Result Follow-up Needs Review",
+                        message: `A ${data.test_type ?? "lab"} result was saved, but its patient follow-up could not be fully recorded. Review the deferred-results queue.`,
+                        type: "warning",
+                        link: "/lab-tech/dashboard",
+                    });
+                } catch (notifyError) {
+                    console.error("[lab] could not alert the lab team about deferred-result follow-up:", notifyError);
+                }
+            }
+        }
     }
 
     // The result is saved; a billing/schema hiccup rides along as a warning so
@@ -570,6 +608,268 @@ async function updateLabRequestOrThrow(
         return { ...(data as any), billing_warning: billingWarning } as unknown as LabRequest;
     }
     return data as unknown as LabRequest;
+}
+
+export type LabResultDeliveryMethod = "phone" | "sms_whatsapp" | "in_person";
+
+export interface LabResultFollowup {
+    id: string;
+    lab_request_id: string;
+    patient_id: string;
+    status: "pending_contact" | "delivered";
+    delivery_method?: "portal" | LabResultDeliveryMethod | null;
+    delivered_at?: string | null;
+    delivered_by?: string | null;
+    delivery_notes?: string | null;
+    test_type?: string;
+    completed_at?: string | null;
+    followup_status?: string;
+    patients?: {
+        id: string;
+        name?: string;
+        phone?: string | null;
+        hospital_number?: string | null;
+        portal_enabled?: boolean;
+    } | null;
+}
+
+/** Start a delivery task as soon as a clinician-approved deferred result is filed. */
+async function trackDeferredLabResultDelivery(
+    supabase: LabSupabase,
+    request: any,
+    actorId: string
+) {
+    const patientId = String(request.visit_id ?? request.patient_id ?? "");
+    if (!patientId) throw new Error("The deferred lab request has no linked patient.");
+
+    const now = new Date().toISOString();
+    const { error: trackingError } = await supabase
+        .from("lab_result_followups")
+        .upsert({
+            lab_request_id: request.id,
+            patient_id: patientId,
+            status: "pending_contact",
+            delivery_method: null,
+            delivered_at: null,
+            delivered_by: null,
+            delivery_notes: null,
+            updated_at: now,
+        }, { onConflict: "lab_request_id" });
+    if (trackingError) throw trackingError;
+
+    const { data: patient, error: patientError } = await supabase
+        .from("patients")
+        .select("id, name, phone, portal_user_id, portal_enabled")
+        .eq("id", patientId)
+        .maybeSingle();
+    if (patientError) throw patientError;
+
+    if (patient?.portal_enabled === true && patient.portal_user_id) {
+        const notification = await createNotification({
+            recipient_id: patient.portal_user_id,
+            title: "Your lab result is ready",
+            message: `Your ${request.test_type ?? "laboratory"} result is ready. Sign in to your patient portal to view it in your health record.`,
+            type: "success",
+            link: `/portal?lab-result=${encodeURIComponent(String(request.id))}`,
+        });
+
+        if (notification) {
+            const { error: deliveredError } = await supabase
+                .from("lab_result_followups")
+                .update({
+                    status: "delivered",
+                    delivery_method: "portal",
+                    delivered_at: now,
+                    delivered_by: actorId,
+                    delivery_notes: "Patient portal notification posted; the result is available in the patient record.",
+                    updated_at: now,
+                })
+                .eq("lab_request_id", request.id);
+            if (deliveredError) throw deliveredError;
+
+            await logAction("LAB_RESULT_PORTAL_NOTIFIED", "lab_result_followups", request.id, {
+                patient_id: patientId,
+                lab_request_id: request.id,
+                delivery_method: "portal",
+                delivered_by: actorId,
+            });
+            return;
+        }
+    }
+
+    await createNotification({
+        role: "LabTechnician",
+        title: "Deferred lab result needs patient contact",
+        message: `${patient?.name ?? "A patient"} has a completed ${request.test_type ?? "lab"} result awaiting documented patient contact.`,
+        type: "warning",
+        link: "/lab-tech/dashboard",
+    });
+    await logAction("LAB_RESULT_FOLLOWUP_QUEUED", "lab_result_followups", request.id, {
+        patient_id: patientId,
+        lab_request_id: request.id,
+        status: "pending_contact",
+        portal_available: patient?.portal_enabled === true && !!patient?.portal_user_id,
+    });
+}
+
+/** Completed deferred results that still need an in-app alert or manual contact. */
+export async function listLabResultFollowups(): Promise<LabResultFollowup[]> {
+    await requireStaff([UserRole.LabTechnician, UserRole.Doctor, UserRole.FrontDesk, UserRole.Admin]);
+    const supabase = await createClient();
+    const [unresolvedResult, recentCompletedResult] = await Promise.all([
+        supabase
+            .from("lab_result_followups")
+            .select("lab_request_id, patient_id, status, delivery_method, updated_at")
+            .neq("status", "delivered")
+            .order("updated_at", { ascending: false })
+            .limit(1000),
+        // Also scan recent completed flagged requests so a legacy row or a
+        // transient tracking-write failure is still visible for manual follow-up.
+        supabase
+            .from("lab_requests")
+            .select("id, visit_id, test_type, status, completed_at, created_at, follow_up_after_discharge")
+            .eq("status", "completed")
+            .eq("follow_up_after_discharge", true)
+            .order("completed_at", { ascending: false })
+            .limit(500),
+    ]);
+    if (unresolvedResult.error || recentCompletedResult.error) {
+        console.error("[lab] deferred-result follow-up candidates:", {
+            followups: unresolvedResult.error,
+            requests: recentCompletedResult.error,
+        });
+        throw new Error("Could not load deferred-result patient follow-up tasks.");
+    }
+
+    const requestIds = [...new Set([
+        ...(unresolvedResult.data ?? []).map((row: any) => row.lab_request_id).filter(Boolean),
+        ...(recentCompletedResult.data ?? []).map((row: any) => row.id).filter(Boolean),
+    ])] as string[];
+    if (!requestIds.length) return [];
+
+    // Keep PostgREST filters comfortably below URL-size limits when the follow-up
+    // queue is large rather than sending one enormous `in.(...)` request.
+    const idBatches: string[][] = [];
+    for (let index = 0; index < requestIds.length; index += 200) {
+        idBatches.push(requestIds.slice(index, index + 200));
+    }
+    const [requestResults, deliveryResults] = await Promise.all([
+        Promise.all(idBatches.map((ids) => supabase
+            .from("lab_requests")
+            .select("id, visit_id, test_type, status, completed_at, created_at, follow_up_after_discharge")
+            .in("id", ids)
+            .eq("status", "completed")
+            .eq("follow_up_after_discharge", true))),
+        Promise.all(idBatches.map((ids) => supabase
+            .from("lab_result_followups")
+            .select("*")
+            .in("lab_request_id", ids))),
+    ]);
+    const requestError = requestResults.find((result) => result.error)?.error;
+    const deliveryError = deliveryResults.find((result) => result.error)?.error;
+    if (requestError || deliveryError) {
+        console.error("[lab] deferred-result follow-up details:", {
+            requests: requestError,
+            followups: deliveryError,
+        });
+        throw new Error("Could not verify deferred-result delivery status.");
+    }
+
+    const labRequests = requestResults.flatMap((result) => result.data ?? []).filter(
+        (request: any) => !String(request.test_type ?? "").trim().toUpperCase().startsWith("[RADIOLOGY]")
+    ) as any[];
+    if (!labRequests.length) return [];
+
+    const followupsByRequest = new Map(
+        deliveryResults.flatMap((result) => result.data ?? []).map((row: any) => [row.lab_request_id, row])
+    );
+    const patientIds = [...new Set(
+        labRequests.map((request) => request.visit_id ?? followupsByRequest.get(request.id)?.patient_id).filter(Boolean)
+    )] as string[];
+    const patientIdBatches: string[][] = [];
+    for (let index = 0; index < patientIds.length; index += 200) {
+        patientIdBatches.push(patientIds.slice(index, index + 200));
+    }
+    const patientResults = await Promise.all(patientIdBatches.map((ids) => supabase
+        .from("patients")
+        .select("id, name, phone, hospital_number, portal_enabled")
+        .in("id", ids)));
+    const patientError = patientResults.find((result) => result.error)?.error;
+    if (patientError) {
+        console.error("[lab] deferred-result patient details:", patientError);
+        throw new Error("Could not verify patient details for deferred-result follow-up.");
+    }
+
+    const patientsById = new Map(
+        patientResults.flatMap((result) => result.data ?? []).map((row: any) => [row.id, row])
+    );
+    return labRequests
+        .filter((request) => followupsByRequest.get(request.id)?.status !== "delivered")
+        .map((request) => {
+            const followup = followupsByRequest.get(request.id) as any;
+            const patientId = request.visit_id ?? followup?.patient_id;
+            return {
+                ...request,
+                patient_id: patientId,
+                followup_status: followup?.status ?? "pending_contact",
+                delivery_method: followup?.delivery_method ?? null,
+                patients: patientId ? patientsById.get(patientId) ?? null : null,
+            };
+        });
+}
+
+/** Record staff-confirmed phone/SMS/WhatsApp or in-person result communication. */
+export async function markLabResultDelivered(input: {
+    requestId: string;
+    method: LabResultDeliveryMethod;
+    notes?: string;
+}) {
+    const actor = await requireStaff([UserRole.LabTechnician, UserRole.Doctor, UserRole.FrontDesk, UserRole.Admin]);
+    if (!input.requestId?.trim()) throw new Error("Select a deferred laboratory result first.");
+    if (!["phone", "sms_whatsapp", "in_person"].includes(input.method)) {
+        throw new Error("Choose a valid patient contact method.");
+    }
+
+    const supabase = await createClient();
+    const { data: request, error: requestError } = await supabase
+        .from("lab_requests")
+        .select("id, visit_id, test_type, status, follow_up_after_discharge")
+        .eq("id", input.requestId)
+        .maybeSingle();
+    if (requestError) throw new Error("Could not verify the selected laboratory result.");
+    if (!request || request.status !== "completed" || request.follow_up_after_discharge !== true) {
+        throw new Error("This request is not a completed result awaiting deferred patient follow-up.");
+    }
+    const patientId = String(request.visit_id ?? (request as any).patient_id ?? "");
+    if (!patientId) throw new Error("This laboratory result has no linked patient record.");
+
+    const now = new Date().toISOString();
+    const notes = input.notes?.trim().slice(0, 1000) || null;
+    const { data, error } = await supabase
+        .from("lab_result_followups")
+        .upsert({
+            lab_request_id: request.id,
+            patient_id: patientId,
+            status: "delivered",
+            delivery_method: input.method,
+            delivered_at: now,
+            delivered_by: actor.userId,
+            delivery_notes: notes,
+            updated_at: now,
+        }, { onConflict: "lab_request_id" })
+        .select("*")
+        .single();
+    if (error) throw new Error("The contact was not recorded. Refresh the follow-up queue and try again.");
+
+    await logAction("LAB_RESULT_DELIVERED_TO_PATIENT", "lab_result_followups", request.id, {
+        patient_id: patientId,
+        lab_request_id: request.id,
+        test_type: request.test_type,
+        delivery_method: input.method,
+        delivery_notes: notes,
+        delivered_by: actor.userId,
+    });
+    return data;
 }
 
 // ─── Lab ↔ billing helpers ────────────────────────────────────────────────────
@@ -806,7 +1106,7 @@ async function syncLabPriceToBill(
  *    (admitted, discharged, or sitting in another department's queue) keeps
  *    their status — the bill is still visible in the checkout queue.
  *  - Other pending lab tests → stay `sent-to-lab`.
- *  - Otherwise the REAL outstanding balance decides: > ₦0 → `awaiting-payment`,
+ *  - Otherwise the REAL outstanding balance decides: > ₦0 → `awaiting-front-desk`,
  *    else back to the doctor via `under-observation`.
  */
 async function routePatientAfterLabCompletion(
@@ -849,7 +1149,7 @@ async function routePatientAfterLabCompletion(
 
     await supabase
         .from("patients")
-        .update({ status: paymentPending ? "awaiting-payment" : "under-observation" })
+        .update({ status: paymentPending ? "awaiting-front-desk" : "under-observation" })
         .eq("id", patientId);
 
     return paymentPending;

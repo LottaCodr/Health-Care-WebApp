@@ -67,6 +67,7 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> =
     "sent-to-pharmacy": { bg: "bg-pink-50", text: "text-pink-700", dot: "bg-pink-500" },
     "sent-to-radiology": { bg: "bg-cyan-50", text: "text-cyan-700", dot: "bg-cyan-500" },
     "awaiting-payment": { bg: "bg-orange-50", text: "text-orange-700 ", dot: "bg-orange-500" },
+    "awaiting-front-desk": { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
     "admitted": { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
     "under-observation": { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
     "discharged": { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
@@ -75,7 +76,9 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> =
 
 function StatusBadge({ status }: { status: string }) {
     const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG["no-status"];
-    const label = status.replace(/-/g, " ").replace(/^\w/, c => c.toUpperCase());
+    const label = status === "awaiting-front-desk"
+        ? "Awaiting Front Desk"
+        : status.replace(/-/g, " ").replace(/^\w/, c => c.toUpperCase());
     return (
         <span className={clsx("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold", cfg.bg, cfg.text)}>
             <span className={clsx("w-1.5 h-1.5 rounded-full shrink-0", cfg.dot)} />
@@ -405,7 +408,9 @@ function StatusSection({ status, role, onDischarge }: { status: string; role: st
     if (isPending) return <Skeleton />;
     if (!patients.length) return null;   // don't show empty sections
 
-    const label = status.replace(/-/g, " ").replace(/^\w/, c => c.toUpperCase());
+    const label = status === "awaiting-front-desk"
+        ? "Awaiting Front Desk"
+        : status.replace(/-/g, " ").replace(/^\w/, c => c.toUpperCase());
     const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG["no-status"];
 
     return (

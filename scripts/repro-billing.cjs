@@ -15,10 +15,16 @@ const db = {
     patients: [],
     payments: [],
     lab_requests: [],
+    lab_specimens: [],
+    lab_result_followups: [],
     lab_test_catalog: [],
     notifications: [],
     audit_logs: [],
     consultations: [],
+    prescriptions: [],
+    nursing_actions: [],
+    referrals: [],
+    surgeries: [],
 };
 
 let CURRENT_USER = { id: "staff-frontdesk-1", email: "desk@hospital.test" };
@@ -534,12 +540,96 @@ async function scenarioPyloriIdentity() {
     console.log("-- independent orders and bills confirmed");
 }
 
+async function scenarioFrontDeskCloseout() {
+    console.log("\n==== SCENARIO 7 - Front Desk waits for all work and records no-charge closeout");
+    const { paymentService } = await freshContext();
+    db.patients[0].status = "awaiting-front-desk";
+    db.lab_requests.push(
+        { id: "lab-pending", visit_id: "patient-1", test_type: "FBC", status: "pending", follow_up_after_discharge: false },
+        { id: "lab-culture", visit_id: "patient-1", test_type: "Blood culture", status: "pending", priority: "routine", follow_up_after_discharge: true },
+        { id: "rad-pending", visit_id: "patient-1", test_type: "[RADIOLOGY] Antenatal scan", status: "pending", follow_up_after_discharge: false },
+    );
+    db.lab_specimens.push({ id: "culture-specimen", lab_request_id: "lab-culture", patient_id: "patient-1", status: "processing" });
+    db.prescriptions.push({ id: "rx-pending", patient_id: "patient-1", status: "Active", dispensed: false });
+    db.nursing_actions.push({ id: "nursing-pending", patient_id: "patient-1", status: "Pending" });
+    db.referrals.push({ id: "referral-pending", patient_id: "patient-1", status: "pending" });
+    db.surgeries.push({ id: "surgery-scheduled", patient_id: "patient-1", status: "scheduled" });
+
+    const [queueRow] = await paymentService.listFrontDeskQueuePatients();
+    assert.deepEqual(queueRow.work, {
+        lab: 1, deferredLabResults: 1, radiology: 1, pharmacy: 1, nursing: 1, other: 2, total: 6,
+    });
+    await assert.rejects(
+        () => paymentService.dischargeFromFrontDesk("patient-1"),
+        /Complete pending work first: 1 Radiology, 1 Lab, 1 Pharmacy, 1 Nursing, 2 Other/,
+    );
+    assert.equal(db.patients[0].status, "awaiting-front-desk", "pending clinical work must keep the encounter open");
+    console.log("-- six pending tasks across Lab, Radiology, Pharmacy, Nursing, referral and surgery block discharge");
+
+    db.lab_requests.find((row) => row.id === "lab-pending").status = "completed";
+    db.lab_requests.find((row) => row.id === "rad-pending").status = "completed";
+    // The linked routine culture intentionally remains pending while its result incubates.
+    db.prescriptions[0].dispensed = true;
+    db.nursing_actions[0].status = "Completed";
+    db.referrals[0].status = "sent";
+    db.surgeries[0].status = "completed";
+    db.payments.push({ id: "zero-open-bill", patient_id: "patient-1", amount: 0, amount_kobo: 0, status: "failed", category: "lab" });
+
+    const [zeroBillQueueRow] = await paymentService.listFrontDeskQueuePatients();
+    assert.equal(zeroBillQueueRow.work.total, 0, "all blocking service tasks should clear");
+    assert.equal(zeroBillQueueRow.work.deferredLabResults, 1, "the collected culture should remain tracked without blocking discharge");
+    assert.equal(zeroBillQueueRow.billing.openBillCount, 1, "a failed zero-balance bill remains reviewable");
+    assert.equal(zeroBillQueueRow.billing.outstandingKobo, 0);
+    await assert.rejects(
+        () => paymentService.dischargeFromFrontDesk("patient-1"),
+        /An open bill remains/,
+    );
+    assert.equal(db.patients[0].status, "awaiting-front-desk", "a zero-balance open bill must not be mistaken for no payment due");
+    db.payments[0].status = "paid";
+    const settled = await paymentService.dischargeFromFrontDesk("patient-1");
+    assert.equal(settled.noPaymentDue, false);
+    assert.equal(db.patients[0].status, "discharged");
+    assert.equal(db.audit_logs.at(-1)?.changes?.pending_clinical_work?.deferredLabResults, 1,
+        "the discharged encounter audit must retain the delayed-result follow-up count");
+    console.log("-- a failed zero-balance bill blocks discharge until resolved, then a collected culture stays in follow-up");
+
+    await freshContext();
+    db.patients[0].status = "awaiting-front-desk";
+    db.lab_requests.push({
+        id: "culture-uncollected",
+        visit_id: "patient-1",
+        test_type: "Urine culture",
+        status: "pending",
+        priority: "routine",
+        follow_up_after_discharge: true,
+    });
+    const [uncollectedQueueRow] = await paymentService.listFrontDeskQueuePatients();
+    assert.equal(uncollectedQueueRow.work.lab, 1, "a deferred request with no linked specimen remains blocking");
+    assert.equal(uncollectedQueueRow.work.deferredLabResults, 0);
+    await assert.rejects(() => paymentService.dischargeFromFrontDesk("patient-1"), /Complete pending work first: 1 Lab/);
+    db.lab_specimens.push({ id: "uncollected-specimen", lab_request_id: "culture-uncollected", patient_id: "patient-1", status: "rejected" });
+    const [rejectedQueueRow] = await paymentService.listFrontDeskQueuePatients();
+    assert.equal(rejectedQueueRow.work.lab, 1, "a rejected specimen must not qualify for deferred follow-up");
+    await assert.rejects(() => paymentService.dischargeFromFrontDesk("patient-1"), /Complete pending work first: 1 Lab/);
+    console.log("-- deferred culture still blocks until a valid linked specimen is collected; rejected specimens do not qualify");
+
+    await freshContext();
+    db.patients[0].status = "awaiting-front-desk";
+    const noCharge = await paymentService.dischargeFromFrontDesk("patient-1");
+    assert.equal(noCharge.noPaymentDue, true);
+    assert.equal(db.patients[0].status, "discharged");
+    assert.equal(db.payments.length, 0, "a no-payment-due encounter must not create a synthetic zero-value bill");
+    assert.equal(db.audit_logs.at(-1)?.changes?.payment_disposition, "no_payment_due");
+    console.log("-- no-bill discharge records no_payment_due in audit and creates no payment row");
+}
+
 async function main() {
     await scenarioHealthy();
     await scenarioRlsBlocked();
     await scenarioSettleAllWithDeposit();
     await scenarioSettleAllSimple();
     await scenarioPyloriIdentity();
+    await scenarioFrontDeskCloseout();
     console.log("\nDone.");
 }
 

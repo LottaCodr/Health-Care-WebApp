@@ -9,6 +9,7 @@ import * as MSG from "@/lib/services/messaging.service";
 import * as IO from "@/lib/services/interop.service";
 import * as BG from "@/lib/services/break-glass.service";
 import * as PORTAL from "@/lib/services/portal.service";
+import { paymentKeys } from "../query-keys";
 
 // ─── Keys ─────────────────────────────────────────────────────────────────────
 export const allergyKeys = { byPatient: (id: string) => ["allergies", id] as const };
@@ -70,14 +71,22 @@ export function useCreateSurgery() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: CM.createSurgery,
-        onSuccess: (s) => { invalidate(qc, surgeryKeys.byPatient(s.patient_id)); invalidate(qc, surgeryKeys.schedule()); },
+        onSuccess: (s) => {
+            invalidate(qc, surgeryKeys.byPatient(s.patient_id));
+            invalidate(qc, surgeryKeys.schedule());
+            invalidate(qc, paymentKeys.frontDeskQueue());
+        },
     });
 }
 export function useUpdateSurgery() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof CM.updateSurgery>[1] }) => CM.updateSurgery(id, updates),
-        onSuccess: (s) => { invalidate(qc, surgeryKeys.byPatient(s.patient_id)); invalidate(qc, surgeryKeys.schedule()); },
+        onSuccess: (s) => {
+            invalidate(qc, surgeryKeys.byPatient(s.patient_id));
+            invalidate(qc, surgeryKeys.schedule());
+            invalidate(qc, paymentKeys.frontDeskQueue());
+        },
     });
 }
 
@@ -89,14 +98,20 @@ export function useCreateReferral() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: CM.createReferral,
-        onSuccess: (r) => invalidate(qc, referralKeys.byPatient(r.patient_id)),
+        onSuccess: (r) => {
+            invalidate(qc, referralKeys.byPatient(r.patient_id));
+            invalidate(qc, paymentKeys.frontDeskQueue());
+        },
     });
 }
 export function useUpdateReferral() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof CM.updateReferral>[1] }) => CM.updateReferral(id, updates),
-        onSuccess: (r) => invalidate(qc, referralKeys.byPatient(r.patient_id)),
+        onSuccess: (r) => {
+            invalidate(qc, referralKeys.byPatient(r.patient_id));
+            invalidate(qc, paymentKeys.frontDeskQueue());
+        },
     });
 }
 
@@ -118,11 +133,23 @@ export function useSpecimens(opts: { patientId?: string; status?: string } = {})
 }
 export function useCreateSpecimen() {
     const qc = useQueryClient();
-    return useMutation({ mutationFn: OPS.createSpecimen, onSuccess: () => invalidate(qc, specimenKeys.all()) });
+    return useMutation({
+        mutationFn: OPS.createSpecimen,
+        onSuccess: () => {
+            invalidate(qc, specimenKeys.all());
+            invalidate(qc, paymentKeys.frontDeskQueue());
+        },
+    });
 }
 export function useUpdateSpecimen() {
     const qc = useQueryClient();
-    return useMutation({ mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof OPS.updateSpecimen>[1] }) => OPS.updateSpecimen(id, updates), onSuccess: () => invalidate(qc, specimenKeys.all()) });
+    return useMutation({
+        mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof OPS.updateSpecimen>[1] }) => OPS.updateSpecimen(id, updates),
+        onSuccess: () => {
+            invalidate(qc, specimenKeys.all());
+            invalidate(qc, paymentKeys.frontDeskQueue());
+        },
+    });
 }
 
 // ═════════════════════════════════ WARDS ══════════════════════════════════════
@@ -236,7 +263,13 @@ export function useBreakGlassEvents() {
 
 // ════════════════════════════════ PORTAL ══════════════════════════════════════
 export function usePortalDashboard() {
-    return useQuery({ queryKey: ["portal", "dashboard"], queryFn: PORTAL.getPortalDashboard });
+    return useQuery({
+        queryKey: ["portal", "dashboard"],
+        queryFn: PORTAL.getPortalDashboard,
+        staleTime: 30_000,
+        refetchOnWindowFocus: true,
+        refetchInterval: 60_000,
+    });
 }
 export function useEnablePortal() {
     const qc = useQueryClient();

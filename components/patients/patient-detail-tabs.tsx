@@ -127,8 +127,8 @@ const TEMP_HIDDEN_TABS = new Set<string>([
 ]);
 
 const DISCHARGE_STATUSES = new Set([
-  PatientStatus.UnderConsultation, PatientStatus.Admitted, PatientStatus.AwaitingPayment,
-  "under-consultation", "admitted", "awaiting-payment",
+  PatientStatus.UnderConsultation, PatientStatus.Admitted, PatientStatus.AwaitingPayment, PatientStatus.AwaitingFrontDesk,
+  "under-consultation", "admitted", "awaiting-payment", "awaiting-front-desk",
 ]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -783,10 +783,10 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
                 <SectionHeader icon={CreditCard} color="text-orange-600" bg="bg-orange-50"
                   title="Payment History"
                   subtitle={canManageBilling ? "View and settle invoices for this patient" : "Read-only billing records"} />
-                {status === "awaiting-payment" && canManageBilling && (
-                  <div className="px-4 py-3 rounded-xl bg-orange-50 border border-orange-100 text-xs text-orange-800 font-medium">
-                    This patient is awaiting payment. Confirm pending items below or use the{" "}
-                    <a href="/front-desk/payment" className="underline font-semibold">checkout queue</a>.
+                {(status === "awaiting-front-desk" || status === "awaiting-payment") && canManageBilling && (
+                  <div className="px-4 py-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-800 font-medium">
+                    This encounter is with Front Desk. Coordinate any pending clinical services, confirm whether payment is due, then discharge only when all work is complete. Open the{" "}
+                    <a href="/front-desk/payment" className="underline font-semibold">Front Desk closeout queue</a>.
                   </div>
                 )}
                 {/* Prepaid packages first: what the patient already paid for

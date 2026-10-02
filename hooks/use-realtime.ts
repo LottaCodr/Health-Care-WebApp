@@ -474,9 +474,14 @@ export function useRoleRealtime(role?: string) {
 
         const ROLE_TABLE_MAP: Record<string, { table: string; keys: readonly unknown[][] }[]> = {
             FrontDesk: [
-                { table: "patients",     keys: [["patients"]] },
-                { table: "payments",     keys: [["payments"]] },
-                { table: "appointments", keys: [["appointments"]] },
+                { table: "patients",        keys: [["patients"], ["payments"]] },
+                { table: "payments",        keys: [["payments"]] },
+                { table: "lab_requests",    keys: [["lab"], ["radiology"], ["payments"]] },
+                { table: "prescriptions",   keys: [["pharmacy", "prescriptions"], ["payments"]] },
+                { table: "nursing_actions", keys: [["nursing"], ["payments"]] },
+                { table: "referrals",       keys: [["referrals"], ["payments"]] },
+                { table: "surgeries",        keys: [["surgeries"], ["payments"]] },
+                { table: "appointments",    keys: [["appointments"]] },
                 // A package enrolment changes what will (and will not) be billed.
                 { table: "patient_package_enrolments", keys: [["care-packages"]] },
                 { table: "package_usage",              keys: [["care-packages"], ["radiology"]] },
@@ -503,12 +508,14 @@ export function useRoleRealtime(role?: string) {
                 { table: "drug_inventory", keys: [["pharmacy", "inventory"]] },
             ],
             Admin: [
-                { table: "patients",        keys: [["patients"]] },
+                { table: "patients",        keys: [["patients"], ["payments"]] },
                 { table: "consultations",   keys: [["consultations"]] },
-                { table: "prescriptions",   keys: [["pharmacy", "prescriptions"]] },
-                { table: "lab_requests",    keys: [["lab"], ["radiology"]] },
+                { table: "prescriptions",   keys: [["pharmacy", "prescriptions"], ["payments"]] },
+                { table: "lab_requests",    keys: [["lab"], ["radiology"], ["payments"]] },
                 { table: "payments",        keys: [["payments"]] },
-                { table: "nursing_actions", keys: [["nursing"]] },
+                { table: "nursing_actions", keys: [["nursing"], ["payments"]] },
+                { table: "referrals",       keys: [["referrals"], ["payments"]] },
+                { table: "surgeries",        keys: [["surgeries"], ["payments"]] },
                 { table: "drug_inventory",  keys: [["pharmacy", "inventory"]] },
                 { table: "appointments",    keys: [["appointments"]] },
                 { table: "patient_package_enrolments", keys: [["care-packages"]] },
@@ -534,7 +541,7 @@ export function useRoleRealtime(role?: string) {
                     const status = payload.new?.status;
                     const name   = payload.new?.name ?? "Patient";
                     const roleRoutes: Record<string, string[]> = {
-                        FrontDesk:    ["registered", "awaiting-payment", "discharged"],
+                        FrontDesk:    ["registered", "awaiting-front-desk", "awaiting-payment", "discharged"],
                         Doctor:       ["awaiting-consultation"],
                         Nurse:        ["sent-to-nurse"],
                         LabTechnician:["sent-to-lab"],

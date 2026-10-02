@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { nursingKeys, patientKeys } from "../query-keys";
+import { nursingKeys, patientKeys, paymentKeys } from "../query-keys";
 import * as NS from "@/lib/services/nursing.service";
 
 const LIST_STALE = 30_000;
@@ -56,6 +56,7 @@ export function useCreateNursingAction() {
             qc.invalidateQueries({ queryKey: nursingKeys.byPatient(action.patient_id) });
             qc.invalidateQueries({ queryKey: nursingKeys.pending() });
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            qc.invalidateQueries({ queryKey: paymentKeys.frontDeskQueue() });
         },
     });
 }
@@ -70,6 +71,7 @@ export function useUpdateNursingAction() {
         onSuccess: (updated) => {
             qc.invalidateQueries({ queryKey: nursingKeys.byPatient(updated.patient_id) });
             qc.invalidateQueries({ queryKey: nursingKeys.pending() });
+            qc.invalidateQueries({ queryKey: paymentKeys.frontDeskQueue() });
         },
     });
 }

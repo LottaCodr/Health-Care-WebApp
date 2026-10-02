@@ -59,6 +59,7 @@ const STATUS_CHIP: Record<string, string> = {
     "sent-to-radiology":     "bg-cyan-50 text-cyan-700 border-cyan-100",
     "sent-to-pharmacy":      "bg-pink-50 text-pink-700 border-pink-100",
     "awaiting-payment":      "bg-red-50 text-red-700 border-red-100",
+    "awaiting-front-desk":   "bg-blue-50 text-blue-700 border-blue-100",
     "admitted":              "bg-blue-50 text-blue-700 border-blue-100",
     "under-observation":     "bg-orange-50 text-orange-700 border-orange-100",
     "discharged":            "bg-green-50 text-green-700 border-green-100",
@@ -66,9 +67,11 @@ const STATUS_CHIP: Record<string, string> = {
 
 function StatusChip({ status }: { status?: string }) {
     const key = (status ?? "").toLowerCase();
-    const label = key
-        ? key.split("-").map(w => w[0]?.toUpperCase() + w.slice(1)).join(" ")
-        : "No status";
+    const label = key === "awaiting-front-desk"
+        ? "Awaiting Front Desk"
+        : key
+            ? key.split("-").map(w => w[0]?.toUpperCase() + w.slice(1)).join(" ")
+            : "No status";
     return (
         <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border whitespace-nowrap ${STATUS_CHIP[key] ?? "bg-gray-50 text-gray-500 border-gray-100"}`}>
             <span className="w-1 h-1 rounded-full bg-current opacity-60" />
@@ -225,7 +228,8 @@ export default function FrontDeskDashboard() {
 
     const todaysArrivalsQuery = useTodaysArrivals(50);
     const awaitingConsult     = usePatientsByStatus(PatientStatus.AwaitingConsultation);
-    const awaitingPayment     = usePatientsByStatus(PatientStatus.AwaitingPayment);
+    const awaitingFrontDesk   = usePatientsByStatus(PatientStatus.AwaitingFrontDesk);
+    const awaitingPayment     = usePatientsByStatus(PatientStatus.AwaitingPayment); // legacy queue rows
     const discharged          = usePatientsByStatus(PatientStatus.Discharged);
     const activeAdmissions    = useActiveAdmissions();
     const todayAppointments   = useAppointmentsByDate(toHospitalISODate());
@@ -234,11 +238,18 @@ export default function FrontDeskDashboard() {
     // boundary), so the card and the list always agree.
     const todaysArrivals = todaysArrivalsQuery.data?.patients ?? [];
     const todaysArrivalsTotal = todaysArrivalsQuery.data?.total ?? todaysArrivals.length;
+    const frontDeskQueue = [
+        ...(Array.isArray(awaitingFrontDesk.data) ? awaitingFrontDesk.data : []),
+        ...(Array.isArray(awaitingPayment.data) ? awaitingPayment.data : []),
+    ].filter((patient, index, rows) => rows.findIndex(row => row.id === patient.id) === index);
+    const frontDeskQueueLoading = awaitingFrontDesk.isLoading || awaitingPayment.isLoading;
+    const frontDeskQueueError = awaitingFrontDesk.error ?? awaitingPayment.error;
 
     const handleRefresh = () => {
         void Promise.all([
             todaysArrivalsQuery.refetch(),
             awaitingConsult.refetch(),
+            awaitingFrontDesk.refetch(),
             awaitingPayment.refetch(),
             discharged.refetch(),
             activeAdmissions.refetch(),
@@ -255,7 +266,7 @@ export default function FrontDeskDashboard() {
         { label: "New Arrivals",     value: todaysArrivalsTotal, icon: Users,         color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100"   },
         { label: "In Queue",         value: Array.isArray(awaitingConsult.data) ? awaitingConsult.data.length : 0, icon: ClipboardList,  color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
         { label: "Admitted",         value: admittedPatientsLength                                     , icon: BedDouble,      color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
-        { label: "Pending Payment",  value: Array.isArray(awaitingPayment.data) ? awaitingPayment.data.length : 0, icon: Wallet,         color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100"    },
+        { label: "Front Desk Queue", value: frontDeskQueue.length, icon: Wallet, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
         { label: "Discharged",       value: Array.isArray(discharged.data) ? discharged.data.length : 0, icon: LogOut,         color: "text-green-600",  bg: "bg-green-50",  border: "border-green-100"  },
         { label: "Appointments Today", value: Array.isArray(todayAppointments.data) ? todayAppointments.data.length : 0, icon: CalendarDays, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100" },
     ];
@@ -264,6 +275,7 @@ export default function FrontDeskDashboard() {
     const anyLoading =
         todaysArrivalsQuery.isLoading ||
         awaitingConsult.isLoading ||
+        awaitingFrontDesk.isLoading ||
         awaitingPayment.isLoading ||
         discharged.isLoading ||
         activeAdmissions.isLoading ||
@@ -283,9 +295,7 @@ export default function FrontDeskDashboard() {
         }
     };
     const handleAwaitingPaymentRefresh = () => {
-        if (typeof awaitingPayment.refetch === "function") {
-            awaitingPayment.refetch();
-        }
+        void Promise.all([awaitingFrontDesk.refetch(), awaitingPayment.refetch()]);
     };
     const handleDischargedRefresh = () => {
         if (typeof discharged.refetch === "function") {
@@ -298,7 +308,7 @@ export default function FrontDeskDashboard() {
 
             <DashboardHeader
                 title="Front desk operations"
-                description="Coordinate arrivals, admissions, appointments, and billing from today’s live queues."
+                description="Coordinate arrivals, admissions, appointments, pending services, and encounter closeout from today’s live queues."
                 icon={ClipboardList}
                 tone="blue"
                 actions={
@@ -424,39 +434,39 @@ export default function FrontDeskDashboard() {
             {/* ── Row 2: Billing queue + Discharged (potential return visits) ── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                {/* Billing queue */}
+                {/* Front Desk coordination and closeout queue */}
                 <Section
                     icon={Wallet}
-                    iconBg="bg-red-50"
-                    iconColor="text-red-600"
-                    title="Billing Queue"
-                    subtitle="Patients awaiting checkout"
-                    badge={Array.isArray(awaitingPayment.data) ? awaitingPayment.data.length : 0}
-                    badgeColor="bg-red-50 text-red-700 border-red-100"
+                    iconBg="bg-blue-50"
+                    iconColor="text-blue-600"
+                    title="Front Desk Queue"
+                    subtitle="Coordinate outstanding services, payment due, and discharge"
+                    badge={frontDeskQueue.length}
+                    badgeColor="bg-blue-50 text-blue-700 border-blue-100"
                     href="/front-desk/payment"
-                    hrefLabel="Process All"
-                    loading={awaitingPayment.isLoading}
-                    error={awaitingPayment.error ? errorText(awaitingPayment.error) : null}
+                    hrefLabel="Open closeout"
+                    loading={frontDeskQueueLoading}
+                    error={frontDeskQueueError ? errorText(frontDeskQueueError) : null}
                     onRetry={handleAwaitingPaymentRefresh}
-                    empty={Array.isArray(awaitingPayment.data) && awaitingPayment.data.length === 0 ? (
-                        <p className="text-sm text-gray-400 text-center py-8">Billing clear</p>
+                    empty={frontDeskQueue.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-8">No patients awaiting Front Desk closeout</p>
                     ) : undefined}
                     extraHeaderContent={
                         <button
-                            aria-label="Refresh billing queue"
+                            aria-label="Refresh Front Desk queue"
                             type="button"
-                            className="flex items-center text-red-600 bg-red-50 hover:bg-red-100 transition-colors p-1 rounded-lg"
+                            className="flex items-center text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors p-1 rounded-lg"
                             onClick={handleAwaitingPaymentRefresh}
-                            disabled={awaitingPayment.isLoading}
+                            disabled={frontDeskQueueLoading}
                         >
-                            <RefreshCcw size={14} className={awaitingPayment.isLoading ? "animate-spin" : ""} />
+                            <RefreshCcw size={14} className={frontDeskQueueLoading ? "animate-spin" : ""} />
                         </button>
                     }
                 >
-                    {Array.isArray(awaitingPayment.data) && awaitingPayment.data.slice(0, 5).map(p => (
+                    {frontDeskQueue.slice(0, 5).map(p => (
                         <PatientRow key={p.id} patient={p}
-                            action={{ label: "Checkout", href: `/front-desk/payment/${p.id}`, color: "bg-red-600 hover:bg-red-700" }}
-                            secondaryAction={{ label: "Request Lab", href: `/front-desk/patient/${p.id}?tab=lab`, color: "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100" }} />
+                            action={{ label: "Review", href: `/front-desk/patient/${p.id}`, color: "bg-blue-600 hover:bg-blue-700" }}
+                            secondaryAction={{ label: "Billing", href: `/front-desk/payment/${p.id}`, color: "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100" }} />
                     ))}
                 </Section>
 

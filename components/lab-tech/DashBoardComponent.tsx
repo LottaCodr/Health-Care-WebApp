@@ -23,6 +23,7 @@ import { patientAgeOn, patientAgeYearsPrecise } from "@/lib/clinical/patient-age
 import { RecordAmendmentControls } from "@/components/records";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import LabResultFollowupQueue from "./LabResultFollowupQueue";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -293,6 +294,8 @@ export default function LabTechDashboard() {
                 </button>
             </div>
 
+            <LabResultFollowupQueue />
+
             {/* Main Lab Workspace Card */}
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 {/* Header with Title and Tabs */}
@@ -484,6 +487,11 @@ export default function LabTechDashboard() {
                                                         <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 font-bold px-2 py-0.5 rounded-full">
                                                             Pending
                                                         </span>
+                                                        {req.follow_up_after_discharge === true && (
+                                                            <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 font-bold px-2 py-0.5 rounded-full">
+                                                                Deferred result follow-up
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     {/* Patient important details row */}
                                                     <div className="flex flex-wrap items-center gap-2 mt-1.5">

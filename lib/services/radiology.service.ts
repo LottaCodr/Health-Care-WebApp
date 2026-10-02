@@ -463,7 +463,7 @@ export async function createRadiologyRequest(input: CreateRadiologyRequestInput)
             .eq("id", input.patientId)
             .maybeSingle();
 
-        const KEEP = new Set(["admitted", "discharged"]);
+        const KEEP = new Set(["admitted", "discharged", "awaiting-front-desk", "awaiting-payment"]);
         if (patient && !KEEP.has(String(patient.status).toLowerCase())) {
             await sb.from("patients").update({ status: "sent-to-radiology" }).eq("id", input.patientId);
         }
@@ -581,14 +581,29 @@ export async function submitRadiologyReport(
 
     const [result] = await enrich([data as unknown as RadiologyRequest]);
 
-    // Auto-route the patient back to the doctor queue when the report is filed.
+    // A pre-consultation scan returns to the doctor queue. If the clinician is
+    // already consulting or the encounter has been handed to Front Desk, filing
+    // the report must not pull the patient backward in the workflow.
     if (report.status === "completed" && result.visit_id) {
-        const { error: patientError } = await sb
+        const { data: patient, error: patientError } = await sb
             .from("patients")
-            .update({ status: "awaiting-consultation" })
-            .eq("id", result.visit_id);
+            .select("status")
+            .eq("id", result.visit_id)
+            .maybeSingle();
         if (patientError) {
-            throw new Error("Report was filed, but the patient could not be returned to the doctor queue.");
+            console.error("[radiology] patient status read after report:", patientError);
+        } else {
+            const currentStatus = String(patient?.status ?? "").toLowerCase();
+            if (currentStatus === "sent-to-radiology") {
+                const { error: routeError } = await sb
+                    .from("patients")
+                    .update({ status: "awaiting-consultation" })
+                    .eq("id", result.visit_id)
+                    .eq("status", "sent-to-radiology");
+                if (routeError) {
+                    console.error("[radiology] return-to-doctor routing failed:", routeError);
+                }
+            }
         }
     }
 

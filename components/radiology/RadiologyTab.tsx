@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
     useRadiologyRequestsByPatient,
     useSubmitRadiologyReport,
-    useUpdatePatientStatus,
     usePatientPackages,
 } from "@/hooks/emr/use-emr";
 import { stripRadiologyPrefix } from "@/lib/utils";
@@ -127,7 +126,6 @@ function InlineReportForm({
 }) {
     const { user } = useAuth();
     const { mutate: submitReport, isPending: saving } = useSubmitRadiologyReport();
-    const { mutate: updateStatus } = useUpdatePatientStatus();
 
     const { inlineForms, setInlineFormField, clearInlineForm } = useRadiologyStore();
     const form = inlineForms[request.id] || { resultText: "", isCritical: false, criticalNote: "" };
@@ -160,11 +158,7 @@ function InlineReportForm({
             },
             {
                 onSuccess: () => {
-                    updateStatus(
-                        { id: patientId, status: "awaiting-consultation" as any },
-                        { onError: () => toast.error("Report saved, but patient status could not be updated.") }
-                    );
-                    toast.success("Report filed and the patient is back in the doctor's queue.");
+                    toast.success("Report filed. Continue the consultation or let Front Desk coordinate the remaining work.");
                     clearInlineForm(request.id);
                     onClose();
                 },
@@ -451,6 +445,12 @@ export function RadiologyTab({
     return (
         <div className="space-y-5">
             {header}
+
+            {userRole === "Doctor" && canReport && (
+                <div className="px-4 py-3 rounded-2xl bg-cyan-50 border border-cyan-100 text-xs text-cyan-800 leading-relaxed">
+                    You can enter scan findings in the report text box below. File the report, prescribe from the Pharmacy section in the consultation, then complete the consultation to hand the patient to Front Desk.
+                </div>
+            )}
 
             {patientId && <PackageStrip patientId={patientId} />}
 

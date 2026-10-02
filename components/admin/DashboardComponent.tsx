@@ -72,7 +72,8 @@ export default function AdminDashboard() {
 
     const allPatients = useAllPatients();
     const awaiting = usePatientsByStatus(PatientStatus.AwaitingConsultation);
-    const awaitingPay = usePatientsByStatus(PatientStatus.AwaitingPayment);
+    const awaitingFrontDesk = usePatientsByStatus(PatientStatus.AwaitingFrontDesk);
+    const awaitingPay = usePatientsByStatus(PatientStatus.AwaitingPayment); // legacy rows
 
     const { data: labRequests } = usePendingLabRequests();
     const { data: prescriptions } = usePendingPrescriptions();
@@ -85,7 +86,11 @@ export default function AdminDashboard() {
     const pendingLab = labRequests?.filter((r: any) => r.status === "pending").length ?? 0;
     const activePx = prescriptions?.filter((p: any) => p.status === "Active").length ?? 0;
     const pendingTasks = nursingTasks?.filter((t: any) => t.status === "Pending").length ?? 0;
-    const pendingPay = awaitingPay.data?.length ?? 0;
+    const pendingPayIds = new Set([
+        ...(awaitingFrontDesk.data ?? []).map((patient: any) => patient.id),
+        ...(awaitingPay.data ?? []).map((patient: any) => patient.id),
+    ]);
+    const pendingPay = pendingPayIds.size;
 
     const stats = [
         { label: "Total Patient Records", value: totalPatients, icon: Users, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", href: "/admin/patient" },
@@ -93,12 +98,12 @@ export default function AdminDashboard() {
         { label: "Pending Lab Tests", value: pendingLab, icon: FlaskConical, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", href: "/lab-tech/dashboard" },
         { label: "Active Prescriptions", value: activePx, icon: Pill, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100", href: "/pharmacist/dashboard" },
         { label: "Nursing Tasks", value: pendingTasks, icon: HeartPulse, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100", href: "/nurse/dashboard" },
-        { label: "Awaiting Payment", value: pendingPay, icon: CreditCard, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", href: "/front-desk/payment" },
+        { label: "Front Desk Closeout", value: pendingPay, icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", href: "/front-desk/payment" },
     ];
 
     // Alerts
     const alerts = [
-        pendingPay > 0 && { type: "warning", msg: `${pendingPay} patient${pendingPay > 1 ? "s" : ""} awaiting payment confirmation` },
+        pendingPay > 0 && { type: "warning", msg: `${pendingPay} patient${pendingPay > 1 ? "s" : ""} awaiting Front Desk service/billing closeout` },
         pendingLab > 5 && { type: "warning", msg: `${pendingLab} lab tests queued — lab scientist may need support` },
         activePx > 10 && { type: "info", msg: `${activePx} active prescriptions pending dispensing` },
     ].filter(Boolean) as { type: string; msg: string }[];

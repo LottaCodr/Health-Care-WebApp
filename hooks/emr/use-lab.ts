@@ -46,6 +46,29 @@ export function useCompletedLabRequests() {
     });
 }
 
+export function useLabResultFollowups() {
+    return useQuery({
+        queryKey: labKeys.followups(),
+        queryFn: LS.listLabResultFollowups,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: true,
+        refetchInterval: 60_000,
+    });
+}
+
+export function useMarkLabResultDelivered() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: LS.markLabResultDelivered,
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: labKeys.followups() });
+            qc.invalidateQueries({ queryKey: labKeys.completed() });
+            qc.invalidateQueries({ queryKey: ["portal", "dashboard"] });
+        },
+    });
+}
+
 export function useLabRequest(id: string) {
     return useQuery({
         queryKey: labKeys.detail(id),
@@ -123,6 +146,7 @@ export function useUpdateLabRequest() {
             qc.invalidateQueries({ queryKey: labKeys.byPatient(updated.visit_id!) });
             qc.invalidateQueries({ queryKey: labKeys.pending() });
             qc.invalidateQueries({ queryKey: labKeys.completed() });
+            qc.invalidateQueries({ queryKey: labKeys.followups() });
             qc.invalidateQueries({ queryKey: ["payments"] });
             qc.invalidateQueries({ queryKey: ["pending-payments"] });
             if (updated.visit_id) {

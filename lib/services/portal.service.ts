@@ -32,6 +32,7 @@ export interface PortalDashboard {
     allergies: any[];
     immunizations: any[];
     documents: any[];
+    notifications: any[];
 }
 
 export async function getPortalDashboard(): Promise<PortalDashboard | null> {
@@ -39,7 +40,16 @@ export async function getPortalDashboard(): Promise<PortalDashboard | null> {
     if (!patient) return null;
     const supabase = await createClient();
 
-    const [appointments, labResults, prescriptions, bills, allergies, immunizations, documents] =
+    const portalNotifications = patient.portal_user_id
+        ? supabase
+            .from("notifications")
+            .select("id, title, message, type, link, read, created_at")
+            .eq("recipient_id", patient.portal_user_id)
+            .order("created_at", { ascending: false })
+            .limit(10)
+        : Promise.resolve({ data: [] as any[], error: null });
+
+    const [appointments, labResults, prescriptions, bills, allergies, immunizations, documents, notifications] =
         await Promise.all([
             supabase.from("appointments").select("*").eq("patient_id", patient.id).order("appointment_date", { ascending: false }).limit(20),
             supabase.from("lab_requests").select("*").eq("visit_id", patient.id).order("created_at", { ascending: false }).limit(20),
@@ -48,6 +58,7 @@ export async function getPortalDashboard(): Promise<PortalDashboard | null> {
             supabase.from("patient_allergies").select("*").eq("patient_id", patient.id).eq("status", "active"),
             supabase.from("immunizations").select("*").eq("patient_id", patient.id).order("administered_date", { ascending: false }),
             supabase.from("patient_documents").select("*").eq("patient_id", patient.id).order("created_at", { ascending: false }).limit(20),
+            portalNotifications,
         ]);
 
     return {
@@ -59,6 +70,7 @@ export async function getPortalDashboard(): Promise<PortalDashboard | null> {
         allergies: allergies.data ?? [],
         immunizations: immunizations.data ?? [],
         documents: documents.data ?? [],
+        notifications: notifications.data ?? [],
     };
 }
 

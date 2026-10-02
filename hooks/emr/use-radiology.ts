@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { radiologyKeys, patientKeys, carePackageKeys } from "../query-keys";
+import { radiologyKeys, patientKeys, carePackageKeys, paymentKeys } from "../query-keys";
 import * as RS from "@/lib/services/radiology.service";
 
 const LIST_STALE = 30_000;
@@ -175,9 +175,10 @@ export function useSubmitRadiologyReport() {
                 queryKey: radiologyKeys.byPatient(updated.visit_id),
             });
 
-            // After a report is filed, patient returns to the doctor
-            // Bust patient lists so the doctor's queue updates
+            // Pre-consultation scans can return to the doctor; a report filed
+            // during/after a consultation also changes Front Desk readiness.
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            qc.invalidateQueries({ queryKey: paymentKeys.frontDeskQueue() });
         },
 
         onSettled: () => {

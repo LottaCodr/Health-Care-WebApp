@@ -4,14 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, FlaskConical, Pill, Receipt, ShieldAlert, Syringe, FileText, LogOut, Download } from "lucide-react";
+import { CalendarDays, FlaskConical, Pill, Receipt, ShieldAlert, Syringe, FileText, LogOut, Download, Bell } from "lucide-react";
 import { usePortalDashboard } from "@/hooks/emr/use-clinical-modules";
 import supabase from "@/utils/supabase/client";
 import { useFhirExport } from "@/hooks/emr/use-clinical-modules";
 
-function Section({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+function Section({ icon: Icon, title, children, id }: { icon: any; title: string; children: React.ReactNode; id?: string }) {
     return (
-        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <section id={id} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
             <p className="mb-3 flex items-center gap-2 text-sm font-black text-gray-900">
                 <Icon size={16} className="text-emerald-600" /> {title}
             </p>
@@ -91,6 +91,23 @@ export default function PortalDashboard() {
                 </div>
             </div>
 
+            {data.notifications.length > 0 && (
+                <Section icon={Bell} title="Result updates">
+                    <div className="space-y-2">
+                        {data.notifications.slice(0, 5).map((notification: any) => (
+                            <div key={notification.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2.5">
+                                <div>
+                                    <p className="text-xs font-bold text-gray-900">{notification.title}</p>
+                                    <p className="mt-0.5 text-xs leading-relaxed text-gray-600">{notification.message}</p>
+                                    <p className="mt-1 text-[10px] text-gray-400">{notification.created_at ? new Date(notification.created_at).toLocaleString() : ""}</p>
+                                </div>
+                                <a href="#lab-results" className="shrink-0 text-xs font-bold text-emerald-700 hover:underline">View lab record</a>
+                            </div>
+                        ))}
+                    </div>
+                </Section>
+            )}
+
             <div className="grid gap-4 md:grid-cols-2">
                 <Section icon={CalendarDays} title="Upcoming appointments">
                     {data.appointments.length === 0 ? <Empty text="No appointments booked." /> : (
@@ -105,13 +122,28 @@ export default function PortalDashboard() {
                     )}
                 </Section>
 
-                <Section icon={FlaskConical} title="Recent lab results">
+                <Section icon={FlaskConical} title="Recent lab results" id="lab-results">
                     {data.labResults.length === 0 ? <Empty text="No lab results yet." /> : (
                         <div className="space-y-2">
-                            {data.labResults.slice(0, 5).map((l: any) => (
-                                <div key={l.id} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-xs">
-                                    <span className="font-bold text-gray-800">{String(l.test_type).replace(/^\[RADIOLOGY\]\s*/i, "")}</span>
-                                    <Badge variant={l.status === "completed" ? "default" : "secondary"}>{l.status}</Badge>
+                            {data.labResults.slice(0, 10).map((l: any) => (
+                                <div key={l.id} className="rounded-xl bg-gray-50 px-3 py-3 text-xs">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="font-bold text-gray-800">{String(l.test_type).replace(/^\[RADIOLOGY\]\s*/i, "")}</span>
+                                        <Badge variant={l.status === "completed" ? "default" : "secondary"}>{l.status}</Badge>
+                                    </div>
+                                    {l.status === "completed" && l.result ? (
+                                        <details className="mt-2 rounded-lg border border-gray-200 bg-white p-2.5">
+                                            <summary className="cursor-pointer text-xs font-bold text-emerald-700">Open result</summary>
+                                            <pre className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-700">{l.result}</pre>
+                                            {l.completed_at && <p className="mt-2 text-[10px] text-gray-400">Filed {new Date(l.completed_at).toLocaleString()}</p>}
+                                        </details>
+                                    ) : l.follow_up_after_discharge ? (
+                                        <p className="mt-2 text-[11px] leading-relaxed text-amber-800">
+                                            This result is still processing. We will notify you when it is ready and add it to your health record.
+                                        </p>
+                                    ) : (
+                                        <p className="mt-2 text-[11px] text-gray-500">Result pending.</p>
+                                    )}
                                 </div>
                             ))}
                         </div>

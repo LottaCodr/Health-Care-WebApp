@@ -12,6 +12,7 @@ const statusStyles: Record<PatientStatus, string> = {
     [PatientStatus.SentToLab]: "bg-orange-100 text-orange-800 border-orange-200",
     [PatientStatus.SentToPharmacy]: "bg-indigo-100 text-indigo-800 border-indigo-200",
     [PatientStatus.AwaitingPayment]: "bg-red-100 text-red-800 border-red-200",
+    [PatientStatus.AwaitingFrontDesk]: "bg-blue-100 text-blue-800 border-blue-200",
     [PatientStatus.Discharged]: "bg-gray-100 text-gray-800 border-gray-200",
     [PatientStatus.Admitted]: "bg-cyan-100 text-cyan-800 border-cyan-200",
     [PatientStatus.UnderObservation]: "bg-teal-100 text-teal-800 border-teal-200",
@@ -22,7 +23,7 @@ const statusStyles: Record<PatientStatus, string> = {
 export function StatusBadge({ status }: { status: PatientStatus }) {
     return (
         <Badge className={`${statusStyles[status] || "bg-gray-100 text-gray-800"} px-3 py-1 rounded-full font-bold uppercase tracking-wider text-[10px] shadow-sm`}>
-            {status}
+            {status === PatientStatus.AwaitingFrontDesk ? "Awaiting Front Desk" : status.replace(/-/g, " ")}
         </Badge>
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useConsultationStore, RequestPriority, PrescriptionItem, ConsultationStore } from "@/store/consultation-store";
 import { useAuth } from "@/context/auth-provider";
@@ -9,8 +9,8 @@ import { Staff } from "@/actions/staff/types";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import {
-    useCreateConsultation, useUpdatePatientStatus,
-    useCreateLabRequest, useCreateRadiologyRequest,
+    useCreateConsultation, useUpdateConsultation, useUpdatePatientStatus,
+    useCreateLabRequest, useCreateRadiologyRequest, useCreateNursingAction,
     useActiveLabTests, useCreatePrescription, useDrugInventory,
 } from "@/hooks/emr/use-emr";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -83,63 +83,43 @@ const REFERRAL_OPTIONS = [
     {
         value: "nurse",
         label: "Nurse",
-        desc: "Post-consultation nursing care",
+        desc: "Add a nursing task for Front Desk to coordinate",
         icon: UserCog,
-        status:"sent-to-nurse" as PatientStatus,
         color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-400",
     },
     {
         value: "lab-tech",
         label: "Lab Scientist",
-        desc: "Request laboratory investigations",
+        desc: "Request lab investigations",
         icon: FlaskConical,
-        status:"sent-to-lab" as PatientStatus,
         color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-400",
     },
     {
         value: "radiology",
         label: "Radiology",
-        desc: "Imaging investigations",
+        desc: "Request imaging",
         icon: Radio,
-        status:"sent-to-radiology" as PatientStatus,
         color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-400",
     },
     {
         value: "pharmacist",
-        label: "Pharmacist",
-        desc: "Prescribe & dispense medications",
+        label: "Pharmacy",
+        desc: "Prescribe and send to the pharmacy queue",
         icon: Pill,
-        status:"sent-to-pharmacy" as PatientStatus,
         color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-400",
     },
     {
         value: "front-desk",
         label: "Front Desk",
-        desc: "Admission / ward / surgery",
+        desc: "Create an admission / ward request",
         icon: Building2,
-        status:"admitted" as PatientStatus,
         color: "text-slate-700", bg: "bg-slate-100", border: "border-slate-400",
     },
 ] as const;
 
-// When several destinations are selected at once, the patient's single status
-// field reflects the first stop on the journey (admission trumps everything —
-// the patient goes to the ward; samples before scans; scans before drugs;
-// nursing care last). Every department still receives its own requests: the
-// lab / pharmacy / radiology dashboards list pending work from their request
-// tables regardless of the patient's status, so this only decides which
-// queue tab the patient appears under.
-const REFERRAL_PRIORITY = ["front-desk", "lab-tech", "radiology", "pharmacist", "nurse"] as const;
-
-const PATIENT_STATUSES = [
-    { value: "sent-to-nurse", label: "Sent to Nurse" },
-    { value: "sent-to-lab", label: "Sent to Lab" },
-    { value: "sent-to-pharmacy", label: "Sent to Pharmacy" },
-    { value: "sent-to-radiology", label: "Sent to Radiology" },
-    { value: "under-observation", label: "Under Observation" },
-    { value: "admitted", label: "Admitted" },
-    { value: "discharged", label: "Discharged" },
-];
+// Department requests are independent work items. For an outpatient visit,
+// the patient-level handoff is always Front Desk; a true admission remains on
+// the separate admitted/ward workflow.
 
 const FREQUENCIES = ["OD", "BD", "TDS", "QDS", "PRN", "STAT", "nocte", "mane"];
 
@@ -493,26 +473,37 @@ function DoctorPrescriptionPanel({ store }: { store: ConsultationStore }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+type SubmissionOutcome = {
+    kind: "success" | "attention";
+    title: string;
+    message: string;
+};
+
 export default function ConsultationForm({
     patientId, availableStaff, onSuccess,
     patientAge, patientGender, patientMedicalHistory, patientAllergies,
 }: Props) {
     const { user } = useAuth();
 
-    const { mutate: createConsultation, isPending: cLoading } = useCreateConsultation();
-    const { mutate: updateStatus } = useUpdatePatientStatus();
+    const { mutateAsync: createConsultationAsync, isPending: cLoading } = useCreateConsultation();
+    const { mutateAsync: updateConsultationAsync, isPending: consultationUpdateLoading } = useUpdateConsultation();
+    const { mutateAsync: updateStatusAsync, isPending: statusLoading } = useUpdatePatientStatus();
     const { mutateAsync: createLabRequestAsync, isPending: lLoading } = useCreateLabRequest();
     const { mutateAsync: createRadRequestAsync, isPending: rLoading } = useCreateRadiologyRequest();
+    const { mutateAsync: createNursingActionAsync } = useCreateNursingAction();
     const { mutateAsync: createPrescriptionAsync } = useCreatePrescription();
     const { data: labCatalog } = useActiveLabTests();
 
     const [admissionSaving, setAdmissionSaving] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [submissionOutcome, setSubmissionOutcome] = useState<SubmissionOutcome | null>(null);
+    const submissionLock = useRef(false);
     // Nothing on this form is hard-required anymore. Instead of blocking
     // submission, critical gaps (no assessment, no lab tests selected, …)
     // are collected and shown in a single non-blocking confirmation prompt.
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingGaps, setPendingGaps] = useState<string[]>([]);
-    const loading = cLoading || lLoading || rLoading || admissionSaving;
+    const loading = cLoading || consultationUpdateLoading || statusLoading || lLoading || rLoading || admissionSaving || submitting;
     const isChild = isPaed(patientAge);
     const isFem = isFemale(patientGender);
 
@@ -547,8 +538,8 @@ export default function ConsultationForm({
         imp, pregnancyStatus, lmp, ega, eod, gravidity, parity,
         generalExam, respiratory, cardiovascular, gastrointestinal,
         summary, assessment, investigations, prescriptions, recommendations,
-        referrals, statusOverride,
-        labTestType, labPriority, labNotes,
+        referrals,
+        labTestType, labPriority, labFollowUpAfterDischargeTests, labNotes,
         radTestType, radPriority, radNotes,
         setField, resetForm,
     } = store;
@@ -558,7 +549,7 @@ export default function ConsultationForm({
 
     useEffect(() => {
         if (patientMedicalHistory && !pastMedicalHistory) setField("pastMedicalHistory", patientMedicalHistory);
-    }, [patientMedicalHistory]);
+    }, [patientMedicalHistory, pastMedicalHistory, setField]);
 
     // ── Obstetric handlers ──────────────────────────────────────────────────
     // EDD/EGA only make sense for a pregnant patient, so the LMP → EDD/EGA
@@ -596,16 +587,12 @@ export default function ConsultationForm({
     // (e.g. lab + pharmacy) and each department receives its requests from a
     // single consultation.
     const hasReferral = (v: string) => referrals.includes(v);
-    const selectedReferrals = REFERRAL_OPTIONS
-        .filter(r => referrals.includes(r.value))
-        .sort((a, b) => REFERRAL_PRIORITY.indexOf(a.value) - REFERRAL_PRIORITY.indexOf(b.value));
-    const primaryReferral = selectedReferrals[0];
-    const routeChain = selectedReferrals.length > 0
-        ? selectedReferrals.map(r => r.label).join(" → ")
-        : "Nurse";
-    const nextStatus = (primaryReferral?.status ?? "sent-to-nurse") as PatientStatus;
-    const resolvedStatusLabel =
-        PATIENT_STATUSES.find(s => s.value === (statusOverride || nextStatus))?.label ?? nextStatus;
+    const selectedReferrals = REFERRAL_OPTIONS.filter(r => referrals.includes(r.value));
+    const requestedServiceNames = selectedReferrals
+        .filter(r => r.value !== "front-desk")
+        .map(r => r.label);
+    const admissionRequested = hasReferral("front-desk") && !!store.admissionType;
+    const routeChain = admissionRequested ? "Admission / Ward" : "Front Desk";
 
     const buildSymptoms = () => [
         `Presenting Complaint:\n${presentingComplaint}`,
@@ -654,9 +641,9 @@ export default function ConsultationForm({
         if (!presentingComplaint.trim()) gaps.push("No presenting complaint recorded");
         if (!assessment.trim()) gaps.push("No assessment / diagnosis recorded");
         if (hasReferral("lab-tech") && (!labTestType || labTestType.length === 0))
-            gaps.push("No lab test selected — the patient will be routed to the lab without any test requests");
+            gaps.push("No lab test selected — no lab request will be created for Front Desk to coordinate");
         if (hasReferral("radiology") && (!radTestType || radTestType.length === 0))
-            gaps.push("No radiology investigation selected — the patient will be routed to radiology without any imaging requests");
+            gaps.push("No imaging selected — no Radiology request will be created for Front Desk to coordinate");
         if (hasReferral("front-desk") && !store.admissionType)
             gaps.push("No admission type selected — the patient will be marked Admitted without an admission record");
         if (hasReferral("front-desk") && !store.admissionIndication.trim())
@@ -688,6 +675,8 @@ export default function ConsultationForm({
     };
 
     const doSubmit = async () => {
+        if (submissionLock.current) return;
+
         const ambiguousPyloriOrder = hasReferral("lab-tech")
             ? labTestType.find(test => isPyloriOrder(test) && !findTemplate(test))
             : undefined;
@@ -699,126 +688,232 @@ export default function ConsultationForm({
             return;
         }
 
+        submissionLock.current = true;
+        setSubmitting(true);
         const doctorId = user?.id ?? user?.$id ?? "";
+        let admissionCreated = false;
+        let consultationId: string | null = null;
+        const fallbackStatus = () => admissionCreated ? PatientStatus.Admitted : PatientStatus.AwaitingConsultation;
 
-        // Front Desk — BLOCKING, and done FIRST: if the admission record can't
-        // be written, we stop here entirely. Nothing is saved, nothing is
-        // half-done, and the doctor's retry click is a clean single attempt
-        // with no duplicate consultation notes left behind.
-        if (hasReferral("front-desk") && store.admissionType) {
-            setAdmissionSaving(true);
+        const showAttention = async (message: string) => {
             try {
-                await createAdmission({
-                    patient_id: patientId,
-                    admission_type: store.admissionType as any,
-                    urgency: store.admissionUrgency,
-                    ward_name: store.admissionWard || undefined,
-                    indication: store.admissionIndication || undefined,
-                    notes: store.admissionNotes || undefined,
-                    assigned_by: doctorId,
-                });
-            } catch (err: any) {
-                setAdmissionSaving(false);
-                toast.error(
-                    err?.message ??
-                    "Failed to create the admission record. Nothing has been saved yet — click Submit again to retry.",
-                    { duration: 8000 }
-                );
-                return; // ── stop here: consultation is never submitted
+                await updateStatusAsync({ id: patientId, status: fallbackStatus() });
+            } catch (statusError: any) {
+                console.error("Patient status recovery after consultation handoff failed:", statusError);
+                message += " The patient status also needs staff review; do not submit the consultation again.";
             }
-            setAdmissionSaving(false);
-        }
+            resetForm();
+            setSubmissionOutcome({
+                kind: "attention",
+                title: "Consultation saved — handoff needs attention",
+                message,
+            });
+            toast.error(message, { duration: 9000 });
+            onSuccess?.();
+        };
 
-        createConsultation(
-            {
-                patientId, doctorId,
+        try {
+            // A requested admission remains its own workflow. It is written
+            // before the consultation so a rejected admission leaves no orphan
+            // consultation record behind.
+            if (admissionRequested) {
+                setAdmissionSaving(true);
+                try {
+                    await createAdmission({
+                        patient_id: patientId,
+                        admission_type: store.admissionType as any,
+                        urgency: store.admissionUrgency,
+                        ward_name: store.admissionWard || undefined,
+                        indication: store.admissionIndication || undefined,
+                        notes: store.admissionNotes || undefined,
+                        assigned_by: doctorId,
+                    });
+                    admissionCreated = true;
+                } finally {
+                    setAdmissionSaving(false);
+                }
+            }
+
+            const consultation = await createConsultationAsync({
+                patientId,
+                doctorId,
                 symptoms: buildSymptoms(),
                 diagnosis: buildDiagnosis(),
                 prescriptions: prescriptions || undefined,
                 recommendations: buildRecommendations(),
                 referredTo: referrals.length > 0 ? referrals.join(", ") : undefined,
                 status: "underConsultation",
-            },
-            {
-                onSuccess: async () => {
-                    // Lab request — ONE ROW PER TEST, not one joined string.
-                    // Previously all selected tests were comma-joined into a
-                    // single request ("CBC, Malaria Parasite, Urinalysis"),
-                    // which meant the Lab Tech dashboard's pending count
-                    // undercounted actual workload (3 tests = "1 pending"),
-                    // and there was no way to mark individual tests complete
-                    // independently of the others.
-                    if (hasReferral("lab-tech")) {
-                        try {
-                            await Promise.all(
-                                labTestType.map(test =>
-                                    createLabRequestAsync({
-                                        patientId,
-                                        requestedBy: doctorId,
-                                        testType: test,
-                                        priority: labPriority,
-                                        notes: labNotes || undefined,
-                                        status: "pending",
-                                    })
-                                )
-                            );
-                        } catch (err: any) {
-                            console.error("Lab request error:", err);
-                            toast.error(err?.message ?? "Consultation saved, but the lab request could not be sent.", { duration: 8000 });
-                        }
-                    }
-                    // Radiology request — same fix, same reasoning.
-                    if (hasReferral("radiology")) {
-                        Promise.all(
-                            radTestType.map(test =>
-                                createRadRequestAsync({
-                                    patientId,
-                                    requestedBy: doctorId,
-                                    testType: test,
-                                    priority: radPriority,
-                                    notes: radNotes || undefined,
-                                })
-                            )
-                        ).catch((err: any) => console.error("Radiology request error:", err));
-                    }
-                    // Structured prescriptions
-                    if (hasReferral("pharmacist") && store.prescriptionItems.length > 0) {
-                        Promise.all(
-                            store.prescriptionItems.map(item => {
-                                if (!item.drugName.trim() || !item.dosage.trim()) return Promise.resolve();
-                                return createPrescriptionAsync({
-                                    patientId,
-                                    pharmacistId: undefined,
-                                    drugName: item.drugName,
-                                    dosage: `${item.dosage} ${item.frequency}`.trim(),
-                                    duration: item.duration || undefined,
-                                    price: 0,
-                                    notes: item.notes || undefined,
-                                    dispensed: false,
-                                });
-                            })
-                        ).catch((err: any) => console.error("Prescription error:", err));
-                    }
+            });
+            consultationId = consultation.id;
 
-                    // Patient status — admission record (if any) already exists by this point
-                    const resolvedStatus = statusOverride
-                        ? (statusOverride as PatientStatus)
-                        : nextStatus;
-                    updateStatus(
-                        { id: patientId, status: resolvedStatus },
-                        { onError: () => toast.error("Consultation saved but status could not be updated.") }
-                    );
+            // Each department gets its own work item. Wait for every write so
+            // we only hand the encounter to Front Desk after orders are really
+            // present in their queues (rather than firing requests in the
+            // background and immediately losing the doctor's feedback).
+            const orderJobs: { label: string; run: () => Promise<unknown> }[] = [];
 
-                    toast.success(`Consultation saved. Patient routed to ${routeChain}.`);
-                    resetForm();
-                    onSuccess?.();
-                },
-                onError: (err: any) => toast.error(err?.message ?? "Failed to submit consultation."),
+            if (hasReferral("lab-tech") && labTestType.length > 0) {
+                orderJobs.push({
+                    label: "Lab",
+                    run: () => Promise.all(labTestType.map(test => createLabRequestAsync({
+                        patientId,
+                        requestedBy: doctorId,
+                        testType: test,
+                        priority: labPriority,
+                        notes: labNotes || undefined,
+                        status: "pending",
+                        followUpAfterDischarge: labFollowUpAfterDischargeTests.includes(test),
+                    }))),
+                });
             }
-        );
+
+            if (hasReferral("radiology") && radTestType.length > 0) {
+                orderJobs.push({
+                    label: "Radiology",
+                    run: () => Promise.all(radTestType.map(test => createRadRequestAsync({
+                        patientId,
+                        requestedBy: doctorId,
+                        testType: test,
+                        priority: radPriority,
+                        notes: radNotes || undefined,
+                    }))),
+                });
+            }
+
+            const prescriptionItemsToSend = store.prescriptionItems.filter(
+                item => item.drugName.trim() && item.dosage.trim()
+            );
+            if (hasReferral("pharmacist") && prescriptionItemsToSend.length > 0) {
+                orderJobs.push({
+                    label: "Pharmacy",
+                    run: () => Promise.all(prescriptionItemsToSend.map(item => createPrescriptionAsync({
+                        patientId,
+                        pharmacistId: undefined,
+                        drugName: item.drugName,
+                        dosage: `${item.dosage} ${item.frequency}`.trim(),
+                        duration: item.duration || undefined,
+                        price: 0,
+                        notes: item.notes || undefined,
+                        dispensed: false,
+                    }))),
+                });
+            }
+
+            if (hasReferral("nurse")) {
+                orderJobs.push({
+                    label: "Nursing",
+                    run: () => createNursingActionAsync({
+                        patientId,
+                        actionType: "Post-consultation nursing care",
+                        description: buildRecommendations() || "Post-consultation nursing review requested by the doctor.",
+                        status: "Pending",
+                    }),
+                });
+            }
+
+            const orderResults = await Promise.all(orderJobs.map(async job => {
+                try {
+                    await job.run();
+                    return { label: job.label, error: null as string | null };
+                } catch (error: any) {
+                    console.error(`${job.label} request creation failed:`, error);
+                    return { label: job.label, error: error?.message ?? "Request could not be created." };
+                }
+            }));
+            const failedOrders = orderResults.filter(result => result.error);
+
+            // The doctor's clinical note is complete even if a service request
+            // failed; keep that lifecycle separate from the patient handoff.
+            try {
+                await updateConsultationAsync({
+                    id: consultation.id,
+                    updates: { status: "completed" },
+                });
+            } catch (error: any) {
+                console.error("Consultation completion status failed:", error);
+                await showAttention(
+                    "The note was saved, but the consultation could not be marked complete. Review the record before continuing."
+                );
+                return;
+            }
+
+            if (failedOrders.length > 0) {
+                const labels = failedOrders.map(result => result.label).join(", ");
+                await showAttention(
+                    `${labels} request${failedOrders.length > 1 ? "s" : ""} could not be created. The patient remains in the Doctor queue so the missing work can be corrected. Do not submit the consultation again; use the relevant patient-service tab to add the missing request.`
+                );
+                return;
+            }
+
+            const finalStatus = admissionCreated ? PatientStatus.Admitted : PatientStatus.AwaitingFrontDesk;
+            try {
+                await updateStatusAsync({ id: patientId, status: finalStatus });
+            } catch (statusError: any) {
+                console.error("Front Desk handoff status update failed:", statusError);
+                await showAttention(
+                    "The consultation and service requests were saved, but the patient could not be added to the Front Desk queue. Ask staff to correct the status; do not submit the consultation again."
+                );
+                return;
+            }
+
+            const requestedWork = requestedServiceNames.length
+                ? ` Requested work: ${requestedServiceNames.join(", ")}.`
+                : " No additional service requests were entered.";
+            const successMessage = admissionCreated
+                ? "The admission request is recorded. Front Desk will coordinate admission arrangements."
+                : `The consultation is complete and the patient is now with Front Desk.${requestedWork} Front Desk will coordinate outstanding services, confirm whether payment is due, and discharge only when all work is complete.`;
+
+            resetForm();
+            setSubmissionOutcome({
+                kind: "success",
+                title: admissionCreated ? "Admission request submitted" : "Consultation complete — sent to Front Desk",
+                message: successMessage,
+            });
+            toast.success(admissionCreated ? "Consultation completed and admission recorded." : "Consultation completed and handed to Front Desk.");
+            onSuccess?.();
+        } catch (error: any) {
+            console.error("Consultation submit failed:", error);
+            if (consultationId || admissionCreated) {
+                await showAttention(
+                    consultationId
+                        ? "The consultation note was saved, but a later workflow step failed. Review the patient record and do not submit the consultation again."
+                        : "The admission record was created, but the consultation note could not be saved. Staff review is needed before continuing."
+                );
+            } else {
+                toast.error(error?.message ?? "Failed to submit consultation.");
+            }
+        } finally {
+            setAdmissionSaving(false);
+            setSubmitting(false);
+            submissionLock.current = false;
+        }
     };
 
     // ── Render ─────────────────────────────────────────────────────────────────
+    if (submissionOutcome) {
+        const isSuccess = submissionOutcome.kind === "success";
+        return (
+            <div className={`rounded-3xl border p-6 sm:p-8 ${isSuccess ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`} role="status">
+                <div className="flex items-start gap-3">
+                    {isSuccess
+                        ? <CheckCircle2 size={21} className="text-green-600 shrink-0 mt-0.5" />
+                        : <AlertTriangle size={21} className="text-amber-600 shrink-0 mt-0.5" />}
+                    <div className="space-y-2">
+                        <h3 className={`text-base font-bold ${isSuccess ? "text-green-900" : "text-amber-900"}`}>
+                            {submissionOutcome.title}
+                        </h3>
+                        <p className={`text-sm leading-relaxed ${isSuccess ? "text-green-800" : "text-amber-800"}`}>
+                            {submissionOutcome.message}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            This form is locked after saving to prevent duplicate consultation notes. Continue reviewing the patient&apos;s chart as needed.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
@@ -1055,7 +1150,7 @@ export default function ConsultationForm({
                 />
 
                 {/* ── Routing ── */}
-                <Section id="routing" icon={ArrowRight} title="Patient Routing" badge="Referral & status update — select all that apply" defaultOpen color="text-indigo-600" bg="bg-indigo-50">
+                <Section id="routing" icon={ArrowRight} title="Services & Admission" badge="Select all work needed after consultation" defaultOpen color="text-indigo-600" bg="bg-indigo-50">
 
                     {/* Referral cards — 3 per row on mobile, all 5 in one row on larger.
                         Multi-select: every ticked department receives its requests
@@ -1084,8 +1179,8 @@ export default function ConsultationForm({
                         })}
                     </div>
                     <p className="text-[10px] text-gray-400">
-                        Select one or more destinations — each department receives its own requests, and the patient&apos;s queue
-                        status follows the first stop on the journey (admission → lab → radiology → pharmacy → nursing).
+                        Select the services you are ordering. Each request goes to its department queue; after the consultation,
+                        outpatient encounters are handed to Front Desk to coordinate pending work and close the visit.
                     </p>
 
                     {/* Lab request panel */}
@@ -1103,11 +1198,23 @@ export default function ConsultationForm({
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <FieldLabel>Test Type</FieldLabel>
-                                    <MultiSelect options={LAB_TESTS} selected={labTestType} onChange={v => setField("labTestType", v)} placeholder="Select test(s)..." searchPlaceholder="Search tests (e.g. FBC, Malaria, Widal)…" />
+                                    <MultiSelect
+                                        options={LAB_TESTS}
+                                        selected={labTestType}
+                                        onChange={v => {
+                                            setField("labTestType", v);
+                                            setField("labFollowUpAfterDischargeTests", labFollowUpAfterDischargeTests.filter(test => v.includes(test)));
+                                        }}
+                                        placeholder="Select test(s)..."
+                                        searchPlaceholder="Search tests (e.g. FBC, Malaria, Widal)…"
+                                    />
                                 </div>
                                 <div className="space-y-1.5">
                                     <FieldLabel>Priority</FieldLabel>
-                                    <Select value={labPriority} onValueChange={v => setField("labPriority", v as RequestPriority)}>
+                                    <Select value={labPriority} onValueChange={v => {
+                                        setField("labPriority", v as RequestPriority);
+                                        if (v !== "routine") setField("labFollowUpAfterDischargeTests", []);
+                                    }}>
                                         <SelectTrigger className="h-10 text-sm bg-white border-gray-200 rounded-xl"><SelectValue /></SelectTrigger>
                                         <SelectContent className="bg-white shadow-xl rounded-xl">
                                             <SelectItem value="routine">Routine</SelectItem>
@@ -1117,6 +1224,39 @@ export default function ConsultationForm({
                                     </Select>
                                 </div>
                             </div>
+                            {labTestType.length > 0 && (
+                                <div className="rounded-xl border border-indigo-100 bg-white p-3 space-y-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-700">Long-turnaround result follow-up</p>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {labTestType.map(test => {
+                                            const checked = labFollowUpAfterDischargeTests.includes(test);
+                                            return (
+                                                <label key={test} className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${labPriority !== "routine" ? "cursor-not-allowed opacity-50" : "cursor-pointer"} ${checked ? "border-indigo-300 bg-indigo-50" : "border-gray-100 bg-gray-50"}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="mt-0.5 accent-indigo-600"
+                                                        checked={checked}
+                                                        disabled={labPriority !== "routine"}
+                                                        onChange={event => setField(
+                                                            "labFollowUpAfterDischargeTests",
+                                                            event.target.checked
+                                                                ? [...labFollowUpAfterDischargeTests, test]
+                                                                : labFollowUpAfterDischargeTests.filter(item => item !== test)
+                                                        )}
+                                                    />
+                                                    <span className="text-xs font-semibold text-gray-800">
+                                                        {test}
+                                                        <span className="block text-[10px] font-normal text-gray-500">Result may follow after discharge</span>
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="text-[10px] leading-relaxed text-gray-500">
+                                        Select only when the result is clinically safe to follow later. The Lab must collect and link the specimen before Front Desk can discharge the patient; urgent/STAT tests cannot be deferred.
+                                    </p>
+                                </div>
+                            )}
                             <div className="space-y-1.5">
                                 <FieldLabel>Notes for Lab Scientist</FieldLabel>
                                 <Textarea rows={2} value={labNotes} onChange={e => setField("labNotes", e.target.value)}
@@ -1165,34 +1305,29 @@ export default function ConsultationForm({
                     {/* Front desk — admission panel */}
                     {hasReferral("front-desk") && <AdmissionPanel store={store} />}
 
-                    {/* Status override + preview */}
-                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
-                        <div className="space-y-1.5">
-                            <FieldLabel>Override Status (optional)</FieldLabel>
-                            <Select onValueChange={v => setField("statusOverride", v)} value={statusOverride}>
-                                <SelectTrigger className="h-10 text-sm bg-gray-50 border-gray-200 rounded-xl">
-                                    <SelectValue placeholder="Auto (based on referral)" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white shadow-xl rounded-xl">
-                                    {PATIENT_STATUSES.map(s => (
-                                        <SelectItem key={s.value} value={s.value} className="text-sm">{s.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex items-end">
-                            <div className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
-                                <CheckCircle2 size={13} className="text-blue-500 shrink-0" />
-                                <div className="min-w-0">
-                                    <p className="text-xs text-blue-700 font-medium">
-                                        Patient → <span className="font-bold">{routeChain}</span>
+                    {/* The patient-level handoff is fixed: service orders are tracked separately. */}
+                    <div className="pt-2 border-t border-gray-100">
+                        <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
+                            <CheckCircle2 size={14} className="text-blue-500 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                                <p className="text-xs text-blue-700 font-medium">
+                                    After consultation → <span className="font-bold">{routeChain}</span>
+                                </p>
+                                {requestedServiceNames.length > 0 && !admissionRequested && (
+                                    <p className="text-[10px] text-blue-600 mt-1">
+                                        Work requests: {requestedServiceNames.join(", ")}. Front Desk coordinates them and discharges only when complete.
                                     </p>
-                                    {selectedReferrals.length > 1 && (
-                                        <p className="text-[10px] text-blue-500 mt-0.5">
-                                            Requests go to every department · queue status: {resolvedStatusLabel}
-                                        </p>
-                                    )}
-                                </div>
+                                )}
+                                {!admissionRequested && requestedServiceNames.length === 0 && (
+                                    <p className="text-[10px] text-blue-600 mt-1">
+                                        No service work selected. Front Desk will confirm whether anything is payable; no bill will be created just to record no payment due.
+                                    </p>
+                                )}
+                                {admissionRequested && (
+                                    <p className="text-[10px] text-blue-600 mt-1">
+                                        Admission will follow the ward workflow instead of outpatient checkout.
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1203,7 +1338,7 @@ export default function ConsultationForm({
                     className="w-full flex items-center justify-center gap-2.5 bg-red-700 hover:bg-red-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed py-3.5">
                     {loading
                         ? <><Loader2 size={16} className="animate-spin" /> Saving...</>
-                        : <><CheckCircle2 size={16} /> Submit & Route Patient <ArrowRight size={15} /></>
+                        : <><CheckCircle2 size={16} /> Complete Consultation &amp; Handoff <ArrowRight size={15} /></>
                     }
                 </button>
             </form>

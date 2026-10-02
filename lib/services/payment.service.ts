@@ -76,7 +76,7 @@ export interface ConfirmPaymentInput {
     notes?: string;
 }
 
-const OUTSTANDING_STATUSES = new Set(["pending", "partial"]);
+const OPEN_BILL_STATUSES = new Set(["pending", "partial", "failed"]);
 const FINAL_STATUSES = new Set(["paid", "waived", "refunded"]);
 
 type Sb = Awaited<ReturnType<typeof createClient>>;
@@ -130,13 +130,16 @@ function normalizePaymentType(type?: string | null): PaymentType | undefined {
 }
 
 function amountToKobo(row: any): number {
-    if (typeof row?.amount_kobo === "number") return row.amount_kobo;
-    if (typeof row?.amount === "number") return Math.round(row.amount * 100);
+    const kobo = Number(row?.amount_kobo);
+    if (row?.amount_kobo != null && Number.isFinite(kobo)) return Math.max(0, Math.round(kobo));
+    const naira = Number(row?.amount);
+    if (row?.amount != null && Number.isFinite(naira)) return Math.max(0, Math.round(naira * 100));
     return 0;
 }
 
 function paidToKobo(row: any): number {
-    if (typeof row?.amount_paid_kobo === "number") return row.amount_paid_kobo;
+    const paid = Number(row?.amount_paid_kobo);
+    if (row?.amount_paid_kobo != null && Number.isFinite(paid)) return Math.max(0, Math.round(paid));
     return FINAL_STATUSES.has(normalizeStatus(row?.status)) ? amountToKobo(row) : 0;
 }
 
@@ -186,26 +189,327 @@ function isDepositRow(row: any): boolean {
     return category === "deposit" || type === "deposit" || type === "advance";
 }
 
-function isOutstanding(row: any): boolean {
-    if (isDepositRow(row)) return false;
-    const status = normalizeStatus(row?.status);
-    if (!OUTSTANDING_STATUSES.has(status)) return false;
-    return amountToKobo(row) - paidToKobo(row) > 0;
-}
-
 /**
- * Open bills — pending or partially paid, regardless of balance. Superset of
- * `isOutstanding`: also covers zero-amount bills (e.g. lab tests auto-billed
- * at ₦0 before the lab tech sets a price). Sweeping an open zero-amount bill
- * closes it as paid at ₦0 instead of leaving it open forever.
+ * Open bills include pending, partial, and failed rows regardless of balance.
+ * Zero-amount rows still need Front Desk review (for example, an unpriced scan);
+ * they are not treated as "no payment due" until the row is resolved.
  */
 function isOpenBill(row: any): boolean {
     if (isDepositRow(row)) return false;
-    return OUTSTANDING_STATUSES.has(normalizeStatus(row?.status));
+    return OPEN_BILL_STATUSES.has(normalizeStatus(row?.status));
 }
 
 function outstandingKobo(row: any): number {
     return Math.max(0, amountToKobo(row) - paidToKobo(row));
+}
+
+/** Positive balance on an open bill (used for deposit allocation and totals). */
+function isOutstanding(row: any): boolean {
+    if (isDepositRow(row) || !OPEN_BILL_STATUSES.has(normalizeStatus(row?.status))) return false;
+    return outstandingKobo(row) > 0;
+}
+
+const TERMINAL_TASK_STATUSES = new Set([
+    "completed", "complete", "dispensed", "cancelled", "canceled", "void", "closed",
+    "rejected", "stopped", "discontinued",
+]);
+
+function isTerminalTaskStatus(status: unknown): boolean {
+    return TERMINAL_TASK_STATUSES.has(String(status ?? "").trim().toLowerCase());
+}
+
+// A referral marked sent has been handed to the receiving facility; an accepted
+// referral remains open until its outcome is documented.
+const COMPLETED_REFERRAL_STATUSES = new Set(["sent", "completed", "cancelled", "canceled", "void", "closed"]);
+
+export interface FrontDeskWorkCounts {
+    /** Lab requests still requiring work before the patient may leave. */
+    lab: number;
+    /** Long-turnaround results explicitly deferred by a clinician and linked to a collected specimen. */
+    deferredLabResults: number;
+    radiology: number;
+    pharmacy: number;
+    nursing: number;
+    other: number;
+    /** Blocking work only; deferred results are tracked separately. */
+    total: number;
+}
+
+export interface FrontDeskQueuePatient {
+    id: string;
+    name: string;
+    phone: string | null;
+    hospital_number: string | null;
+    status: string;
+    updated_at: string | null;
+    work: FrontDeskWorkCounts;
+    billing: {
+        openBillCount: number;
+        outstandingKobo: number;
+        hasBills: boolean;
+    };
+}
+
+const EMPTY_WORK_COUNTS = (): FrontDeskWorkCounts => ({
+    lab: 0,
+    deferredLabResults: 0,
+    radiology: 0,
+    pharmacy: 0,
+    nursing: 0,
+    other: 0,
+    total: 0,
+});
+
+/**
+ * Read outstanding clinical tasks for a batch of patients. Unknown/non-terminal
+ * task statuses are treated as pending, so a schema or status mismatch fails
+ * safe instead of allowing Front Desk to discharge prematurely.
+ */
+async function pendingClinicalWorkByPatient(
+    supabase: Sb,
+    patientIds: string[]
+): Promise<Map<string, FrontDeskWorkCounts>> {
+    const counts = new Map<string, FrontDeskWorkCounts>(
+        patientIds.map((id) => [id, EMPTY_WORK_COUNTS()] as const)
+    );
+    if (patientIds.length === 0) return counts;
+
+    const [labResult, specimenResult, prescriptionResult, nursingResult, referralResult, surgeryResult] = await Promise.all([
+        supabase
+            .from("lab_requests")
+            .select("id, visit_id, test_type, status, priority, follow_up_after_discharge")
+            .in("visit_id", patientIds),
+        supabase
+            .from("lab_specimens")
+            .select("id, lab_request_id, patient_id, status")
+            .in("patient_id", patientIds),
+        supabase
+            .from("prescriptions")
+            .select("id, patient_id, status, dispensed")
+            .in("patient_id", patientIds),
+        supabase
+            .from("nursing_actions")
+            .select("id, patient_id, status")
+            .in("patient_id", patientIds),
+        supabase
+            .from("referrals")
+            .select("id, patient_id, status")
+            .in("patient_id", patientIds),
+        supabase
+            .from("surgeries")
+            .select("id, patient_id, status")
+            .in("patient_id", patientIds),
+    ]);
+
+    if ([labResult, specimenResult, prescriptionResult, nursingResult, referralResult, surgeryResult].some((result) => result.error)) {
+        console.error("[payment] clinical-work safety check:", {
+            lab: labResult.error,
+            specimens: specimenResult.error,
+            pharmacy: prescriptionResult.error,
+            nursing: nursingResult.error,
+            referrals: referralResult.error,
+            surgeries: surgeryResult.error,
+        });
+        throw new Error("Could not verify all pending clinical work. Refresh the Front Desk queue and try again.");
+    }
+
+    const specimenStatusesByRequest = new Map<string, string[]>();
+    for (const specimen of specimenResult.data ?? []) {
+        if (!specimen.lab_request_id) continue;
+        const statuses = specimenStatusesByRequest.get(specimen.lab_request_id) ?? [];
+        statuses.push(String(specimen.status ?? "").trim().toLowerCase());
+        specimenStatusesByRequest.set(specimen.lab_request_id, statuses);
+    }
+
+    const acceptedSpecimenStatuses = new Set(["collected", "received", "processing", "completed"]);
+    for (const row of labResult.data ?? []) {
+        if (isTerminalTaskStatus(row.status)) continue;
+        const patientId = row.visit_id ?? (row as any).patient_id;
+        const patientCounts = patientId ? counts.get(patientId) : undefined;
+        if (!patientCounts) continue;
+        if (String(row.test_type ?? "").trim().toUpperCase().startsWith("[RADIOLOGY]")) {
+            patientCounts.radiology++;
+            continue;
+        }
+
+        const specimenStatuses = specimenStatusesByRequest.get(row.id) ?? [];
+        const canFollowUpAfterDischarge =
+            String(row.status ?? "").trim().toLowerCase() === "pending" &&
+            row.follow_up_after_discharge === true &&
+            !["urgent", "stat"].includes(String(row.priority ?? "").trim().toLowerCase()) &&
+            specimenStatuses.length > 0 &&
+            specimenStatuses.every((status) => acceptedSpecimenStatuses.has(status));
+
+        if (canFollowUpAfterDischarge) {
+            patientCounts.deferredLabResults++;
+        } else {
+            patientCounts.lab++;
+        }
+    }
+
+    for (const row of prescriptionResult.data ?? []) {
+        const status = String(row.status ?? "").trim().toLowerCase();
+        if (row.dispensed === true || isTerminalTaskStatus(status)) continue;
+        const patientCounts = counts.get(row.patient_id);
+        if (patientCounts) patientCounts.pharmacy++;
+    }
+
+    for (const row of nursingResult.data ?? []) {
+        if (isTerminalTaskStatus(row.status)) continue;
+        const patientCounts = counts.get(row.patient_id);
+        if (patientCounts) patientCounts.nursing++;
+    }
+
+    for (const row of referralResult.data ?? []) {
+        const status = String(row.status ?? "").trim().toLowerCase();
+        if (COMPLETED_REFERRAL_STATUSES.has(status)) continue;
+        const patientCounts = counts.get(row.patient_id);
+        if (patientCounts) patientCounts.other++;
+    }
+
+    for (const row of surgeryResult.data ?? []) {
+        if (isTerminalTaskStatus(row.status)) continue;
+        const patientCounts = counts.get(row.patient_id);
+        if (patientCounts) patientCounts.other++;
+    }
+
+    for (const patientCounts of counts.values()) {
+        patientCounts.total = patientCounts.lab + patientCounts.radiology + patientCounts.pharmacy + patientCounts.nursing + patientCounts.other;
+    }
+
+    return counts;
+}
+
+async function pendingClinicalWorkForPatient(supabase: Sb, patientId: string): Promise<FrontDeskWorkCounts> {
+    const counts = await pendingClinicalWorkByPatient(supabase, [patientId]);
+    return counts.get(patientId) ?? EMPTY_WORK_COUNTS();
+}
+
+/**
+ * Front Desk worklist combines encounter handoffs with task and billing state.
+ * It deliberately includes legacy `awaiting-payment` rows during rollout.
+ */
+export async function listFrontDeskQueuePatients(): Promise<FrontDeskQueuePatient[]> {
+    await requireStaff([UserRole.FrontDesk, UserRole.Admin]);
+    const supabase = await createClient();
+    const { data: patients, error: patientError } = await supabase
+        .from("patients")
+        .select("id, name, phone, hospital_number, status, updated_at")
+        .in("status", ["awaiting-front-desk", "awaiting-payment"])
+        .order("updated_at", { ascending: true });
+
+    if (patientError) {
+        console.error("[payment] front-desk queue patients:", patientError);
+        throw asActionError(patientError, "Failed to load the Front Desk queue.");
+    }
+    if (!patients?.length) return [];
+
+    const patientIds = patients.map((patient: any) => patient.id as string);
+    const [paymentResult, workByPatient] = await Promise.all([
+        supabase
+            .from("payments")
+            .select("*")
+            .in("patient_id", patientIds),
+        pendingClinicalWorkByPatient(supabase, patientIds),
+    ]);
+
+    if (paymentResult.error) {
+        console.error("[payment] front-desk queue billing:", paymentResult.error);
+        throw new Error("Could not verify patient bills. Refresh the Front Desk queue and try again.");
+    }
+
+    const paymentsByPatient = new Map<string, any[]>();
+    for (const payment of paymentResult.data ?? []) {
+        const rows = paymentsByPatient.get(payment.patient_id) ?? [];
+        rows.push(payment);
+        paymentsByPatient.set(payment.patient_id, rows);
+    }
+
+    return patients.map((patient: any) => {
+        const bills = (paymentsByPatient.get(patient.id) ?? []).filter((row) => !isDepositRow(row));
+        const openBills = bills.filter(isOpenBill);
+        return {
+            id: patient.id,
+            name: patient.name ?? "Unknown patient",
+            phone: patient.phone ?? null,
+            hospital_number: patient.hospital_number ?? null,
+            status: patient.status,
+            updated_at: patient.updated_at ?? null,
+            work: workByPatient.get(patient.id) ?? EMPTY_WORK_COUNTS(),
+            billing: {
+                openBillCount: openBills.length,
+                outstandingKobo: openBills.reduce((sum, bill) => sum + outstandingKobo(bill), 0),
+                hasBills: bills.length > 0,
+            },
+        };
+    });
+}
+
+/**
+ * Close an encounter from Front Desk after every clinical task is complete and
+ * no open bill remains. A no-bill visit is recorded in the audit trail as
+ * `no_payment_due`; it does not create a zero-value payment row or invoice.
+ */
+export async function dischargeFromFrontDesk(patientId: string) {
+    const actor = await requireStaff([UserRole.FrontDesk, UserRole.Admin]);
+    if (!patientId?.trim()) throw new Error("A patient must be selected before discharge.");
+
+    const supabase = await createClient();
+    const { data: patient, error: patientError } = await supabase
+        .from("patients")
+        .select("id, name, status")
+        .eq("id", patientId)
+        .maybeSingle();
+    if (patientError) throw asActionError(patientError, "Could not verify the patient before discharge.");
+    if (!patient) throw new Error("Patient not found.");
+    if (!["awaiting-front-desk", "awaiting-payment"].includes(String(patient.status ?? ""))) {
+        throw new Error("This patient is no longer waiting for Front Desk closeout. Refresh the queue.");
+    }
+
+    const [{ data: bills, error: billingError }, work] = await Promise.all([
+        supabase
+            .from("payments")
+            .select("*")
+            .eq("patient_id", patientId),
+        pendingClinicalWorkForPatient(supabase, patientId),
+    ]);
+    if (billingError) throw new Error("Could not verify the patient's bills. No discharge was recorded.");
+
+    const patientBills = (bills ?? []).filter((row: any) => !isDepositRow(row));
+    const openBillCount = patientBills.filter(isOpenBill).length;
+    if (openBillCount > 0) {
+        throw new Error("An open bill remains. Settle or confirm the payer before discharging this patient.");
+    }
+    if (work.total > 0) {
+        const pending = [
+            work.radiology ? `${work.radiology} Radiology` : "",
+            work.lab ? `${work.lab} Lab` : "",
+            work.pharmacy ? `${work.pharmacy} Pharmacy` : "",
+            work.nursing ? `${work.nursing} Nursing` : "",
+            work.other ? `${work.other} Other` : "",
+        ].filter(Boolean).join(", ");
+        throw new Error(`Discharge is on hold. Complete pending work first: ${pending}.`);
+    }
+
+    const { data: updated, error: updateError } = await supabase
+        .from("patients")
+        .update({ status: "discharged", updated_at: new Date().toISOString() })
+        .eq("id", patientId)
+        .eq("status", patient.status)
+        .select("id, name, status")
+        .maybeSingle();
+    if (updateError) throw asActionError(updateError, "Failed to discharge the patient.");
+    if (!updated) throw new Error("The patient status changed while closeout was in progress. Refresh the queue.");
+
+    await logAction("FRONT_DESK_ENCOUNTER_CLOSED", "patients", patientId, {
+        from: patient.status,
+        to: "discharged",
+        payment_disposition: patientBills.length === 0 ? "no_payment_due" : "settled_or_confirmed",
+        pending_clinical_work: work,
+        changed_by: actor.userId,
+    });
+
+    return { patient_id: patientId, name: patient.name ?? "Patient", noPaymentDue: patientBills.length === 0 };
 }
 
 // ─── Defensive insert / update (schema differences tolerated) ────────────────
@@ -467,13 +771,12 @@ export async function updatePendingBill(input: UpdatePendingBillInput): Promise<
     const existing = await getPaymentById(input.id);
     if (!existing) throw new Error("Bill was not found.");
 
-    // Open bills (pending / partially paid) are editable regardless of their
-    // balance — a ₦0 lab bill that is waiting for the lab tech's price is
-    // exactly the bill the front desk needs to correct. Only final bills
-    // (paid / waived / refunded) and deposits are locked.
+    // Open bills are editable regardless of their balance — a ₦0 lab bill
+    // waiting for the lab tech's price is exactly the bill the front desk
+    // needs to correct. Only final bills and deposits are locked.
     const existingStatus = normalizeStatus((existing as any).raw_status ?? existing.status);
-    if (isDepositRow(existing) || !OUTSTANDING_STATUSES.has(existingStatus)) {
-        throw new Error("Only open bills (pending / partially paid) can be edited. This bill is already settled.");
+    if (isDepositRow(existing) || !OPEN_BILL_STATUSES.has(existingStatus)) {
+        throw new Error("Only open bills can be edited. Deposits and already-settled bills are locked.");
     }
 
     const now = new Date().toISOString();
@@ -756,13 +1059,13 @@ export async function confirmPayment(inputOrId: ConfirmPaymentInput | string, me
 
     if (!existing) throw new Error("Payment record was not found.");
 
-    // Any bill still OPEN (pending / partially paid) can be settled — including
-    // zero-amount bills. Lab tests that are not in the catalogue are auto-billed
+    // Any open bill can be settled — including failed attempts and zero-amount
+    // bills. Lab tests that are not in the catalogue are auto-billed
     // at ₦0 when the doctor orders them; if the lab tech's price never lands on
     // that row, the front desk must still be able to close the bill instead of
     // hitting a dead end. Only already-final bills are rejected.
     const existingStatus = normalizeStatus((existing as any).raw_status ?? existing.status);
-    if (isDepositRow(existing) || !OUTSTANDING_STATUSES.has(existingStatus)) {
+    if (isDepositRow(existing) || !OPEN_BILL_STATUSES.has(existingStatus)) {
         throw new Error(
             `This payment cannot be settled — its current status is "${existing.status ?? "unknown"}". ` +
             `It may already be paid, waived, or fully refunded.`
@@ -1338,27 +1641,47 @@ export async function settleAllPendingBills(input: SettleQueueBillsInput): Promi
 
     let patientsCleared = 0;
     for (const patientId of patientIds) {
-        const { data: remaining } = await supabase
+        const { data: remaining, error: remainingError } = await supabase
             .from("payments")
             .select("*")
             .eq("patient_id", patientId);
-        if ((remaining ?? []).some(isOutstanding)) continue;
+        if (remainingError || (remaining ?? []).some(isOpenBill)) continue;
 
-        // Only auto-discharge patients that were actually awaiting payment —
-        // e.g. someone mid-lab-work keeps their status even if a single
-        // outstanding bill of theirs was settled here.
+        // Only auto-close an encounter that is already in the Front Desk
+        // closeout queue, and never while lab, scan, pharmacy, nursing, referral,
+        // surgical, or other tracked work remains open.
         const { data: patient } = await supabase
             .from("patients")
             .select("status")
             .eq("id", patientId)
             .maybeSingle();
-        if (patient?.status !== "awaiting-payment") continue;
+        if (!patient || !["awaiting-front-desk", "awaiting-payment"].includes(String(patient.status ?? ""))) continue;
 
-        patientsCleared++;
-        await supabase
+        let verifiedWork: FrontDeskWorkCounts;
+        try {
+            verifiedWork = await pendingClinicalWorkForPatient(supabase, patientId);
+            if (verifiedWork.total > 0) continue;
+        } catch (workError) {
+            console.error("[payment] settlement discharge guard:", workError);
+            continue;
+        }
+
+        const { data: discharged } = await supabase
             .from("patients")
             .update({ status: "discharged", updated_at: now })
-            .eq("id", patientId);
+            .eq("id", patientId)
+            .eq("status", patient.status)
+            .select("id")
+            .maybeSingle();
+        if (discharged) {
+            patientsCleared++;
+            await logAction("FRONT_DESK_ENCOUNTER_CLOSED", "patients", patientId, {
+                from: patient.status,
+                to: "discharged",
+                payment_disposition: "settled_or_confirmed",
+                pending_clinical_work: verifiedWork,
+            });
+        }
     }
 
     return { settled: bills.length, patientsCleared, byPayer };
@@ -1374,15 +1697,16 @@ async function dischargeIfBillingCleared(
     supabase: Sb,
     payment: Payment | { patient_id?: string }
 ) {
-    if (!payment.patient_id) return;
+    if (!payment.patient_id || isDepositRow(payment)) return;
 
-    const { data: patient } = await supabase
+    const { data: patient, error: patientError } = await supabase
         .from("patients")
         .select("status")
         .eq("id", payment.patient_id)
-        .single();
+        .maybeSingle();
+    if (patientError || !patient) return;
 
-    if (patient?.status !== "awaiting-payment") return;
+    if (!["awaiting-front-desk", "awaiting-payment"].includes(String(patient.status ?? ""))) return;
 
     const { data: rows, error } = await supabase
         .from("payments")
@@ -1390,17 +1714,39 @@ async function dischargeIfBillingCleared(
         .eq("patient_id", payment.patient_id);
 
     if (error) {
-        console.error("[payment] outstanding check:", error);
+        console.error("[payment] open-bill check:", error);
+        return;
+    }
+    if ((rows ?? []).some(isOpenBill)) return;
+
+    let verifiedWork: FrontDeskWorkCounts;
+    try {
+        verifiedWork = await pendingClinicalWorkForPatient(supabase, payment.patient_id);
+        if (verifiedWork.total > 0) return;
+    } catch (workError) {
+        console.error("[payment] clinical-work discharge guard:", workError);
         return;
     }
 
-    const hasOutstanding = (rows ?? []).some(isOutstanding);
-    if (hasOutstanding) return;
-
-    await supabase
+    const { data: discharged, error: dischargeError } = await supabase
         .from("patients")
         .update({ status: "discharged", updated_at: new Date().toISOString() })
-        .eq("id", payment.patient_id);
+        .eq("id", payment.patient_id)
+        .eq("status", patient.status)
+        .select("id")
+        .maybeSingle();
+    if (dischargeError) {
+        console.error("[payment] encounter auto-close:", dischargeError);
+        return;
+    }
+    if (discharged) {
+        await logAction("FRONT_DESK_ENCOUNTER_CLOSED", "patients", payment.patient_id, {
+            from: patient.status,
+            to: "discharged",
+            payment_disposition: "settled_or_confirmed",
+            pending_clinical_work: verifiedWork,
+        });
+    }
 }
 
 // ─── Listing ──────────────────────────────────────────────────────────────────
@@ -1500,10 +1846,10 @@ export async function listPendingPayments(): Promise<Payment[]> {
         return [];
     }
 
-    const outstanding = (data ?? []).filter(isOutstanding);
-    if (!outstanding.length) return [];
+    const openBills = (data ?? []).filter(isOpenBill);
+    if (!openBills.length) return [];
 
-    const ids = [...new Set(outstanding.map((payment: any) => payment.patient_id).filter(Boolean))];
+    const ids = [...new Set(openBills.map((payment: any) => payment.patient_id).filter(Boolean))];
     const { data: patients } = await supabase
         .from("patients")
         .select("id, name, phone, hospital_number, hmo, hmo_name, policy_number, company, company_name, private_client")
@@ -1511,7 +1857,7 @@ export async function listPendingPayments(): Promise<Payment[]> {
 
     const patientMap = Object.fromEntries((patients ?? []).map((patient: any) => [patient.id, patient]));
 
-    return outstanding.map((payment: any) =>
+    return openBills.map((payment: any) =>
         normalizePayment({ ...payment, patients: patientMap[payment.patient_id] ?? null })
     );
 }

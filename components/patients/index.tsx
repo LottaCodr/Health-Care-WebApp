@@ -35,7 +35,8 @@ type PatientStatus =
     | "sent-to-lab"
     | "sent-to-pharmacy"
     | "sent-to-radiology"
-    | "awaiting-payment";
+    | "awaiting-payment"
+    | "awaiting-front-desk";
 
 interface StatusTab {
     value:    PatientStatus;
@@ -56,8 +57,9 @@ const ALL_TABS: StatusTab[] = [
     { value: "sent-to-pharmacy",     label: "Pharmacy",             short: "Pharmacy",  color: "bg-pink-600 text-white",            dot: "bg-pink-500"  },
     { value: "sent-to-lab",          label: "Lab",                  short: "Lab",       color: "bg-orange-500 text-white",          dot: "bg-orange-400"},
     { value: "sent-to-radiology",    label: "Radiology",            short: "Radiology", color: "bg-indigo-600 text-white",          dot: "bg-indigo-500"},
-    { value: "awaiting-payment",     label: "Awaiting Payment",     short: "Payment",   color: "bg-amber-600 text-white",           dot: "bg-amber-500" },
-    { value: "discharged",           label: "Discharged",           short: "Discharged",color: "bg-emerald-600 text-white",         dot: "bg-emerald-500"},
+    { value: "awaiting-front-desk", label: "Awaiting Front Desk",  short: "Front Desk", color: "bg-blue-600 text-white",           dot: "bg-blue-500" },
+    { value: "awaiting-payment",     label: "Awaiting Payment",     short: "Payment",    color: "bg-amber-600 text-white",          dot: "bg-amber-500" },
+    { value: "discharged",           label: "Discharged",           short: "Discharged", color: "bg-emerald-600 text-white",        dot: "bg-emerald-500"},
 ];
 
 // All roles see every status tab.
@@ -72,6 +74,7 @@ const ALL_STATUS_VALUES: PatientStatus[] = [
     "sent-to-pharmacy",
     "sent-to-lab",
     "sent-to-radiology",
+    "awaiting-front-desk",
     "awaiting-payment",
     "discharged",
 ];

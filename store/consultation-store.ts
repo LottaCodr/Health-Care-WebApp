@@ -63,6 +63,8 @@ interface ConsultationState {
     // Lab request
     labTestType: string[];
     labPriority: RequestPriority;
+    /** Per-test clinician approval for a delayed result to follow after discharge. */
+    labFollowUpAfterDischargeTests: string[];
     labNotes:    string;
     // Radiology request
     radTestType: string[];
@@ -101,7 +103,7 @@ const initial: ConsultationState = {
     assessment: "",
     investigations: "", prescriptions: "", recommendations: "",
     referrals: [], statusOverride: "",
-    labTestType: [], labPriority: "routine", labNotes: "",
+    labTestType: [], labPriority: "routine", labFollowUpAfterDischargeTests: [], labNotes: "",
     radTestType: [], radPriority: "routine", radNotes: "",
     admissionType:       "",
     admissionUrgency:    "routine",

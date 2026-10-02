@@ -4,10 +4,10 @@ import React, { useState, useMemo } from "react";
 import {
     BadgeDollarSign, CheckCircle2, Clock,
     Loader2, RefreshCcw, AlertTriangle, Receipt,
-    User, Layers, Wallet,
+    User, Layers, Wallet, ClipboardCheck, Activity,
 } from "lucide-react";
 import { toast } from "sonner";
-import { usePendingPayments } from "@/hooks/emr/use-payment";
+import { useDischargeFromFrontDesk, useFrontDeskQueuePatients, usePendingPayments } from "@/hooks/emr/use-payment";
 import { useAuth } from "@/context/auth-provider";
 import { SettleBillModal, QueueSettleAllModal, PayerBadge } from "@/components/patients/billing-modals";
 import { formatKobo, resolvePayerFromPatient, PAYMENT_TYPE_CONFIG } from "@/lib/utils/billing";
@@ -134,6 +134,147 @@ const PaymentList: React.FC<PaymentListProps> = ({ payments, onSettle }) => {
     );
 };
 
+function FrontDeskCloseoutQueue() {
+    const { data: patients, isLoading, isError, isFetching, refetch } = useFrontDeskQueuePatients();
+    const discharge = useDischargeFromFrontDesk();
+    const [dischargingPatientId, setDischargingPatientId] = useState<string | null>(null);
+
+    const handleDischarge = async (patient: NonNullable<typeof patients>[number]) => {
+        if (dischargingPatientId) return;
+        setDischargingPatientId(patient.id);
+        try {
+            const result = await discharge.mutateAsync(patient.id);
+            toast.success(result.noPaymentDue
+                ? `${patient.name}: No payment due recorded; encounter discharged.`
+                : `${patient.name}: encounter discharged.`);
+        } catch (error: any) {
+            toast.error(error?.message ?? "Discharge could not be completed. Refresh the queue and try again.", { duration: 8000 });
+        } finally {
+            setDischargingPatientId(null);
+        }
+    };
+
+    return (
+        <section className="border-t border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-5 bg-slate-50/60">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                        <ClipboardCheck size={17} className="text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-900">Front Desk encounter closeout</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Coordinate service tasks and discharge only when all work and billing are clear.</p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => void refetch()}
+                    disabled={isFetching}
+                    aria-label="Refresh Front Desk closeout queue"
+                    className="self-start sm:self-auto w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-60"
+                >
+                    <RefreshCcw size={13} className={isFetching ? "animate-spin" : ""} />
+                </button>
+            </div>
+
+            {isLoading ? (
+                <div className="px-6 py-8 flex items-center justify-center gap-2 text-sm text-gray-400">
+                    <Loader2 size={15} className="animate-spin" /> Loading Front Desk patients…
+                </div>
+            ) : isError ? (
+                <div className="px-6 py-5 flex items-start gap-2 text-sm text-red-700 bg-red-50">
+                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                    <span>Could not load the encounter queue. No patient can be discharged until billing and pending clinical work are verified.</span>
+                </div>
+            ) : !patients?.length ? (
+                <div className="px-6 py-8 text-center">
+                    <p className="text-sm font-semibold text-gray-600">No patients awaiting Front Desk closeout</p>
+                    <p className="text-xs text-gray-400 mt-1">Completed consultations will appear here, including visits with no bill due.</p>
+                </div>
+            ) : (
+                <div className="divide-y divide-gray-50">
+                    {patients.map(patient => {
+                        const pendingWork = [
+                            patient.work.radiology ? `${patient.work.radiology} Radiology` : "",
+                            patient.work.lab ? `${patient.work.lab} Lab` : "",
+                            patient.work.pharmacy ? `${patient.work.pharmacy} Pharmacy` : "",
+                            patient.work.nursing ? `${patient.work.nursing} Nursing` : "",
+                            patient.work.other ? `${patient.work.other} Other` : "",
+                        ].filter(Boolean);
+                        const readyToClose = patient.work.total === 0 && patient.billing.openBillCount === 0;
+                        const isDischarging = dischargingPatientId === patient.id;
+
+                        return (
+                            <div key={patient.id} className="px-6 py-5 flex flex-col xl:flex-row xl:items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 font-black text-blue-600 text-sm">
+                                    {patient.name?.[0]?.toUpperCase() ?? <User size={15} />}
+                                </div>
+                                <div className="flex-1 min-w-0 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <p className="text-sm font-bold text-gray-900">{patient.name}</p>
+                                        <span className="text-[10px] text-gray-400 font-mono">HN: {displayHospitalNumber(patient.hospital_number)}</span>
+                                        <span className="text-[10px] rounded-full px-2 py-0.5 border bg-blue-50 text-blue-700 border-blue-100 font-bold">Awaiting Front Desk</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {pendingWork.length > 0 ? (
+                                            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-100 rounded-full px-2.5 py-1">
+                                                <Activity size={10} /> Pending: {pendingWork.join(" · ")}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-100 rounded-full px-2.5 py-1">
+                                                <CheckCircle2 size={10} /> {patient.work.deferredLabResults > 0 ? "Discharge blockers complete" : "Clinical work complete"}
+                                            </span>
+                                        )}
+                                        {patient.work.deferredLabResults > 0 && (
+                                            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-800">
+                                                {patient.work.deferredLabResults} delayed Lab result{patient.work.deferredLabResults === 1 ? "" : "s"} tracked for follow-up
+                                            </span>
+                                        )}
+                                        {patient.billing.openBillCount > 0 ? (
+                                            <span className="text-[10px] font-semibold text-red-700 bg-red-50 border border-red-100 rounded-full px-2.5 py-1">
+                                                {patient.billing.openBillCount} open bill{patient.billing.openBillCount === 1 ? "" : "s"} · {patient.billing.outstandingKobo > 0 ? `${formatKobo(patient.billing.outstandingKobo)} due` : "review required"}
+                                            </span>
+                                        ) : patient.billing.hasBills ? (
+                                            <span className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-100 rounded-full px-2.5 py-1">Bills settled / confirmed</span>
+                                        ) : (
+                                            <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 rounded-full px-2.5 py-1">No open bill — confirm no payment due</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="xl:w-60 shrink-0">
+                                    {readyToClose ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleDischarge(patient)}
+                                            disabled={!!dischargingPatientId}
+                                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors disabled:opacity-60"
+                                        >
+                                            {isDischarging ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                            {patient.billing.hasBills ? "Complete discharge" : "Mark No Payment Due & Discharge"}
+                                        </button>
+                                    ) : (
+                                        <p className="text-[10px] text-gray-500 xl:text-right">
+                                            {patient.billing.openBillCount > 0
+                                                ? "Settle or confirm the payer above before discharge."
+                                                : "Complete blocking clinical/service tasks before discharge."}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50">
+                <p className="text-[10px] text-slate-600 leading-relaxed">
+                    A prepaid or otherwise covered visit is closed as <span className="font-bold">No payment due</span> in the discharge audit trail. No zero-value invoice is created. Any open bill (including an unpriced ₦0 bill) must be resolved separately.
+                </p>
+            </div>
+        </section>
+    );
+}
+
 // ─── Main PaymentConfirmation Component ──────────────────────────────────────
 
 export default function PaymentConfirmation() {
@@ -184,8 +325,8 @@ export default function PaymentConfirmation() {
                         <BadgeDollarSign size={18} className="text-green-600" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-gray-900 leading-tight">Pending Payments</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">Full / part / deposit payments • discounts • auto-identified payer</p>
+                        <h3 className="text-sm font-bold text-gray-900 leading-tight">Open Bills</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">Settle or confirm the payer; zero-value open bills still need review</p>
                     </div>
                 </div>
 
@@ -197,7 +338,7 @@ export default function PaymentConfirmation() {
                                 {formatKobo(totalPending)} total
                             </span>
                             <span className="text-xs font-bold px-2.5 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-                                {payments.length} pending
+                                {payments.length} open bills
                             </span>
                             <button
                                 onClick={() => setSettleAllOpen(true)}
@@ -237,8 +378,8 @@ export default function PaymentConfirmation() {
                         <CheckCircle2 size={22} className="text-green-500" />
                     </div>
                     <div className="text-center">
-                        <p className="text-sm font-semibold text-gray-600">All clear</p>
-                        <p className="text-xs text-gray-400 mt-1">No pending payments to confirm</p>
+                        <p className="text-sm font-semibold text-gray-600">No open bills</p>
+                        <p className="text-xs text-gray-400 mt-1">No bill needs settlement; Front Desk encounters are listed below for service coordination and discharge.</p>
                     </div>
                 </div>
             )}
@@ -250,6 +391,8 @@ export default function PaymentConfirmation() {
                     onSettle={(payment) => setSettleTarget(payment)}
                 />
             )}
+
+            <FrontDeskCloseoutQueue />
 
             {/* ── Settle modal (shared with the patient billing tab) ── */}
             {settleTarget && (
