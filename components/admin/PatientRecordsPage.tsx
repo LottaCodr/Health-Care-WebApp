@@ -16,6 +16,7 @@ import {
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole, type Patient } from "@/types/models";
 import { getAllPatients } from "@/lib/services/patient.service";
+import { unwrapResult } from "@/lib/utils/service-result";
 import { useSearchPatients } from "@/hooks/emr/use-emr";
 import { formatDate, calculateAge } from "@/lib/utils";
 
@@ -125,12 +126,22 @@ export default function PatientRecordsPage() {
     const isSearching = debounced.length >= 2;
 
     // Server-side search (name / email / phone / hospital number).
-    const { data: searchResults = [], isPending: searchPending } = useSearchPatients(debounced);
+    const {
+        data: searchResults = [],
+        isPending: searchPending,
+        error: searchError,
+        refetch: refetchSearch,
+    } = useSearchPatients(debounced);
 
     // Newest patients first — the recent-records view when no search is typed.
-    const { data: recent = [], isPending: recentPending } = useQuery({
+    const {
+        data: recent = [],
+        isPending: recentPending,
+        error: recentError,
+        refetch: refetchRecent,
+    } = useQuery({
         queryKey: ["patients", "admin", "recent"],
-        queryFn: () => getAllPatients(0, 500),
+        queryFn: async () => unwrapResult(await getAllPatients(0, 500)),
         staleTime: 30_000,
         gcTime: 10 * 60_000,
         refetchOnWindowFocus: false,
@@ -138,6 +149,11 @@ export default function PatientRecordsPage() {
 
     const patients = useMemo(() => (isSearching ? (searchResults as Patient[]) : (recent as Patient[])), [isSearching, searchResults, recent]);
     const pending = isSearching ? searchPending : recentPending;
+    // A failed read must not look like "no patients" — say why, and let the
+    // admin retry. (The message is the real reason: the server action returns
+    // it instead of throwing, so production does not redact it.)
+    const loadError = (isSearching ? searchError : recentError) as Error | null;
+    const retry = () => void (isSearching ? refetchSearch() : refetchRecent());
 
     if (!authorized) return null;
 
@@ -208,6 +224,28 @@ export default function PatientRecordsPage() {
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                         <Loader2 size={24} className="text-blue-500 animate-spin" />
                         <p className="text-sm text-gray-400">Loading patient records…</p>
+                    </div>
+                ) : loadError ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6" role="alert">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+                            <FileText size={20} className="text-amber-500" />
+                        </div>
+                        <p className="text-sm font-semibold text-gray-700">
+                            Patient records could not be loaded
+                        </p>
+                        <p className="text-xs text-gray-500 max-w-md break-words">
+                            {loadError.message || "The system could not read the patient registry just now."}
+                        </p>
+                        <p className="text-[11px] text-gray-400 max-w-md">
+                            This is a read failure, not an empty registry — no patient has been removed.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={retry}
+                            className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+                        >
+                            Try again
+                        </button>
                     </div>
                 ) : patients.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6">

@@ -13,7 +13,7 @@
  *
  * The second one is what the nurses hit during triage: the patient was in the
  * database, the read had failed, and the screen told them the patient did not
- * exist — with no reason and no way to retry. `getPatientById` now returns
+ * exist — with no reason and no way to retry. `lookupPatient` now returns
  * `null` only for a genuinely missing row and throws for a failed read, so the
  * two states can finally be told apart here: a failed read gets the real
  * reason plus a retry, and only a missing row says "not found".

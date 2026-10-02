@@ -5,6 +5,7 @@ import { patientKeys } from "../query-keys";
 import * as PatientService from "@/lib/services/patient.service";
 import type { Patient, PatientStatus } from "@/types/models";
 import { startOfHospitalDayUtcIso } from "@/lib/utils/appointment.utils";
+import { unwrapResult } from "@/lib/utils/service-result";
 import { enqueueOfflineRegistration } from "@/components/layout/OfflineSync";
 
 // ─── Cache config ─────────────────────────────────────────────────────────────
@@ -15,10 +16,20 @@ const GC_TIME = 10 * 60_000;  // 10min — keep in memory after unmount
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
+/**
+ * One patient by id, for React Query. The server action RETURNS failures (a
+ * thrown message is redacted in production); this re-throws them client-side
+ * so `error.message` carries the real reason. `null` = genuinely no such
+ * patient.
+ */
+export async function fetchPatient(id: string): Promise<Patient | null> {
+    return unwrapResult(await PatientService.lookupPatient(id));
+}
+
 export function usePatient(id: string, opts?: { enabled?: boolean }) {
     return useQuery({
         queryKey: patientKeys.detail(id),
-        queryFn: () => PatientService.getPatientById(id),
+        queryFn: () => fetchPatient(id),
         enabled: !!id && opts?.enabled !== false,
         staleTime: DETAIL_STALE,
         gcTime: GC_TIME,
@@ -42,7 +53,7 @@ export function usePatientsByStatus(status: PatientStatus, opts?: { enabled?: bo
 export function useSearchPatients(query: string) {
     return useQuery({
         queryKey: patientKeys.search(query),
-        queryFn: () => PatientService.searchPatients(query),
+        queryFn: async () => unwrapResult(await PatientService.searchPatients(query)),
         enabled: query.trim().length >= 2,
         staleTime: LIST_STALE,
         gcTime: GC_TIME,
@@ -54,7 +65,7 @@ export function useSearchPatients(query: string) {
 export function useAllPatients(opts?: { enabled?: boolean }) {
     return useQuery({
         queryKey: patientKeys.lists(),
-        queryFn: () => PatientService.getAllPatients(),
+        queryFn: async () => unwrapResult(await PatientService.getAllPatients()),
         enabled: opts?.enabled !== false,
         staleTime: LIST_STALE,
         gcTime: GC_TIME,

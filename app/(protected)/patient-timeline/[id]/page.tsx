@@ -769,8 +769,8 @@ export default function PatientTimelinePage() {
     }
 
     // ── Error state — a failed READ is not the same as a missing record ──────
-    // `getPatientById` only resolves to null for a genuinely missing patient; it
-    // throws when the read fails (RLS/session/DB). Keep those apart so a nurse
+    // `usePatient` only resolves to null for a genuinely missing patient; it
+    // errors (with the real reason) when the read fails (RLS/session/DB). Keep those apart so a nurse
     // is not told a patient "does not exist" when the system merely could not
     // read the row.
     if (pError || !patient) {
@@ -788,6 +788,9 @@ export default function PatientTimelinePage() {
                         ? "The system could not read the patient record just now — usually a connection or session problem. The record has not been deleted."
                         : "The requested patient record does not exist or has been removed from the system."}
                 </p>
+                {readFailed && (pError as Error)?.message ? (
+                    <p className="text-[11px] text-gray-400 mt-2 max-w-sm break-words">{(pError as Error).message}</p>
+                ) : null}
                 <button
                     type="button"
                     onClick={() => router.back()}
