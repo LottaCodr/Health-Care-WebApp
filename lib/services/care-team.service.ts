@@ -45,63 +45,120 @@ export async function getPatientCareTeam(patientId: string): Promise<PatientCare
     const supabase = await createClient();
 
     // ── 1. Parallel queries across clinical tables ──────────────────────────────
+    //
+    // Production schemas drift: the live database has been seen WITHOUT
+    // `lab_requests.patient_id`, `prescriptions.nurse_id` and
+    // `payments.processed_by` (PostgREST 400 / SQLSTATE 42703). One missing
+    // column used to blank that whole table's contribution to the care team —
+    // and the failure was silent. Each query below now has a reduced fallback
+    // that drops only the missing column, and every remaining failure is logged.
+    const isMissingColumn = (err: any) =>
+        err?.code === "42703" ||
+        err?.code === "PGRST204" ||
+        /column .* does not exist/i.test(String(err?.message ?? ""));
+
+    const withFallback = async <T,>(
+        label: string,
+        primary: () => PromiseLike<{ data: T[] | null; error: any }>,
+        fallback?: () => PromiseLike<{ data: T[] | null; error: any }>
+    ): Promise<T[]> => {
+        const first = await primary();
+        if (!first.error) return first.data ?? [];
+        if (fallback && isMissingColumn(first.error)) {
+            const second = await fallback();
+            if (!second.error) return second.data ?? [];
+            console.error(`[care-team] ${label} (fallback):`, second.error);
+            return [];
+        }
+        console.error(`[care-team] ${label}:`, first.error);
+        return [];
+    };
+
     const [
-        consultationsRes,
-        nursingRes,
-        labRes,
-        prescriptionsRes,
-        paymentsRes,
-        surgeriesRes,
+        consultations,
+        nursingActions,
+        labRequests,
+        prescriptions,
+        payments,
+        surgeries,
     ] = await Promise.all([
-        supabase
-            .from("consultations")
-            .select("id, doctor_id, consultation_date, created_at, diagnosis, symptoms, status")
-            .eq("patient_id", patientId)
-            .order("created_at", { ascending: false })
-            .limit(10),
+        withFallback<any>("consultations", () =>
+            supabase
+                .from("consultations")
+                .select("id, doctor_id, consultation_date, created_at, diagnosis, symptoms, status")
+                .eq("patient_id", patientId)
+                .order("created_at", { ascending: false })
+                .limit(10)
+        ),
 
-        supabase
-            .from("nursing_actions")
-            .select("id, assigned_nurse, completed_by, action_type, description, status, completion_time, created_at")
-            .eq("patient_id", patientId)
-            .order("created_at", { ascending: false })
-            .limit(10),
+        withFallback<any>("nursing_actions", () =>
+            supabase
+                .from("nursing_actions")
+                .select("id, assigned_nurse, completed_by, action_type, description, status, completion_time, created_at")
+                .eq("patient_id", patientId)
+                .order("created_at", { ascending: false })
+                .limit(10)
+        ),
 
-        supabase
-            .from("lab_requests")
-            .select("id, requested_by, completed_by, test_type, status, completed_at, created_at")
-            .or(`visit_id.eq.${patientId},patient_id.eq.${patientId}`)
-            .order("created_at", { ascending: false })
-            .limit(10),
+        withFallback<any>(
+            "lab_requests",
+            () =>
+                supabase
+                    .from("lab_requests")
+                    .select("id, requested_by, completed_by, test_type, status, completed_at, created_at")
+                    .or(`visit_id.eq.${patientId},patient_id.eq.${patientId}`)
+                    .order("created_at", { ascending: false })
+                    .limit(10),
+            // No `patient_id` column on this schema: `visit_id` is the link.
+            () =>
+                supabase
+                    .from("lab_requests")
+                    .select("id, requested_by, completed_by, test_type, status, completed_at, created_at")
+                    .eq("visit_id", patientId)
+                    .order("created_at", { ascending: false })
+                    .limit(10)
+        ),
 
-        supabase
-            .from("prescriptions")
-            .select("id, pharmacist_id, nurse_id, drug_name, status, dispensed, dispensed_at, created_at")
-            .eq("patient_id", patientId)
-            .order("created_at", { ascending: false })
-            .limit(10),
+        withFallback<any>(
+            "prescriptions",
+            () =>
+                supabase
+                    .from("prescriptions")
+                    .select("id, pharmacist_id, nurse_id, drug_name, status, dispensed, dispensed_at, created_at")
+                    .eq("patient_id", patientId)
+                    .order("created_at", { ascending: false })
+                    .limit(10),
+            () =>
+                supabase
+                    .from("prescriptions")
+                    .select("id, pharmacist_id, drug_name, status, dispensed, dispensed_at, created_at")
+                    .eq("patient_id", patientId)
+                    .order("created_at", { ascending: false })
+                    .limit(10)
+        ),
 
-        supabase
-            .from("payments")
-            .select("id, processed_by, category, description, status, paid_at, created_at")
-            .eq("patient_id", patientId)
-            .order("created_at", { ascending: false })
-            .limit(5),
+        withFallback<any>(
+            "payments",
+            () =>
+                supabase
+                    .from("payments")
+                    .select("id, processed_by, category, description, status, paid_at, created_at")
+                    .eq("patient_id", patientId)
+                    .order("created_at", { ascending: false })
+                    .limit(5),
+            // No `processed_by` column: nobody to attribute, so nothing to show.
+            () => Promise.resolve({ data: [] as any[], error: null })
+        ),
 
-        supabase
-            .from("surgeries")
-            .select("id, surgeon_id, anaesthetist_id, procedure_name, status, scheduled_at, completed_at, created_at")
-            .eq("patient_id", patientId)
-            .order("created_at", { ascending: false })
-            .limit(5),
+        withFallback<any>("surgeries", () =>
+            supabase
+                .from("surgeries")
+                .select("id, surgeon_id, anaesthetist_id, procedure_name, status, scheduled_at, completed_at, created_at")
+                .eq("patient_id", patientId)
+                .order("created_at", { ascending: false })
+                .limit(5)
+        ),
     ]);
-
-    const consultations = consultationsRes.data ?? [];
-    const nursingActions = nursingRes.data ?? [];
-    const labRequests = labRes.data ?? [];
-    const prescriptions = prescriptionsRes.data ?? [];
-    const payments = paymentsRes.data ?? [];
-    const surgeries = surgeriesRes.data ?? [];
 
     // ── 2. Collect all unique referenced staff IDs ──────────────────────────────
     const staffIdSet = new Set<string>();
