@@ -63,6 +63,31 @@ export function useAllPatients(opts?: { enabled?: boolean }) {
 }
 
 /**
+ * One server-paginated page of the registry — what the front-desk "All
+ * Patients" tab renders.
+ *
+ * The database does the filtering/ordering/counting/slicing (see
+ * `listPatientsPage`), so the browser holds one screen of patients instead of
+ * every patient ever registered. `placeholderData` keeps the current page on
+ * screen while the next one loads, so paging and typing in the search box do
+ * not blank the table.
+ */
+export function usePatientsPage(
+    input: { page: number; pageSize: number; search: string },
+    opts?: { enabled?: boolean }
+) {
+    return useQuery({
+        queryKey: patientKeys.page(input),
+        queryFn: () => PatientService.listPatientsPage(input),
+        enabled: opts?.enabled !== false,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+        placeholderData: (prev) => prev,
+    });
+}
+
+/**
  * Lightweight per-status counts for the queue tab badges — a handful of
  * `count: exact, head: true` requests, never the patient rows themselves.
  * Used so the tab pills (and the "N patients" header) stay accurate even

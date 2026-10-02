@@ -768,15 +768,26 @@ export default function PatientTimelinePage() {
         );
     }
 
-    // ── Not found error state ──
+    // ── Error state — a failed READ is not the same as a missing record ──────
+    // `getPatientById` only resolves to null for a genuinely missing patient; it
+    // throws when the read fails (RLS/session/DB). Keep those apart so a nurse
+    // is not told a patient "does not exist" when the system merely could not
+    // read the row.
     if (pError || !patient) {
+        const readFailed = !!pError;
         return (
             <div className="min-h-screen bg-gray-50/60 flex flex-col items-center justify-center p-6 text-center">
                 <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mb-4">
                     <AlertCircle size={28} />
                 </div>
-                <h2 className="text-lg font-bold text-gray-800">Patient Record Not Found</h2>
-                <p className="text-xs text-gray-500 mt-1 max-w-sm">The requested patient record does not exist or has been removed from the system.</p>
+                <h2 className="text-lg font-bold text-gray-800">
+                    {readFailed ? "This record could not be opened" : "Patient Record Not Found"}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1 max-w-sm">
+                    {readFailed
+                        ? "The system could not read the patient record just now — usually a connection or session problem. The record has not been deleted."
+                        : "The requested patient record does not exist or has been removed from the system."}
+                </p>
                 <button
                     type="button"
                     onClick={() => router.back()}

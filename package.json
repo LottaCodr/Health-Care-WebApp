@@ -16,6 +16,8 @@
     "check:amendments": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-amendment-policy.ts",
     "check:lab-identity": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-lab-identity.ts",
     "check:lab-amendments": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-lab-result-amendments.ts",
+    "check:patient-lookup": "node --import ./scripts/dev-harness/register.mjs scripts/check-patient-lookup.ts",
+    "check:patient-list": "node --import ./scripts/dev-harness/register.mjs scripts/check-patient-list.ts",
     "analyze": "cross-env ANALYZE=true next build --webpack"
   },
   "dependencies": {

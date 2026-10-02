@@ -141,7 +141,13 @@ export default function PatientDetailsComponent({ patient }: Props) {
 
     if (consultationStore.loading) return <PatientDetailsSkeleton />;
 
-    if (!patientStore.patient?.length) {
+    // Guard on the PROP, not on the store. `patientStore.patient` is seeded by
+    // the effect above, so on the very first render — and in the server-
+    // rendered HTML this component produces — it is still empty, and this
+    // check used to paint "Patient not found." over a patient the component
+    // had already been handed (a flash on every patient page, and a hard
+    // "not found" whenever the store had not caught up).
+    if (!patient?.id) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
@@ -158,7 +164,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
         );
     }
 
-    const currentPatient = patientStore.patient[0];
+    const currentPatient = patient;
 
     return (
         <main className="min-w-0 max-w-full py-2 sm:py-4 space-y-5 sm:space-y-7">

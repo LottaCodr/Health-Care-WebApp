@@ -5,6 +5,9 @@ export const patientKeys = {
     all: () => ["patients"] as const,
     lists: () => ["patients", "list"] as const,
     byStatus: (s: string) => ["patients", "list", "status", s] as const,
+    /** One server-paginated page of the registry (see `listPatientsPage`). */
+    page: (p: { page: number; pageSize: number; search: string }) =>
+        ["patients", "list", "page", p.page, p.pageSize, p.search] as const,
     statusCounts: () => ["patients", "list", "status-counts"] as const,
     arrivalsToday: () => ["patients", "arrivals", "today"] as const,
     search: (q: string) => ["patients", "search", q] as const,
