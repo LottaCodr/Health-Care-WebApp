@@ -33,7 +33,10 @@ import {
     type PackageUsageRow,
 } from "@/lib/utils/care-packages";
 
-export type { CarePackage, CarePackageItem, PackageCoverage, PackageEnrolment, PackageUsageRow };
+// Keep these types imported directly from `lib/utils/care-packages` wherever
+// they are needed. Do not re-export imported types from a "use server" module:
+// Next's production Server Action transform can emit a runtime export for an
+// erased type, crashing this module (and every action bundle that imports it).
 
 const ITEMS_SELECT = "care_package_items(*)";
 
