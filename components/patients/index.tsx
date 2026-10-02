@@ -12,7 +12,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-provider";
-import { useAllPatients, usePatientsByStatus, usePatientStatusCounts } from "@/hooks/emr/use-emr";
+import { usePatientsByStatus, usePatientsPage, usePatientStatusCounts } from "@/hooks/emr/use-emr";
+import useDebounce from "@/hooks/useDebouce";
 import QueueCloseDialog, { type QueueCloseTarget } from "./QueueCloseDialog";
 import type { Patient } from "@/types/models";
 
@@ -185,22 +186,44 @@ export default function PatientsComponent() {
     }, [user?.role]);
 
     // ── Data fetching ───────────────────────────────────────────────────────
-    // "All Patients" is the one tab that legitimately needs the whole table,
-    // so it's the only one that fetches it. Every other tab asks the server
-    // for just that status (indexed, a handful of rows for a live queue)
-    // instead of downloading every patient ever registered and filtering in
-    // the browser — the pattern that made queues like the nurse's "Sent to
-    // Nurse" tab get slower every week as the patients table grew, because
-    // opening it always meant loading EVERYONE first.
+    // No tab ever downloads the whole patients table any more:
+    //
+    //  • "All Patients" asks the server for ONE page (`listPatientsPage`) —
+    //    filtered, ordered, counted and sliced in the database. It used to
+    //    call `getAllPatients()`, which looped the ENTIRE registry down to the
+    //    browser in 1000-row batches (every column of every patient ever
+    //    registered) just so this component could slice 100 rows out of it
+    //    client-side. On a real registry that is the "patient list takes
+    //    forever to load" the front desk reported: many sequential round trips
+    //    and a multi-megabyte payload before the first row painted, growing
+    //    every week as the table grew.
+    //  • every status tab asks the server for just that status (indexed, a
+    //    handful of rows for a live queue).
     const wantsAll = activeTab === "all";
-    const allPatientsQuery = useAllPatients({ enabled: wantsAll });
+
+    // Typing in the search box must not fire a request per keystroke.
+    const debouncedSearch = useDebounce(wantsAll ? search.trim() : "", 350);
+
+    const allPatientsQuery = usePatientsPage(
+        { page: currentPage, pageSize: ITEMS_PER_PAGE, search: debouncedSearch },
+        { enabled: wantsAll }
+    );
     const tabPatientsQuery = usePatientsByStatus(
         (wantsAll ? "registered" : activeTab) as any,
         { enabled: !wantsAll }
     );
 
-    const allPatients = wantsAll ? (allPatientsQuery.data ?? []) : [];
-    const tabPatients = wantsAll ? [] : (tabPatientsQuery.data ?? []);
+    // Stable references so the memos below don't churn on every render.
+    const tabPatients = useMemo(
+        () => (wantsAll ? [] : (tabPatientsQuery.data ?? [])),
+        [wantsAll, tabPatientsQuery.data]
+    );
+    // The "All Patients" page arrives pre-filtered and pre-sliced.
+    const allPatientsPage = useMemo(
+        () => (wantsAll ? (allPatientsQuery.data?.rows ?? []) : []),
+        [wantsAll, allPatientsQuery.data]
+    );
+    const allPatientsTotal = wantsAll ? (allPatientsQuery.data?.total ?? 0) : 0;
 
     const isPending  = wantsAll ? allPatientsQuery.isPending  : tabPatientsQuery.isPending;
     const isFetching = wantsAll ? allPatientsQuery.isFetching : tabPatientsQuery.isFetching;
@@ -210,34 +233,41 @@ export default function PatientsComponent() {
     // full patient list to be loaded (see `getPatientStatusCounts`).
     const { data: statusCounts } = usePatientStatusCounts();
 
-    const roleFilteredPatients = wantsAll ? allPatients : tabPatients;
-
     // Count per status for badge numbers — from the cheap server-side
     // aggregate, not from whatever happens to be loaded client-side.
     const countByStatus: Record<string, number> = statusCounts?.byStatus ?? {};
-    const totalPatientCount = wantsAll ? roleFilteredPatients.length : (statusCounts?.total ?? 0);
+    // Header line: on "All Patients" this is what the current filter matched
+    // (the whole registry when nothing is typed); on a status tab it is the
+    // hospital-wide total, with the tab's own count next to it.
+    const totalPatientCount = wantsAll ? allPatientsTotal : (statusCounts?.total ?? 0);
+    const allTabBadgeCount = statusCounts?.total ?? allPatientsTotal;
 
     // The active tab's data IS already server-filtered, so no client-side
     // status filtering is needed here anymore.
-    const tabFiltered = roleFilteredPatients;
+    const tabFiltered = wantsAll ? allPatientsPage : tabPatients;
 
-    // Search filter
+    // Search filter — server-side on "All Patients" (the browser only ever
+    // holds the current page, so it cannot filter what it has not loaded),
+    // client-side on the status tabs, whose whole queue is already in memory.
     const searched = useMemo(() => {
-        if (!search.trim()) return tabFiltered;
+        if (wantsAll) return allPatientsPage;
+        if (!search.trim()) return tabPatients;
         const q = search.toLowerCase();
-        return tabFiltered.filter((p) =>
+        return tabPatients.filter((p) =>
             p.name?.toLowerCase().includes(q) ||
             p.phone?.toLowerCase().includes(q) ||
             p.hospital_number?.toLowerCase().includes(q)
         );
-    }, [tabFiltered, search]);
+    }, [wantsAll, allPatientsPage, tabPatients, search]);
 
-    // Pagination
-    const totalPages = Math.max(1, Math.ceil(searched.length / ITEMS_PER_PAGE));
+    // Pagination — the "All Patients" rows are already one page.
+    const totalMatches = wantsAll ? allPatientsTotal : searched.length;
+    const totalPages = Math.max(1, Math.ceil(totalMatches / ITEMS_PER_PAGE));
     const paginated  = useMemo(() => {
+        if (wantsAll) return searched;
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
         return searched.slice(start, start + ITEMS_PER_PAGE);
-    }, [searched, currentPage]);
+    }, [wantsAll, searched, currentPage]);
 
     // Reset page when filters change
     React.useEffect(() => { setCurrentPage(1); }, [search, activeTab]);
@@ -389,7 +419,7 @@ export default function PatientsComponent() {
                                     key={tab.value}
                                     tab={tab}
                                     active={activeTab === tab.value}
-                                    count={tab.value === "all" ? totalPatientCount : (countByStatus[tab.value] ?? 0)}
+                                    count={tab.value === "all" ? allTabBadgeCount : (countByStatus[tab.value] ?? 0)}
                                     onClick={() => setActiveTab(tab.value)}
                                 />
                             ))}
@@ -482,15 +512,15 @@ export default function PatientsComponent() {
                 </div>
 
                 {/* ── Pagination ────────────────────────────────────────────────── */}
-                {searched.length > ITEMS_PER_PAGE && (
+                {totalMatches > ITEMS_PER_PAGE && (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
                         <p className="text-xs text-gray-400">
                             Showing{" "}
                             <span className="font-semibold text-gray-600">
-                                {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, searched.length)}
+                                {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, totalMatches)}
                             </span>
                             {" "}of{" "}
-                            <span className="font-semibold text-gray-600">{searched.length}</span>
+                            <span className="font-semibold text-gray-600">{totalMatches}</span>
                             {" "}patients
                         </p>
                         <div className="flex items-center gap-1">

@@ -206,6 +206,22 @@ async function insertPatient(
     return { ok: true, patient: result as unknown as Patient, warnings };
 }
 
+/**
+ * One patient, by id.
+ *
+ * Returns `null` ONLY when there is genuinely no such patient. Every other
+ * failure (RLS/policy drift, a revoked grant, schema drift, PostgREST/5xx,
+ * a dropped connection) is THROWN with a human-readable reason.
+ *
+ * That distinction is not cosmetic. This action backs every role's patient
+ * page, and each of them renders "Patient not found." for a falsy result — so
+ * collapsing a *refused read* into the same `null` as a *missing row* told
+ * nurses (and the desk, and the doctors) that a patient who is sitting in the
+ * database did not exist, with nothing on screen to explain why and no way to
+ * retry. `maybeSingle()` makes "no row" a clean `null` with no error object to
+ * confuse the two cases, and `formatFriendlyDbError` keeps the real reason on
+ * the screen — the same rule `createPatient` follows (see its comment).
+ */
 export async function getPatientById(id: string): Promise<Patient | null> {
     await requireStaff();
     const supabase = await createClient();
@@ -213,10 +229,15 @@ export async function getPatientById(id: string): Promise<Patient | null> {
         .from("patients")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
-    if (error) { console.error("[patient] getPatientById:", error); return null; }
-    return data as unknown as Patient;
+    if (error) {
+        console.error("[patient] getPatientById:", error);
+        throw new Error(
+            formatFriendlyDbError(error, "Could not load this patient's record. Please try again.")
+        );
+    }
+    return (data ?? null) as unknown as Patient | null;
 }
 
 export async function updatePatient(
@@ -509,7 +530,10 @@ export async function listPatientsByStatus(
         if (error) { console.error("[patient] listPatientsByStatus:", error); break; }
         if (!data || data.length === 0) break;
         allData.push(...(data as Patient[]));
-        if (data.length < 100) break;
+        // A short batch means the end of the table — compare against the batch
+        // size actually requested, not a hard-coded 100 (which sent one more
+        // empty round trip after every queue load).
+        if (data.length < batchSize) break;
         from += data.length;
     }
 
@@ -643,6 +667,83 @@ export async function getPatientStatusCounts(): Promise<{
     return { total, byStatus };
 }
 
+/**
+ * One page of the registry, with the exact total — the front-desk "All
+ * Patients" tab.
+ *
+ * This replaces `getAllPatients()` on that tab, which looped the ENTIRE
+ * `patients` table down to the browser in 1000-row batches (every column of
+ * every patient ever registered) so the UI could then slice 100 of them out
+ * client-side. On a real registry that is many sequential round trips and a
+ * multi-megabyte server-action payload before the first row paints — the desk
+ * experienced it as the list "taking forever". Here the database does the
+ * filtering, ordering, counting and slicing, so a page costs one request and
+ * one screen of rows no matter how big the registry gets.
+ *
+ * `search` is pushed down to the database too (same columns as
+ * `searchPatients`) — a server-paginated list cannot be filtered client-side,
+ * because the browser only ever holds the current page.
+ *
+ * Failures are THROWN with a friendly reason (never swallowed into an empty
+ * list): an empty registry and an unreadable one must not look the same.
+ */
+export interface PatientPage {
+    rows: Patient[];
+    /** Exact number of rows matching the filter — drives the pagination control. */
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
+export async function listPatientsPage(input: {
+    /** 1-based page number. */
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    /** Optional status filter — lets the status tabs share this path later. */
+    status?: PatientStatus | null;
+}): Promise<PatientPage> {
+    await requireStaff();
+    const supabase = await createClient();
+
+    const page = Math.max(1, Math.trunc(Number(input?.page) || 1));
+    const pageSize = Math.min(200, Math.max(1, Math.trunc(Number(input?.pageSize) || 100)));
+    const search = (input?.search ?? "").trim();
+
+    let query = supabase
+        .from("patients")
+        .select("*", { count: "exact" });
+
+    if (input?.status) query = query.eq("status", input.status);
+    if (search) {
+        // Strip the characters PostgREST treats as `or=` syntax/structure
+        // (commas, parens, dots) and the LIKE wildcards, so what the desk types
+        // can only ever be matched literally — never re-parsed as a new filter.
+        const term = search.replace(/[%,()._]/g, " ").trim();
+        if (term) {
+            query = query.or(
+                `name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%,hospital_number.ilike.%${term}%`
+            );
+        }
+    }
+
+    const { data, count, error } = await query
+        // FIFO: earliest arrivals first (see listPatientsByStatus).
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range((page - 1) * pageSize, page * pageSize - 1);
+
+    if (error) {
+        console.error("[patient] listPatientsPage:", error);
+        throw new Error(
+            formatFriendlyDbError(error, "Failed to load the patient list. Please try again.")
+        );
+    }
+
+    const rows = (data ?? []) as Patient[];
+    return { rows, total: count ?? rows.length, page, pageSize };
+}
+
 export async function getAllPatients(
     page = 0,
     limit?: number
@@ -679,7 +780,8 @@ export async function getAllPatients(
         if (error) { console.error("[patient] getAllPatients:", error); break; }
         if (!data || data.length === 0) break;
         allData.push(...(data as Patient[]));
-        if (data.length < 100) break;
+        // See listPatientsByStatus: a short batch IS the last batch.
+        if (data.length < batchSize) break;
         from += data.length;
         if (limit && allData.length >= limit) break;
     }

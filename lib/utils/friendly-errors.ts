@@ -151,7 +151,7 @@ export function formatFriendlyDbError(err: unknown, fallback = "An unexpected er
         combined.includes("violation of row-level")
     ) {
         return (
-            "The hospital database refused to save this record for a security-policy reason (row-level security). " +
+            "The hospital database refused this operation for a security-policy reason (row-level security). " +
             "Nothing is wrong with the details you entered, and you ARE signed in correctly — " +
             "this is a database configuration mismatch on the server. " +
             "Please ask an administrator to apply the pending database migrations " +

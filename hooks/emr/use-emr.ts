@@ -5,6 +5,7 @@ export {
     usePatientsByStatus,
     useSearchPatients,
     useAllPatients,
+    usePatientsPage,
     usePatientStatusCounts,
     useCreatePatient,
     useUpdatePatient,
