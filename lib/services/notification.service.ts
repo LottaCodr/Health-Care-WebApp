@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { requireStaff } from "./auth-guard";
 
 export interface CreateNotificationInput {
-    /** Staff id (staffs.id) for a personal notification. */
+    /** Auth user id for a personal notification (staff or a linked patient-portal account). */
     recipient_id?: string;
     /** Canonical role (e.g. "Doctor", "LabTechnician") for a role notification. */
     role?: string;

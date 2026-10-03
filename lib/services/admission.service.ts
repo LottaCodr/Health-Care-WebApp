@@ -129,11 +129,11 @@ export async function dischargeFromWard(admissionId: string): Promise<void> {
 
     if (error) throw new Error(error.message);
 
-    // Update patient status to awaiting-payment on ward discharge
+    // Ward discharge hands the patient to Front Desk for guarded closeout.
     if (admission?.patient_id) {
         await sb
             .from("patients")
-            .update({ status: "awaiting-payment", updated_at: new Date().toISOString() })
+            .update({ status: "awaiting-front-desk", updated_at: new Date().toISOString() })
             .eq("id", admission.patient_id);
     }
 }

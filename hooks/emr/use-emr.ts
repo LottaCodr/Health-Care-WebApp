@@ -29,6 +29,8 @@ export {
     useLabRequestsByPatient,
     usePendingLabRequests,
     useCompletedLabRequests,
+    useLabResultFollowups,
+    useMarkLabResultDelivered,
     useCreateLabRequest,
     useUpdateLabRequest,
     useActiveLabTests,
@@ -71,6 +73,8 @@ export {
 // Payments
 export {
     usePendingPayments,
+    useFrontDeskQueuePatients,
+    useDischargeFromFrontDesk,
     usePaymentsByPatient,
     useCreatePayment,
     useConfirmPayment,

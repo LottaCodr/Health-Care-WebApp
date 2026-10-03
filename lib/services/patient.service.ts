@@ -316,6 +316,9 @@ export async function updatePatientStatus(
     status: PatientStatus
 ): Promise<Patient> {
     const actor = await requireStaff(STATUS_CHANGE_ROLES);
+    if (status === PatientStatus.Discharged) {
+        throw new Error("Use the guarded Front Desk closeout action to discharge a patient.");
+    }
 
     const supabase = await createClient();
     const { data: before } = await supabase
@@ -682,6 +685,7 @@ const ALL_PATIENT_STATUSES: string[] = [
     "sent-to-lab",
     "sent-to-radiology",
     "awaiting-payment",
+    "awaiting-front-desk",
     "discharged",
     "no-status",
 ];

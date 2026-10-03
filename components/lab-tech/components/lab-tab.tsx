@@ -375,6 +375,7 @@ export function SendLabRequestModal({
     onSuccess: () => void;
 }) {
     const { user } = useAuth();
+    const canApproveDeferredResult = user?.role === "Doctor" || user?.role === "Admin";
     const { data: catalog = [] } = useLabTestCatalog();
     const { mutate: createLabRequest, isPending } = useCreateLabRequest();
 
@@ -382,6 +383,7 @@ export function SendLabRequestModal({
     const [customTestName, setCustomTestName] = useState("");
     const [price, setPrice] = useState("");
     const [priority, setPriority] = useState<"routine" | "urgent" | "stat">("routine");
+    const [followUpAfterDischarge, setFollowUpAfterDischarge] = useState(false);
     const [notes, setNotes] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -420,6 +422,7 @@ export function SendLabRequestModal({
                 priority,
                 notes: notes.trim() || undefined,
                 price: parsedPrice,
+                followUpAfterDischarge: canApproveDeferredResult && followUpAfterDischarge,
                 requestedBy: user?.$id ?? user?.id,
             },
             {
@@ -565,7 +568,11 @@ export function SendLabRequestModal({
                             </label>
                             <select
                                 value={priority}
-                                onChange={e => setPriority(e.target.value as any)}
+                                onChange={e => {
+                                    const nextPriority = e.target.value as "routine" | "urgent" | "stat";
+                                    setPriority(nextPriority);
+                                    if (nextPriority !== "routine") setFollowUpAfterDischarge(false);
+                                }}
                                 className="w-full h-10 text-xs font-bold border border-gray-200 bg-white rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                             >
                                 <option value="routine">Routine (Standard)</option>
@@ -574,6 +581,24 @@ export function SendLabRequestModal({
                             </select>
                         </div>
                     </div>
+
+                    {canApproveDeferredResult && (
+                        <label className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 ${priority !== "routine" ? "cursor-not-allowed opacity-50" : "cursor-pointer"} ${followUpAfterDischarge ? "border-indigo-300 bg-indigo-50" : "border-gray-100 bg-gray-50"}`}>
+                            <input
+                                type="checkbox"
+                                className="mt-0.5 accent-indigo-600"
+                                checked={followUpAfterDischarge}
+                                disabled={priority !== "routine"}
+                                onChange={e => setFollowUpAfterDischarge(e.target.checked)}
+                            />
+                            <span className="text-xs font-semibold text-gray-800">
+                                Result may follow after discharge
+                                <span className="block text-[10px] font-normal leading-relaxed text-gray-500">
+                                    Use only when clinically safe. The Lab must collect and link the specimen before discharge; urgent/STAT tests cannot be deferred.
+                                </span>
+                            </span>
+                        </label>
+                    )}
 
                     {/* Clinical Notes / Indication */}
                     <div>

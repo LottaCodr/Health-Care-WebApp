@@ -44,6 +44,7 @@ const STATUS_CFG: Record<string, { bg: string; text: string; dot: string }> = {
     "sent-to-lab": { bg: "bg-indigo-50", text: "text-indigo-700", dot: "bg-indigo-400" },
     "sent-to-pharmacy": { bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-400" },
     "awaiting-payment": { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
+    "awaiting-front-desk": { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-400" },
     discharged: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-400" },
 };
 
@@ -300,7 +301,8 @@ export default function HealthRecordsComponent() {
                             <option value="under-consultation">Under Consultation</option>
                             <option value="sent-to-lab">Sent to Lab</option>
                             <option value="sent-to-pharmacy">Sent to Pharmacy</option>
-                            <option value="awaiting-payment">Awaiting Payment</option>
+                            <option value="awaiting-front-desk">Awaiting Front Desk</option>
+                            <option value="awaiting-payment">Awaiting Payment (legacy)</option>
                             <option value="discharged">Discharged</option>
                         </select>
                         <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />

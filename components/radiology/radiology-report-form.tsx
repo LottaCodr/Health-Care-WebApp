@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { toast } from "sonner";
-import {
-    useSubmitRadiologyReport,
-    useUpdatePatientStatus,
-} from "@/hooks/emr/use-emr";
+import { useSubmitRadiologyReport } from "@/hooks/emr/use-emr";
 import { stripRadiologyPrefix } from "@/lib/utils";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import {
@@ -54,7 +51,6 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
 
     // ── Hooks called unconditionally at the top — never inside callbacks ──────
     const { mutate: submitReport, isPending: saving } = useSubmitRadiologyReport();
-    const { mutate: updatePatientStatus } = useUpdatePatientStatus();
 
     // ── Form state ────────────────────────────────────────────────────────────
     const { advancedForms, setAdvancedFormField, clearAdvancedForm } = useRadiologyStore();
@@ -95,18 +91,7 @@ export function RadiologyReportForm({ req, onClose, onSuccess }: RadiologyReport
             },
             {
                 onSuccess: () => {
-                    // Return patient to doctor for result review
-                    const patientId = req.visit_id ?? req.patient_id;
-                    if (patientId) {
-                        updatePatientStatus(
-                            { id: patientId, status: "awaiting-consultation" as any },
-                            {
-                                onError: () =>
-                                    toast.error("Report submitted, but patient status could not be updated."),
-                            }
-                        );
-                    }
-                    toast.success("Radiology report submitted.");
+                    toast.success("Radiology report submitted. Continue the consultation or let Front Desk coordinate the remaining work.");
                     clearAdvancedForm(req.id);
                     onSuccess();
                     onClose();

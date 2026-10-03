@@ -21,6 +21,18 @@ export function usePendingPayments() {
     });
 }
 
+/** Front Desk encounter handoffs, with open-bill and pending-work summaries. */
+export function useFrontDeskQueuePatients() {
+    return useQuery({
+        queryKey: paymentKeys.frontDeskQueue(),
+        queryFn: PS.listFrontDeskQueuePatients,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+        refetchInterval: 60_000,
+    });
+}
+
 /**
  * Most recently touched payments across all patients (new bills,
  * settlements, corrections) — powers the "Recent Activity" tab on the
@@ -168,6 +180,18 @@ export function useSettleAllPendingBills() {
         onSuccess: () => {
             invalidatePaymentCaches(qc, null);
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
+        },
+    });
+}
+
+/** Discharge only after Front Desk closeout rechecks bills and clinical work. */
+export function useDischargeFromFrontDesk() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (patientId: string) => PS.dischargeFromFrontDesk(patientId),
+        onSuccess: (result) => {
+            invalidatePaymentCaches(qc, result.patient_id);
         },
     });
 }

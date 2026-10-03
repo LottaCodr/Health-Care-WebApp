@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { patientKeys } from "../query-keys";
+import { patientKeys, paymentKeys } from "../query-keys";
 import * as PatientService from "@/lib/services/patient.service";
 import type { Patient, PatientStatus } from "@/types/models";
 import { startOfHospitalDayUtcIso } from "@/lib/utils/appointment.utils";
@@ -213,6 +213,7 @@ export function useUpdatePatientStatus() {
         onSettled: (_data, _err, { id }) => {
             qc.invalidateQueries({ queryKey: patientKeys.detail(id) });
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            qc.invalidateQueries({ queryKey: paymentKeys.frontDeskQueue() });
         },
     });
 }

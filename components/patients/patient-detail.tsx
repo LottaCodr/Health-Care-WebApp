@@ -353,6 +353,7 @@ function PatientProfile({
         "sent-to-lab":           "bg-indigo-50 text-indigo-700",
         "sent-to-pharmacy":      "bg-violet-50 text-violet-700",
         "awaiting-payment":      "bg-orange-50 text-orange-700",
+        "awaiting-front-desk":   "bg-blue-50 text-blue-700",
         admitted:                "bg-red-50 text-red-700",
         "under-observation":     "bg-cyan-50 text-cyan-700",
         discharged:              "bg-green-50 text-green-700",

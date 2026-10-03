@@ -19,7 +19,7 @@ const DESTINATIONS: { value: RouteDestination; label: string; desc: string; icon
     { value: "lab", label: "Lab", desc: "Order tests", icon: FlaskConical, active: "border-indigo-300 bg-indigo-50" },
     { value: "radiology", label: "Radiology", desc: "Imaging", icon: Radio, active: "border-cyan-300 bg-cyan-50" },
     { value: "pharmacist", label: "Pharmacist", desc: "Prescribe", icon: Pill, active: "border-pink-300 bg-pink-50" },
-    { value: "front-desk", label: "Front Desk", desc: "Admit / bill", icon: Building2, active: "border-slate-300 bg-slate-100" },
+    { value: "front-desk", label: "Front Desk", desc: "Coordinate / close out", icon: Building2, active: "border-slate-300 bg-slate-100" },
     { value: "nurse", label: "Nurse", desc: "Nursing care", icon: UserCog, active: "border-teal-300 bg-teal-50" },
 ];
 
@@ -102,6 +102,7 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
 
     const [destination, setDestination] = useState<RouteDestination | "">("");
     const [labTests, setLabTests] = useState<string[]>([]);
+    const [deferredLabTests, setDeferredLabTests] = useState<string[]>([]);
     const [radTests, setRadTests] = useState<string[]>([]);
     const [priority, setPriority] = useState<"routine" | "urgent" | "stat">("routine");
     const [notes, setNotes] = useState("");
@@ -158,6 +159,7 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
     function reset() {
         setDestination("");
         setLabTests([]);
+        setDeferredLabTests([]);
         setRadTests([]);
         setNotes("");
         setDrugName("");
@@ -172,7 +174,11 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
         e.preventDefault();
         if (!destination || !canSubmit || isPending) return;
 
-        const labPayload: RouteLabTest[] = labTests.map((t) => ({ testType: t, priority }));
+        const labPayload: RouteLabTest[] = labTests.map((t) => ({
+            testType: t,
+            priority,
+            followUpAfterDischarge: deferredLabTests.includes(t),
+        }));
         const radPayload: RouteLabTest[] = radTests.map((t) => ({ testType: t, priority }));
 
         try {
@@ -251,17 +257,51 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                 {destination === "lab" && (
                     <div className="rounded-xl border border-indigo-200 bg-white p-3 space-y-2.5">
                         <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Lab tests</p>
-                        <MultiPicker options={labOptions} selected={labTests} onChange={setLabTests} placeholder="Select test(s)…" />
+                        <MultiPicker
+                            options={labOptions}
+                            selected={labTests}
+                            onChange={(selected) => {
+                                setLabTests(selected);
+                                setDeferredLabTests((current) => current.filter((test) => selected.includes(test)));
+                            }}
+                            placeholder="Select test(s)…"
+                        />
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <FieldLabel>Priority</FieldLabel>
-                                <select value={priority} onChange={(e) => setPriority(e.target.value as any)} className={inputCls}>
+                                <select value={priority} onChange={(e) => {
+                                    const nextPriority = e.target.value as "routine" | "urgent" | "stat";
+                                    setPriority(nextPriority);
+                                    if (nextPriority !== "routine") setDeferredLabTests([]);
+                                }} className={inputCls}>
                                     <option value="routine">Routine</option>
                                     <option value="urgent">Urgent</option>
                                     <option value="stat">STAT</option>
                                 </select>
                             </div>
                         </div>
+                        {labTests.length > 0 && (
+                            <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-700">Long-turnaround result follow-up</p>
+                                {labTests.map((test) => (
+                                    <label key={test} className={`flex items-start gap-2 text-xs ${priority !== "routine" ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
+                                        <input
+                                            type="checkbox"
+                                            className="mt-0.5 accent-indigo-600"
+                                            checked={deferredLabTests.includes(test)}
+                                            disabled={priority !== "routine"}
+                                            onChange={(event) => setDeferredLabTests((current) =>
+                                                event.target.checked ? [...current, test] : current.filter((item) => item !== test)
+                                            )}
+                                        />
+                                        <span className="font-semibold text-gray-800">
+                                            {test}<span className="block text-[10px] font-normal text-gray-500">Result may follow after discharge</span>
+                                        </span>
+                                    </label>
+                                ))}
+                                <p className="text-[10px] leading-relaxed text-gray-500">Only mark routine tests that are clinically safe to follow later. Lab must collect and link the specimen before discharge.</p>
+                            </div>
+                        )}
                         <div>
                             <FieldLabel>Notes for lab</FieldLabel>
                             <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
@@ -329,7 +369,7 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                         <div className="grid grid-cols-2 gap-2">
                             <button type="button" onClick={() => setFrontDeskAction("billing")}
                                 className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all ${frontDeskAction === "billing" ? "border-slate-300 bg-slate-100 text-slate-800" : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"}`}>
-                                💳 Billing / Checkout
+                                🧾 Outpatient closeout
                             </button>
                             <button type="button" onClick={() => setFrontDeskAction("admission")}
                                 className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all ${frontDeskAction === "admission" ? "border-slate-300 bg-slate-100 text-slate-800" : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"}`}>
@@ -371,7 +411,7 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
                             </>
                         ) : (
                             <p className="text-[11px] text-slate-500 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
-                                The patient will be moved to <strong>awaiting payment</strong> — front desk handles checkout & billing.
+                                The patient will be handed to <strong>Front Desk</strong> to coordinate pending services, confirm whether payment is due, and discharge only when work is complete. No bill is created just to record no payment due.
                             </p>
                         )}
 

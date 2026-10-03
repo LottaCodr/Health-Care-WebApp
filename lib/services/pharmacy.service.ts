@@ -218,9 +218,22 @@ export async function updatePrescription(
         }
     }
 
-    // Auto-route patient to front desk when dispensed
+    // Dispensing is a Front Desk handoff, but it must not overwrite an
+    // inpatient or closed encounter's status. The desk owns the final discharge.
     if (updates.dispensed === true && data?.patient_id) {
-         await supabase.from("patients").update({ status: "awaiting-payment" }).eq("id", data.patient_id);
+        const { data: patient } = await supabase
+            .from("patients")
+            .select("status")
+            .eq("id", data.patient_id)
+            .maybeSingle();
+        const status = String(patient?.status ?? "").toLowerCase();
+        if (patient && status !== "admitted" && status !== "discharged") {
+            await supabase
+                .from("patients")
+                .update({ status: "awaiting-front-desk" })
+                .eq("id", data.patient_id)
+                .eq("status", patient.status);
+        }
     }
 
     return data as unknown as Prescription;

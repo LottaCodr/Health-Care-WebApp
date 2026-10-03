@@ -34,9 +34,17 @@ export default function SpecimenBoard() {
     const [requestId, setRequestId] = useState("");
     const [type, setType] = useState("Blood");
     const [container, setContainer] = useState("EDTA tube");
+    const patientRequests = (pendingRequests as any[]).filter((request) =>
+        (request.visit_id ?? request.patient_id) === patientId
+    );
+    const hasDeferredRequest = patientRequests.some((request) => request.follow_up_after_discharge === true);
 
     const addSpecimen = async () => {
         if (!patientId.trim()) { toast.error("Select a patient first."); return; }
+        if (hasDeferredRequest && !requestId) {
+            toast.error("Link the specimen to the deferred-result lab request before collecting it.");
+            return;
+        }
         try {
             const barcode = generateSpecimenBarcode(patientId);
             await createSpecimen.mutateAsync({
@@ -97,20 +105,23 @@ export default function SpecimenBoard() {
                 </p>
                 <div className="grid gap-2 sm:grid-cols-4">
                     <select className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm" value={patientId}
-                        onChange={(e) => setPatientId(e.target.value)}>
+                        onChange={(e) => { setPatientId(e.target.value); setRequestId(""); }}>
                         <option value="">— Select patient (pending lab requests) —</option>
                         {(pendingRequests as any[]).map((r) => (
                             <option key={r.id} value={r.visit_id ?? r.patient_id}>
                                 {r.patients?.name ?? displayHospitalNumber(getPatientHospitalNumber(r.patients))} — {String(r.test_type).replace(/^\[RADIOLOGY\]\s*/i, "")}
+                                {r.follow_up_after_discharge ? " · delayed result follow-up" : ""}
                             </option>
                         ))}
                     </select>
                     <select className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm" value={requestId}
                         onChange={(e) => setRequestId(e.target.value)}>
-                        <option value="">— Link lab request (optional) —</option>
-                        {(pendingRequests as any[])
-                            .filter((r) => !patientId || r.visit_id === patientId || r.patient_id === patientId)
-                            .map((r) => <option key={r.id} value={r.id}>{String(r.test_type).replace(/^\[RADIOLOGY\]\s*/i, "")}</option>)}
+                        <option value="">— Link lab request{hasDeferredRequest ? " (required)" : " (optional)"} —</option>
+                        {patientRequests.map((r: any) => (
+                            <option key={r.id} value={r.id}>
+                                {String(r.test_type).replace(/^\[RADIOLOGY\]\s*/i, "")}{r.follow_up_after_discharge ? " · result may follow discharge" : ""}
+                            </option>
+                        ))}
                     </select>
                     <Select value={type} onValueChange={setType}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -126,7 +137,16 @@ export default function SpecimenBoard() {
                     </Select>
                     <Input placeholder="Container (e.g. EDTA tube)" value={container} onChange={(e) => setContainer(e.target.value)} />
                 </div>
-                <Button onClick={addSpecimen} disabled={!patientId || createSpecimen.isPending} className="mt-3 gap-2 bg-indigo-600 hover:bg-indigo-700">
+                {hasDeferredRequest && (
+                    <p className="mt-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+                        This patient has a clinician-approved delayed-result order. Link the specimen to its exact lab request; Front Desk will still hold discharge until a valid specimen is recorded.
+                    </p>
+                )}
+                <Button
+                    onClick={addSpecimen}
+                    disabled={!patientId || createSpecimen.isPending || (hasDeferredRequest && !requestId)}
+                    className="mt-3 gap-2 bg-indigo-600 hover:bg-indigo-700"
+                >
                     <Plus size={14} /> Collect & label
                 </Button>
             </div>

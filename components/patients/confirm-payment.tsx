@@ -207,8 +207,8 @@ export default function PaymentConfirmation() {
                         <BadgeDollarSign size={18} className="text-green-600" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-gray-900 leading-tight">Pending Payments</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">Awaiting front-desk confirmation</p>
+                        <h3 className="text-sm font-bold text-gray-900 leading-tight">Open Bills</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">For Front Desk settlement or payer confirmation</p>
                     </div>
                 </div>
 

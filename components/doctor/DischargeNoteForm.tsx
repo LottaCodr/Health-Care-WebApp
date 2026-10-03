@@ -8,6 +8,7 @@ import { useCreateDischargeNote } from "@/hooks/emr/use-discharge";
 import { useUpdatePatientStatus } from "@/hooks/emr/use-emr";
 import { getAdmissionsByPatient, dischargeFromWard } from "@/lib/services/admission.service";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { PatientStatus } from "@/types/models";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -120,13 +121,21 @@ export default function DischargeNoteForm({ staffId, onSuccess, embedded = false
                 console.error("Ward discharge step failed (non-fatal):", err);
             }
 
-            // ── Move patient into the billing queue ─────────────────────────────
-            updateStatus.mutateAsync(
-                { id: store.patientId, status: "awaiting-payment" as any },
-                { onError: () => toast.error("Discharge note saved, but patient status could not be updated. Please update manually.") }
-            );
+            // ── Hand the encounter to Front Desk for guarded closeout ─────────
+            try {
+                await updateStatus.mutateAsync({ id: store.patientId, status: PatientStatus.AwaitingFrontDesk });
+            } catch (statusError) {
+                console.error("Discharge note saved, but Front Desk handoff failed:", statusError);
+                toast.error("Discharge note saved, but the Front Desk handoff failed. Ask staff to update the patient status; do not submit the note again.");
+                store.resetForm();
+                setAmaAcknowledged(false);
+                setDeceasedConfirmed(false);
+                setTouched(false);
+                onSuccess?.();
+                return;
+            }
 
-            toast.success("Discharge note saved. Patient moved to billing.");
+            toast.success("Discharge note saved. Patient handed to Front Desk for closeout.");
             store.resetForm();
             setAmaAcknowledged(false);
             setDeceasedConfirmed(false);

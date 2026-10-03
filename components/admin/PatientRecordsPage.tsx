@@ -31,6 +31,7 @@ const STATUS_STYLES: Record<string, string> = {
     "sent-to-pharmacy":       "bg-pink-50 text-pink-700",
     "sent-to-radiology":      "bg-cyan-50 text-cyan-700",
     "awaiting-payment":       "bg-orange-50 text-orange-700",
+    "awaiting-front-desk":    "bg-blue-50 text-blue-700",
     "admitted":               "bg-blue-50 text-blue-700",
     "under-observation":      "bg-amber-50 text-amber-700",
     "discharged":             "bg-green-50 text-green-700",

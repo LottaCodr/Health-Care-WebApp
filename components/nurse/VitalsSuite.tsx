@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Activity, Thermometer, HeartPulse } from "lucide-react";
 import { toast } from "sonner";
-import { UserRole } from "@/types/models";
+import { PatientStatus, UserRole } from "@/types/models";
 import { AITriageScore } from "../ai/AIComponents";
 import { calculateAge } from "@/utils/export";
 import { useVitalsStore } from "@/store/vitals-store";
@@ -148,7 +148,13 @@ export default function VitalsCheckinAdvancedComponent(props: {
                       }),
                 updatePatientStatusMutation.mutateAsync({
                     id: patientId,
-                    status: "awaiting-consultation" as any,
+                    // Pre-consultation nursing returns the patient to the doctor.
+                    // Post-consultation nursing is a tracked service: keep the
+                    // Front Desk handoff so the nurse cannot route the patient
+                    // backward after finishing their assigned task.
+                    status: patient?.status === PatientStatus.AwaitingFrontDesk || patient?.status === PatientStatus.AwaitingPayment
+                        ? PatientStatus.AwaitingFrontDesk
+                        : PatientStatus.AwaitingConsultation,
                 }),
             ]);
 

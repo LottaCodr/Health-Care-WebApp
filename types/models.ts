@@ -12,6 +12,8 @@ export enum PatientStatus {
     SentToLab = "sent-to-lab",
     SentToPharmacy = "sent-to-pharmacy",
     AwaitingPayment = "awaiting-payment",
+    /** Doctor has completed the visit; Front Desk coordinates remaining work and closes the encounter. */
+    AwaitingFrontDesk = "awaiting-front-desk",
     Admitted = "admitted",
     UnderObservation = "under-observation",
     Discharged = "discharged",
@@ -183,9 +185,11 @@ export interface LabRequest {
     priority?: string;
     notes?: string;
     result?: string;   // singular, matches DB
-    completed_by?: string;   // add this
-    completed_at?: string;   // add this
+    completed_by?: string;
+    completed_at?: string;
     created_at?: string;
+    /** Clinician-approved long-turnaround result that may follow discharge after specimen collection. */
+    follow_up_after_discharge?: boolean;
     /**
      * Transient (never stored): when a result is filed but its price could
      * not be reflected on the bill, the service returns the result WITH this

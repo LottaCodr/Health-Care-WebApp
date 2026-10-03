@@ -66,6 +66,7 @@ export const labKeys = {
     all: () => ["lab"] as const,
     pending: () => ["lab", "requests", "pending"] as const,
     completed: () => ["lab", "requests", "completed"] as const,
+    followups: () => ["lab", "result-followups"] as const,
     byPatient: (id: string) => ["lab", "requests", "patient", id] as const,
     detail: (id: string) => ["lab", "requests", "detail", id] as const,
     // Test catalog
@@ -118,6 +119,7 @@ export const nursingKeys = {
 export const paymentKeys = {
     all: () => ["payments"] as const,
     pending: () => ["payments", "pending"] as const,
+    frontDeskQueue: () => ["payments", "front-desk-queue"] as const,
     byPatient: (id: string) => ["payments", "patient", id] as const,
     depositCredit: (id: string) => ["payments", "deposit-credit", id] as const,
     recent: (limit?: number) => ["payments", "recent", limit] as const,

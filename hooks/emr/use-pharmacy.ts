@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { pharmacyKeys, patientKeys } from "../query-keys";
+import { pharmacyKeys, patientKeys, paymentKeys } from "../query-keys";
 import * as PH from "@/lib/services/pharmacy.service";
 import type { Prescription, DrugInventoryItem } from "@/types/models";
 
@@ -73,6 +73,7 @@ export function useCreatePrescription() {
             }
             qc.invalidateQueries({ queryKey: pharmacyKeys.prescriptionsPending() });
             qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            qc.invalidateQueries({ queryKey: paymentKeys.frontDeskQueue() });
         },
     });
 }
@@ -110,6 +111,7 @@ export function useUpdatePrescription() {
             if (updated.id) {
                 qc.invalidateQueries({ queryKey: ["payments"] });
                 qc.invalidateQueries({ queryKey: patientKeys.lists() });
+                qc.invalidateQueries({ queryKey: paymentKeys.frontDeskQueue() });
             }
         },
     });

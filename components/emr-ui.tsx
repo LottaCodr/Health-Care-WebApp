@@ -24,6 +24,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; dot: string }> 
   "sent-to-lab": { color: "text-indigo-700", bg: "bg-indigo-50", dot: "bg-indigo-500" },
   "sent-to-pharmacy": { color: "text-violet-700", bg: "bg-violet-50", dot: "bg-violet-500" },
   "awaiting-payment": { color: "text-red-700", bg: "bg-red-50", dot: "bg-red-500" },
+  "awaiting-front-desk": { color: "text-blue-700", bg: "bg-blue-50", dot: "bg-blue-500" },
   "admitted": { color: "text-cyan-700", bg: "bg-cyan-50", dot: "bg-cyan-500" },
   "under-observation": { color: "text-orange-700", bg: "bg-orange-50", dot: "bg-orange-500" },
   "discharged": { color: "text-green-700", bg: "bg-green-50", dot: "bg-green-500" },

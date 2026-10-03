@@ -34,6 +34,34 @@ export async function createSpecimen(
 ): Promise<LabSpecimen> {
     const actor = await requireStaff([UserRole.LabTechnician]);
     const supabase = await createClient();
+
+    if (input.lab_request_id) {
+        const { data: request, error: requestError } = await supabase
+            .from("lab_requests")
+            .select("id, visit_id, status")
+            .eq("id", input.lab_request_id)
+            .maybeSingle();
+        if (requestError) throw new Error("Could not verify the lab request linked to this specimen.");
+        if (!request || (request.visit_id ?? (request as any).patient_id) !== input.patient_id) {
+            throw new Error("The selected lab request does not belong to this patient.");
+        }
+        if (String(request.status ?? "").toLowerCase() !== "pending") {
+            throw new Error("A specimen can only be linked to a pending lab request.");
+        }
+    } else {
+        const { data: deferredRequests, error: deferredRequestError } = await supabase
+            .from("lab_requests")
+            .select("id")
+            .eq("visit_id", input.patient_id)
+            .eq("status", "pending")
+            .eq("follow_up_after_discharge", true)
+            .limit(1);
+        if (deferredRequestError) throw new Error("Could not verify whether this patient has a deferred-result lab request.");
+        if (deferredRequests?.length) {
+            throw new Error("Link this specimen to the clinician-approved deferred-result lab request so follow-up remains attached to the correct test.");
+        }
+    }
+
     const { data, error } = await supabase
         .from("lab_specimens")
         .insert([{ ...input, collected_by: actor.userId, status: "collected" }])
