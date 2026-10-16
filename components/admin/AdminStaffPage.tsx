@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
+import { passwordSchema, validateEmail } from "@/lib/auth-utils";
 import {
     Users,
     Plus,
@@ -44,13 +45,13 @@ interface Staff {
 }
 
 const ROLES = [
-    "Doctor",
-    "Nurse",
-    "Pharmacist",
-    "LabTechnician",
-    "Frontdesk",
-    "Radiologist",
-    "Admin",
+    UserRole.Doctor,
+    UserRole.Nurse,
+    UserRole.Pharmacist,
+    UserRole.LabTechnician,
+    UserRole.FrontDesk,
+    UserRole.Radiologist,
+    UserRole.Admin,
 ] as const;
 
 const ROLE_CONFIG: Record<
@@ -81,7 +82,7 @@ const ROLE_CONFIG: Record<
         dot: "bg-indigo-500",
     },
 
-    Frontdesk: {
+    [UserRole.FrontDesk]: {
         color: "text-blue-700",
         bg: "bg-blue-50",
         dot: "bg-blue-500",
@@ -129,7 +130,7 @@ function normalizeRole(role?: string) {
         case "frontdesk":
         case "front desk":
         case "front_desk":
-            return "Frontdesk";
+            return UserRole.FrontDesk;
 
         case "radiologist":
         case "radiolgist":
@@ -147,6 +148,10 @@ function normalizeRole(role?: string) {
 // Role Badge
 // ─────────────────────────────────────────────────────────────────────────────
 
+function roleDisplayName(role: string) {
+    return role === UserRole.FrontDesk ? "Front Desk" : role;
+}
+
 function RoleBadge({ role }: { role: string }) {
     const normalizedRole = normalizeRole(role);
 
@@ -161,7 +166,7 @@ function RoleBadge({ role }: { role: string }) {
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${cfg.bg} ${cfg.color}`}
         >
             <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-            {normalizedRole}
+            {roleDisplayName(normalizedRole)}
         </span>
     );
 }
@@ -189,7 +194,7 @@ function StaffModal({
     const [form, setForm] = useState({
         name: staff?.name ?? "",
         email: staff?.email ?? "",
-        role: normalizeRole(staff?.role) ?? "Doctor",
+        role: normalizeRole(staff?.role) || UserRole.Doctor,
         phone: staff?.phone_number ?? "",
         password: "",
     });
@@ -201,14 +206,22 @@ function StaffModal({
         "w-full h-9 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/25 focus:border-blue-400 focus:bg-white transition-all";
 
     const handleSave = async () => {
-        if (!form.name.trim() || !form.email.trim()) {
-            toast.error("Name and email are required.");
+        if (form.name.trim().length < 2) {
+            toast.error("Enter the staff member's full name.");
             return;
         }
 
-        if (!isEdit && !form.password.trim()) {
-            toast.error("Password is required.");
+        if (!validateEmail(form.email.trim())) {
+            toast.error("Enter a valid work email address.");
             return;
+        }
+
+        if (!isEdit) {
+            const passwordCheck = passwordSchema.safeParse(form.password);
+            if (!passwordCheck.success) {
+                toast.error(passwordCheck.error.issues[0]?.message ?? "Enter a secure temporary password.");
+                return;
+            }
         }
 
         // Poor-network hardening: bail out fast instead of hanging the modal.
@@ -251,7 +264,7 @@ function StaffModal({
                     "Creating the staff account is taking too long. Check your connection and try again."
                 );
 
-                toast.success("Staff added successfully.");
+                toast.success("Staff account created and added to the staff directory.");
             }
 
             if (onSuccess) onSuccess();
@@ -326,7 +339,7 @@ function StaffModal({
                                 {
                                     key: "password",
                                     label: "Temporary Password",
-                                    placeholder: "Min. 8 characters",
+                                    placeholder: "Create a secure temporary password",
                                     type: "password",
                                 },
                             ]
@@ -352,11 +365,20 @@ function StaffModal({
                                         set(key, e.target.value)
                                     }
                                     disabled={disabled}
+                                    required={key === "name" || key === "email" || key === "password"}
+                                    minLength={key === "password" ? 8 : undefined}
+                                    maxLength={key === "password" ? 128 : undefined}
+                                    autoComplete={key === "password" ? "new-password" : key === "email" ? "email" : undefined}
                                     className={`${inputCls} ${disabled
                                         ? "opacity-50 cursor-not-allowed"
                                         : ""
                                         }`}
                                 />
+                                {key === "password" && (
+                                    <p className="text-[11px] text-gray-400">
+                                        8+ characters with uppercase, lowercase, number and symbol.
+                                    </p>
+                                )}
                             </div>
                         )
                     )}
@@ -376,7 +398,7 @@ function StaffModal({
                             >
                                 {ROLES.map((r) => (
                                     <option key={r} value={r}>
-                                        {r}
+                                        {roleDisplayName(r)}
                                     </option>
                                 ))}
                             </select>
@@ -537,8 +559,6 @@ export default function AdminStaffPage() {
         refetch,
     } = useAllStaff();
 
-    console.log("STAFF DATA:", staff);
-
     const filtered = useMemo(() => {
         return staff.filter((s) => {
             const matchSearch =
@@ -595,7 +615,7 @@ export default function AdminStaffPage() {
                             </p>
 
                             <p className="text-[10px] text-gray-400 font-bold mt-0.5">
-                                {role}
+                                {roleDisplayName(role)}
                             </p>
                         </div>
                     );
@@ -684,7 +704,7 @@ export default function AdminStaffPage() {
 
                             {ROLES.map((r) => (
                                 <option key={r} value={r}>
-                                    {r}
+                                    {roleDisplayName(r)}
                                 </option>
                             ))}
                         </select>
