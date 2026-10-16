@@ -130,6 +130,8 @@ Create `.env.local` in the project root:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Server-only; required for Admin-created staff logins and patient portal accounts.
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 ### Run locally

@@ -1,7 +1,10 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { Staff, UserRole } from "@/types/models";
+import { passwordSchema, validateEmail } from "@/lib/auth-utils";
+import { normalizeUserRole } from "@/lib/roles";
 import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
 
@@ -45,9 +48,12 @@ export async function getStaffByRole(role: UserRole | string): Promise<Staff[]> 
 
 /**
  * Create a new staff member.
- * 1. Creates a Supabase Auth user (so the staff can log in).
- * 2. Inserts a `staffs` row whose `id` equals the auth user's ID,
- *    so that `fetchStaffProfile(id)` / `loginStaff` can find the profile.
+ *
+ * The Auth user and the public.staffs profile are created together. Auth's
+ * admin API is used deliberately: calling `auth.signUp()` with the admin's
+ * cookie-backed client can replace the admin's session, and public sign-ups
+ * may be disabled in production. The staff row keeps the Auth user ID so
+ * login and profile lookup resolve the same account.
  */
 export async function createStaff(
     input: Omit<Staff, "id" | "created_at"> & { password?: string }
@@ -57,67 +63,139 @@ export async function createStaff(
     // themselves an Admin account — full privilege escalation.
     const actor = await requireStaff([UserRole.Admin]);
 
-    const supabase = await createClient();
-
-    // ── 1. Create the Supabase Auth user ──────────────────────────────────────
-    const password = input.password ?? "";
-    if (!password.trim()) {
-        throw new Error("A temporary password is required to create a staff account.");
+    if (!input || typeof input !== "object") {
+        throw new Error("Staff details are required.");
     }
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: input.email,
-        password: password,
-        options: { data: { name: input.name } },
+    const name = typeof input.name === "string" ? input.name.trim() : "";
+    const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+    const password = typeof input.password === "string" ? input.password : "";
+
+    if (name.length < 2) {
+        throw new Error("Enter the staff member's full name.");
+    }
+    if (!validateEmail(email)) {
+        throw new Error("Enter a valid work email address.");
+    }
+
+    const passwordCheck = passwordSchema.safeParse(password);
+    if (!passwordCheck.success) {
+        throw new Error(passwordCheck.error.issues[0]?.message ?? "Enter a secure temporary password.");
+    }
+
+    const role = normalizeUserRole(input.role);
+    if (!role) {
+        throw new Error("Select a valid staff role.");
+    }
+
+    const status = input.status ?? "Active";
+    if (status !== "Active" && status !== "Inactive") {
+        throw new Error("Select a valid staff status.");
+    }
+
+    // The elevated client is only used for Supabase Auth administration. It
+    // has no browser session and cannot change the currently signed-in admin.
+    const admin = createAdminClient();
+    if (!admin) {
+        throw new Error(
+            "Staff account creation is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment and try again."
+        );
+    }
+
+    const supabase = await createClient();
+    const { data: authData, error: authError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        // The admin supplied a temporary password, so the staff member can
+        // sign in immediately instead of being stranded in an unconfirmed
+        // account. Public sign-ups can remain disabled.
+        email_confirm: true,
+        user_metadata: { name },
     });
 
     if (authError) {
         console.error("[staff] create auth user error:", authError);
-        throw new Error("Could not create staff account: " + authError.message);
+        const duplicateEmail = /already (?:been )?registered|already exists|email.*taken|user already/i.test(authError.message);
+        throw new Error(
+            duplicateEmail
+                ? "A login already exists for this email address. Use a different work email."
+                : "Could not create staff login: " + authError.message
+        );
     }
 
-    if (!authData?.user) {
-        throw new Error("Could not create staff account: no auth user was returned.");
+    const authUser = authData?.user;
+    if (!authUser) {
+        throw new Error("Could not create staff login: no Auth user was returned.");
     }
 
-    // ── 2. Insert the staff profile row (id = auth user id) ───────────────────
-    // NOTE: the DB is snake_case (see CLAUDE.md) — PostgREST matches column
-    // names exactly, so sending camelCase `dateJoined` here failed with
-    // PGRST204 ("Could not find the 'dateJoined' column of 'staffs'").
-    // Map to `date_joined`, and only include it when a value is provided so
-    // the insert never breaks if the column doesn't exist or is nullable.
+    // ── Insert the staff profile row (id = Auth user id) ─────────────────────
+    // The request-scoped client retains the administrator's session, so the
+    // `staffs insert admin` RLS policy remains in force for this write.
+    // The database uses snake_case; only include date_joined when provided.
     const staffRecord: Record<string, unknown> = {
-        id: authData.user.id,
-        name: input.name,
-        email: input.email,
-        phone_number: input.phone_number ?? "",
-        role: input.role,
-        department: input.department ?? "",
-        status: input.status ?? "Active",
+        id: authUser.id,
+        name,
+        email,
+        phone_number: typeof input.phone_number === "string" ? input.phone_number.trim() : "",
+        role,
+        department: typeof input.department === "string" ? input.department.trim() : "",
+        status,
     };
 
     const joined = input.date_joined ?? input.dateJoined;
-    if (joined) staffRecord.date_joined = joined;
-
-    const { data, error } = await supabase
-        .from("staffs")
-        .insert([staffRecord])
-        .select()
-        .single();
-
-    if (error) {
-        console.error("[staff] create DB error:", error);
-        throw new Error("Could not create staff profile: " + error.message);
+    if (typeof joined === "string" && joined.trim()) {
+        staffRecord.date_joined = joined.trim();
     }
 
-    await logAction("STAFF_CREATED", "staffs", authData.user.id, {
-        name: input.name,
-        email: input.email,
-        role: input.role,
+    let createdProfile: unknown = null;
+    let profileError: { message: string } | null = null;
+    try {
+        const result = await supabase
+            .from("staffs")
+            .insert([staffRecord])
+            .select()
+            .single();
+        createdProfile = result.data;
+        profileError = result.error;
+    } catch (error) {
+        profileError = {
+            message: error instanceof Error ? error.message : String(error),
+        };
+    }
+
+    if (profileError || !createdProfile) {
+        const profileErrorMessage = profileError?.message ?? "The database did not return the created staff profile.";
+        console.error("[staff] create DB error:", profileErrorMessage);
+
+        // Auth and Postgres cannot share a transaction. Roll back the login if
+        // the staff profile write fails so there is no orphaned sign-in that
+        // cannot access the EMR.
+        let rollbackErrorMessage: string | null = null;
+        try {
+            const { error: rollbackError } = await admin.auth.admin.deleteUser(authUser.id);
+            rollbackErrorMessage = rollbackError?.message ?? null;
+        } catch (error) {
+            rollbackErrorMessage = error instanceof Error ? error.message : String(error);
+        }
+
+        if (rollbackErrorMessage) {
+            console.error("[staff] Auth rollback failed after profile insert error:", rollbackErrorMessage);
+            throw new Error(
+                `Could not create staff profile: ${profileErrorMessage}. The login was created but could not be removed; contact an administrator.`
+            );
+        }
+
+        throw new Error("Could not create staff profile: " + profileErrorMessage);
+    }
+
+    await logAction("STAFF_CREATED", "staffs", authUser.id, {
+        name,
+        email,
+        role,
         created_by: actor.userId,
     });
 
-    return data as unknown as Staff;
+    return createdProfile as Staff;
 }
 
 export async function updateStaff(
