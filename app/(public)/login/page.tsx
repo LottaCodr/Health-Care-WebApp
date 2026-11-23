@@ -45,8 +45,9 @@ function LoginForm(props: {
     const [mfaCode, setMfaCode] = useState("");
     const [pendingNext, setPendingNext] = useState("");
 
-    // Set by /reset-password after a successful self-service password change.
+    // Set by /reset-password or /auth/confirm after a successful verification/password setup.
     const resetSuccess = searchParams.get("reset") === "success";
+    const confirmedSuccess = searchParams.get("confirmed") === "1";
 
     // create confetti when user logs in
     const fireConfetti = () => {
@@ -258,8 +259,8 @@ function LoginForm(props: {
                         <p className="text-sm text-gray-400 mt-1 font-medium">Sign in to your workspace</p>
                     </div>
 
-                    {/* Password reset success */}
-                    {resetSuccess && !error && (
+                    {/* Password reset / email confirmed success */}
+                    {(resetSuccess || confirmedSuccess) && !error && (
                         <motion.div
                             initial={{ opacity: 0, y: -6 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -267,7 +268,9 @@ function LoginForm(props: {
                         >
                             <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
                             <p className="text-xs text-emerald-700 font-medium">
-                                Password updated successfully. Sign in with your new password.
+                                {confirmedSuccess
+                                    ? "Your email is confirmed! Sign in with your work email and password."
+                                    : "Password updated successfully. Sign in with your new password."}
                             </p>
                         </motion.div>
                     )}

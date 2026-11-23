@@ -84,6 +84,15 @@ export interface Patient {
 }
 
 // Staff/User entity
+export type StaffOnboardingMode = "invite" | "temp_password";
+
+export interface StaffEmailConfirmationInfo {
+    emailConfirmedAt: string | null;
+    invitedAt: string | null;
+    lastSignInAt: string | null;
+    onboardingMode: StaffOnboardingMode | null;
+}
+
 export interface Staff {
     id: string;
     name: string;
@@ -98,6 +107,7 @@ export interface Staff {
     dateJoined: string;
     date_joined?: string;
     status: "Active" | "Inactive";
+    is_active?: boolean;
     created_at?: string;
     updated_at?: string;
 }

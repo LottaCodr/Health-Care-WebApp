@@ -209,8 +209,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             );
 
             if (error) {
-                const attempt = loginRateLimiter.recordAttempt(identifier);
                 const message = friendlyErrorMessage(error, error.message);
+                if (error.message?.toLowerCase().includes("email not confirmed")) {
+                    return {
+                        success: false,
+                        message,
+                    };
+                }
+                const attempt = loginRateLimiter.recordAttempt(identifier);
                 return {
                     success: false,
                     message: attempt.blocked

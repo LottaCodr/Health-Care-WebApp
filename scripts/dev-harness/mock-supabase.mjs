@@ -12,6 +12,7 @@
  * patient-list performance check.
  */
 import http from "node:http";
+import crypto from "node:crypto";
 
 /** Search terms carry literal `%`/`_` wildcards; never let a raw decode throw. */
 const safeDecode = (s) => {
@@ -24,6 +25,16 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
     const rejected = new Set();
     /** Rows for tables that are not `patients`/`staffs` (e.g. audit_logs). */
     const extra = tables;
+    const authUsers = staff.map((s) => ({
+        id: s.id,
+        email: s.email,
+        aud: "authenticated",
+        email_confirmed_at: s.email_confirmed_at ?? new Date().toISOString(),
+        invited_at: s.invited_at ?? null,
+        last_sign_in_at: s.last_sign_in_at ?? new Date().toISOString(),
+        user_metadata: s.user_metadata ?? { name: s.name, role: s.role },
+    }));
+    const sentAuthEmails = [];
     let activeStaffIndex = 0;
 
     function matchIs(value, target) {
@@ -110,6 +121,99 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
             const actor = staff[activeStaffIndex];
             if (!actor) return send(401, { msg: "invalid token" });
             return send(200, { id: actor.id, email: actor.email, aud: "authenticated" });
+        }
+
+        // ── GoTrue Admin / Confirmation endpoints ────────────────────────────
+        if (url.pathname.startsWith("/auth/v1/")) {
+            let body = "";
+            req.on("data", (c) => (body += c));
+            req.on("end", () => {
+                let parsed = null;
+                try { parsed = body ? JSON.parse(body) : null; } catch { parsed = null; }
+
+                if (url.pathname === "/auth/v1/invite" && req.method === "POST") {
+                    const email = String(parsed?.email ?? "").toLowerCase();
+                    const existing = authUsers.find((u) => u.email.toLowerCase() === email);
+                    if (existing) {
+                        return send(422, { msg: "A user with this email address has already been registered" });
+                    }
+                    const user = {
+                        id: crypto.randomUUID(),
+                        email,
+                        aud: "authenticated",
+                        email_confirmed_at: null,
+                        invited_at: new Date().toISOString(),
+                        last_sign_in_at: null,
+                        user_metadata: parsed?.data ?? {},
+                    };
+                    authUsers.push(user);
+                    sentAuthEmails.push({
+                        kind: "invite",
+                        email,
+                        redirectTo: url.searchParams.get("redirect_to") ?? null,
+                    });
+                    return send(200, { user });
+                }
+
+                if (url.pathname === "/auth/v1/admin/users" && req.method === "POST") {
+                    const email = String(parsed?.email ?? "").toLowerCase();
+                    const existing = authUsers.find((u) => u.email.toLowerCase() === email);
+                    if (existing) {
+                        return send(422, { msg: "A user with this email address has already been registered" });
+                    }
+                    const now = new Date().toISOString();
+                    const user = {
+                        id: crypto.randomUUID(),
+                        email,
+                        aud: "authenticated",
+                        email_confirmed_at: parsed?.email_confirm ? now : null,
+                        invited_at: null,
+                        last_sign_in_at: null,
+                        user_metadata: parsed?.user_metadata ?? {},
+                    };
+                    authUsers.push(user);
+                    return send(200, { user });
+                }
+
+                if (url.pathname === "/auth/v1/admin/users" && req.method === "GET") {
+                    return send(200, { users: authUsers, aud: "authenticated" });
+                }
+
+                const adminUserMatch = /^\/auth\/v1\/admin\/users\/([^/]+)$/.exec(url.pathname);
+                if (adminUserMatch) {
+                    const targetId = adminUserMatch[1];
+                    const idx = authUsers.findIndex((u) => u.id === targetId);
+                    if (idx === -1) return send(404, { msg: "User not found" });
+                    if (req.method === "GET") return send(200, { user: authUsers[idx] });
+                    if (req.method === "DELETE") {
+                        const [removed] = authUsers.splice(idx, 1);
+                        return send(200, { user: removed });
+                    }
+                }
+
+                if (url.pathname === "/auth/v1/resend" && req.method === "POST") {
+                    const email = String(parsed?.email ?? "").toLowerCase();
+                    sentAuthEmails.push({
+                        kind: `resend:${parsed?.type ?? "signup"}`,
+                        email,
+                        redirectTo: url.searchParams.get("redirect_to") ?? null,
+                    });
+                    return send(200, {});
+                }
+
+                if (url.pathname === "/auth/v1/otp" && req.method === "POST") {
+                    const email = String(parsed?.email ?? "").toLowerCase();
+                    sentAuthEmails.push({
+                        kind: "otp",
+                        email,
+                        redirectTo: url.searchParams.get("redirect_to") ?? null,
+                    });
+                    return send(200, {});
+                }
+
+                return send(404, { msg: "auth route not mocked" });
+            });
+            return;
         }
 
         // ── PostgREST ────────────────────────────────────────────────────────
@@ -252,6 +356,12 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
     return {
         server,
         requests,
+        authUsers,
+        sentAuthEmails,
+        confirmAuthUser: (id) => {
+            const u = authUsers.find((x) => x.id === id);
+            if (u) u.email_confirmed_at = new Date().toISOString();
+        },
         setActiveStaff: (indexOrId) => {
             if (typeof indexOrId === "number") {
                 activeStaffIndex = indexOrId;
