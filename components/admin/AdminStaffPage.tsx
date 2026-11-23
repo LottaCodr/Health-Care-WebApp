@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { useRoleProtection } from "@/lib/role-utils";
-import { UserRole } from "@/types/models";
+import { UserRole, type StaffOnboardingMode } from "@/types/models";
 import { passwordSchema, validateEmail } from "@/lib/auth-utils";
 import {
     Users,
@@ -17,6 +17,10 @@ import {
     Mail,
     Phone,
     RefreshCcw,
+    Send,
+    Clock,
+    MailCheck,
+    KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { withTimeout, friendlyErrorMessage, isBrowserOnline } from "@/lib/utils/network";
@@ -26,6 +30,8 @@ import {
     useCreateStaff,
     useDeleteStaff,
     useUpdateStaff,
+    useStaffEmailConfirmations,
+    useResendStaffConfirmation,
 } from "@/hooks/emr/use-staff";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,6 +196,8 @@ function StaffModal({
     const updateStaffMutation = useUpdateStaff();
 
     const [saving, setSaving] = useState(false);
+    const [onboardingMode, setOnboardingMode] =
+        useState<StaffOnboardingMode>("invite");
 
     const [form, setForm] = useState({
         name: staff?.name ?? "",
@@ -216,7 +224,7 @@ function StaffModal({
             return;
         }
 
-        if (!isEdit) {
+        if (!isEdit && onboardingMode === "temp_password") {
             const passwordCheck = passwordSchema.safeParse(form.password);
             if (!passwordCheck.success) {
                 toast.error(passwordCheck.error.issues[0]?.message ?? "Enter a secure temporary password.");
@@ -249,7 +257,7 @@ function StaffModal({
 
                 toast.success("Staff updated successfully.");
             } else {
-                await withTimeout(
+                const created = await withTimeout(
                     createStaffMutation.mutateAsync({
                         name: form.name,
                         email: form.email,
@@ -258,13 +266,27 @@ function StaffModal({
                         status: "Active",
                         department: "",
                         dateJoined: "",
-                        password: form.password,
+                        onboardingMode,
+                        password:
+                            onboardingMode === "temp_password"
+                                ? form.password
+                                : undefined,
                     }),
                     30_000,
                     "Creating the staff account is taking too long. Check your connection and try again."
                 );
 
-                toast.success("Staff account created and added to the staff directory.");
+                if (created.confirmationWarning) {
+                    toast.warning(created.confirmationWarning);
+                } else if (created.onboardingMode === "invite") {
+                    toast.success(
+                        `Invitation email sent to ${form.email.trim()}. They will confirm their email and set their own password.`
+                    );
+                } else {
+                    toast.success(
+                        `Staff account created and confirmation email sent to ${form.email.trim()}.`
+                    );
+                }
             }
 
             if (onSuccess) onSuccess();
@@ -311,6 +333,51 @@ function StaffModal({
                 </div>
 
                 <div className="px-6 py-5 space-y-4">
+                    {!isEdit && (
+                        <div className="space-y-1.5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                Onboarding &amp; Email Confirmation
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setOnboardingMode("invite")}
+                                    className={`flex flex-col items-start gap-1 rounded-xl border p-2.5 text-left transition-all ${
+                                        onboardingMode === "invite"
+                                            ? "border-blue-500 bg-blue-50/70 ring-1 ring-blue-400/30"
+                                            : "border-gray-200 bg-gray-50 hover:bg-white"
+                                    }`}
+                                >
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-900">
+                                        <Send size={11} className="text-blue-600" />
+                                        Email Invite
+                                    </span>
+                                    <span className="text-[10px] leading-snug text-gray-500">
+                                        Staff confirms email &amp; sets own password
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setOnboardingMode("temp_password")}
+                                    className={`flex flex-col items-start gap-1 rounded-xl border p-2.5 text-left transition-all ${
+                                        onboardingMode === "temp_password"
+                                            ? "border-blue-500 bg-blue-50/70 ring-1 ring-blue-400/30"
+                                            : "border-gray-200 bg-gray-50 hover:bg-white"
+                                    }`}
+                                >
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-900">
+                                        <KeyRound size={11} className="text-blue-600" />
+                                        Temp Password
+                                    </span>
+                                    <span className="text-[10px] leading-snug text-gray-500">
+                                        Assign password + require email confirm
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {[
                         {
                             key: "name",
@@ -334,7 +401,7 @@ function StaffModal({
                             type: "tel",
                         },
 
-                        ...(!isEdit
+                        ...(!isEdit && onboardingMode === "temp_password"
                             ? [
                                 {
                                     key: "password",
@@ -430,14 +497,20 @@ function StaffModal({
                                     size={13}
                                     className="animate-spin"
                                 />
-                                Saving...
+                                {isEdit ? "Saving..." : onboardingMode === "invite" ? "Sending Invite..." : "Creating..."}
                             </>
                         ) : (
                             <>
-                                <CheckCircle2 size={13} />
+                                {isEdit || onboardingMode !== "invite" ? (
+                                    <CheckCircle2 size={13} />
+                                ) : (
+                                    <Send size={13} />
+                                )}
                                 {isEdit
                                     ? "Save Changes"
-                                    : "Add Staff"}
+                                    : onboardingMode === "invite"
+                                        ? "Send Invite & Add Staff"
+                                        : "Add & Send Confirmation"}
                             </>
                         )}
                     </button>
@@ -552,12 +625,36 @@ export default function AdminStaffPage() {
         useState<Staff | null>(null);
 
     const [showAddModal, setShowAddModal] = useState(false);
+    const [resendingId, setResendingId] = useState<string | null>(null);
 
     const {
         data: staff = [],
         isLoading,
         refetch,
     } = useAllStaff();
+
+    const {
+        data: confirmations = {},
+        refetch: refetchConfirmations,
+    } = useStaffEmailConfirmations(authorized);
+
+    const resendMutation = useResendStaffConfirmation();
+
+    const handleResendConfirmation = async (staffMember: Staff) => {
+        setResendingId(staffMember.id);
+        try {
+            const res = await resendMutation.mutateAsync(staffMember.id);
+            if (res.ok) {
+                toast.success(res.message);
+            } else {
+                toast.error(res.message);
+            }
+        } catch (err: any) {
+            toast.error(friendlyErrorMessage(err, "Could not resend confirmation email."));
+        } finally {
+            setResendingId(null);
+        }
+    };
 
     const filtered = useMemo(() => {
         return staff.filter((s) => {
@@ -647,7 +744,11 @@ export default function AdminStaffPage() {
 
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => refetch()}
+                            onClick={() => {
+                                void refetch();
+                                void refetchConfirmations();
+                            }}
+                            title="Refresh staff list and confirmation status"
                             className="w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
                         >
                             <RefreshCcw size={13} />
@@ -743,7 +844,15 @@ export default function AdminStaffPage() {
                             </p>
                         </div>
                     ) : (
-                        filtered.map((s) => (
+                        filtered.map((s) => {
+                            const confirmInfo = confirmations[s.id];
+                            const isPendingConfirmation =
+                                !!confirmInfo && !confirmInfo.emailConfirmedAt;
+                            const isConfirmed =
+                                !!confirmInfo && !!confirmInfo.emailConfirmedAt;
+                            const isResending = resendingId === s.id;
+
+                            return (
                             <div
                                 key={s.id}
                                 className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-sm transition-all group"
@@ -770,6 +879,23 @@ export default function AdminStaffPage() {
                                         </p>
 
                                         <RoleBadge role={s.role} />
+
+                                        {isPendingConfirmation && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                <Clock size={10} />
+                                                Pending Confirmation
+                                            </span>
+                                        )}
+
+                                        {isConfirmed && (
+                                            <span
+                                                title={`Email confirmed${confirmInfo.emailConfirmedAt ? ` on ${new Date(confirmInfo.emailConfirmedAt).toLocaleDateString()}` : ""}`}
+                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700"
+                                            >
+                                                <MailCheck size={10} />
+                                                Verified
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
@@ -799,27 +925,49 @@ export default function AdminStaffPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={() =>
-                                            setEditTarget(s as any)
-                                        }
-                                        className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-colors"
-                                    >
-                                        <Edit3 size={13} />
-                                    </button>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {isPendingConfirmation && (
+                                        <button
+                                            type="button"
+                                            disabled={isResending}
+                                            onClick={() =>
+                                                handleResendConfirmation(s as any)
+                                            }
+                                            title="Resend confirmation / invite email"
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold transition-colors disabled:opacity-60"
+                                        >
+                                            {isResending ? (
+                                                <Loader2 size={11} className="animate-spin" />
+                                            ) : (
+                                                <Send size={11} />
+                                            )}
+                                            {isResending ? "Sending…" : "Resend Email"}
+                                        </button>
+                                    )}
 
-                                    <button
-                                        onClick={() =>
-                                            setDeleteTarget(s as any)
-                                        }
-                                        className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-200 transition-colors"
-                                    >
-                                        <Trash2 size={13} />
-                                    </button>
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() =>
+                                                setEditTarget(s as any)
+                                            }
+                                            className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                                        >
+                                            <Edit3 size={13} />
+                                        </button>
+
+                                        <button
+                                            onClick={() =>
+                                                setDeleteTarget(s as any)
+                                            }
+                                            className="w-8 h-8 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-200 transition-colors"
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>

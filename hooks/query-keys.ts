@@ -148,6 +148,7 @@ export const staffKeys = {
     all: () => ["staff"] as const,
     byRole: (r: string) => ["staff", "role", r] as const,
     detail: (id: string) => ["staff", "detail", id] as const,
+    confirmations: () => ["staff", "confirmations"] as const,
 };
 
 // ─── Admissions ────────────────────────────────────────────────────────────────────

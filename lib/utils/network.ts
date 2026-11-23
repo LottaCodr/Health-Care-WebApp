@@ -135,6 +135,10 @@ export function friendlyErrorMessage(err: unknown, fallback = "Something went wr
         return "The request took too long. Please check your connection and try again.";
     }
 
+    if (message.toLowerCase().includes("email not confirmed")) {
+        return "Your email address is not confirmed yet. Click the confirmation link sent to your inbox, or ask an administrator to resend it.";
+    }
+
     return message;
 }
 

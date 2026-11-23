@@ -46,6 +46,11 @@ const ACTION_CONFIG: Record<string, { color: string; bg: string; border: string 
     PATIENT_DISABLED: { color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
     PATIENT_RESTORED: { color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
     PATIENT_DELETED: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
+    // ── Staff onboarding / confirmation ──
+    STAFF_CREATED: { color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200" },
+    STAFF_CONFIRMATION_RESENT: { color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
+    STAFF_ROLE_CHANGED: { color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-200" },
+    STAFF_DELETED: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
     DEFAULT: { color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-200" },
 };
 

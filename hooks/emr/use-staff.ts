@@ -42,6 +42,17 @@ export function useStaffByRole(role: string) {
     });
 }
 
+export function useStaffEmailConfirmations(enabled = true) {
+    return useQuery({
+        queryKey: staffKeys.confirmations(),
+        queryFn: SS.getStaffEmailConfirmationStatuses,
+        enabled,
+        staleTime: 30_000,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 export function useCreateStaff() {
@@ -55,6 +66,18 @@ export function useCreateStaff() {
             qc.setQueryData(staffKeys.detail(staff.id), staff);
             qc.invalidateQueries({ queryKey: staffKeys.all() });
             qc.invalidateQueries({ queryKey: staffKeys.byRole(staff.role) });
+            qc.invalidateQueries({ queryKey: staffKeys.confirmations() });
+        },
+    });
+}
+
+export function useResendStaffConfirmation() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: (staffId: string) => SS.resendStaffConfirmation(staffId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: staffKeys.confirmations() });
         },
     });
 }
@@ -103,6 +126,7 @@ export function useDeleteStaff() {
 
         onSettled: () => {
             qc.invalidateQueries({ queryKey: staffKeys.all() });
+            qc.invalidateQueries({ queryKey: staffKeys.confirmations() });
         },
     });
 }
