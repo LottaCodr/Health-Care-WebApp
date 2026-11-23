@@ -6,6 +6,65 @@ import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
 import type { ServiceResult } from "@/lib/utils/service-result";
+import {
+    formatDisableReason,
+    type PatientActivitySummary,
+    type PatientDisableReason,
+} from "@/lib/utils/patient-archive";
+
+/**
+ * True when PostgREST / Postgres reports that the `patients` archive columns
+ * (`is_active`, `disabled_at`, …) haven't been migrated yet. Queries degrade
+ * gracefully without the filter so a deployment missing the migration keeps
+ * working instead of failing every list/queue load.
+ */
+function isMissingArchiveColumn(error: any): boolean {
+    const code = String(error?.code ?? "");
+    const msg = String(error?.message ?? "");
+    return (
+        (code === "42703" || code === "PGRST204") &&
+        /(is_active|disabled_at|disabled_by|disabled_reason|duplicate_of_patient_id)/i.test(msg)
+    );
+}
+
+/**
+ * Run a `patients` query with `.not("is_active", "is", false)` applied,
+ * falling back to running it without the filter if the column doesn't exist
+ * in the database yet.
+ */
+async function runWithActiveFilter<T extends { error: any }>(
+    buildQuery: (filterActive: boolean) => PromiseLike<T>
+): Promise<T> {
+    const res = await buildQuery(true);
+    if (res.error && isMissingArchiveColumn(res.error)) {
+        return await buildQuery(false);
+    }
+    return res;
+}
+
+const VALID_DISABLE_REASONS: PatientDisableReason[] = [
+    "duplicate-entry",
+    "registered-in-error",
+    "merged-or-consolidated",
+    "test-or-demo-record",
+    "other",
+];
+
+function extractGuardError(error: any): { code: string; message: string } | null {
+    const raw = String(error?.message ?? "");
+    if (
+        raw.startsWith("UNAUTHORIZED") ||
+        raw.startsWith("FORBIDDEN") ||
+        raw.startsWith("STAFF_LOOKUP_FAILED")
+    ) {
+        const idx = raw.indexOf(":");
+        return {
+            code: idx > 0 ? raw.slice(0, idx) : "UNAUTHORIZED",
+            message: idx > 0 ? raw.slice(idx + 1).trim() : raw,
+        };
+    }
+    return null;
+}
 
 /**
  * Roles that may advance a patient through the workflow state machine
@@ -285,7 +344,15 @@ export async function updatePatient(
 ): Promise<Patient> {
     const actor = await requireStaff([UserRole.FrontDesk, UserRole.Doctor, UserRole.Nurse]);
     const supabase = await createClient();
-    const payload = cleanPatientPayload(updates);
+    const {
+        is_active: _isActive,
+        disabled_at: _disabledAt,
+        disabled_by: _disabledBy,
+        disabled_reason: _disabledReason,
+        duplicate_of_patient_id: _dupId,
+        ...safeUpdates
+    } = updates as Record<string, any>;
+    const payload = cleanPatientPayload(safeUpdates);
 
     const { data, error } = await supabase
         .from("patients")
@@ -321,11 +388,18 @@ export async function updatePatientStatus(
     }
 
     const supabase = await createClient();
-    const { data: before } = await supabase
-        .from("patients")
-        .select("status")
-        .eq("id", id)
-        .maybeSingle();
+    const beforeRes = await runWithActiveFilter(async (checkActive) =>
+        supabase
+            .from("patients")
+            .select(checkActive ? "status, is_active" : "status")
+            .eq("id", id)
+            .maybeSingle()
+    );
+    const before = beforeRes.data as { status?: string | null; is_active?: boolean | null } | null;
+
+    if (before && before.is_active === false) {
+        throw new Error("This patient record is disabled. An administrator must restore it before changing its status.");
+    }
 
     const { data, error } = await supabase
         .from("patients")
@@ -452,10 +526,14 @@ export async function closeConsultationQueue(
         let targets: { id: string; hospital_number: string | null }[];
 
         if (requestedIds) {
-            const { data: rows, error } = await supabase
-                .from("patients")
-                .select("id, hospital_number, status")
-                .in("id", requestedIds);
+            const { data: rows, error } = await runWithActiveFilter((filterActive) => {
+                let q = supabase
+                    .from("patients")
+                    .select("id, hospital_number, status")
+                    .in("id", requestedIds!);
+                if (filterActive) q = q.not("is_active", "is", false);
+                return q;
+            });
             if (error) throw error;
 
             const byId = new Map((rows ?? []).map((r: any) => [r.id, r]));
@@ -470,10 +548,14 @@ export async function closeConsultationQueue(
                 .filter((r: any) => r.status === "awaiting-consultation")
                 .map((r: any) => ({ id: r.id, hospital_number: r.hospital_number ?? null }));
         } else {
-            const { data: rows, error } = await supabase
-                .from("patients")
-                .select("id, hospital_number")
-                .eq("status", "awaiting-consultation");
+            const { data: rows, error } = await runWithActiveFilter((filterActive) => {
+                let q = supabase
+                    .from("patients")
+                    .select("id, hospital_number")
+                    .eq("status", "awaiting-consultation");
+                if (filterActive) q = q.not("is_active", "is", false);
+                return q;
+            });
             if (error) throw error;
             targets = (rows ?? []).map((r: any) => ({
                 id: r.id,
@@ -484,12 +566,15 @@ export async function closeConsultationQueue(
         // 2. One set-based UPDATE, guarded so only rows STILL awaiting move.
         let closed: { id: string; hospital_number: string | null }[] = [];
         if (targets.length > 0) {
-            const { data: updated, error } = await supabase
-                .from("patients")
-                .update({ status: "discharged", updated_at: new Date().toISOString() })
-                .in("id", targets.map((t) => t.id))
-                .eq("status", "awaiting-consultation")
-                .select("id, hospital_number");
+            const { data: updated, error } = await runWithActiveFilter((filterActive) => {
+                let q = supabase
+                    .from("patients")
+                    .update({ status: "discharged", updated_at: new Date().toISOString() })
+                    .in("id", targets.map((t) => t.id))
+                    .eq("status", "awaiting-consultation");
+                if (filterActive) q = q.not("is_active", "is", false);
+                return q.select("id, hospital_number");
+            });
             if (error) throw error;
             closed = (updated ?? []).map((r: any) => ({
                 id: r.id,
@@ -559,15 +644,19 @@ export async function listPatientsByStatus(
     const batchSize = 1000;
 
     while (true) {
-        const { data, error } = await supabase
-            .from("patients")
-            .select("*")
-            .eq("status", status)
-            // FIFO: earliest arrivals first. `id` as a stable tie-breaker keeps
-            // range() pagination deterministic when timestamps collide.
-            .order("created_at", { ascending: true })
-            .order("id", { ascending: true })
-            .range(from, from + batchSize - 1);
+        const { data, error } = await runWithActiveFilter((filterActive) => {
+            let q = supabase
+                .from("patients")
+                .select("*")
+                .eq("status", status);
+            if (filterActive) q = q.not("is_active", "is", false);
+            return q
+                // FIFO: earliest arrivals first. `id` as a stable tie-breaker keeps
+                // range() pagination deterministic when timestamps collide.
+                .order("created_at", { ascending: true })
+                .order("id", { ascending: true })
+                .range(from, from + batchSize - 1);
+        });
 
         if (error) { console.error("[patient] listPatientsByStatus:", error); break; }
         if (!data || data.length === 0) break;
@@ -594,10 +683,14 @@ export async function listPatientsByStatus(
 export async function countPatientsCreatedSince(sinceIso: string): Promise<number> {
     await requireStaff();
     const supabase = await createClient();
-    const { count, error } = await supabase
-        .from("patients")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", sinceIso);
+    const { count, error } = await runWithActiveFilter((filterActive) => {
+        let q = supabase
+            .from("patients")
+            .select("id", { count: "exact", head: true })
+            .gte("created_at", sinceIso);
+        if (filterActive) q = q.not("is_active", "is", false);
+        return q;
+    });
 
     if (error) {
         throw new Error(formatFriendlyDbError(error, "Failed to load today's arrivals."));
@@ -618,13 +711,17 @@ export async function listPatientsCreatedSince(
     const supabase = await createClient();
     const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
 
-    const { data, error } = await supabase
-        .from("patients")
-        .select("*")
-        .gte("created_at", sinceIso)
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(safeLimit);
+    const { data, error } = await runWithActiveFilter((filterActive) => {
+        let q = supabase
+            .from("patients")
+            .select("*")
+            .gte("created_at", sinceIso);
+        if (filterActive) q = q.not("is_active", "is", false);
+        return q
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .limit(safeLimit);
+    });
 
     if (error) {
         throw new Error(formatFriendlyDbError(error, "Failed to load today's arrivals."));
@@ -650,13 +747,17 @@ export async function searchPatients(query: string): Promise<ServiceResult<Patie
         const term = String(query ?? "").replace(/[%,()"\\*]/g, " ").replace(/\s+/g, " ").trim();
         if (!term) return { ok: true, data: [] };
 
-        const { data, error } = await supabase
-            .from("patients")
-            .select("*")
-            .or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,hospital_number.ilike.%${term}%`)
-            .order("created_at", { ascending: true })
-            .order("id", { ascending: true })
-            .limit(100);
+        const { data, error } = await runWithActiveFilter((filterActive) => {
+            let q = supabase
+                .from("patients")
+                .select("*")
+                .or(`name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,hospital_number.ilike.%${term}%`);
+            if (filterActive) q = q.not("is_active", "is", false);
+            return q
+                .order("created_at", { ascending: true })
+                .order("id", { ascending: true })
+                .limit(100);
+        });
 
         if (error) {
             console.error("[patient] searchPatients:", error);
@@ -711,10 +812,14 @@ export async function getPatientStatusCounts(): Promise<{
 
     const results = await Promise.all(
         ALL_PATIENT_STATUSES.map(async (status) => {
-            const { count, error } = await supabase
-                .from("patients")
-                .select("id", { count: "exact", head: true })
-                .eq("status", status);
+            const { count, error } = await runWithActiveFilter((filterActive) => {
+                let q = supabase
+                    .from("patients")
+                    .select("id", { count: "exact", head: true })
+                    .eq("status", status);
+                if (filterActive) q = q.not("is_active", "is", false);
+                return q;
+            });
             if (error) {
                 console.error(`[patient] getPatientStatusCounts(${status}):`, error);
                 return [status, 0] as const;
@@ -775,28 +880,31 @@ export async function listPatientsPage(input: {
     const pageSize = Math.min(200, Math.max(1, Math.trunc(Number(input?.pageSize) || 100)));
     const search = (input?.search ?? "").trim();
 
-    let query = supabase
-        .from("patients")
-        .select("*", { count: "exact" });
+    const { data, count, error } = await runWithActiveFilter((filterActive) => {
+        let query = supabase
+            .from("patients")
+            .select("*", { count: "exact" });
 
-    if (input?.status) query = query.eq("status", input.status);
-    if (search) {
-        // Strip the characters PostgREST treats as `or=` syntax/structure
-        // (commas, parens, dots) and the LIKE wildcards, so what the desk types
-        // can only ever be matched literally — never re-parsed as a new filter.
-        const term = search.replace(/[%,()._]/g, " ").trim();
-        if (term) {
-            query = query.or(
-                `name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%,hospital_number.ilike.%${term}%`
-            );
+        if (filterActive) query = query.not("is_active", "is", false);
+        if (input?.status) query = query.eq("status", input.status);
+        if (search) {
+            // Strip the characters PostgREST treats as `or=` syntax/structure
+            // (commas, parens, dots) and the LIKE wildcards, so what the desk types
+            // can only ever be matched literally — never re-parsed as a new filter.
+            const term = search.replace(/[%,()._]/g, " ").trim();
+            if (term) {
+                query = query.or(
+                    `name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%,hospital_number.ilike.%${term}%`
+                );
+            }
         }
-    }
 
-    const { data, count, error } = await query
-        // FIFO: earliest arrivals first (see listPatientsByStatus).
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .range((page - 1) * pageSize, page * pageSize - 1);
+        return query
+            // FIFO: earliest arrivals first (see listPatientsByStatus).
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range((page - 1) * pageSize, page * pageSize - 1);
+    });
 
     if (error) {
         console.error("[patient] listPatientsPage:", error);
@@ -818,13 +926,17 @@ export async function getAllPatients(
         const supabase = await createClient();
 
         if (limit && limit <= 500) {
-            const { data, error } = await supabase
-                .from("patients")
-                .select("*")
-                // FIFO: earliest arrivals first (see listPatientsByStatus).
-                .order("created_at", { ascending: true })
-                .order("id", { ascending: true })
-                .range(page * limit, (page + 1) * limit - 1);
+            const { data, error } = await runWithActiveFilter((filterActive) => {
+                let q = supabase
+                    .from("patients")
+                    .select("*");
+                if (filterActive) q = q.not("is_active", "is", false);
+                return q
+                    // FIFO: earliest arrivals first (see listPatientsByStatus).
+                    .order("created_at", { ascending: true })
+                    .order("id", { ascending: true })
+                    .range(page * limit, (page + 1) * limit - 1);
+            });
 
             if (error) {
                 console.error("[patient] getAllPatients:", error);
@@ -838,13 +950,17 @@ export async function getAllPatients(
         const batchSize = 1000;
 
         while (true) {
-            const { data, error } = await supabase
-                .from("patients")
-                .select("*")
-                // FIFO: earliest arrivals first (see listPatientsByStatus).
-                .order("created_at", { ascending: true })
-                .order("id", { ascending: true })
-                .range(from, from + batchSize - 1);
+            const { data, error } = await runWithActiveFilter((filterActive) => {
+                let q = supabase
+                    .from("patients")
+                    .select("*");
+                if (filterActive) q = q.not("is_active", "is", false);
+                return q
+                    // FIFO: earliest arrivals first (see listPatientsByStatus).
+                    .order("created_at", { ascending: true })
+                    .order("id", { ascending: true })
+                    .range(from, from + batchSize - 1);
+            });
 
             if (error) {
                 // A partial registry shown as if it were complete is worse
@@ -866,3 +982,618 @@ export async function getAllPatients(
         return { ok: false, ...describeReadFailure(error, "Failed to load patients. Please try again.") };
     }
 }
+
+// ─── Admin-only patient disable / restore / delete ────────────────────────────
+//
+// Duplicate patient registrations happen across shift handovers. Disabling
+// (`is_active = false`) is the recommended action because it removes the
+// duplicate from every active queue, search, and count while keeping the
+// NVH-XXXXX hospital number series gapless and preserving the audit trail.
+// Permanent deletion is also available to Admins ONLY when the record has NO
+// attached clinical, billing, or document history.
+
+async function countLinkedRows(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    table: string,
+    column: string,
+    patientId: string,
+    optional = false
+): Promise<number> {
+    const { count, error } = await supabase
+        .from(table)
+        .select("id", { count: "exact", head: true })
+        .eq(column, patientId);
+
+    if (error) {
+        const code = String(error?.code ?? "");
+        const msg = String(error?.message ?? "");
+        if (optional && (code === "42P01" || code === "PGRST205" || /does not exist/i.test(msg))) {
+            return 0;
+        }
+        throw error;
+    }
+    return count ?? 0;
+}
+
+async function computePatientActivitySummary(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    patientId: string
+): Promise<PatientActivitySummary> {
+    const [
+        consultations,
+        labRequests,
+        prescriptions,
+        payments,
+        admissions,
+        appointments,
+        nursingActions,
+        dischargeNotes,
+        documents,
+        ivfCycles,
+    ] = await Promise.all([
+        countLinkedRows(supabase, "consultations", "patient_id", patientId),
+        countLinkedRows(supabase, "lab_requests", "visit_id", patientId),
+        countLinkedRows(supabase, "prescriptions", "patient_id", patientId),
+        countLinkedRows(supabase, "payments", "patient_id", patientId),
+        countLinkedRows(supabase, "patient_admissions", "patient_id", patientId),
+        countLinkedRows(supabase, "appointments", "patient_id", patientId),
+        countLinkedRows(supabase, "nursing_actions", "patient_id", patientId),
+        countLinkedRows(supabase, "discharge_notes", "patient_id", patientId),
+        countLinkedRows(supabase, "patient_documents", "patient_id", patientId),
+        countLinkedRows(supabase, "ivf_cycles", "patient_id", patientId, true),
+    ]);
+
+    const totalLinkedRecords =
+        consultations +
+        labRequests +
+        prescriptions +
+        payments +
+        admissions +
+        appointments +
+        nursingActions +
+        dischargeNotes +
+        documents +
+        ivfCycles;
+
+    return {
+        totalLinkedRecords,
+        canHardDelete: totalLinkedRecords === 0,
+        counts: {
+            consultations,
+            labRequests,
+            prescriptions,
+            payments,
+            admissions,
+            appointments,
+            nursingActions,
+            dischargeNotes,
+            documents,
+            ivfCycles,
+        },
+    };
+}
+
+/**
+ * Inspect how many clinical, billing, and document records are attached to a
+ * patient record before disabling or permanently deleting it (Admin-only).
+ */
+export async function getPatientActivitySummary(
+    patientId: string
+): Promise<ServiceResult<PatientActivitySummary>> {
+    try {
+        await requireStaff([UserRole.Admin]);
+        const id = typeof patientId === "string" ? patientId.trim() : "";
+        if (!id) {
+            return { ok: false, code: "BAD_INPUT", message: "Invalid patient ID." };
+        }
+        const supabase = await createClient();
+        const summary = await computePatientActivitySummary(supabase, id);
+        return { ok: true, data: summary };
+    } catch (error: any) {
+        const guard = extractGuardError(error);
+        if (guard) return { ok: false, ...guard };
+        console.error("[patient] getPatientActivitySummary:", error);
+        return {
+            ok: false,
+            ...describeReadFailure(error, "Could not verify whether this patient has linked clinical or billing records."),
+        };
+    }
+}
+
+/**
+ * Find other active patient records with a matching phone number or name so an
+ * administrator resolving a duplicate entry can link it to the primary record.
+ */
+export async function findPotentialDuplicatePatients(
+    patientId: string
+): Promise<ServiceResult<Patient[]>> {
+    try {
+        await requireStaff([UserRole.Admin]);
+        const id = typeof patientId === "string" ? patientId.trim() : "";
+        if (!id) return { ok: true, data: [] };
+
+        const supabase = await createClient();
+        const { data: target, error: targetError } = await supabase
+            .from("patients")
+            .select("id, name, phone, email")
+            .eq("id", id)
+            .maybeSingle();
+
+        if (targetError) {
+            return { ok: false, ...describeReadFailure(targetError, "Failed to look up patient.") };
+        }
+        if (!target) return { ok: true, data: [] };
+
+        const filters: string[] = [];
+        const cleanPhone = String(target.phone ?? "").replace(/[%,()"\\*]/g, "").trim();
+        if (cleanPhone.length >= 6) {
+            filters.push(`phone.eq.${cleanPhone}`);
+        }
+        const cleanName = String(target.name ?? "").replace(/[%,()"\\*]/g, " ").replace(/\s+/g, " ").trim();
+        const nameTokens = cleanName
+            .split(" ")
+            .map((t) => t.trim())
+            .filter((t) => t.length >= 3)
+            .slice(0, 3);
+        for (const token of nameTokens) {
+            filters.push(`name.ilike.%${token}%`);
+        }
+
+        if (filters.length === 0) return { ok: true, data: [] };
+
+        const { data, error } = await runWithActiveFilter((filterActive) => {
+            let q = supabase
+                .from("patients")
+                .select("*")
+                .or(filters.join(","));
+            if (filterActive) q = q.not("is_active", "is", false);
+            return q
+                .order("created_at", { ascending: true })
+                .limit(20);
+        });
+
+        if (error) {
+            return { ok: false, ...describeReadFailure(error, "Could not search for matching patient records.") };
+        }
+
+        const targetNameLower = cleanName.toLowerCase();
+        const candidates = ((data ?? []) as Patient[])
+            .filter((p) => p.id !== id)
+            .sort((a, b) => {
+                const aScore =
+                    (cleanPhone && String(a.phone ?? "").trim() === cleanPhone ? 2 : 0) +
+                    (targetNameLower && String(a.name ?? "").trim().toLowerCase() === targetNameLower ? 1 : 0);
+                const bScore =
+                    (cleanPhone && String(b.phone ?? "").trim() === cleanPhone ? 2 : 0) +
+                    (targetNameLower && String(b.name ?? "").trim().toLowerCase() === targetNameLower ? 1 : 0);
+                return bScore - aScore;
+            })
+            .slice(0, 10);
+
+        return { ok: true, data: candidates };
+    } catch (error: any) {
+        const guard = extractGuardError(error);
+        if (guard) return { ok: false, ...guard };
+        console.error("[patient] findPotentialDuplicatePatients:", error);
+        return {
+            ok: false,
+            ...describeReadFailure(error, "Could not search for potential duplicate records."),
+        };
+    }
+}
+
+/**
+ * List disabled / archived patient records (Admin-only).
+ */
+export async function listDisabledPatients(
+    search?: string
+): Promise<ServiceResult<Patient[]>> {
+    try {
+        await requireStaff([UserRole.Admin]);
+        const supabase = await createClient();
+        const term = String(search ?? "").replace(/[%,()"\\*]/g, " ").replace(/\s+/g, " ").trim();
+
+        let q = supabase
+            .from("patients")
+            .select("*")
+            .eq("is_active", false);
+
+        if (term) {
+            q = q.or(
+                `name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,hospital_number.ilike.%${term}%`
+            );
+        }
+
+        const { data, error } = await q
+            .order("disabled_at", { ascending: false })
+            .order("updated_at", { ascending: false })
+            .limit(200);
+
+        if (error) {
+            if (isMissingArchiveColumn(error)) {
+                return { ok: true, data: [] };
+            }
+            console.error("[patient] listDisabledPatients:", error);
+            return { ok: false, ...describeReadFailure(error, "Failed to load disabled patient records.") };
+        }
+        return { ok: true, data: (data ?? []) as Patient[] };
+    } catch (error: any) {
+        const guard = extractGuardError(error);
+        if (guard) return { ok: false, ...guard };
+        console.error("[patient] listDisabledPatients failed:", error);
+        return { ok: false, ...describeReadFailure(error, "Failed to load disabled patient records.") };
+    }
+}
+
+export interface DisablePatientInput {
+    patientId: string;
+    reason: PatientDisableReason;
+    note?: string;
+    duplicateOfPatientId?: string | null;
+}
+
+/**
+ * Disable / archive a patient record so it no longer appears in queues,
+ * searches, or counts while keeping its hospital number intact (Admin-only).
+ */
+export async function disablePatient(
+    input: DisablePatientInput
+): Promise<ServiceResult<Patient>> {
+    try {
+        const actor = await requireStaff([UserRole.Admin]);
+        const patientId = typeof input?.patientId === "string" ? input.patientId.trim() : "";
+        if (!patientId) {
+            return { ok: false, code: "BAD_INPUT", message: "Invalid patient ID." };
+        }
+        if (!input || !VALID_DISABLE_REASONS.includes(input.reason)) {
+            return {
+                ok: false,
+                code: "INVALID_REASON",
+                message: "Please choose why this patient record is being disabled.",
+            };
+        }
+        const note = typeof input.note === "string" ? input.note.trim() : "";
+        if (input.reason === "other" && note.length === 0) {
+            return {
+                ok: false,
+                code: "NOTE_REQUIRED",
+                message: 'Please add a short note when the reason is "Other".',
+            };
+        }
+
+        const duplicateOfId =
+            typeof input.duplicateOfPatientId === "string" && input.duplicateOfPatientId.trim().length > 0
+                ? input.duplicateOfPatientId.trim()
+                : null;
+        if (duplicateOfId && duplicateOfId === patientId) {
+            return {
+                ok: false,
+                code: "SELF_DUPLICATE",
+                message: "A patient record cannot be marked as a duplicate of itself.",
+            };
+        }
+
+        const supabase = await createClient();
+
+        const { data: existing, error: fetchError } = await supabase
+            .from("patients")
+            .select("*")
+            .eq("id", patientId)
+            .maybeSingle();
+
+        if (fetchError) {
+            return { ok: false, ...describeReadFailure(fetchError, "Could not load this patient record.") };
+        }
+        if (!existing) {
+            return { ok: false, code: "NOT_FOUND", message: "Patient record not found." };
+        }
+        if ((existing as any).is_active === false) {
+            return {
+                ok: false,
+                code: "ALREADY_DISABLED",
+                message: "This patient record is already disabled.",
+            };
+        }
+
+        if (duplicateOfId) {
+            const { data: primary, error: primaryErr } = await supabase
+                .from("patients")
+                .select("id")
+                .eq("id", duplicateOfId)
+                .maybeSingle();
+            if (primaryErr || !primary) {
+                return {
+                    ok: false,
+                    code: "PRIMARY_NOT_FOUND",
+                    message: "The selected primary patient record could not be found.",
+                };
+            }
+        }
+
+        const now = new Date().toISOString();
+        const formattedReason = formatDisableReason(input.reason, note);
+
+        let payload: Record<string, any> = {
+            is_active: false,
+            disabled_at: now,
+            disabled_by: actor.userId,
+            disabled_reason: formattedReason,
+            duplicate_of_patient_id: duplicateOfId,
+            portal_enabled: false,
+            updated_at: now,
+        };
+
+        let updated: Patient | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const { data, error } = await supabase
+                .from("patients")
+                .update(payload)
+                .eq("id", patientId)
+                .select()
+                .single();
+
+            if (!error) {
+                updated = data as unknown as Patient;
+                break;
+            }
+
+            if (isMissingArchiveColumn(error)) {
+                return {
+                    ok: false,
+                    code: "MIGRATION_REQUIRED",
+                    message:
+                        "The database does not have the patient-disable columns yet. " +
+                        "Please apply supabase/migrations/20261123_patient_disable_archive.sql and try again.",
+                };
+            }
+
+            // Older deployment without portal_enabled column — drop it and retry.
+            if (
+                error.code === "PGRST204" &&
+                /portal_enabled/i.test(String(error.message ?? "")) &&
+                Object.prototype.hasOwnProperty.call(payload, "portal_enabled")
+            ) {
+                const { portal_enabled: _dropped, ...rest } = payload;
+                payload = rest;
+                continue;
+            }
+
+            console.error("[patient] disablePatient:", error);
+            return {
+                ok: false,
+                code: error.code ?? null,
+                message: formatFriendlyDbError(error, "Failed to disable patient record."),
+            };
+        }
+
+        if (!updated) {
+            return {
+                ok: false,
+                code: "UPDATE_FAILED",
+                message: "Could not confirm that the patient record was disabled.",
+            };
+        }
+
+        await logAction("PATIENT_DISABLED", "patients", patientId, {
+            hospital_number: updated.hospital_number ?? null,
+            reason: input.reason,
+            note: note || null,
+            duplicate_of_patient_id: duplicateOfId,
+            disabled_by: actor.userId,
+        });
+
+        return { ok: true, data: updated };
+    } catch (error: any) {
+        const guard = extractGuardError(error);
+        if (guard) return { ok: false, ...guard };
+        console.error("[patient] disablePatient failed:", error);
+        return {
+            ok: false,
+            code: error?.code ?? null,
+            message: formatFriendlyDbError(error, "Failed to disable patient record."),
+        };
+    }
+}
+
+/**
+ * Restore a previously disabled patient record back to active status (Admin-only).
+ */
+export async function restorePatient(
+    patientId: string
+): Promise<ServiceResult<Patient>> {
+    try {
+        const actor = await requireStaff([UserRole.Admin]);
+        const id = typeof patientId === "string" ? patientId.trim() : "";
+        if (!id) {
+            return { ok: false, code: "BAD_INPUT", message: "Invalid patient ID." };
+        }
+
+        const supabase = await createClient();
+        const { data: existing, error: fetchError } = await supabase
+            .from("patients")
+            .select("*")
+            .eq("id", id)
+            .maybeSingle();
+
+        if (fetchError) {
+            return { ok: false, ...describeReadFailure(fetchError, "Could not load this patient record.") };
+        }
+        if (!existing) {
+            return { ok: false, code: "NOT_FOUND", message: "Patient record not found." };
+        }
+
+        const { data, error } = await supabase
+            .from("patients")
+            .update({
+                is_active: true,
+                disabled_at: null,
+                disabled_by: null,
+                disabled_reason: null,
+                duplicate_of_patient_id: null,
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", id)
+            .select()
+            .single();
+
+        if (error) {
+            if (isMissingArchiveColumn(error)) {
+                return {
+                    ok: false,
+                    code: "MIGRATION_REQUIRED",
+                    message:
+                        "The database does not have the patient-disable columns yet. " +
+                        "Please apply supabase/migrations/20261123_patient_disable_archive.sql.",
+                };
+            }
+            console.error("[patient] restorePatient:", error);
+            return {
+                ok: false,
+                code: error.code ?? null,
+                message: formatFriendlyDbError(error, "Failed to restore patient record."),
+            };
+        }
+
+        const restored = data as unknown as Patient;
+        await logAction("PATIENT_RESTORED", "patients", id, {
+            hospital_number: restored.hospital_number ?? null,
+            restored_by: actor.userId,
+        });
+
+        return { ok: true, data: restored };
+    } catch (error: any) {
+        const guard = extractGuardError(error);
+        if (guard) return { ok: false, ...guard };
+        console.error("[patient] restorePatient failed:", error);
+        return {
+            ok: false,
+            code: error?.code ?? null,
+            message: formatFriendlyDbError(error, "Failed to restore patient record."),
+        };
+    }
+}
+
+export interface DeletePatientInput {
+    patientId: string;
+    reason: PatientDisableReason;
+    note?: string;
+}
+
+/**
+ * Permanently delete a patient record (Admin-only).
+ *
+ * Refuses to delete if the patient has any clinical, billing, or document
+ * records attached — in that case, the record must be disabled instead so
+ * medical/financial history is preserved.
+ */
+export async function deletePatient(
+    input: DeletePatientInput
+): Promise<ServiceResult<{ id: string; hospital_number: string | null }>> {
+    try {
+        const actor = await requireStaff([UserRole.Admin]);
+        const patientId = typeof input?.patientId === "string" ? input.patientId.trim() : "";
+        if (!patientId) {
+            return { ok: false, code: "BAD_INPUT", message: "Invalid patient ID." };
+        }
+        if (!input || !VALID_DISABLE_REASONS.includes(input.reason)) {
+            return {
+                ok: false,
+                code: "INVALID_REASON",
+                message: "Please choose why this patient record is being deleted.",
+            };
+        }
+        const note = typeof input.note === "string" ? input.note.trim() : "";
+        if (input.reason === "other" && note.length === 0) {
+            return {
+                ok: false,
+                code: "NOTE_REQUIRED",
+                message: 'Please add a short note when the reason is "Other".',
+            };
+        }
+
+        const supabase = await createClient();
+
+        const { data: existing, error: fetchError } = await supabase
+            .from("patients")
+            .select("id, hospital_number")
+            .eq("id", patientId)
+            .maybeSingle();
+
+        if (fetchError) {
+            return { ok: false, ...describeReadFailure(fetchError, "Could not load this patient record.") };
+        }
+        if (!existing) {
+            return { ok: false, code: "NOT_FOUND", message: "Patient record not found." };
+        }
+
+        const summary = await computePatientActivitySummary(supabase, patientId);
+        if (summary.totalLinkedRecords > 0) {
+            return {
+                ok: false,
+                code: "HAS_LINKED_RECORDS",
+                message:
+                    `This patient has ${summary.totalLinkedRecords} clinical, billing, or document ` +
+                    `record${summary.totalLinkedRecords === 1 ? "" : "s"} attached. Permanent deletion is ` +
+                    `blocked to protect hospital records — please disable the record instead.`,
+            };
+        }
+
+        const { data: deleted, error: deleteError } = await supabase
+            .from("patients")
+            .delete()
+            .eq("id", patientId)
+            .select("id, hospital_number")
+            .maybeSingle();
+
+        if (deleteError) {
+            console.error("[patient] deletePatient:", deleteError);
+            if (deleteError.code === "23503") {
+                return {
+                    ok: false,
+                    code: "23503",
+                    message:
+                        "This patient record is referenced by other hospital records and cannot be permanently deleted. " +
+                        "Please disable the record instead.",
+                };
+            }
+            return {
+                ok: false,
+                code: deleteError.code ?? null,
+                message: formatFriendlyDbError(deleteError, "Failed to permanently delete patient record."),
+            };
+        }
+
+        if (!deleted) {
+            return {
+                ok: false,
+                code: "DELETE_FAILED",
+                message: "Could not confirm deletion. Verify admin permissions and try again.",
+            };
+        }
+
+        await logAction("PATIENT_DELETED", "patients", patientId, {
+            hospital_number: (deleted as any).hospital_number ?? (existing as any).hospital_number ?? null,
+            reason: input.reason,
+            note: note || null,
+            deleted_by: actor.userId,
+        });
+
+        return {
+            ok: true,
+            data: {
+                id: (deleted as any).id,
+                hospital_number: (deleted as any).hospital_number ?? null,
+            },
+        };
+    } catch (error: any) {
+        const guard = extractGuardError(error);
+        if (guard) return { ok: false, ...guard };
+        console.error("[patient] deletePatient failed:", error);
+        return {
+            ok: false,
+            code: error?.code ?? null,
+            message: formatFriendlyDbError(error, "Failed to permanently delete patient record."),
+        };
+    }
+}
+

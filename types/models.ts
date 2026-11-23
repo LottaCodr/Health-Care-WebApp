@@ -73,6 +73,12 @@ export interface Patient {
     portal_enabled?: boolean;
     /** Hospital number — one shared NVH-XXXXX series for EMR and bulk imports (e.g. NVH-00001). */
     hospital_number?: string;
+    /** Soft-disable / archive state (admin-managed for duplicate or mistaken entries). */
+    is_active?: boolean;
+    disabled_at?: string | null;
+    disabled_by?: string | null;
+    disabled_reason?: string | null;
+    duplicate_of_patient_id?: string | null;
     created_at?: string;
     updated_at?: string;
 }

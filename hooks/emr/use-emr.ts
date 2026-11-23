@@ -11,6 +11,12 @@ export {
     useUpdatePatient,
     useUpdatePatientStatus,
     useCloseConsultationQueue,
+    useDisabledPatients,
+    usePatientActivitySummary,
+    usePotentialDuplicatePatients,
+    useDisablePatient,
+    useRestorePatient,
+    useDeletePatient,
 } from "./use-patients";
 
 // Consultations

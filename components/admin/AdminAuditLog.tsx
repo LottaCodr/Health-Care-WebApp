@@ -42,6 +42,10 @@ const ACTION_CONFIG: Record<string, { color: string; bg: string; border: string 
     RECORD_AMENDED: { color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
     RECORD_AMENDMENT_BLOCKED: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
     RECORD_ADDENDUM_ADDED: { color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200" },
+    // ── Patient record archive / delete (Admin-only) ──
+    PATIENT_DISABLED: { color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
+    PATIENT_RESTORED: { color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
+    PATIENT_DELETED: { color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
     DEFAULT: { color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-200" },
 };
 

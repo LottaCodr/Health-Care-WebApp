@@ -12,7 +12,9 @@ import ReturnPatient from "./return-patient";
 import AllergyAlertBanner from "./allergy-alert-banner";
 import PatientRecordDownload, { DownloadOptions } from "./patient-record-download";
 import EditDemographicsDialog from "./edit-demographics-dialog";
+import ManagePatientRecordDialog, { type ManageRecordMode } from "./ManagePatientRecordDialog";
 import { CareTeamAvatarStack } from "@/components/emr/care-team";
+import { isPatientDisabled } from "@/lib/utils/patient-archive";
 // processReturnVisit is called internally by ReturnPatient — no import needed here.
 import { generatePatientRecord } from "@/lib/actions/generate-patient-record";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
@@ -27,7 +29,9 @@ import {
     ClipboardList, Activity, Heart, Building2, CreditCard, Copy,
     Check, ChevronRight, ArrowLeft, AlertTriangle, Dna, Droplets,
     Baby, BookUser, Pill, History, Syringe, Download, Pencil,
+    Archive, RotateCcw, Trash2, Link2,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const PatientDetailTabs = dynamic(() => import("./patient-detail-tabs"), {
@@ -50,15 +54,19 @@ export default function PatientDetailsComponent({ patient }: Props) {
     
 
 
+    const router = useRouter();
     const [showCopied,   setShowCopied]   = useState(false);
     const [activeGroup,  setActiveGroup]  = useState("basic");
     const [returnOpen,   setReturnOpen]   = useState(false);
     const [downloadOpen, setDownloadOpen] = useState(false);
     const [editDemoOpen, setEditDemoOpen] = useState(false);
+    const [manageOpen,   setManageOpen]   = useState(false);
+    const [manageMode,   setManageMode]   = useState<ManageRecordMode>("disable");
 
     const role         = (user?.role ?? "").toLowerCase();
     const isFrontDesk  = role.includes("front");
     const isAdmin      = role.includes("admin");
+    const isDisabled   = isPatientDisabled(patient);
     const canDownload  = isFrontDesk || isAdmin || role.includes("doc");
     const isDischarged =
         patient.status === PatientStatus.Discharged ||
@@ -165,12 +173,73 @@ export default function PatientDetailsComponent({ patient }: Props) {
     }
 
     const currentPatient = patient;
+    const openManage = (mode: ManageRecordMode) => {
+        setManageMode(mode);
+        setManageOpen(true);
+    };
 
     return (
         <main className="min-w-0 max-w-full py-2 sm:py-4 space-y-5 sm:space-y-7">
 
+            {/* Disabled / archived record banner */}
+            {isDisabled && patient.id && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+                    <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                            <Archive size={16} className="text-amber-700" />
+                        </div>
+                        <div className="space-y-0.5">
+                            <p className="text-sm font-bold text-amber-900">
+                                This patient record is disabled
+                            </p>
+                            <p className="text-xs text-amber-800">
+                                It is hidden from active queues, searches, and patient counts.
+                                {patient.disabled_reason ? ` Reason: ${patient.disabled_reason}.` : ""}
+                                {patient.disabled_at
+                                    ? ` Disabled on ${new Date(patient.disabled_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`
+                                    : ""}
+                            </p>
+                            {patient.duplicate_of_patient_id && (
+                                <p className="text-xs pt-0.5">
+                                    <Link
+                                        href={
+                                            isAdmin
+                                                ? `/admin/patient/${patient.duplicate_of_patient_id}`
+                                                : isFrontDesk
+                                                    ? `/front-desk/patient/${patient.duplicate_of_patient_id}`
+                                                    : `/patient-timeline/${patient.duplicate_of_patient_id}`
+                                        }
+                                        className="font-bold text-blue-700 hover:underline inline-flex items-center gap-1"
+                                    >
+                                        <Link2 size={12} /> Open primary patient record
+                                    </Link>
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    {isAdmin && (
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => openManage("restore")}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                            >
+                                <RotateCcw size={13} /> Restore
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => openManage("delete")}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-red-50 text-red-600 border border-red-200 text-xs font-bold"
+                            >
+                                <Trash2 size={13} /> Delete
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Return visit banner */}
-            {isFrontDesk && isDischarged && patient.id && (
+            {!isDisabled && isFrontDesk && isDischarged && patient.id && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-teal-50 border border-teal-100">
                     <p className="text-sm text-teal-800 font-medium">
                         This patient is discharged. Start a re-encounter to check them in again.
@@ -237,11 +306,24 @@ export default function PatientDetailsComponent({ patient }: Props) {
             {/* Admin-only demographics correction — front-desk typos (name,
                 sex, DOB, contact details) shouldn't require a DBA to fix. */}
             {isAdmin && patient.id && (
-                <EditDemographicsDialog
-                    patient={patient}
-                    open={editDemoOpen}
-                    onOpenChange={setEditDemoOpen}
-                />
+                <>
+                    <EditDemographicsDialog
+                        patient={patient}
+                        open={editDemoOpen}
+                        onOpenChange={setEditDemoOpen}
+                    />
+                    <ManagePatientRecordDialog
+                        patient={patient}
+                        open={manageOpen}
+                        onOpenChange={setManageOpen}
+                        initialMode={manageMode}
+                        onSuccess={(action) => {
+                            if (action === "deleted") {
+                                router.push("/admin/patient");
+                            }
+                        }}
+                    />
+                </>
             )}
 
             {/* Profile card */}
@@ -255,6 +337,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 canDownload={canDownload}
                 onDownload={() => setDownloadOpen(true)}
                 onEditDemographics={isAdmin ? () => setEditDemoOpen(true) : undefined}
+                onManageRecord={isAdmin ? () => openManage(isDisabled ? "restore" : "disable") : undefined}
             />
 
             <PatientDetailTabs patient={patient} />
@@ -275,7 +358,7 @@ const GROUPS = [
 
 function PatientProfile({
     patient, status, onCopyId, showCopied, activeGroup, setActiveGroup,
-    canDownload, onDownload, onEditDemographics,
+    canDownload, onDownload, onEditDemographics, onManageRecord,
 }: {
     patient:          Patient;
     status:           PatientStatus;
@@ -287,6 +370,8 @@ function PatientProfile({
     onDownload:       () => void;
     /** Admin-only — opens the demographics correction dialog. */
     onEditDemographics?: () => void;
+    /** Admin-only — opens the disable / restore / delete dialog. */
+    onManageRecord?:     () => void;
 }) {
     const p = patient as any;
 
@@ -450,6 +535,35 @@ function PatientProfile({
                                 >
                                     <Pencil size={12} />
                                     Edit Demographics
+                                </button>
+                            )}
+
+                            {onManageRecord && (
+                                <button
+                                    type="button"
+                                    onClick={onManageRecord}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all backdrop-blur-sm shadow-xs ${
+                                        isPatientDisabled(patient)
+                                            ? "bg-emerald-500/30 hover:bg-emerald-500/45 text-white border-emerald-200/40"
+                                            : "bg-red-500/25 hover:bg-red-500/40 text-white border-red-200/35"
+                                    }`}
+                                    title={
+                                        isPatientDisabled(patient)
+                                            ? "Restore or permanently delete this patient record (admin only)"
+                                            : "Disable or permanently delete duplicate/mistaken patient record (admin only)"
+                                    }
+                                >
+                                    {isPatientDisabled(patient) ? (
+                                        <>
+                                            <RotateCcw size={12} />
+                                            Restore / Delete
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Archive size={12} />
+                                            Disable / Delete
+                                        </>
+                                    )}
                                 </button>
                             )}
 

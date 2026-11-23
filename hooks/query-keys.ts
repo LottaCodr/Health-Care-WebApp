@@ -9,10 +9,13 @@ export const patientKeys = {
     page: (p: { page: number; pageSize: number; search: string }) =>
         ["patients", "list", "page", p.page, p.pageSize, p.search] as const,
     statusCounts: () => ["patients", "list", "status-counts"] as const,
+    disabled: (search?: string) => ["patients", "list", "disabled", search ?? ""] as const,
     arrivalsToday: () => ["patients", "arrivals", "today"] as const,
     search: (q: string) => ["patients", "search", q] as const,
     details: () => ["patients", "detail"] as const,
     detail: (id: string) => ["patients", "detail", id] as const,
+    activitySummary: (id: string) => ["patients", "detail", id, "activity"] as const,
+    duplicates: (id: string) => ["patients", "detail", id, "duplicates"] as const,
     appointments: () => ["patients", "appointments"] as const,
     appointmentsByDate: (date: string) => ["patients", "appointments", "date", date] as const,
     appointmentsByPatient: (id: string) => ["patients", "appointments", "patient", id] as const,

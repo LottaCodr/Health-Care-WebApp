@@ -237,3 +237,89 @@ export function useCloseConsultationQueue() {
         },
     });
 }
+
+// ─── Admin-only archive / disable / restore / delete ──────────────────────────
+
+export function useDisabledPatients(search = "", opts?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: patientKeys.disabled(search),
+        queryFn: async () => unwrapResult(await PatientService.listDisabledPatients(search)),
+        enabled: opts?.enabled !== false,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+        placeholderData: (prev) => prev,
+    });
+}
+
+export function usePatientActivitySummary(patientId: string, opts?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: patientKeys.activitySummary(patientId),
+        queryFn: async () => unwrapResult(await PatientService.getPatientActivitySummary(patientId)),
+        enabled: !!patientId && opts?.enabled !== false,
+        staleTime: 10_000,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+export function usePotentialDuplicatePatients(patientId: string, opts?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: patientKeys.duplicates(patientId),
+        queryFn: async () => unwrapResult(await PatientService.findPotentialDuplicatePatients(patientId)),
+        enabled: !!patientId && opts?.enabled !== false,
+        staleTime: LIST_STALE,
+        gcTime: GC_TIME,
+        refetchOnWindowFocus: false,
+    });
+}
+
+export function useDisablePatient() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: PatientService.DisablePatientInput) =>
+            unwrapResult(await PatientService.disablePatient(input)),
+
+        onSuccess: (updated) => {
+            qc.setQueryData(patientKeys.detail(updated.id), updated);
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            qc.invalidateQueries({ queryKey: patientKeys.arrivalsToday() });
+            qc.invalidateQueries({ queryKey: ["patients", "search"] });
+            qc.invalidateQueries({ queryKey: paymentKeys.frontDeskQueue() });
+        },
+    });
+}
+
+export function useRestorePatient() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (patientId: string) =>
+            unwrapResult(await PatientService.restorePatient(patientId)),
+
+        onSuccess: (restored) => {
+            qc.setQueryData(patientKeys.detail(restored.id), restored);
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            qc.invalidateQueries({ queryKey: patientKeys.arrivalsToday() });
+            qc.invalidateQueries({ queryKey: ["patients", "search"] });
+        },
+    });
+}
+
+export function useDeletePatient() {
+    const qc = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: PatientService.DeletePatientInput) =>
+            unwrapResult(await PatientService.deletePatient(input)),
+
+        onSuccess: (deleted) => {
+            qc.removeQueries({ queryKey: patientKeys.detail(deleted.id) });
+            qc.invalidateQueries({ queryKey: patientKeys.lists() });
+            qc.invalidateQueries({ queryKey: patientKeys.arrivalsToday() });
+            qc.invalidateQueries({ queryKey: ["patients", "search"] });
+            qc.invalidateQueries({ queryKey: paymentKeys.frontDeskQueue() });
+        },
+    });
+}
