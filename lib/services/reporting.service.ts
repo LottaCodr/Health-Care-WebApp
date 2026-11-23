@@ -26,11 +26,15 @@ export async function getDailyCensus(days = 14): Promise<ReportResult> {
     const supabase = await createClient();
     const since = isoDaysAgo(days);
 
-    const [admissions, discharges, registrations] = await Promise.all([
+    const [admissions, discharges, rawRegistrations] = await Promise.all([
         supabase.from("patient_admissions").select("admitted_at").gte("admitted_at", since),
         supabase.from("patient_admissions").select("discharged_at").gte("discharged_at", since),
-        supabase.from("patients").select("created_at").gte("created_at", since),
+        supabase.from("patients").select("created_at").gte("created_at", since).not("is_active", "is", false),
     ]);
+
+    const registrations = rawRegistrations.error
+        ? await supabase.from("patients").select("created_at").gte("created_at", since)
+        : rawRegistrations;
 
     const byDay = new Map<string, { date: string; admissions: number; discharges: number; registrations: number }>();
     for (let i = days - 1; i >= 0; i--) {

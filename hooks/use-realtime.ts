@@ -234,7 +234,7 @@ export function useFrontDeskRealtime() {
                         single: (n) => `New patient registered: ${n}`,
                         many: (c) => `${c} new patients registered.`,
                     });
-                } else if (payload.eventType === "UPDATE" && payload.new?.status !== payload.old?.status && shouldNotify()) {
+                } else if (payload.eventType === "UPDATE" && payload.new?.is_active !== false && payload.new?.status !== payload.old?.status && shouldNotify()) {
                     const label = String(payload.new?.status ?? "").replace(/-/g, " ");
                     enqueueStatusToast({
                         key: `status:${payload.new?.status}`,
@@ -286,7 +286,7 @@ export function useDoctorRealtime() {
                 queryClient.invalidateQueries({ queryKey: ["patients"] });
                 queryClient.invalidateQueries({ queryKey: ["patients-by-status"] });
 
-                if (payload.new?.status === "awaiting-consultation" && shouldNotify()) {
+                if (payload.new?.is_active !== false && payload.new?.status === "awaiting-consultation" && shouldNotify()) {
                     enqueueStatusToast({
                         key: "doctor-awaiting",
                         name: payload.new?.name ?? "Patient",
@@ -320,7 +320,7 @@ export function useNurseRealtime() {
                 queryClient.invalidateQueries({ queryKey: ["patients"] });
                 queryClient.invalidateQueries({ queryKey: ["patients-by-status"] });
 
-                if (payload.new?.status === "sent-to-nurse" && shouldNotify()) {
+                if (payload.new?.is_active !== false && payload.new?.status === "sent-to-nurse" && shouldNotify()) {
                     enqueueStatusToast({
                         key: "nurse-sent",
                         name: payload.new?.name ?? "Patient",
@@ -537,7 +537,7 @@ export function useRoleRealtime(role?: string) {
 
                 // Smart toast messages (non-critical — respect the user's
                 // In-App notification pref; critical alerts below bypass it)
-                if (table === "patients" && payload.eventType === "UPDATE") {
+                if (table === "patients" && payload.eventType === "UPDATE" && payload.new?.is_active !== false) {
                     const status = payload.new?.status;
                     const name   = payload.new?.name ?? "Patient";
                     const roleRoutes: Record<string, string[]> = {

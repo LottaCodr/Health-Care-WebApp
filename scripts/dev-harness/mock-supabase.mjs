@@ -24,12 +24,24 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
     const rejected = new Set();
     /** Rows for tables that are not `patients`/`staffs` (e.g. audit_logs). */
     const extra = tables;
+    let activeStaffIndex = 0;
+
+    function matchIs(value, target) {
+        if (target === "null") return value === null || value === undefined;
+        if (target === "true") return value === true;
+        if (target === "false") return value === false;
+        return String(value) === target;
+    }
 
     function matchRow(row, filters) {
         for (const f of filters) {
             const value = row[f.column];
             switch (f.op) {
                 case "eq": if (String(value) !== f.value) return false; break;
+                case "neq": if (String(value) === f.value) return false; break;
+                case "is": if (!matchIs(value, f.value)) return false; break;
+                case "not.is": if (matchIs(value, f.value)) return false; break;
+                case "not.eq": if (String(value) === f.value) return false; break;
                 case "gte": if (!(value >= f.value)) return false; break;
                 case "in": {
                     const list = f.value.replace(/^\(|\)$/g, "").split(",").map((s) => s.replace(/^"|"$/g, ""));
@@ -50,7 +62,8 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
     function rowsFor(table) {
         if (table === "patients") return patients;
         if (table === "staffs") return staff;
-        return extra[table] ?? [];
+        if (!extra[table]) extra[table] = [];
+        return extra[table];
     }
 
     /** Parse PostgREST filters from a URL's query string. */
@@ -61,13 +74,13 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
             if (key === "or") {
                 const parts = value.replace(/^\(|\)$/g, "").split(",");
                 const subs = parts.map((p) => {
-                    const m = /^([\w.]+)\.(ilike|eq)\.(.*)$/.exec(p);
+                    const m = /^([\w.]+)\.(not\.\w+|ilike|eq|neq|is)\.(.*)$/.exec(p);
                     return m ? { column: m[1], op: m[2], value: safeDecode(m[3]) } : null;
                 }).filter(Boolean);
                 filters.push({ or: subs });
                 continue;
             }
-            const m = /^(\w+)\.(.*)$/.exec(value);
+            const m = /^(not\.\w+|\w+)\.(.*)$/.exec(value);
             if (m) filters.push({ column: key, op: m[1], value: safeDecode(m[2]) });
         }
         return filters;
@@ -94,8 +107,9 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
 
         // ── GoTrue: who am I? ────────────────────────────────────────────────
         if (url.pathname === "/auth/v1/user") {
-            if (!staff[0]) return send(401, { msg: "invalid token" });
-            return send(200, { id: staff[0].id, email: staff[0].email, aud: "authenticated" });
+            const actor = staff[activeStaffIndex];
+            if (!actor) return send(401, { msg: "invalid token" });
+            return send(200, { id: actor.id, email: actor.email, aud: "authenticated" });
         }
 
         // ── PostgREST ────────────────────────────────────────────────────────
@@ -107,11 +121,65 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
             return send(500, { code: "42501", message: `permission denied for table ${table} (row-level security)` });
         }
 
-        // Writes: accept and echo nothing (the checks only exercise reads).
+        // Writes: mutate in-memory table rows and honor PostgREST representation preferences.
         if (req.method !== "GET" && req.method !== "HEAD") {
             let body = "";
             req.on("data", (c) => (body += c));
-            req.on("end", () => send(201, []));
+            req.on("end", () => {
+                const accept = String(req.headers.accept ?? "");
+                const prefer = String(req.headers.prefer ?? "");
+                const wantsRep = prefer.includes("return=representation") || accept.includes("vnd.pgrst.object");
+                const wantsSingle = accept.includes("vnd.pgrst.object+json");
+                const wantsMaybeSingle = accept.includes("vnd.pgrst.object=0..1");
+
+                let parsed = null;
+                try { parsed = body ? JSON.parse(body) : null; } catch { parsed = null; }
+
+                const list = rowsFor(table);
+
+                if (req.method === "PATCH") {
+                    const matched = applyFilters(table, url);
+                    const updated = matched.map((row) => Object.assign(row, parsed ?? {}));
+                    if (!wantsRep) return send(204, undefined);
+                    if (wantsSingle) {
+                        if (updated.length !== 1) {
+                            return send(406, { code: "PGRST116", message: "The result contains 0 rows", details: null, hint: null });
+                        }
+                        return send(200, updated[0]);
+                    }
+                    if (wantsMaybeSingle) return send(200, updated[0] ?? null);
+                    return send(200, updated);
+                }
+
+                if (req.method === "DELETE") {
+                    const filters = parseFilters(url);
+                    const kept = [];
+                    const removed = [];
+                    for (const row of list) {
+                        const isMatch = filters.every((f) => (f.or ? f.or.some((s) => matchRow(row, [s])) : matchRow(row, [f])));
+                        if (isMatch) removed.push(row);
+                        else kept.push(row);
+                    }
+                    list.length = 0;
+                    list.push(...kept);
+                    if (!wantsRep) return send(204, undefined);
+                    return send(200, wantsSingle ? (removed[0] ?? null) : removed);
+                }
+
+                if (req.method === "POST") {
+                    const items = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+                    const inserted = items.map((item, idx) => ({
+                        id: item.id ?? `mock-${table}-${list.length + idx + 1}`,
+                        ...item,
+                    }));
+                    list.push(...inserted);
+                    if (!wantsRep) return send(201, []);
+                    if (wantsSingle) return send(201, inserted[0]);
+                    return send(201, inserted);
+                }
+
+                return send(201, []);
+            });
             return;
         }
 
@@ -184,6 +252,15 @@ export function createMockSupabase({ staff, patients, tables = {} }) {
     return {
         server,
         requests,
+        setActiveStaff: (indexOrId) => {
+            if (typeof indexOrId === "number") {
+                activeStaffIndex = indexOrId;
+            } else {
+                const idx = staff.findIndex((s) => s.id === indexOrId);
+                if (idx === -1) throw new Error(`Unknown staff id: ${indexOrId}`);
+                activeStaffIndex = idx;
+            }
+        },
         rejectTable: (table) => rejected.add(table),
         allowTable: (table) => rejected.delete(table),
         restCalls: () => requests.filter((r) => r.path.startsWith("/rest/v1/")).length,
@@ -225,6 +302,11 @@ export function makePatients(count, { statusOf } = {}) {
             private_client: true,
             status: statusOf ? statusOf(i) : "registered",
             hospital_number: `NVH-${String(i + 1).padStart(5, "0")}`,
+            is_active: true,
+            disabled_at: null,
+            disabled_by: null,
+            disabled_reason: null,
+            duplicate_of_patient_id: null,
             created_at: new Date(Date.UTC(2026, 0, 1) + i * 60000).toISOString(),
             updated_at: new Date(Date.UTC(2026, 0, 1) + i * 60000).toISOString(),
         });
