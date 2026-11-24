@@ -4,6 +4,8 @@ import React, { useState, useMemo, useCallback } from "react";
 import { useAllPatients } from "@/hooks/emr/use-patients";
 import { useRoleProtection } from "@/lib/role-utils";
 import { hasActualAllergy, fmtDate } from "@/lib/utils";
+import { escapeHtml } from "@/lib/security";
+import { csvCell } from "@/lib/utils/csv";
 import { displayHospitalNumber } from "@/lib/hospital-number";
 import Link from "next/link";
 import { UserRole } from "@/types/models";
@@ -64,16 +66,17 @@ function StatusBadge({ status }: { status?: string }) {
 function exportToPDF(patients: any[]) {
     const printWin = window.open("", "_blank", "width=900,height=700");
     if (!printWin) return;
+    printWin.opener = null;
     const rows = patients.map(p => `
         <tr>
-            <td>${p.name ?? "—"}</td>
-            <td>${calcAge(p.birth_date)}</td>
-            <td>${p.gender ?? "—"}</td>
-            <td>${p.phone ?? "—"}</td>
-            <td>${p.blood_group ?? "—"} / ${p.geno_type ?? "—"}</td>
-            <td>${p.allergies ?? "None"}</td>
-            <td>${(p.status ?? "").replace(/-/g, " ")}</td>
-            <td>${fmtDate(p.created_at)}</td>
+            <td>${escapeHtml(p.name ?? "—")}</td>
+            <td>${escapeHtml(calcAge(p.birth_date))}</td>
+            <td>${escapeHtml(p.gender ?? "—")}</td>
+            <td>${escapeHtml(p.phone ?? "—")}</td>
+            <td>${escapeHtml(p.blood_group ?? "—")} / ${escapeHtml(p.geno_type ?? "—")}</td>
+            <td>${escapeHtml(p.allergies ?? "None")}</td>
+            <td>${escapeHtml((p.status ?? "").replace(/-/g, " "))}</td>
+            <td>${escapeHtml(fmtDate(p.created_at))}</td>
         </tr>`).join("");
     printWin.document.write(`
         <html><head><title>Patient Health Records — Nile Valley Hospital</title>
@@ -88,7 +91,7 @@ function exportToPDF(patients: any[]) {
             @media print { @page { margin: 20mm; size: A4 landscape; } }
         </style></head><body>
         <h1>Nile Valley Mother & Child Hospital</h1>
-        <p>Patient Health Records · Generated: ${new Date().toLocaleString("en-GB")} · ${patients.length} patients</p>
+        <p>Patient Health Records · Generated: ${escapeHtml(new Date().toLocaleString("en-GB"))} · ${patients.length} patients</p>
         <table>
             <thead><tr>
                 <th>Patient Name</th><th>Age</th><th>Gender</th>
@@ -115,7 +118,7 @@ function exportToCSV(patients: any[]) {
         (p.allergies ?? "").replace(/,/g, ";"),
         (p.status ?? "").replace(/-/g, " "),
         fmtDate(p.created_at),
-    ].map(v => `"${v}"`).join(","));
+    ].map(csvCell).join(","));
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

@@ -16,7 +16,7 @@ import { requireStaff } from "./auth-guard";
 import { logAction } from "./audit.service";
 
 /** Profile fields a staff member may edit on their OWN row. */
-const SELF_EDITABLE_FIELDS = ["name", "email", "phone_number"] as const;
+const SELF_EDITABLE_FIELDS = ["name", "phone_number"] as const;
 
 export type CreateStaffInput = Omit<
     Staff,
@@ -597,7 +597,7 @@ export async function updateStaff(
  * Self-service profile edit used by the Settings screen.
  */
 export async function updateOwnProfile(
-    updates: Pick<Partial<Staff>, "name" | "email" | "phone_number">
+    updates: Pick<Partial<Staff>, "name" | "phone_number">
 ): Promise<Staff> {
     const actor = await requireStaff();
 

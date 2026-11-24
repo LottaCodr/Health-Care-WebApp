@@ -19,8 +19,7 @@ import {
 import Image from "next/image";
 import NetworkStatusBanner from "@/components/layout/NetworkStatusBanner";
 import supabase from "@/utils/supabase/client";
-
-const MIN_PASSWORD_LENGTH = 6;
+import { passwordSchema } from "@/lib/auth-utils";
 
 type Phase = "loading" | "form" | "invalid" | "success";
 
@@ -114,8 +113,9 @@ export default function ResetPasswordPage() {
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (password.length < MIN_PASSWORD_LENGTH) {
-            setError(`Your password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
+        const pwCheck = passwordSchema.safeParse(password);
+        if (!pwCheck.success) {
+            setError(pwCheck.error.issues[0]?.message ?? "Please choose a stronger password.");
             return;
         }
         if (password !== confirm) {

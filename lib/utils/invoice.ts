@@ -542,6 +542,7 @@ export function exportPatientInvoice(args: ExportInvoiceArgs): void {
         window.alert("Please allow pop-ups for this site to export the invoice.");
         return;
     }
+    win.opener = null;
     win.document.open();
     win.document.write(html);
     win.document.close();

@@ -55,7 +55,6 @@ export default function AccountSettings() {
             // caller's own staff id — the client cannot edit anyone else.
             await updateOwnProfile({
                 name: data.full_name,
-                email: data.email,
                 phone_number: data.phone_number,
             });
 
@@ -104,7 +103,7 @@ export default function AccountSettings() {
                                 <FormItem>
                                     <FormLabel>Email Address</FormLabel>
                                     <FormControl>
-                                        <Input type="email" placeholder="john@example.com" {...field} />
+                                        <Input type="email" placeholder="john@example.com" disabled readOnly {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

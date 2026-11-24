@@ -14,6 +14,7 @@ import { useCreateSpecimen, useSpecimens, useUpdateSpecimen } from "@/hooks/emr/
 import { usePendingLabRequests } from "@/hooks/emr/use-lab";
 import { displayHospitalNumber, getPatientHospitalNumber } from "@/lib/hospital-number";
 import { code39Svg, generateSpecimenBarcode } from "@/lib/clinical/barcode";
+import { escapeHtml } from "@/lib/security";
 
 const STATUS_STYLES: Record<string, string> = {
     collected: "bg-blue-50 text-blue-700 border-blue-200",
@@ -73,19 +74,21 @@ export default function SpecimenBoard() {
     const printLabel = (s: any) => {
         const win = window.open("", "_blank", "width=420,height=320");
         if (!win) return;
+        win.opener = null;
         win.document.write(`
             <html><head><title>Specimen label</title>
             <style>body{font-family:Arial,sans-serif;padding:20px;text-align:center} .box{border:2px dashed #000;padding:16px;max-width:340px;margin:0 auto} img{max-width:300px} .t{font-size:13px;font-weight:bold;margin:4px 0}</style>
             </head><body>
             <div class="box">
                 <div class="t">NILE VALLEY HOSPITAL — LAB SPECIMEN</div>
-                <img src="${code39Svg(s.barcode)}" />
-                <div class="t">${s.specimen_type} · ${s.container ?? ""}</div>
-                <div>${s.barcode} · ${fmtFull(new Date().toISOString())}</div>
+                <img src="${escapeHtml(code39Svg(s.barcode))}" />
+                <div class="t">${escapeHtml(s.specimen_type)} · ${escapeHtml(s.container ?? "")}</div>
+                <div>${escapeHtml(s.barcode)} · ${escapeHtml(fmtFull(new Date().toISOString()))}</div>
             </div>
-            <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
             </body></html>`);
         win.document.close();
+        win.focus();
+        setTimeout(() => win.print(), 300);
     };
 
     if (!authorized) {

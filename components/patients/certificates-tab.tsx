@@ -11,6 +11,7 @@ import {
     useCreateDeathCertificate, useDeathCertificates,
 } from "@/hooks/emr/use-clinical-modules";
 import { COMMON_ICD10 } from "@/lib/clinical/icd10";
+import { escapeHtml } from "@/lib/security";
 import type { Patient } from "@/types/models";
 
 export default function CertificatesTab({ patient, canEdit, role }: { patient: Patient; canEdit: boolean; role: string }) {
@@ -76,15 +77,16 @@ export default function CertificatesTab({ patient, canEdit, role }: { patient: P
     const printCert = (title: string, lines: Array<[string, string]>) => {
         const win = window.open("", "_blank", "width=700,height=800");
         if (!win) return;
-        const rows = lines.map(([k, v]) => `<tr><td style="padding:6px 12px;font-weight:bold;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:6px 12px">${v ?? "—"}</td></tr>`).join("");
+        win.opener = null;
+        const rows = lines.map(([k, v]) => `<tr><td style="padding:6px 12px;font-weight:bold;white-space:nowrap;vertical-align:top">${escapeHtml(k)}</td><td style="padding:6px 12px">${escapeHtml(v ?? "—")}</td></tr>`).join("");
         win.document.write(`
-            <html><head><title>${title}</title>
+            <html><head><title>${escapeHtml(title)}</title>
             <style>body{font-family:Georgia,serif;padding:48px;color:#111} h1{text-align:center;font-size:22px;letter-spacing:2px} .sub{text-align:center;font-size:11px;color:#555;margin-bottom:24px} table{border-collapse:collapse;width:100%} tr{border-bottom:1px solid #ddd} .sig{margin-top:48px;display:flex;justify-content:space-between;font-size:13px}</style>
             </head><body>
             <h1>NILE VALLEY HOSPITAL</h1>
-            <div class="sub">${title.toUpperCase()} — OFFICIAL COPY</div>
+            <div class="sub">${escapeHtml(title.toUpperCase())} — OFFICIAL COPY</div>
             <table>${rows}</table>
-            <div class="sig"><div>Certifying staff: ____________________</div><div>Date: ${new Date().toLocaleDateString("en-GB")}</div></div>
+            <div class="sig"><div>Certifying staff: ____________________</div><div>Date: ${escapeHtml(new Date().toLocaleDateString("en-GB"))}</div></div>
             <div class="sub" style="margin-top:24px">This is an EMR-generated draft. Affix the hospital seal and authorised signature before release.</div>
             </body></html>`);
         win.document.close();

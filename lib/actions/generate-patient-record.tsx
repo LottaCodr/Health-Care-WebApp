@@ -5,6 +5,7 @@ import {
     Document, Page, Text, View, Image, StyleSheet, renderToBuffer,
 } from "@react-pdf/renderer";
 import { createClient } from "@/utils/supabase/server";
+import { requireStaff } from "@/lib/services/auth-guard";
 import fs   from "fs";
 import path from "path";
 
@@ -1284,6 +1285,10 @@ async function fetchAllSections(
 export async function generatePatientRecord(
     input: GenerateRecordInput,
 ): Promise<GenerateRecordResult> {
+    await requireStaff();
+    if (!input.patientId || typeof input.patientId !== "string" || !input.patientId.trim()) {
+        throw new Error("A valid patient ID is required.");
+    }
     const sb          = await createClient();
     const generatedAt = new Date().toLocaleString("en-GB", {
         dateStyle: "medium",

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { FileSignature, Plus, Printer } from "lucide-react";
 import { useConsents, useRecordConsent, useWithdrawConsent } from "@/hooks/emr/use-clinical-modules";
+import { escapeHtml } from "@/lib/security";
 import type { Patient } from "@/types/models";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -48,21 +49,23 @@ export default function ConsentTab({ patient, canEdit }: { patient: Patient; can
     const printForm = (c: any) => {
         const win = window.open("", "_blank", "width=700,height=800");
         if (!win) return;
+        win.opener = null;
+        const consentTitle = TYPE_LABELS[c.consent_type]?.toUpperCase() ?? String(c.consent_type ?? "").toUpperCase();
         win.document.write(`
             <html><head><title>Consent Form</title>
             <style>body{font-family:Georgia,serif;padding:48px;color:#111} h1{font-size:20px} .line{border-top:2px solid #000;margin:16px 0} p{line-height:1.7;font-size:14px} .sig{margin-top:48px;display:flex;justify-content:space-between}</style>
             </head><body>
-            <h1>NILE VALLEY HOSPITAL — ${TYPE_LABELS[c.consent_type]?.toUpperCase() ?? c.consent_type.toUpperCase()}</h1>
+            <h1>NILE VALLEY HOSPITAL — ${escapeHtml(consentTitle)}</h1>
             <div class="line"></div>
-            <p>I, <b>${patient.name}</b>, hereby give informed consent for the above-named procedure/care, having been informed of its nature, benefits, risks and alternatives, and having had the opportunity to ask questions.</p>
-            <p>Status: <b>${c.status.toUpperCase()}</b> · Version ${c.version} · ${c.signed_at ? new Date(c.signed_at).toLocaleString("en-GB") : ""}</p>
-            ${c.notes ? `<p>Notes: ${c.notes}</p>` : ""}
+            <p>I, <b>${escapeHtml(patient.name)}</b>, hereby give informed consent for the above-named procedure/care, having been informed of its nature, benefits, risks and alternatives, and having had the opportunity to ask questions.</p>
+            <p>Status: <b>${escapeHtml(String(c.status ?? "").toUpperCase())}</b> · Version ${escapeHtml(c.version)} · ${escapeHtml(c.signed_at ? new Date(c.signed_at).toLocaleString("en-GB") : "")}</p>
+            ${c.notes ? `<p>Notes: ${escapeHtml(c.notes)}</p>` : ""}
             <div class="sig">
               <div>Patient signature: ____________________</div>
               <div>Witness (staff): ____________________</div>
             </div>
             <div class="line"></div>
-            <p style="font-size:12px;color:#444">Generated ${new Date().toLocaleString("en-GB")} · Nile Valley Hospital EMR</p>
+            <p style="font-size:12px;color:#444">Generated ${escapeHtml(new Date().toLocaleString("en-GB"))} · Nile Valley Hospital EMR</p>
             </body></html>`);
         win.document.close();
         win.focus();

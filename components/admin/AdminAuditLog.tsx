@@ -8,6 +8,7 @@ import { useRoleProtection } from "@/lib/role-utils";
 import { UserRole } from "@/types/models";
 import { listAuditLogs } from "@/lib/services/audit.service";
 import { fmtFull } from "@/lib/utils";
+import { toCsv } from "@/lib/utils/csv";
 import {
     ScrollText, Search, X, RefreshCcw,
     ChevronDown, Loader2, AlertTriangle,
@@ -77,10 +78,6 @@ export default function AdminAuditLog() {
     const [expanded, setExpanded] = useState<string | null>(null);
 
     const exportCsv = () => {
-        const escape = (v: any) => {
-            const str = v === null || v === undefined ? "" : String(v);
-            return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-        };
         const rows = filtered.map((l) => ({
             timestamp: l.timestamp,
             action: l.action,
@@ -89,8 +86,10 @@ export default function AdminAuditLog() {
             user_id: l.user_id,
             changes: JSON.stringify(l.changes ?? {}),
         }));
-        const csv = ["timestamp,action,entity_type,entity_id,user_id,changes",
-            ...rows.map((r) => `${escape(r.timestamp)},${escape(r.action)},${escape(r.entity_type)},${escape(r.entity_id)},${escape(r.user_id)},${escape(r.changes)}`)].join("\n");
+        const csv = toCsv(
+            ["timestamp", "action", "entity_type", "entity_id", "user_id", "changes"],
+            rows
+        );
         const blob = new Blob([csv], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
