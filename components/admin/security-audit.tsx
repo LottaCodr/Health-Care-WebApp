@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { authService } from "@/lib/auth-service";
 import { fmtFull } from "@/lib/utils";
+import { toCsv } from "@/lib/utils/csv";
 
 interface SecurityEvent {
     timestamp: string;
@@ -174,12 +175,18 @@ export default function SecurityAudit() {
     };
 
     const exportAuditLog = () => {
-        const csvContent = [
-            "Timestamp,Event,User ID,Email,IP,Severity,Details",
-            ...filteredEvents.map(event =>
-                `"${event.timestamp}","${event.event}","${event.userId || ''}","${event.email || ''}","${event.ip || ''}","${event.severity}","${JSON.stringify(event.details)}"`
-            ).join('\n')
-        ].join('\n');
+        const csvContent = toCsv(
+            ["Timestamp", "Event", "User ID", "Email", "IP", "Severity", "Details"],
+            filteredEvents.map((event) => ({
+                Timestamp: event.timestamp,
+                Event: event.event,
+                "User ID": event.userId || "",
+                Email: event.email || "",
+                IP: event.ip || "",
+                Severity: event.severity,
+                Details: JSON.stringify(event.details ?? {}),
+            }))
+        );
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);

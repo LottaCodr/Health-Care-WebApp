@@ -7,6 +7,8 @@ import { Download, FileJson, FileCode2, FileSpreadsheet } from "lucide-react";
 import { useFhirExport, useHl7Export } from "@/hooks/emr/use-clinical-modules";
 import { usePaymentsByPatient } from "@/hooks/emr/use-payment";
 import { usePrescriptionsByPatient } from "@/hooks/emr/use-pharmacy";
+import { escapeHtml } from "@/lib/security";
+import { toCsv } from "@/lib/utils/csv";
 
 function download(filename: string, content: string, mime: string) {
     const blob = new Blob([content], { type: mime });
@@ -57,8 +59,9 @@ export default function ExportTab({ patientId }: { patientId: string }) {
         const active = (prescriptions as any[]).filter((p) => p.status === "Active" || p.dispensed !== true);
         const win = window.open("", "_blank", "width=700,height=800");
         if (!win) return;
+        win.opener = null;
         const rows = active.length
-            ? active.map((p) => `<tr><td style="padding:6px 10px;font-weight:bold">${p.drug_name}</td><td style="padding:6px 10px">${p.dosage ?? ""}</td><td style="padding:6px 10px">${p.duration ?? ""}</td></tr>`).join("")
+            ? active.map((p) => `<tr><td style="padding:6px 10px;font-weight:bold">${escapeHtml(p.drug_name)}</td><td style="padding:6px 10px">${escapeHtml(p.dosage ?? "")}</td><td style="padding:6px 10px">${escapeHtml(p.duration ?? "")}</td></tr>`).join("")
             : `<tr><td colspan="3" style="padding:12px">No active prescriptions.</td></tr>`;
         win.document.write(`
             <html><head><title>Prescription</title>
@@ -67,9 +70,9 @@ export default function ExportTab({ patientId }: { patientId: string }) {
             <h1>NILE VALLEY HOSPITAL — PRESCRIPTION</h1>
             <div class="line"></div>
             <table>${rows}</table>
-            <div class="sig"><div>Prescriber: ____________________</div><div>Date: ${new Date().toLocaleDateString("en-GB")}</div></div>
+            <div class="sig"><div>Prescriber: ____________________</div><div>Date: ${escapeHtml(new Date().toLocaleDateString("en-GB"))}</div></div>
             <div class="line"></div>
-            <p style="font-size:12px;color:#444">E-prescription generated ${new Date().toLocaleString("en-GB")} · Nile Valley Hospital EMR</p>
+            <p style="font-size:12px;color:#444">E-prescription generated ${escapeHtml(new Date().toLocaleString("en-GB"))} · Nile Valley Hospital EMR</p>
             </body></html>`);
         win.document.close();
         win.focus();
@@ -78,10 +81,6 @@ export default function ExportTab({ patientId }: { patientId: string }) {
     };
 
     const runCsv = () => {
-        const escape = (v: any) => {
-            const s = v === null || v === undefined ? "" : String(v);
-            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        };
         const rows = (payments as any[]).map((p) => ({
             date: p.processed_date ?? p.created_at ?? "",
             description: p.description ?? "",
@@ -89,8 +88,7 @@ export default function ExportTab({ patientId }: { patientId: string }) {
             status: p.status ?? "",
             method: p.method ?? p.payment_method ?? "",
         }));
-        const csv = ["date,description,amount,status,method",
-            ...rows.map((r) => `${escape(r.date)},${escape(r.description)},${r.amount},${escape(r.status)},${escape(r.method)}`)].join("\n");
+        const csv = toCsv(["date", "description", "amount", "status", "method"], rows);
         download("billing_history.csv", csv, "text/csv");
         toast.success("Billing CSV downloaded.");
     };

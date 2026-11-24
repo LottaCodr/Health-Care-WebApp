@@ -2,7 +2,8 @@
 
 import { createPatient, updatePatientStatus } from "@/lib/services/patient.service";
 import { createAppointment } from "@/lib/services/appointment.service";
-import { PatientStatus } from "@/types/models";
+import { PatientStatus, UserRole } from "@/types/models";
+import { requireStaff } from "@/lib/services/auth-guard";
 import type { UploadType } from "@/lib/actions/bulk-upload";
 import {
     generatePatientRecord,
@@ -22,6 +23,7 @@ export async function bulkUploadRows(
     type: UploadType,
     rows: Record<string, string>[]
 ): Promise<{ total: number; success: number; failed: number }> {
+    await requireStaff([UserRole.FrontDesk]);
     if (type !== "patients") {
         return { total: rows.length, success: 0, failed: rows.length };
     }

@@ -37,16 +37,19 @@ export async function proxy(request: NextRequest) {
     }
 
     // ── Build Supabase SSR client (cookie-aware) ────────────────────────────
-    let supabaseResponse = NextResponse.next({ request });
+    const applySecurityHeaders = (res: NextResponse) => {
+        res.headers.set("X-Content-Type-Options", "nosniff");
+        res.headers.set("X-Frame-Options", "DENY");
+        res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+        res.headers.set("X-DNS-Prefetch-Control", "off");
+        res.headers.set(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=()"
+        );
+        return res;
+    };
 
-    // Baseline security headers on every response.
-    supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
-    supabaseResponse.headers.set("X-Frame-Options", "DENY");
-    supabaseResponse.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    supabaseResponse.headers.set(
-        "Permissions-Policy",
-        "camera=(), microphone=(), geolocation=()"
-    );
+    let supabaseResponse = applySecurityHeaders(NextResponse.next({ request }));
 
     // In preview / CI placeholder environments the Supabase credentials are
     // missing — degrade to "not authenticated" instead of crashing every
@@ -65,7 +68,7 @@ export async function proxy(request: NextRequest) {
                     cookiesToSet.forEach(({ name, value }) =>
                         request.cookies.set(name, value)
                     );
-                    supabaseResponse = NextResponse.next({ request });
+                    supabaseResponse = applySecurityHeaders(NextResponse.next({ request }));
                     cookiesToSet.forEach(({ name, value, options }) =>
                         supabaseResponse.cookies.set(name, value, options)
                     );
@@ -129,14 +132,18 @@ export async function proxy(request: NextRequest) {
 
             const { data: staffRow } = await supabase
                 .from("staffs")
-                .select("role")
+                .select("role, is_active")
                 .eq("id", user.id)
                 .single();
+
+            if (!staffRow || staffRow.is_active === false) {
+                return supabaseResponse;
+            }
 
             const normalizedRole = normalizeUserRole(staffRow?.role);
             const dashboard = getDashboardRoute(normalizedRole);
 
-            return NextResponse.redirect(new URL(dashboard, request.url));
+            return applySecurityHeaders(NextResponse.redirect(new URL(dashboard, request.url)));
         }
         return supabaseResponse;
     }
@@ -144,31 +151,41 @@ export async function proxy(request: NextRequest) {
     // ── Root "/" → redirect appropriately ───────────────────────────────────
     if (pathname === "/") {
         if (!user) {
-            return NextResponse.redirect(new URL("/login", request.url));
+            return applySecurityHeaders(NextResponse.redirect(new URL("/login", request.url)));
         }
         const { data: staffRow } = await supabase
             .from("staffs")
-            .select("role")
+            .select("role, is_active")
             .eq("id", user.id)
             .single();
+        if (!staffRow) {
+            return applySecurityHeaders(NextResponse.redirect(new URL("/login", request.url)));
+        }
+        if (staffRow.is_active === false) {
+            return applySecurityHeaders(NextResponse.redirect(new URL("/unauthorized", request.url)));
+        }
         const normalizedRole = normalizeUserRole(staffRow?.role);
         const dashboard = getDashboardRoute(normalizedRole);
-        return NextResponse.redirect(new URL(dashboard, request.url));
+        return applySecurityHeaders(NextResponse.redirect(new URL(dashboard, request.url)));
     }
 
     // ── Not logged in → send to login ───────────────────────────────────────
     if (!user) {
         const loginUrl = new URL("/login", request.url);
         loginUrl.searchParams.set("next", pathname);
-        return NextResponse.redirect(loginUrl);
+        return applySecurityHeaders(NextResponse.redirect(loginUrl));
     }
 
     // ── Fetch role for RBAC enforcement ─────────────────────────────────────
     const { data: staffRow } = await supabase
         .from("staffs")
-        .select("role")
+        .select("role, is_active")
         .eq("id", user.id)
         .single();
+
+    if (!staffRow || staffRow.is_active === false) {
+        return applySecurityHeaders(NextResponse.redirect(new URL("/unauthorized", request.url)));
+    }
 
     const userRole = normalizeUserRole(staffRow?.role);
 

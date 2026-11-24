@@ -70,12 +70,12 @@ const resolveStaff = cache(async (): Promise<StaffResolution> => {
     }
     if (!user) return { staff: null, failure: "no-session" };
 
-    let staffRow: { role?: string | null; email?: string | null } | null = null;
+    let staffRow: { role?: string | null; email?: string | null; is_active?: boolean | null } | null = null;
     let lastError: { code?: string; message?: string } | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
         const { data, error } = await supabase
             .from("staffs")
-            .select("role, email")
+            .select("role, email, is_active")
             .eq("id", user.id)
             .maybeSingle();
         if (!error) {
@@ -93,7 +93,9 @@ const resolveStaff = cache(async (): Promise<StaffResolution> => {
             detail: `staff profile read: ${lastError.code ? `${lastError.code} ` : ""}${lastError.message ?? "unknown error"}`,
         };
     }
-    if (!staffRow) return { staff: null, failure: "no-staff-row" }; // auth user is not hospital staff
+    if (!staffRow || staffRow.is_active === false) {
+        return { staff: null, failure: "no-staff-row" }; // auth user is not active hospital staff
+    }
 
     const role = normalizeUserRole(staffRow.role);
     if (!role) {

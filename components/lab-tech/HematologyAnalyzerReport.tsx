@@ -12,6 +12,7 @@ import {
     type HematologyCategory,
 } from "@/lib/clinical/hematology-reference-ranges";
 import { patientAgeYearsPrecise } from "@/lib/clinical/patient-age";
+import { escapeHtml } from "@/lib/security";
 
 interface HematologyAnalyzerReportProps {
     /** Lab request row with `patients` attached (as returned by the lab services). */
@@ -62,16 +63,20 @@ export default function HematologyAnalyzerReport({ request, className }: Hematol
         const trs = rows
             .map((r) =>
                 `<tr${r.flag === "H" ? ' class="h"' : r.flag === "L" ? ' class="l"' : ""}>` +
-                `<td class="p">${r.label}</td>` +
-                `<td class="f">${r.flag}</td>` +
-                `<td class="v">${r.value || "—"}</td>` +
-                `<td>${r.unit}</td>` +
-                `<td>${r.ref || ""}</td></tr>`
+                `<td class="p">${escapeHtml(r.label)}</td>` +
+                `<td class="f">${escapeHtml(r.flag)}</td>` +
+                `<td class="v">${escapeHtml(r.value || "—")}</td>` +
+                `<td>${escapeHtml(r.unit)}</td>` +
+                `<td>${escapeHtml(r.ref || "")}</td></tr>`
             )
             .join("");
         const notes = parsed.note
-            ? `<div class="notes">${parsed.note.replace(/\n/g, "<br/>")}</div>`
+            ? `<div class="notes">${escapeHtml(parsed.note).replace(/\n/g, "<br/>")}</div>`
             : "";
+        const flaggedText = rows
+            .filter((r) => r.flag)
+            .map((r) => `${r.label} ${r.flag}`)
+            .join(", ") || "None";
         const html = `<!doctype html><html><head><meta charset="utf-8"><title>Hematology Analyzer Report</title>
 <style>
   * { box-sizing: border-box; }
@@ -99,30 +104,32 @@ export default function HematologyAnalyzerReport({ request, className }: Hematol
       <div class="title">Hematology Analyzer Report</div>
       <div class="sub">Full Blood Count (FBC) · 5-Part Differential</div>
     </div>
-    <div class="sub" style="text-align:right">Reference set: <b>${referenceSet}</b><br/>Flagged: ${rows.filter((r) => r.flag).map((r) => r.label + " " + r.flag).join(", ") || "None"}</div>
+    <div class="sub" style="text-align:right">Reference set: <b>${escapeHtml(referenceSet)}</b><br/>Flagged: ${escapeHtml(flaggedText)}</div>
   </div>
   <div class="meta">
-    <div><b>Sample ID</b>${sampleId}</div>
-    <div><b>Mode</b>${mode}</div>
-    <div><b>Gender</b>${patient?.gender ?? "—"}</div>
-    <div><b>Age</b>${patientAge !== null ? formatAgeLabel(patientAge) : "—"}</div>
-    <div><b>Test Time</b>${testTime}</div>
+    <div><b>Sample ID</b>${escapeHtml(sampleId)}</div>
+    <div><b>Mode</b>${escapeHtml(mode)}</div>
+    <div><b>Gender</b>${escapeHtml(patient?.gender ?? "—")}</div>
+    <div><b>Age</b>${escapeHtml(patientAge !== null ? formatAgeLabel(patientAge) : "—")}</div>
+    <div><b>Test Time</b>${escapeHtml(testTime)}</div>
   </div>
   <table>
     <thead><tr><th>Para</th><th>Flag</th><th>Result</th><th>Unit</th><th>Ref. Range</th></tr></thead>
     <tbody>${trs}</tbody>
   </table>
-  <div class="footer">${ANALYZER_RESULT_FOOTER}</div>
+  <div class="footer">${escapeHtml(ANALYZER_RESULT_FOOTER)}</div>
   ${notes}
   <div class="sig"><span>Lab Scientist</span><span>Reviewed By</span></div>
-  <script>window.onload = function(){ window.print(); };</script>
 </body></html>`;
 
         const win = window.open("", "_blank", "width=900,height=700");
         if (!win) return;
+        win.opener = null;
         win.document.open();
         win.document.write(html);
         win.document.close();
+        win.focus();
+        setTimeout(() => win.print(), 300);
     };
 
     return (

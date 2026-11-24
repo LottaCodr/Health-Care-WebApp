@@ -20,6 +20,7 @@
     "check:patient-list": "node --import ./scripts/dev-harness/register.mjs scripts/check-patient-list.ts",
     "check:patient-archive": "node --import ./scripts/dev-harness/register.mjs scripts/check-patient-archive.ts",
     "check:staff-onboarding": "node --import ./scripts/dev-harness/register.mjs scripts/check-staff-onboarding.ts",
+    "check:security": "node --import ./scripts/dev-harness/register.mjs scripts/check-security-hardening.ts",
     "analyze": "cross-env ANALYZE=true next build --webpack"
   },
   "dependencies": {

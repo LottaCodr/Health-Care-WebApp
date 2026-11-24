@@ -162,12 +162,13 @@ export default function PatientRecordPage({ patient }: Props) {
                                     } else {
                                         const win = window.open("", "_blank", "width=1000,height=760,scrollbars=yes");
                                         if (win) {
+                                            win.opener = null;
                                             win.document.write(result.html);
                                             win.document.close();
                                         } else {
                                             const blob = new Blob([result.html], { type: "text/html" });
                                             const url = URL.createObjectURL(blob);
-                                            window.open(url, "_blank");
+                                            window.open(url, "_blank", "noopener,noreferrer");
                                             URL.revokeObjectURL(url);
                                         }
                                         toast.success("Print document opened.");

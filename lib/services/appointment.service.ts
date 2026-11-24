@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { createNotification } from "./notification.service";
+import { requireStaff } from "./auth-guard";
 import { normalizeUserRole } from "@/lib/roles";
 import { UserRole } from "@/types/models";
 import { toHospitalISODate } from "@/lib/utils/appointment.utils";
@@ -203,6 +204,7 @@ export async function deleteAppointment(id: string) {
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function listAppointmentsByDate(date: string) {
+    await requireStaff();
     const sb = await createClient();
 
     const { data, error } = await sb
@@ -216,6 +218,7 @@ export async function listAppointmentsByDate(date: string) {
 }
 
 export async function listAppointmentsByPatient(patientId: string) {
+    await requireStaff();
     const sb = await createClient();
 
     const { data, error } = await sb
@@ -229,6 +232,7 @@ export async function listAppointmentsByPatient(patientId: string) {
 }
 
 export async function listUpcomingAppointments() {
+    await requireStaff();
     const sb    = await createClient();
     const today = toHospitalISODate();
 

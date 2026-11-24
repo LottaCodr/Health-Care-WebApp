@@ -8,6 +8,7 @@ import { normalizeHospitalNumber } from "@/lib/hospital-number";
 import { isBlankCsvRow, normalizeGender, parseBirthDate } from "@/lib/utils/patient-import";
 import { formatFriendlyDbError } from "@/lib/utils/friendly-errors";
 import { friendlyErrorMessage, withTimeout } from "@/lib/utils/network";
+import { csvCell } from "@/lib/utils/csv";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -363,7 +364,7 @@ function downloadTemplate(type: UploadType) {
 }
 
 function downloadErrorReport(errors: FailedRow[], filename: string) {
-  const csv = "Row,Reason\n" + errors.map((e) => `${e.row},"${e.reason.replace(/"/g, '""')}"`).join("\n");
+  const csv = "Row,Reason\n" + errors.map((e) => `${csvCell(e.row)},${csvCell(e.reason)}`).join("\n");
   downloadCSV(csv, filename);
 }
 

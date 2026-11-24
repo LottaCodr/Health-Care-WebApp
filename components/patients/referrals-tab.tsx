@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Send, Printer, Plus } from "lucide-react";
 import { useCreateReferral, useReferrals, useUpdateReferral } from "@/hooks/emr/use-clinical-modules";
+import { escapeHtml } from "@/lib/security";
 import type { Patient } from "@/types/models";
 
 export default function ReferralsTab({ patient, canEdit }: { patient: Patient; canEdit: boolean }) {
@@ -54,19 +55,20 @@ export default function ReferralsTab({ patient, canEdit }: { patient: Patient; c
     const printLetter = (r: any) => {
         const win = window.open("", "_blank", "width=700,height=800");
         if (!win) return;
+        win.opener = null;
         win.document.write(`
             <html><head><title>Referral Letter</title>
             <style>body{font-family:Georgia,serif;padding:48px;color:#111} h1{font-size:20px} .line{border-top:2px solid #000;margin:16px 0} p{line-height:1.6;font-size:14px} .meta{font-size:12px;color:#444}</style>
             </head><body>
             <h1>NILE VALLEY HOSPITAL — REFERRAL LETTER</h1>
             <div class="line"></div>
-            <p><b>Patient:</b> ${patient.name} &nbsp;·&nbsp; <b>Sex:</b> ${patient.gender ?? "—"} &nbsp;·&nbsp; <b>DOB:</b> ${patient.birth_date ?? "—"}</p>
-            <p><b>To:</b> ${r.referred_to_facility}${r.referred_to_department ? ` — ${r.referred_to_department}` : ""}${r.referred_to_doctor ? `, Dr. ${r.referred_to_doctor}` : ""}</p>
-            <p><b>Urgency:</b> ${r.urgency.toUpperCase()}</p>
-            <p><b>Reason for referral:</b> ${r.reason}</p>
-            ${r.clinical_summary ? `<p><b>Clinical summary:</b><br/>${r.clinical_summary}</p>` : ""}
+            <p><b>Patient:</b> ${escapeHtml(patient.name)} &nbsp;·&nbsp; <b>Sex:</b> ${escapeHtml(patient.gender ?? "—")} &nbsp;·&nbsp; <b>DOB:</b> ${escapeHtml(patient.birth_date ?? "—")}</p>
+            <p><b>To:</b> ${escapeHtml(r.referred_to_facility)}${r.referred_to_department ? ` — ${escapeHtml(r.referred_to_department)}` : ""}${r.referred_to_doctor ? `, Dr. ${escapeHtml(r.referred_to_doctor)}` : ""}</p>
+            <p><b>Urgency:</b> ${escapeHtml(String(r.urgency ?? "").toUpperCase())}</p>
+            <p><b>Reason for referral:</b> ${escapeHtml(r.reason)}</p>
+            ${r.clinical_summary ? `<p><b>Clinical summary:</b><br/>${escapeHtml(r.clinical_summary)}</p>` : ""}
             <div class="line"></div>
-            <p class="meta">Generated ${new Date().toLocaleString("en-GB")} · Nile Valley Hospital EMR</p>
+            <p class="meta">Generated ${escapeHtml(new Date().toLocaleString("en-GB"))} · Nile Valley Hospital EMR</p>
             </body></html>`);
         win.document.close();
         win.focus();

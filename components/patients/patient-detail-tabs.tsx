@@ -17,7 +17,7 @@ import { useConsultationStore } from "@/store/consultation-store";
 import { usePatientStore } from "@/store/patient-store";
 import { useDischargeStore } from "@/store/discharge-store";
 import { Patient, PatientStatus } from "@/types/models";
-import { getAllStaffs } from "@/actions/staff/get.staff";
+import { getAllStaffs } from "@/lib/services/staff.service";
 import { Staff } from "@/actions/staff/types";
 import { calculateAge } from "@/utils/export";
 import { normalizeUserRole } from "@/lib/roles";
@@ -222,7 +222,10 @@ export default function PatientDetailTabs({ patient }: { patient: Patient }) {
   const canEditClinical = role === "Doctor" || role === "Nurse";
   const canEditFrontDesk = role === "FrontDesk" || role === "Admin";
 
-  const { data: staff = [] } = useQuery({ queryKey: ["staffs"], queryFn: getAllStaffs });
+  const { data: staff = [] } = useQuery<Staff[]>({
+    queryKey: ["staffs"],
+    queryFn: async () => (await getAllStaffs()) as unknown as Staff[],
+  });
 
   // Structured allergies — powers the alert badge on the Allergies tab chip.
   const { data: allergies = [] } = useAllergies(patient?.id ?? "");
