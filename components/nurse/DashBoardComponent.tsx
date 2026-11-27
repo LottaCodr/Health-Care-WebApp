@@ -3,19 +3,24 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
     HeartPulse, CheckCircle2, RefreshCcw, ChevronRight, Phone, Baby,
     BedDouble, Eye, ClipboardList, Clock, AlertTriangle, Activity,
-    Stethoscope, Users, ShieldAlert, ArrowUpRight, Sparkles,
+    Stethoscope, Users, ShieldAlert, ArrowUpRight, Sparkles, Search,
+    X, Check, Send, Loader2, Radio,
 } from "lucide-react";
 import { useRoleProtection } from "@/lib/role-utils";
-import { UserRole } from "@/types/models";
+import { PatientStatus, UserRole } from "@/types/models";
 import { fmtFull } from "@/lib/utils";
 import { displayHospitalNumber } from "@/lib/hospital-number";
 import {
     usePatientsByStatus,
     useCompletedNursingActions,
     usePendingNursingActions,
+    useUpdatePatientStatus,
+    useUpdateNursingAction,
     patientKeys,
 } from "@/hooks/emr/use-emr";
 import NursePatientSearch from "./component/nurse-patient-search";
@@ -52,124 +57,170 @@ function getWaitInfo(updatedAt?: string): { label: string; tone: "fresh" | "warn
 const WAIT_STYLES = {
     fresh: "bg-emerald-50 text-emerald-700 border-emerald-200",
     warn: "bg-amber-50 text-amber-700 border-amber-200",
-    urgent: "bg-red-50 text-red-700 border-red-200",
+    urgent: "bg-red-50 text-red-700 border-red-200 animate-pulse",
 };
 
 const HOVER_BORDERS: Record<string, string> = {
-    "bg-teal-600": "hover:border-teal-300",
-    "bg-sky-600": "hover:border-sky-300",
-    "bg-indigo-600": "hover:border-indigo-300",
+    "bg-teal-600": "hover:border-teal-300 hover:shadow-teal-100/60",
+    "bg-sky-600": "hover:border-sky-300 hover:shadow-sky-100/60",
+    "bg-indigo-600": "hover:border-indigo-300 hover:shadow-indigo-100/60",
 };
 
-// ─── Patient Card ─────────────────────────────────────────────────────────────
+// ─── Interactive Patient Card ─────────────────────────────────────────────────
 
 function PatientCard({
     patient,
     index,
     href,
     accentColor,
-    stageBadge,
+    stageType,
+    busyId,
     onPrefetch,
+    onQuickMove,
 }: {
     patient: any;
     index?: number;
     href: string;
     accentColor: string;
-    stageBadge?: { label: string; className: string };
+    stageType: "triage" | "observation" | "admitted";
+    busyId: string | null;
     onPrefetch: (p: any) => void;
+    onQuickMove: (patient: any, nextStatus: PatientStatus, label: string) => void;
 }) {
     const age = calcAge(patient.birth_date ?? patient.date_of_birth);
     const isChild = age ? parseInt(age) <= 12 : false;
     const isFemale = (patient.gender ?? "").toLowerCase() === "female";
     const wait = getWaitInfo(patient.updated_at);
-    const hasAllergies = Boolean(patient.allergies && String(patient.allergies).trim() && !/^(none|nil|n\/a|no)$/i.test(String(patient.allergies).trim()));
+    const hasAllergies = Boolean(
+        patient.allergies &&
+        String(patient.allergies).trim() &&
+        !/^(none|nil|n\/a|no)$/i.test(String(patient.allergies).trim())
+    );
+    const isBusy = busyId === patient.id;
 
     return (
-        <Link
-            href={href}
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.18 }}
             onMouseEnter={() => onPrefetch(patient)}
-            onClick={() => onPrefetch(patient)}
-            className={`group flex items-center gap-3 p-3.5 rounded-2xl border bg-gray-50/60 hover:bg-white hover:shadow-sm transition-all border-gray-200/80 ${HOVER_BORDERS[accentColor] ?? "hover:border-gray-300"}`}
+            className={`group flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 rounded-2xl border bg-gradient-to-r from-gray-50/70 to-white hover:from-white hover:to-white hover:shadow-md transition-all border-gray-200/80 ${HOVER_BORDERS[accentColor] ?? "hover:border-gray-300"}`}
         >
-            {index !== undefined && (
-                <div className={`w-6 h-6 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0 ${accentColor}`}>
-                    {index + 1}
-                </div>
-            )}
+            <Link
+                href={href}
+                onClick={() => onPrefetch(patient)}
+                className="flex items-center gap-3 flex-1 min-w-0"
+            >
+                {index !== undefined && (
+                    <div className={`w-6 h-6 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-xs ${accentColor}`}>
+                        {index + 1}
+                    </div>
+                )}
 
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border ${
-                isFemale ? "bg-pink-50 border-pink-100 text-pink-600" : "bg-teal-50 border-teal-100 text-teal-600"
-            }`}>
-                {(patient.name ?? "?")[0].toUpperCase()}
-            </div>
-
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="text-sm font-bold text-gray-900 truncate">{patient.name ?? "—"}</p>
-                    {patient.hospital_number && (
-                        <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600">
-                            {displayHospitalNumber(patient.hospital_number)}
-                        </span>
-                    )}
-                    {stageBadge && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${stageBadge.className}`}>
-                            {stageBadge.label}
-                        </span>
-                    )}
-                    {isChild && (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                            <Baby size={8} /> Paed
-                        </span>
-                    )}
-                    {hasAllergies && (
-                        <span
-                            title={`Allergies: ${patient.allergies}`}
-                            className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200"
-                        >
-                            <ShieldAlert size={9} /> Allergy
-                        </span>
-                    )}
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border transition-transform group-hover:scale-105 ${
+                    isFemale ? "bg-pink-50 border-pink-100 text-pink-600" : "bg-teal-50 border-teal-100 text-teal-600"
+                }`}>
+                    {(patient.name ?? "?")[0].toUpperCase()}
                 </div>
 
-                <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px] text-gray-500">
-                    {patient.gender && (
-                        <span className={isFemale ? "text-pink-600 font-medium" : "text-teal-600 font-medium"}>
-                            {patient.gender}
-                        </span>
-                    )}
-                    {age && <span>· {age}</span>}
-                    {patient.blood_group && (
-                        <span className="font-semibold text-gray-600">· {patient.blood_group}</span>
-                    )}
-                    {patient.phone && (
-                        <span className="inline-flex items-center gap-0.5">
-                            <Phone size={9} /> {patient.phone}
-                        </span>
-                    )}
-                    {patient.id && (
-                        <AttendantPill
-                            patientId={patient.id}
-                            viewerRole="Nurse"
-                            size="xs"
-                            variant="subtle"
-                            showTimestamp={false}
-                        />
-                    )}
-                </div>
-            </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-bold text-gray-900 group-hover:text-teal-700 transition-colors truncate">
+                            {patient.name ?? "—"}
+                        </p>
+                        {patient.hospital_number && (
+                            <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                                {displayHospitalNumber(patient.hospital_number)}
+                            </span>
+                        )}
+                        {isChild && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                                <Baby size={8} /> Paed
+                            </span>
+                        )}
+                        {hasAllergies && (
+                            <span
+                                title={`Allergies: ${patient.allergies}`}
+                                className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200"
+                            >
+                                <ShieldAlert size={9} /> Allergy
+                            </span>
+                        )}
+                    </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px] text-gray-500">
+                        {patient.gender && (
+                            <span className={isFemale ? "text-pink-600 font-medium" : "text-teal-600 font-medium"}>
+                                {patient.gender}
+                            </span>
+                        )}
+                        {age && <span>· {age}</span>}
+                        {patient.blood_group && (
+                            <span className="font-semibold text-gray-600">· {patient.blood_group}</span>
+                        )}
+                        {patient.phone && (
+                            <span className="inline-flex items-center gap-0.5">
+                                <Phone size={9} /> {patient.phone}
+                            </span>
+                        )}
+                        {patient.id && (
+                            <AttendantPill
+                                patientId={patient.id}
+                                viewerRole="Nurse"
+                                size="xs"
+                                variant="subtle"
+                                showTimestamp={false}
+                            />
+                        )}
+                    </div>
+                </div>
+            </Link>
+
+            {/* Quick interactive actions */}
+            <div className="flex items-center justify-end gap-1.5 shrink-0 pl-9 sm:pl-0">
                 {wait.label && (
-                    <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${WAIT_STYLES[wait.tone]}`}>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border ${WAIT_STYLES[wait.tone]}`}>
                         <Clock size={9} /> {wait.label}
                     </span>
                 )}
-                <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 bg-teal-50 group-hover:bg-teal-600 group-hover:text-white px-2.5 py-1 rounded-xl transition-colors">
-                    Open <ArrowUpRight size={12} />
-                </span>
-                <ChevronRight size={15} className="md:hidden text-gray-300 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all" />
+
+                {stageType === "triage" && (
+                    <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => onQuickMove(patient, PatientStatus.AwaitingConsultation, "Doctor Queue")}
+                        title="Send directly to Doctor consultation queue"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        {isBusy ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+                        <span className="hidden lg:inline">To Doctor</span>
+                    </button>
+                )}
+
+                {stageType === "triage" && (
+                    <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => onQuickMove(patient, PatientStatus.UnderObservation, "Observation")}
+                        title="Move to Under Observation"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white hover:border-sky-600 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <Eye size={11} />
+                        <span className="hidden xl:inline">Observe</span>
+                    </button>
+                )}
+
+                <Link
+                    href={href}
+                    onClick={() => onPrefetch(patient)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-600 hover:text-white px-2.5 py-1.5 rounded-xl border border-teal-200/70 hover:border-teal-600 transition-all active:scale-95"
+                >
+                    Chart <ArrowUpRight size={12} />
+                </Link>
             </div>
-        </Link>
+        </motion.div>
     );
 }
 
@@ -201,7 +252,12 @@ function StatusGroup({
     loading?: boolean;
 }) {
     return (
-        <div className={`bg-white rounded-3xl border shadow-xs overflow-hidden ${borderColor}`}>
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`bg-white rounded-3xl border shadow-xs overflow-hidden ${borderColor}`}
+        >
             <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
@@ -234,10 +290,10 @@ function StatusGroup({
                         <p className="text-[11px] text-gray-400">No patients waiting in this stage</p>
                     </div>
                 ) : (
-                    children
+                    <AnimatePresence mode="popLayout">{children}</AnimatePresence>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -247,6 +303,9 @@ export default function NurseDashboard() {
     const { authorized } = useRoleProtection([UserRole.Nurse, UserRole.Admin]);
     const queryClient = useQueryClient();
     const [stage, setStage] = useState<StageFilter>("all");
+    const [quickFilter, setQuickFilter] = useState("");
+    const [busyPatientId, setBusyPatientId] = useState<string | null>(null);
+    const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
 
     const { data: sentToNurse = [], isPending: l1, isFetching: f1, refetch: r1 } = usePatientsByStatus("sent-to-nurse" as any);
     const { data: underObserv = [], isPending: l2, isFetching: f2, refetch: r2 } = usePatientsByStatus("under-observation" as any);
@@ -254,18 +313,31 @@ export default function NurseDashboard() {
     const { data: completedData = [], isPending: l4, isFetching: f4, refetch: r4 } = useCompletedNursingActions();
     const { data: pendingTasksData = [], isPending: l5, isFetching: f5, refetch: r5 } = usePendingNursingActions();
 
-    const queue = sentToNurse as any[];
-    const observed = underObserv as any[];
-    const inpatient = admitted as any[];
+    const updateStatusMutation = useUpdatePatientStatus();
+    const updateTaskMutation = useUpdateNursingAction();
+
+    const filterList = (list: any[]) => {
+        const q = quickFilter.trim().toLowerCase();
+        if (!q) return list;
+        return list.filter((p) =>
+            (p.name ?? "").toLowerCase().includes(q) ||
+            (p.hospital_number ?? "").toLowerCase().includes(q) ||
+            (p.phone ?? "").toLowerCase().includes(q)
+        );
+    };
+
+    const queue = useMemo(() => filterList(sentToNurse as any[]), [sentToNurse, quickFilter]);
+    const observed = useMemo(() => filterList(underObserv as any[]), [underObserv, quickFilter]);
+    const inpatient = useMemo(() => filterList(admitted as any[]), [admitted, quickFilter]);
     const completed = completedData as any[];
     const pendingTasks = pendingTasksData as any[];
 
-    const totalActive = queue.length + observed.length + inpatient.length;
+    const totalActive = (sentToNurse as any[]).length + (underObserv as any[]).length + (admitted as any[]).length;
     const isRefreshing = f1 || f2 || f3 || f4 || f5;
 
     const longWaitCount = useMemo(
-        () => queue.filter((p) => getWaitInfo(p.updated_at).tone === "urgent").length,
-        [queue]
+        () => (sentToNurse as any[]).filter((p) => getWaitInfo(p.updated_at).tone === "urgent").length,
+        [sentToNurse]
     );
 
     if (!authorized) return null;
@@ -277,6 +349,39 @@ export default function NurseDashboard() {
     function seedPatientCache(patient: any) {
         if (patient?.id) {
             queryClient.setQueryData(patientKeys.detail(patient.id), patient);
+        }
+    }
+
+    async function handleQuickMove(patient: any, nextStatus: PatientStatus, label: string) {
+        if (!patient?.id || busyPatientId) return;
+        setBusyPatientId(patient.id);
+        try {
+            await updateStatusMutation.mutateAsync({ id: patient.id, status: nextStatus });
+            toast.success(`${patient.name ?? "Patient"} moved to ${label}.`);
+        } catch (err: any) {
+            toast.error(err?.message ?? "Could not update patient status.");
+        } finally {
+            setBusyPatientId(null);
+        }
+    }
+
+    async function handleCompleteTask(task: any) {
+        if (!task?.id || completingTaskId) return;
+        setCompletingTaskId(task.id);
+        try {
+            await updateTaskMutation.mutateAsync({
+                id: task.id,
+                patientId: task.patient_id,
+                updates: {
+                    status: "Completed",
+                    completion_time: new Date().toISOString(),
+                } as any,
+            });
+            toast.success(`Completed: ${task.action_type ?? "Nursing order"} for ${task.patients?.name ?? "patient"}.`);
+        } catch (err: any) {
+            toast.error(err?.message ?? "Could not complete nursing task.");
+        } finally {
+            setCompletingTaskId(null);
         }
     }
 
@@ -294,12 +399,12 @@ export default function NurseDashboard() {
         {
             key: "triage",
             label: "Triage / Attention",
-            value: queue.length,
+            value: (sentToNurse as any[]).length,
             sub: longWaitCount > 0 ? `${longWaitCount} waiting >45m` : "Ready for vitals",
             icon: HeartPulse,
             iconBg: "bg-teal-50",
             iconColor: "text-teal-600",
-            activeRing: "ring-2 ring-teal-500 border-teal-300",
+            activeRing: "ring-2 ring-teal-500 border-teal-300 bg-teal-50/30",
         },
         {
             key: "tasks",
@@ -315,22 +420,22 @@ export default function NurseDashboard() {
         {
             key: "observation",
             label: "Under Observation",
-            value: observed.length,
+            value: (underObserv as any[]).length,
             sub: "Active monitoring",
             icon: Eye,
             iconBg: "bg-sky-50",
             iconColor: "text-sky-600",
-            activeRing: "ring-2 ring-sky-500 border-sky-300",
+            activeRing: "ring-2 ring-sky-500 border-sky-300 bg-sky-50/30",
         },
         {
             key: "admitted",
             label: "Admitted / Ward",
-            value: inpatient.length,
+            value: (admitted as any[]).length,
             sub: "Inpatient care",
             icon: BedDouble,
             iconBg: "bg-indigo-50",
             iconColor: "text-indigo-600",
-            activeRing: "ring-2 ring-indigo-500 border-indigo-300",
+            activeRing: "ring-2 ring-indigo-500 border-indigo-300 bg-indigo-50/30",
         },
         {
             key: "completed",
@@ -340,13 +445,13 @@ export default function NurseDashboard() {
             icon: CheckCircle2,
             iconBg: "bg-emerald-50",
             iconColor: "text-emerald-600",
-            activeRing: "ring-2 ring-emerald-500 border-emerald-300",
+            activeRing: "ring-2 ring-emerald-500 border-emerald-300 bg-emerald-50/30",
         },
     ];
 
     return (
         <div className="space-y-5 sm:space-y-6">
-            {/* ── Header with quick navigation actions ── */}
+            {/* ── Header with live pulse & quick actions ── */}
             <DashboardHeader
                 title="Nursing Command Center"
                 description="Triage arrivals, execute doctor orders, monitor observations, and manage inpatient ward care."
@@ -354,15 +459,22 @@ export default function NurseDashboard() {
                 tone="teal"
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
+                        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-700">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                            </span>
+                            Live
+                        </span>
                         <Link
                             href="/nurse/ward-board"
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95"
                         >
                             <BedDouble size={13} /> Ward Board
                         </Link>
                         <Link
                             href="/nurse/task"
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-teal-100 bg-teal-50 px-3 text-xs font-bold text-teal-700 transition-colors hover:bg-teal-100"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-teal-100 bg-teal-50 px-3 text-xs font-bold text-teal-700 transition-all hover:bg-teal-100 active:scale-95"
                         >
                             <ClipboardList size={13} /> Tasks
                             {pendingTasks.length > 0 && (
@@ -373,7 +485,7 @@ export default function NurseDashboard() {
                         </Link>
                         <Link
                             href="/nurse/queue"
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-50"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-bold text-gray-700 transition-all hover:bg-gray-50 active:scale-95"
                         >
                             <Users size={13} /> Full Queue
                         </Link>
@@ -382,7 +494,7 @@ export default function NurseDashboard() {
                             type="button"
                             aria-label="Refresh nursing queues"
                             disabled={isRefreshing}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 hover:text-teal-600 hover:border-teal-200 transition-colors disabled:opacity-60"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 hover:text-teal-600 hover:border-teal-200 transition-all active:scale-95 disabled:opacity-60"
                         >
                             <RefreshCcw size={14} className={isRefreshing ? "animate-spin" : ""} />
                         </button>
@@ -394,30 +506,37 @@ export default function NurseDashboard() {
             <NursePatientSearch />
 
             {/* ── Urgent wait banner ── */}
-            {longWaitCount > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-red-50 border border-red-200">
-                    <div className="flex items-center gap-2.5 text-red-800">
-                        <AlertTriangle size={16} className="text-red-600 shrink-0" />
-                        <p className="text-xs sm:text-sm font-semibold">
-                            {longWaitCount} patient{longWaitCount > 1 ? "s have" : " has"} been waiting in the triage queue for over 45 minutes.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setStage("triage")}
-                        className="text-xs font-bold text-red-700 hover:text-red-900 underline underline-offset-2"
+            <AnimatePresence>
+                {longWaitCount > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-red-50 border border-red-200"
                     >
-                        Focus triage queue
-                    </button>
-                </div>
-            )}
+                        <div className="flex items-center gap-2.5 text-red-800">
+                            <AlertTriangle size={16} className="text-red-600 shrink-0" />
+                            <p className="text-xs sm:text-sm font-semibold">
+                                {longWaitCount} patient{longWaitCount > 1 ? "s have" : " has"} been waiting in the triage queue for over 45 minutes.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setStage("triage")}
+                            className="text-xs font-bold text-red-700 hover:text-red-900 underline underline-offset-2"
+                        >
+                            Focus triage queue
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* ── Interactive KPI Cards ── */}
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
                 {statCards.map((s) => {
                     const Icon = s.icon;
                     const isSelected = stage === s.key;
-                    const cardClass = `text-left bg-white rounded-2xl border px-4 py-3.5 flex items-center gap-3 transition-all hover:shadow-xs ${
+                    const cardClass = `w-full text-left bg-white rounded-2xl border px-4 py-3.5 flex items-center gap-3 transition-all hover:shadow-md cursor-pointer ${
                         isSelected ? s.activeRing : "border-gray-200/80 hover:border-gray-300"
                     }`;
 
@@ -436,33 +555,37 @@ export default function NurseDashboard() {
 
                     if (s.href) {
                         return (
-                            <Link key={s.key} href={s.href} className={cardClass}>
-                                {content}
-                            </Link>
+                            <motion.div key={s.key} whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                <Link href={s.href} className={cardClass}>
+                                    {content}
+                                </Link>
+                            </motion.div>
                         );
                     }
 
                     return (
-                        <button
+                        <motion.button
                             key={s.key}
                             type="button"
+                            whileHover={{ y: -2 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => setStage(isSelected ? "all" : (s.key as StageFilter))}
                             className={cardClass}
                         >
                             {content}
-                        </button>
+                        </motion.button>
                     );
                 })}
             </div>
 
-            {/* ── Stage Filter Pills ── */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+            {/* ── Animated Stage Filter Pills + Instant Queue Filter ── */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white rounded-2xl border border-gray-200/80 p-2.5 shadow-xs">
+                <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
                     {([
                         { id: "all", label: "All Active", count: totalActive },
-                        { id: "triage", label: "Triage Queue", count: queue.length },
-                        { id: "observation", label: "Observation", count: observed.length },
-                        { id: "admitted", label: "Admitted", count: inpatient.length },
+                        { id: "triage", label: "Triage Queue", count: (sentToNurse as any[]).length },
+                        { id: "observation", label: "Observation", count: (underObserv as any[]).length },
+                        { id: "admitted", label: "Admitted", count: (admitted as any[]).length },
                         { id: "completed", label: "Completed Today", count: completed.length },
                     ] as const).map((tab) => {
                         const active = stage === tab.id;
@@ -471,14 +594,19 @@ export default function NurseDashboard() {
                                 key={tab.id}
                                 type="button"
                                 onClick={() => setStage(tab.id)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                                    active
-                                        ? "bg-teal-600 text-white shadow-xs"
-                                        : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                                    active ? "text-white" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
                                 }`}
                             >
-                                {tab.label}
-                                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
+                                {active && (
+                                    <motion.span
+                                        layoutId="nurse-stage-pill"
+                                        transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                                        className="absolute inset-0 rounded-xl bg-teal-600 shadow-xs"
+                                    />
+                                )}
+                                <span className="relative z-10">{tab.label}</span>
+                                <span className={`relative z-10 px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
                                     active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
                                 }`}>
                                     {tab.count}
@@ -487,11 +615,28 @@ export default function NurseDashboard() {
                         );
                     })}
                 </div>
-                <p className="text-xs text-gray-400">
-                    {totalActive > 0
-                        ? `${totalActive} active patient${totalActive !== 1 ? "s" : ""} across nursing care`
-                        : "All nursing queues clear"}
-                </p>
+
+                {/* Instant inline filter */}
+                <div className="relative w-full md:w-64 shrink-0">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                        type="text"
+                        value={quickFilter}
+                        onChange={(e) => setQuickFilter(e.target.value)}
+                        placeholder="Filter queue by name or ID…"
+                        className="w-full h-8 pl-8 pr-7 rounded-xl border border-gray-200 bg-gray-50/70 text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-all"
+                    />
+                    {quickFilter && (
+                        <button
+                            type="button"
+                            onClick={() => setQuickFilter("")}
+                            aria-label="Clear filter"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={12} />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* ── Main 2-Column Command Layout ── */}
@@ -504,7 +649,7 @@ export default function NurseDashboard() {
                             iconBg="bg-teal-50"
                             iconColor="text-teal-600"
                             label="Needs Nursing Attention (Triage)"
-                            subtitle="Patients waiting for vitals, assessment, or triage routing"
+                            subtitle="Record vitals or route directly to Doctor / Observation"
                             count={queue.length}
                             badgeBg="bg-teal-50 border-teal-100"
                             badgeText="text-teal-700"
@@ -518,7 +663,10 @@ export default function NurseDashboard() {
                                     index={i}
                                     href={`/nurse/queue/patient/${p.id}`}
                                     accentColor="bg-teal-600"
+                                    stageType="triage"
+                                    busyId={busyPatientId}
                                     onPrefetch={seedPatientCache}
+                                    onQuickMove={handleQuickMove}
                                 />
                             ))}
                         </StatusGroup>
@@ -543,7 +691,10 @@ export default function NurseDashboard() {
                                     patient={p}
                                     href={`/nurse/queue/patient/${p.id}`}
                                     accentColor="bg-sky-600"
+                                    stageType="observation"
+                                    busyId={busyPatientId}
                                     onPrefetch={seedPatientCache}
+                                    onQuickMove={handleQuickMove}
                                 />
                             ))}
                         </StatusGroup>
@@ -568,7 +719,10 @@ export default function NurseDashboard() {
                                     patient={p}
                                     href={`/nurse/queue/patient/${p.id}`}
                                     accentColor="bg-indigo-600"
+                                    stageType="admitted"
+                                    busyId={busyPatientId}
                                     onPrefetch={seedPatientCache}
+                                    onQuickMove={handleQuickMove}
                                 />
                             ))}
                         </StatusGroup>
@@ -606,7 +760,7 @@ export default function NurseDashboard() {
                     )}
                 </div>
 
-                {/* Right Column (1 col): Pending Doctor Orders + Recent Completed */}
+                {/* Right Column (1 col): Interactive Pending Doctor Orders + Recent Completed */}
                 <div className="space-y-4">
                     {/* Pending Nursing Tasks */}
                     <div className="bg-white rounded-3xl border border-amber-100 shadow-xs overflow-hidden">
@@ -617,7 +771,7 @@ export default function NurseDashboard() {
                                 </div>
                                 <div>
                                     <p className="text-sm font-bold text-gray-900">Pending Doctor Orders</p>
-                                    <p className="text-[11px] text-gray-400">Injections, vitals & procedures</p>
+                                    <p className="text-[11px] text-gray-400">One-click complete or open chart</p>
                                 </div>
                             </div>
                             <Link
@@ -641,35 +795,54 @@ export default function NurseDashboard() {
                                     <p className="text-[11px] text-gray-400">New doctor tasks appear here live</p>
                                 </div>
                             ) : (
-                                pendingTasks.slice(0, 6).map((task: any) => {
-                                    const priority = String(task.priority ?? "routine").toLowerCase();
-                                    const isUrgent = priority === "stat" || priority === "urgent" || priority === "high";
-                                    return (
-                                        <Link
-                                            key={task.id}
-                                            href={task.patient_id ? `/nurse/queue/patient/${task.patient_id}` : "/nurse/task"}
-                                            className="group flex items-start gap-2.5 p-3 rounded-2xl bg-gray-50/70 hover:bg-amber-50/50 border border-gray-100 hover:border-amber-200 transition-colors"
-                                        >
-                                            <Activity size={14} className={`mt-0.5 shrink-0 ${isUrgent ? "text-red-500" : "text-amber-500"}`} />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <p className="text-xs font-bold text-gray-800 truncate">
-                                                        {task.patients?.name ?? "Patient"}
-                                                    </p>
-                                                    {isUrgent && (
-                                                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
-                                                            {priority}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                                                    {task.action_type ?? task.description ?? "Nursing task"}
-                                                </p>
-                                            </div>
-                                            <ChevronRight size={13} className="text-gray-300 group-hover:text-amber-600 shrink-0 mt-1" />
-                                        </Link>
-                                    );
-                                })
+                                <AnimatePresence mode="popLayout">
+                                    {pendingTasks.slice(0, 6).map((task: any) => {
+                                        const priority = String(task.priority ?? "routine").toLowerCase();
+                                        const isUrgent = priority === "stat" || priority === "urgent" || priority === "high";
+                                        const isCompleting = completingTaskId === task.id;
+                                        return (
+                                            <motion.div
+                                                key={task.id}
+                                                layout
+                                                initial={{ opacity: 0, y: 6 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, x: 16 }}
+                                                className="group flex items-center gap-2.5 p-3 rounded-2xl bg-gray-50/70 hover:bg-amber-50/50 border border-gray-100 hover:border-amber-200 transition-colors"
+                                            >
+                                                <Link
+                                                    href={task.patient_id ? `/nurse/queue/patient/${task.patient_id}` : "/nurse/task"}
+                                                    className="flex items-start gap-2.5 flex-1 min-w-0"
+                                                >
+                                                    <Activity size={14} className={`mt-0.5 shrink-0 ${isUrgent ? "text-red-500" : "text-amber-500"}`} />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <p className="text-xs font-bold text-gray-800 truncate">
+                                                                {task.patients?.name ?? "Patient"}
+                                                            </p>
+                                                            {isUrgent && (
+                                                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
+                                                                    {priority}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                                            {task.action_type ?? task.description ?? "Nursing task"}
+                                                        </p>
+                                                    </div>
+                                                </Link>
+                                                <button
+                                                    type="button"
+                                                    disabled={isCompleting}
+                                                    onClick={() => handleCompleteTask(task)}
+                                                    title="Mark order as completed"
+                                                    className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all active:scale-90 disabled:opacity-50"
+                                                >
+                                                    {isCompleting ? <Loader2 size={12} className="animate-spin" /> : <Check size={13} />}
+                                                </button>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </AnimatePresence>
                             )}
                         </div>
                     </div>
