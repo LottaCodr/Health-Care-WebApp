@@ -40,7 +40,7 @@ export function usePatient(id: string, opts?: { enabled?: boolean }) {
         // loading skeleton while keeping the cache fresh.
         initialData: () => {
             if (!id) return undefined;
-            const cachedQueries = queryClient.getQueriesData<any>({ queryKey: patientKeys.all });
+            const cachedQueries = queryClient.getQueriesData<any>({ queryKey: patientKeys.all() });
             for (const [, data] of cachedQueries) {
                 if (!data) continue;
                 if (Array.isArray(data)) {
