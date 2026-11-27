@@ -175,16 +175,27 @@ function PatientGrid({
     };
 
     const navigate = (id: string) => {
+        const match = patients.find((p) => p.id === id);
+        if (match) {
+            qc.setQueryData(patientKeys.detail(id), match);
+        }
         const route = ROLE_ROUTES[role]?.(id);
         if (route) router.push(route);
     };
 
     const prefetch = (id: string) => {
-        qc.prefetchQuery({
-            queryKey: patientKeys.detail(id),
-            queryFn: () => fetchPatient(id),
-            staleTime: 60_000,
-        });
+        const match = patients.find((p) => p.id === id);
+        if (match) {
+            qc.setQueryData(patientKeys.detail(id), match);
+        } else {
+            qc.prefetchQuery({
+                queryKey: patientKeys.detail(id),
+                queryFn: () => fetchPatient(id),
+                staleTime: 60_000,
+            });
+        }
+        const route = ROLE_ROUTES[role]?.(id);
+        if (route) router.prefetch(route);
     };
 
     if (!patients.length) return (

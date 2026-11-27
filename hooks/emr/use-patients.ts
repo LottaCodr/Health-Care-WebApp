@@ -27,6 +27,7 @@ export async function fetchPatient(id: string): Promise<Patient | null> {
 }
 
 export function usePatient(id: string, opts?: { enabled?: boolean }) {
+    const queryClient = useQueryClient();
     return useQuery({
         queryKey: patientKeys.detail(id),
         queryFn: () => fetchPatient(id),
@@ -34,6 +35,25 @@ export function usePatient(id: string, opts?: { enabled?: boolean }) {
         staleTime: DETAIL_STALE,
         gcTime: GC_TIME,
         refetchOnWindowFocus: false,
+        // Instant profile open: if this patient is already in memory in any
+        // cached list/queue/page/search query, render it on frame 0 with zero
+        // loading skeleton while keeping the cache fresh.
+        initialData: () => {
+            if (!id) return undefined;
+            const cachedQueries = queryClient.getQueriesData<any>({ queryKey: patientKeys.all });
+            for (const [, data] of cachedQueries) {
+                if (!data) continue;
+                if (Array.isArray(data)) {
+                    const hit = data.find((p: any) => p && typeof p === "object" && p.id === id);
+                    if (hit) return hit as Patient;
+                } else if (Array.isArray(data.rows)) {
+                    const hit = data.rows.find((p: any) => p && typeof p === "object" && p.id === id);
+                    if (hit) return hit as Patient;
+                }
+            }
+            return undefined;
+        },
+        initialDataUpdatedAt: () => Date.now() - DETAIL_STALE + 5_000,
     });
 }
 
