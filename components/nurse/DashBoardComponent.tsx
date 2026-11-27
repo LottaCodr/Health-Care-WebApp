@@ -371,7 +371,6 @@ export default function NurseDashboard() {
         try {
             await updateTaskMutation.mutateAsync({
                 id: task.id,
-                patientId: task.patient_id,
                 updates: {
                     status: "Completed",
                     completion_time: new Date().toISOString(),
