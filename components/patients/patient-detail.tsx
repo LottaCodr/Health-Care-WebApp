@@ -339,6 +339,7 @@ export default function PatientDetailsComponent({ patient }: Props) {
                 onDownload={() => setDownloadOpen(true)}
                 onEditDemographics={isAdmin ? () => setEditDemoOpen(true) : undefined}
                 onManageRecord={isAdmin ? () => openManage(isDisabled ? "restore" : "disable") : undefined}
+                onDeleteRecord={isAdmin ? () => openManage("delete") : undefined}
             />
 
             <PatientDetailTabs patient={patient} />
@@ -359,7 +360,7 @@ const GROUPS = [
 
 function PatientProfile({
     patient, status, onCopyId, showCopied, activeGroup, setActiveGroup,
-    canDownload, onDownload, onEditDemographics, onManageRecord,
+    canDownload, onDownload, onEditDemographics, onManageRecord, onDeleteRecord,
 }: {
     patient:          Patient;
     status:           PatientStatus;
@@ -371,8 +372,10 @@ function PatientProfile({
     onDownload:       () => void;
     /** Admin-only — opens the demographics correction dialog. */
     onEditDemographics?: () => void;
-    /** Admin-only — opens the disable / restore / delete dialog. */
+    /** Admin-only — opens the disable / restore dialog. */
     onManageRecord?:     () => void;
+    /** Admin-only — opens the permanent delete dialog. */
+    onDeleteRecord?:     () => void;
 }) {
     const p = patient as any;
 
@@ -546,25 +549,37 @@ function PatientProfile({
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all backdrop-blur-sm shadow-xs ${
                                         isPatientDisabled(patient)
                                             ? "bg-emerald-500/30 hover:bg-emerald-500/45 text-white border-emerald-200/40"
-                                            : "bg-red-500/25 hover:bg-red-500/40 text-white border-red-200/35"
+                                            : "bg-amber-500/25 hover:bg-amber-500/40 text-white border-amber-200/35"
                                     }`}
                                     title={
                                         isPatientDisabled(patient)
-                                            ? "Restore or permanently delete this patient record (admin only)"
-                                            : "Disable or permanently delete duplicate/mistaken patient record (admin only)"
+                                            ? "Restore this disabled patient record (admin only)"
+                                            : "Disable/archive duplicate or mistaken patient record (admin only)"
                                     }
                                 >
                                     {isPatientDisabled(patient) ? (
                                         <>
                                             <RotateCcw size={12} />
-                                            Restore / Delete
+                                            Restore Record
                                         </>
                                     ) : (
                                         <>
                                             <Archive size={12} />
-                                            Disable / Delete
+                                            Disable Record
                                         </>
                                     )}
+                                </button>
+                            )}
+
+                            {onDeleteRecord && (
+                                <button
+                                    type="button"
+                                    onClick={onDeleteRecord}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-600/80 hover:bg-red-600 text-white border border-red-200/40 transition-all backdrop-blur-sm shadow-xs"
+                                    title="Permanently delete this patient record (admin only)"
+                                >
+                                    <Trash2 size={12} />
+                                    Delete Record
                                 </button>
                             )}
 
