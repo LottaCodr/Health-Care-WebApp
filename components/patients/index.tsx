@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, Suspense } from "react";
+import React, { useState, useMemo, useCallback, useEffect, Suspense } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import SearchInput from "./search-input";
 import PatientsTable from "./table";
 import BulkUploadDialog from "@/components/BulkUpload";
@@ -12,7 +13,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-provider";
-import { usePatientsByStatus, usePatientsPage, usePatientStatusCounts } from "@/hooks/emr/use-emr";
+import { usePatientsByStatus, usePatientsPage, usePatientStatusCounts, patientKeys } from "@/hooks/emr/use-emr";
+import { listPatientsByStatus, listPatientsPage } from "@/lib/services/patient.service";
 import useDebounce from "@/hooks/useDebouce";
 import QueueCloseDialog, { type QueueCloseTarget } from "./QueueCloseDialog";
 import type { Patient } from "@/types/models";
@@ -112,14 +114,17 @@ const DEFAULT_TAB_BY_ROLE: Record<string, PatientStatus> = {
 interface TabPillProps {
     tab:       StatusTab;
     active:    boolean;
-    count:     number;
-    onClick:   () => void;
+    count:       number;
+    onClick:     () => void;
+    onPrefetch?: () => void;
 }
 
-function TabPill({ tab, active, count, onClick }: TabPillProps) {
+function TabPill({ tab, active, count, onClick, onPrefetch }: TabPillProps) {
     return (
         <button
             onClick={onClick}
+            onMouseEnter={onPrefetch}
+            onFocus={onPrefetch}
             className={`
                 relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap
                 transition-all duration-150 shrink-0
@@ -168,6 +173,7 @@ function PaginationBtn({ onClick, disabled, label, children }: {
 
 export default function PatientsComponent() {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const role = user?.role ?? "Frontdesk";
 
     const [search,       setSearch]       = useState("");
@@ -276,6 +282,34 @@ export default function PatientsComponent() {
     React.useEffect(() => { setCurrentPage(1); }, [search, activeTab]);
 
     const visibleTabs = ALL_TABS.filter((t) => ALL_STATUS_VALUES.includes(t.value));
+
+    const prefetchTab = useCallback((tabValue: PatientStatus) => {
+        if (tabValue === "all") {
+            const pageInput = { page: 1, pageSize: ITEMS_PER_PAGE, search: "" };
+            queryClient.prefetchQuery({
+                queryKey: patientKeys.page(pageInput),
+                queryFn: () => listPatientsPage(pageInput),
+                staleTime: 30_000,
+            });
+        } else {
+            queryClient.prefetchQuery({
+                queryKey: patientKeys.byStatus(tabValue as any),
+                queryFn: () => listPatientsByStatus(tabValue as any),
+                staleTime: 30_000,
+            });
+        }
+    }, [queryClient]);
+
+    // Background warm-up: once status counts arrive, prefetch non-empty tabs
+    // so clicking any tab opens instantaneously from memory with zero spinner.
+    useEffect(() => {
+        if (!statusCounts) return;
+        const targets = visibleTabs
+            .map((t) => t.value)
+            .filter((v) => v !== activeTab && (v === "all" || (countByStatus[v] ?? 0) > 0));
+        targets.forEach((v) => prefetchTab(v));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [statusCounts, prefetchTab]);
 
     const isFrontdesk = role === "Frontdesk" || role === "FrontDesk";
     const isAdmin     = role === "Admin";
@@ -424,6 +458,7 @@ export default function PatientsComponent() {
                                     active={activeTab === tab.value}
                                     count={tab.value === "all" ? allTabBadgeCount : (countByStatus[tab.value] ?? 0)}
                                     onClick={() => setActiveTab(tab.value)}
+                                    onPrefetch={() => prefetchTab(tab.value)}
                                 />
                             ))}
                         </div>
