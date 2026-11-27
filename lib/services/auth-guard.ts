@@ -48,6 +48,16 @@ function isTransientAuthError(err: any): boolean {
     );
 }
 
+// Short-lived in-memory cache for staff profile lookups (role, email, is_active).
+// `supabase.auth.getUser()` still runs on every request to validate the session,
+// while caching the `staffs` row for 60s eliminates a redundant Postgres round trip
+// on every single Server Action.
+const STAFF_PROFILE_TTL_MS = 60_000;
+const staffProfileCache = new Map<
+    string,
+    { expiresAt: number; row: { role?: string | null; email?: string | null; is_active?: boolean | null } | null }
+>();
+
 const resolveStaff = cache(async (): Promise<StaffResolution> => {
     const supabase = await createClient();
 
@@ -70,20 +80,29 @@ const resolveStaff = cache(async (): Promise<StaffResolution> => {
     }
     if (!user) return { staff: null, failure: "no-session" };
 
+    const cached = staffProfileCache.get(user.id);
     let staffRow: { role?: string | null; email?: string | null; is_active?: boolean | null } | null = null;
     let lastError: { code?: string; message?: string } | null = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-        const { data, error } = await supabase
-            .from("staffs")
-            .select("role, email, is_active")
-            .eq("id", user.id)
-            .maybeSingle();
-        if (!error) {
-            staffRow = data;
-            lastError = null;
-            break;
+    if (cached && cached.expiresAt > Date.now()) {
+        staffRow = cached.row;
+    } else {
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const { data, error } = await supabase
+                .from("staffs")
+                .select("role, email, is_active")
+                .eq("id", user.id)
+                .maybeSingle();
+            if (!error) {
+                staffRow = data;
+                lastError = null;
+                staffProfileCache.set(user.id, {
+                    expiresAt: Date.now() + STAFF_PROFILE_TTL_MS,
+                    row: data,
+                });
+                break;
+            }
+            lastError = error;
         }
-        lastError = error;
     }
     if (lastError) {
         console.error("[auth-guard] staffs lookup failed:", lastError);

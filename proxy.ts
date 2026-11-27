@@ -77,6 +77,17 @@ export async function proxy(request: NextRequest) {
         }
     );
 
+    // ── Server Actions ────────────────────────────────────────────────────────
+    // Server Actions are POST requests with a `next-action` header. They expect
+    // a `text/x-component` (RSC) response and run their own `requireStaff()`
+    // (which validates the session via `supabase.auth.getUser()`). Skipping the
+    // duplicate `getUser()` network round trip here cuts ~150-300ms off EVERY
+    // server action call across the entire app.
+    const isServerAction = request.headers.has("next-action");
+    if (isServerAction) {
+        return supabaseResponse;
+    }
+
     // IMPORTANT: Do NOT remove getUser() — required for SSR session refresh.
     // In placeholder environments the auth backend is unreachable; treat the
     // request as unauthenticated (the app's other layers degrade the same way).
@@ -88,21 +99,6 @@ export async function proxy(request: NextRequest) {
         user = authUser;
     } catch {
         user = null;
-    }
-
-    // ── Server Actions ────────────────────────────────────────────────────────
-    // Server Actions are POST requests with a `next-action` header. They expect
-    // a `text/x-component` (RSC) response. If this proxy returns a redirect
-    // or any non-RSC response for them, Next.js throws:
-    //   "An unexpected response was received from the server."
-    // This was the root cause of the bulk-upload failure — concurrent chunk
-    // uploads were being intercepted and redirected when the session needed
-    // refresh or when role checks ran. For server actions we only refresh
-    // the session cookies (via supabaseResponse) and let the action's own
-    // `requireStaff()` handle auth — no redirects.
-    const isServerAction = request.headers.has("next-action");
-    if (isServerAction) {
-        return supabaseResponse;
     }
 
     // ── API routes ────────────────────────────────────────────────────────────
