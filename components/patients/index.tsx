@@ -127,22 +127,29 @@ function TabPill({ tab, active, count, onClick, onPrefetch }: TabPillProps) {
             onFocus={onPrefetch}
             className={`
                 relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap
-                transition-all duration-150 shrink-0
+                transition-colors duration-150 shrink-0 active:scale-95
                 ${active
-                    ? `${tab.color} shadow-sm`
-                    : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                    ? "text-white"
+                    : "bg-gray-100/90 text-gray-500 hover:bg-gray-200/80 hover:text-gray-800"
                 }
             `}
         >
+            {active && (
+                <motion.span
+                    layoutId="patient-list-active-tab"
+                    transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                    className={`absolute inset-0 rounded-xl shadow-sm ${tab.color}`}
+                />
+            )}
             {/* Live dot — only show when not active so it's not hidden by pill bg */}
             {!active && (
-                <span className={`w-1.5 h-1.5 rounded-full ${tab.dot} shrink-0`} />
+                <span className={`relative z-10 w-1.5 h-1.5 rounded-full ${tab.dot} shrink-0`} />
             )}
-            <span className="hidden sm:inline">{tab.label}</span>
-            <span className="sm:hidden">{tab.short}</span>
+            <span className="relative z-10 hidden sm:inline">{tab.label}</span>
+            <span className="relative z-10 sm:hidden">{tab.short}</span>
             {count > 0 && (
                 <span className={`
-                    ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none
+                    relative z-10 ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none
                     ${active ? "bg-white/20 text-white" : "bg-white text-gray-600 border border-gray-200"}
                 `}>
                     {count > 999 ? "999+" : count}
