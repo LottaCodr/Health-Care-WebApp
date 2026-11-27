@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-provider";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw, ClipboardList, Loader2, Stethoscope, LogOut } from "lucide-react";
+import { User, Droplets, Pill, Calendar, ChevronRight, RotateCcw, ClipboardList, Loader2, Stethoscope, LogOut, Copy, Check, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import ReturnPatient from "./return-patient";
 // import { processReturnVisit } from "@/lib/actions/patient-workflow.actions";
@@ -142,8 +142,18 @@ function PatientGrid({
     const qc = useQueryClient();
     const { user } = useAuth();
     const [returnPatient, setReturnPatient] = useState<Patient | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     const staffId = user?.$id ?? user?.id ?? "";
     const canReturn = role === "Frontdesk" || role === "FrontDesk" || role === "Admin";
+
+    const handleCopyHN = (e: React.MouseEvent, id: string, hn: string) => {
+        e.stopPropagation();
+        navigator.clipboard?.writeText(hn).then(() => {
+            setCopiedId(id);
+            toast.success(`Copied ${hn}`);
+            setTimeout(() => setCopiedId((prev) => (prev === id ? null : prev)), 1500);
+        });
+    };
 
     // ── Start Encounter ───────────────────────────────────────────────────────
     // Freshly registered patients get routed to the nurse for triage + vitals
@@ -236,27 +246,37 @@ function PatientGrid({
                             onClick={() => navigate(pid)}
                             onMouseEnter={() => prefetch(pid)}
                             onKeyDown={e => (e.key === "Enter" || e.key === " ") && navigate(pid)}
-                            whileHover={{ y: -2 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="group relative flex flex-col bg-white rounded-2xl border border-gray-200 hover:border-blue-400 hover:bg-slate-50/20 cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all duration-150 overflow-hidden"
+                            whileHover={{ y: -3 }}
+                            whileTap={{ scale: 0.985 }}
+                            className="group relative flex flex-col bg-white rounded-2xl border border-gray-200/90 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-100/50 cursor-pointer outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all duration-200 overflow-hidden"
                         >
                             {/* Gender colour strip */}
-                            <div className={clsx("h-1 w-full", isFemale ? "bg-pink-400" : "bg-blue-500")} />
+                            <div className={clsx("h-1 w-full transition-opacity", isFemale ? "bg-gradient-to-r from-pink-400 to-rose-400" : "bg-gradient-to-r from-blue-500 to-indigo-500")} />
 
                             <div className="p-5 flex flex-col gap-4 flex-1">
 
                                 {/* Avatar + name */}
                                 <div className="flex items-start gap-3">
                                     <div className={clsx(
-                                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105",
                                         isFemale ? "bg-pink-50" : "bg-blue-50"
                                     )}>
                                         <User size={18} className={isFemale ? "text-pink-500" : "text-blue-600"} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-sm text-gray-900 truncate leading-tight" title={patient.name ?? ""}>
-                                            {patient.name ?? <span className="italic text-gray-400">Unknown</span>}
-                                        </p>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <p className="font-bold text-sm text-gray-900 group-hover:text-blue-700 transition-colors truncate leading-tight" title={patient.name ?? ""}>
+                                                {patient.name ?? <span className="italic text-gray-400">Unknown</span>}
+                                            </p>
+                                            {patient.allergies && !/^(none|nil|n\/a|no)$/i.test(String(patient.allergies).trim()) && (
+                                                <span
+                                                    title={`Allergies: ${patient.allergies}`}
+                                                    className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200"
+                                                >
+                                                    <ShieldAlert size={9} /> Allergy
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                                             {patient.gender && (
                                                 <span className={clsx("text-xs font-semibold", isFemale ? "text-pink-500" : "text-blue-500")}>
@@ -270,7 +290,7 @@ function PatientGrid({
                                             )}
                                         </div>
                                     </div>
-                                    <ChevronRight size={15} className="text-gray-200 group-hover:text-blue-400 transition-colors shrink-0 mt-0.5" />
+                                    <ChevronRight size={15} className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
                                 </div>
 
                                 <div className="border-t border-gray-50" />
@@ -278,7 +298,21 @@ function PatientGrid({
                                 {/* Info */}
                                 <div className="space-y-2.5">
                                     <InfoRow icon={<ClipboardList size={13} className="text-gray-400" />} label="HN">
-                                        <span className="font-mono">{patient.hospital_number ?? <span className="italic text-gray-300">—</span>}</span>
+                                        {patient.hospital_number ? (
+                                            <span className="inline-flex items-center gap-1.5">
+                                                <span className="font-mono">{patient.hospital_number}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleCopyHN(e, pid, patient.hospital_number!)}
+                                                    title="Copy hospital number"
+                                                    className="p-0.5 rounded text-gray-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                >
+                                                    {copiedId === pid ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                                                </button>
+                                            </span>
+                                        ) : (
+                                            <span className="italic text-gray-300">—</span>
+                                        )}
                                     </InfoRow>
                                     <InfoRow icon={<Calendar size={13} className="text-gray-400" />}>
                                         {patient.created_at ? formatDate(patient.created_at) : <span className="italic text-gray-300">No date</span>}
