@@ -10,16 +10,16 @@ export function useStableQueryClient() {
   const [client] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30_000, //data fresh for 30 seconds - no refresh on ta focus
-        gcTime: 10 * 60 * 1000, // keep in memmory 10 mins
+        staleTime: 60_000, // data fresh for 60s; Realtime invalidates live on changes
+        gcTime: 15 * 60 * 1000, // keep in memory 15 mins for instant back/tab navigation
         // Poor-network hardening: more retries with exponential backoff +
         // jitter so a flaky connection self-heals, and automatic refetch
         // when the browser reconnects. TanStack pauses in-flight queries
         // while offline and resumes them on reconnect (networkMode online).
-        retry: 3,
-        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000) + Math.random() * 500,
+        retry: 2,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000) + Math.random() * 400,
         refetchOnWindowFocus: false,
-        refetchOnMount: true,
+        refetchOnMount: false,
         refetchOnReconnect: true,
         networkMode: "online",
       },
