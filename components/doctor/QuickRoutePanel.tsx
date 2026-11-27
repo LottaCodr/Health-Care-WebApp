@@ -23,7 +23,13 @@ const DESTINATIONS: { value: RouteDestination; label: string; desc: string; icon
     { value: "nurse", label: "Nurse", desc: "Nursing care", icon: UserCog, active: "border-teal-300 bg-teal-50" },
 ];
 
-const RADIOLOGY_KEYWORDS = ["radiology", "x-ray", "ct", "mri", "ultrasound", "scan", "imaging"];
+// Word-boundary match so "ct" only matches standalone CT / CT Scan — never
+// lab tests like Liver Fun[ct]ion, Ele[ct]rolytes, Prola[ct]in, or C-Rea[ct]ive Protein.
+const RADIOLOGY_PATTERN = /\b(radiology|x-?ray|ct\s*scan|ct|mri|ultrasound|sonography|scan|imaging)\b/i;
+
+function isRadiologyEntry(t: { category?: string | null; test_name?: string | null }): boolean {
+    return RADIOLOGY_PATTERN.test(`${t.category ?? ""} ${t.test_name ?? ""}`);
+}
 
 function MultiPicker({ options, selected, onChange, placeholder }: {
     options: string[];
@@ -116,10 +122,13 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
     const [indication, setIndication] = useState("");
 
     const labOptions = useMemo(
-        () => (catalog as any[])
-            .filter((t) => !RADIOLOGY_KEYWORDS.some((k) =>
-                (t.category ?? "").toLowerCase().includes(k) || (t.test_name ?? "").toLowerCase().includes(k)))
-            .map((t) => t.test_name),
+        () => Array.from(
+            new Set(
+                (catalog as any[])
+                    .map((t) => t.test_name)
+                    .filter((name): name is string => Boolean(name))
+            )
+        ).sort((a, b) => a.localeCompare(b)),
         [catalog]
     );
 
@@ -127,8 +136,7 @@ export default function QuickRoutePanel({ patient, consultationId }: { patient: 
         // Real catalog first (priced, so the order is billed correctly), then any
         // legacy lab-catalog rows that look like imaging.
         const fromCatalog = (catalog as any[])
-            .filter((t) => RADIOLOGY_KEYWORDS.some((k) =>
-                (t.category ?? "").toLowerCase().includes(k) || (t.test_name ?? "").toLowerCase().includes(k)))
+            .filter((t) => t.is_active !== false && isRadiologyEntry(t))
             .map((t) => t.test_name);
         const names = (scans as any[]).map((s) => s.name);
         return [...names, ...fromCatalog.filter((n) => !names.includes(n))].filter(Boolean);

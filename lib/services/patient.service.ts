@@ -810,6 +810,25 @@ export async function getPatientStatusCounts(): Promise<{
     await requireStaff();
     const supabase = await createClient();
 
+    // Fast path: single GROUP BY RPC (1 round trip instead of 12 parallel count queries)
+    const { data: rpcRows, error: rpcError } = await supabase.rpc("get_patient_status_counts");
+    if (!rpcError && Array.isArray(rpcRows)) {
+        const byStatus: Record<string, number> = {};
+        for (const status of ALL_PATIENT_STATUSES) {
+            byStatus[status] = 0;
+        }
+        let total = 0;
+        for (const row of rpcRows as Array<{ status: string | null; cnt: number | string }>) {
+            const count = Number(row.cnt) || 0;
+            if (row.status) {
+                byStatus[row.status] = count;
+            }
+            total += count;
+        }
+        return { total, byStatus };
+    }
+
+    // Fallback when the RPC migration hasn't been applied yet
     const results = await Promise.all(
         ALL_PATIENT_STATUSES.map(async (status) => {
             const { count, error } = await runWithActiveFilter((filterActive) => {

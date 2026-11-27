@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     useCreateConsultation, useUpdateConsultation, useUpdatePatientStatus,
     useCreateLabRequest, useCreateRadiologyRequest, useCreateNursingAction,
-    useActiveLabTests, useCreatePrescription, useDrugInventory,
+    useLabTestCatalog, useRadiologyScans, useCreatePrescription, useDrugInventory,
 } from "@/hooks/emr/use-emr";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import {
@@ -492,7 +492,8 @@ export default function ConsultationForm({
     const { mutateAsync: createRadRequestAsync, isPending: rLoading } = useCreateRadiologyRequest();
     const { mutateAsync: createNursingActionAsync } = useCreateNursingAction();
     const { mutateAsync: createPrescriptionAsync } = useCreatePrescription();
-    const { data: labCatalog } = useActiveLabTests();
+    const { data: labCatalog = [] } = useLabTestCatalog();
+    const { data: radiologyScans = [] } = useRadiologyScans();
 
     const [admissionSaving, setAdmissionSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -507,28 +508,31 @@ export default function ConsultationForm({
     const isChild = isPaed(patientAge);
     const isFem = isFemale(patientGender);
 
+    // Show the exact same lab test catalog that lab scientists see — every test
+    // in `lab_test_catalog`, deduplicated and sorted alphabetically.
     const LAB_TESTS: string[] = useMemo(() => {
-        if (!labCatalog) return [];
-        return Object.values(labCatalog).flat()
-            .filter(t => !["radiology","x-ray","ct","mri","ultrasound"].some(k =>
-                t.category?.toLowerCase().includes(k) || t.test_name?.toLowerCase().includes(k)))
-            // A generic H. pylori catalog row is unsafe to order: antibody
-            // serology and stool antigen are different tests/specimens.
-            .filter(t => !isPyloriOrder(t.test_name) || !!findTemplate(t.test_name))
-            .map(t => t.test_name);
+        if (!labCatalog.length) return [];
+        return Array.from(
+            new Set(
+                labCatalog
+                    .map(t => t.test_name)
+                    .filter((name): name is string => Boolean(name))
+            )
+        ).sort((a, b) => a.localeCompare(b));
     }, [labCatalog]);
-    const hasAmbiguousPyloriCatalogEntry = useMemo(() =>
-        !!labCatalog && Object.values(labCatalog).flat().some(t =>
-            isPyloriOrder(t.test_name) && !findTemplate(t.test_name)),
-    [labCatalog]);
+    const hasAmbiguousPyloriCatalogEntry = false;
 
     const RADIOLOGY_TESTS: string[] = useMemo(() => {
-        if (!labCatalog) return [];
-        return Object.values(labCatalog).flat()
-            .filter(t => ["radiology","x-ray","ct","mri","ultrasound"].some(k =>
-                t.category?.toLowerCase().includes(k) || t.test_name?.toLowerCase().includes(k)))
+        const fromScans = (radiologyScans as Array<{ name?: string | null }>)
+            .map(s => s.name)
+            .filter((n): n is string => Boolean(n));
+        const fromLabCatalog = labCatalog
+            .filter(t => /\b(radiology|x-?ray|ct\s*scan|ct|mri|ultrasound|sonography|imaging)\b/i.test(
+                `${t.category ?? ""} ${t.test_name ?? ""}`
+            ))
             .map(t => t.test_name);
-    }, [labCatalog]);
+        return Array.from(new Set([...fromScans, ...fromLabCatalog])).sort((a, b) => a.localeCompare(b));
+    }, [labCatalog, radiologyScans]);
 
     const store = useConsultationStore();
     const {
